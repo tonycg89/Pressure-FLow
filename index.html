@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PressureFlow MVP</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">PressureFlow</p>
+          <h1>Job Command Center</h1>
+        </div>
+
+        <nav class="nav-list" aria-label="Primary">
+          <button class="nav-item active" type="button" title="Pipeline">
+            <span aria-hidden="true">P</span>
+            <span>Pipeline</span>
+          </button>
+          <button class="nav-item" type="button" title="Calendar">
+            <span aria-hidden="true">C</span>
+            <span>Calendar</span>
+          </button>
+          <button class="nav-item" type="button" title="Invoices">
+            <span aria-hidden="true">I</span>
+            <span>Invoices</span>
+          </button>
+          <button class="nav-item" type="button" title="Templates">
+            <span aria-hidden="true">T</span>
+            <span>Templates</span>
+          </button>
+          <button id="settingsButton" class="nav-item" type="button" title="Settings">
+            <span aria-hidden="true">S</span>
+            <span>Settings</span>
+          </button>
+        </nav>
+
+        <section class="integration-list" aria-label="Integrations">
+          <h2>Integrations</h2>
+          <div class="integration ready">Square Contracts <span>planned</span></div>
+          <div class="integration ready">Google Calendar <span>planned</span></div>
+          <div class="integration ready">Square <span>planned</span></div>
+          <div class="integration ready">Email <span>planned</span></div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Today's Work</p>
+            <h2>Move jobs from lead to paid without losing the thread.</h2>
+          </div>
+          <button id="newJobButton" class="primary-button" type="button">New Job</button>
+        </header>
+
+        <section class="metrics" aria-label="Business snapshot">
+          <article>
+            <span>Open Jobs</span>
+            <strong id="openJobs">0</strong>
+          </article>
+          <article>
+            <span>Awaiting Deposit</span>
+            <strong id="awaitingDeposit">$0</strong>
+          </article>
+          <article>
+            <span>Ready to Schedule</span>
+            <strong id="readyToSchedule">0</strong>
+          </article>
+          <article>
+            <span>Unpaid Balance</span>
+            <strong id="unpaidBalance">$0</strong>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <section class="panel pipeline-panel" aria-labelledby="pipelineTitle">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Pipeline</p>
+                <h3 id="pipelineTitle">Active jobs</h3>
+              </div>
+              <select id="statusFilter" aria-label="Filter jobs by status">
+                <option value="all">All statuses</option>
+              </select>
+            </div>
+            <div id="jobList" class="job-list"></div>
+          </section>
+
+          <aside class="panel detail-panel" aria-labelledby="detailTitle">
+            <div class="panel-header">
+          <div>
+            <p class="eyebrow">Selected Job</p>
+            <h3 id="detailTitle">Job details</h3>
+          </div>
+          <button id="editJobButton" class="secondary-small-button" type="button">Edit</button>
+        </div>
+        <div id="jobDetail" class="job-detail"></div>
+      </aside>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="jobDialog">
+      <form method="dialog" id="jobForm">
+        <div class="dialog-header">
+          <h2>New pressure washing job</h2>
+          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+        </div>
+
+        <label>
+          Customer name
+          <input name="customerName" required placeholder="Maria Johnson">
+        </label>
+        <label>
+          Email
+          <input name="email" required type="email" placeholder="maria@example.com">
+        </label>
+        <label>
+          Phone
+          <input name="phone" required placeholder="(555) 123-4567">
+        </label>
+        <label>
+          Service address
+          <input name="address" required placeholder="214 Oak Ridge Dr">
+        </label>
+        <div class="field-row">
+          <label>
+            Square estimate ID
+            <input name="squareEstimateId" placeholder="Optional">
+          </label>
+          <label>
+            Square estimate link
+            <input name="squareEstimateUrl" type="url" placeholder="Optional">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            Square contract ID
+            <input name="squareContractId" placeholder="Optional">
+          </label>
+          <label>
+            Square contract link
+            <input name="squareContractUrl" type="url" placeholder="Optional">
+          </label>
+        </div>
+        <label>
+          Service type
+          <select name="serviceType">
+            <option>Driveway cleaning</option>
+            <option>House wash</option>
+            <option>Roof wash</option>
+            <option>Commercial exterior</option>
+            <option>Bundle</option>
+          </select>
+        </label>
+        <div class="field-row">
+          <label>
+            Estimate
+            <input name="estimate" required type="number" min="0" step="25" value="450">
+          </label>
+          <label>
+            Deposit %
+            <input name="depositPercent" required type="number" min="0" max="100" step="5" value="25">
+          </label>
+        </div>
+        <label>
+          Notes
+          <textarea name="notes" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
+        </label>
+        <label>
+          Access notes
+          <textarea name="accessNotes" rows="2" placeholder="Gate code, parking, water spigot, pets"></textarea>
+        </label>
+        <label>
+          Sensitive areas
+          <textarea name="sensitiveAreas" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
+        </label>
+
+        <menu class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button value="default" class="primary-button" type="submit">Create Job</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" id="settingsForm">
+        <div class="dialog-header">
+          <h2>Business settings</h2>
+          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+        </div>
+
+        <div class="settings-grid">
+          <label>
+            Business name
+            <input name="businessName" placeholder="Your Pressure Washing LLC">
+          </label>
+          <label>
+            Business email
+            <input name="businessEmail" type="email" placeholder="you@example.com">
+          </label>
+          <label>
+            Business phone
+            <input name="businessPhone" placeholder="(555) 123-4567">
+          </label>
+          <label>
+            Default deposit %
+            <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">
+          </label>
+          <label>
+            Default job duration
+            <input name="defaultJobDurationMinutes" type="number" min="30" max="720" step="15" value="180">
+          </label>
+          <label>
+            Square environment
+            <select name="squareEnvironment">
+              <option value="sandbox">Sandbox</option>
+              <option value="production">Production</option>
+            </select>
+          </label>
+          <label>
+            Square location ID
+            <input name="squareLocationId" placeholder="LMAS5W0GDF117">
+          </label>
+          <label class="full-field">
+            Square access token
+            <input name="squareAccessToken" type="password" autocomplete="off" placeholder="Leave blank to keep saved token">
+          </label>
+          <label class="full-field">
+            Square webhook signature key
+            <input name="squareWebhookSignatureKey" type="password" autocomplete="off" placeholder="Leave blank to keep saved key">
+          </label>
+          <label class="full-field">
+            Google calendar ID
+            <input name="googleCalendarId" placeholder="tonycg89@gmail.com">
+          </label>
+          <label class="full-field">
+            Google client ID
+            <input name="googleClientId" autocomplete="off" placeholder="Google OAuth client ID">
+          </label>
+          <label class="full-field">
+            Google client secret
+            <input name="googleClientSecret" type="password" autocomplete="off" placeholder="Leave blank to keep saved secret">
+          </label>
+          <label class="full-field">
+            Google redirect URI
+            <input name="googleRedirectUri" readonly value="http://localhost:3000/auth/google/callback">
+          </label>
+        </div>
+
+        <p id="settingsStatus" class="form-note"></p>
+
+        <section class="export-actions" aria-label="Export data">
+          <a class="secondary-link-button" href="/api/export/jobs.csv">Export Jobs CSV</a>
+          <a class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
+        </section>
+
+        <menu class="dialog-actions">
+          <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
+          <button value="cancel" type="submit">Cancel</button>
+          <button value="default" class="primary-button" type="submit">Save Settings</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
