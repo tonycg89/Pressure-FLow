@@ -155,6 +155,35 @@
             <option>Bundle</option>
           </select>
         </label>
+
+        <section class="estimate-builder" aria-label="Estimate builder">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Estimate</p>
+              <h3>Services and rates</h3>
+            </div>
+            <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
+          </div>
+          <div id="lineItems" class="line-items"></div>
+          <details class="discount-panel">
+            <summary>Discounts</summary>
+            <label>
+              Estimate discount
+              <select id="discountSelect" name="discountPercent">
+                <option value="0">No discount</option>
+                <option value="10">10% discount</option>
+                <option value="15">15% discount</option>
+                <option value="20">20% discount</option>
+              </select>
+            </label>
+          </details>
+          <div class="estimate-summary">
+            <div><span>Subtotal</span><strong id="estimateSubtotal">$0</strong></div>
+            <div><span>Discount</span><strong id="estimateDiscount">$0</strong></div>
+            <div><span>Total</span><strong id="estimateTotal">$0</strong></div>
+          </div>
+        </section>
+
         <div class="field-row">
           <label>
             Estimate

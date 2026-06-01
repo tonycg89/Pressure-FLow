@@ -3,6 +3,18 @@ let jobs = [];
 let selectedJobId = null;
 let settings = {};
 
+const serviceCatalog = [
+  { name: "Fence Cleaning", unit: "PLF", price: 2.5 },
+  { name: "Holiday Light Installation", unit: "PLF", price: 5 },
+  { name: "House Washing", unit: "sqft", price: 0.25 },
+  { name: "Paver Cleaning", unit: "sqft", price: 0.3 },
+  { name: "Pressure Washing", unit: "sqft", price: 0.2 },
+  { name: "Roof Blow Off (Debris Only)", unit: "ea", price: 100 },
+  { name: "Roof Wash", unit: "sqft", price: 0.4 },
+  { name: "Solar Panel Cleaning", unit: "ea", price: 10 },
+  { name: "Trash Can Cleaning", unit: "ea", price: 15 }
+];
+
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -23,6 +35,12 @@ const settingsStatus = document.querySelector("#settingsStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
+const addLineItemButton = document.querySelector("#addLineItemButton");
+const lineItemsContainer = document.querySelector("#lineItems");
+const discountSelect = document.querySelector("#discountSelect");
+const estimateSubtotal = document.querySelector("#estimateSubtotal");
+const estimateDiscount = document.querySelector("#estimateDiscount");
+const estimateTotal = document.querySelector("#estimateTotal");
 let pendingScheduleResolve = null;
 
 async function init() {
@@ -31,6 +49,9 @@ async function init() {
   editJobButton.addEventListener("click", openEditJob);
   settingsButton.addEventListener("click", openSettings);
   jobForm.addEventListener("submit", createJob);
+  addLineItemButton.addEventListener("click", () => addLineItemRow());
+  discountSelect.addEventListener("change", updateEstimateTotals);
+  jobForm.elements.estimate.addEventListener("input", updateEstimateTotals);
   settingsForm.addEventListener("submit", saveSettings);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
@@ -155,6 +176,7 @@ async function createJob(event) {
   event.preventDefault();
   const formData = new FormData(jobForm);
   const job = Object.fromEntries(formData.entries());
+  job.lineItems = getEstimateLineItems();
   job.estimate = Number(job.estimate);
   job.depositPercent = Number(job.depositPercent);
   const editingId = jobForm.dataset.editingId;
@@ -174,6 +196,7 @@ async function createJob(event) {
 }
 
 function openNewJob() {
+  jobForm.reset();
   resetJobDialog();
   jobDialog.showModal();
 }
@@ -195,6 +218,9 @@ function openEditJob() {
   jobForm.elements.serviceType.value = job.serviceType || "Driveway cleaning";
   jobForm.elements.estimate.value = job.estimate || 0;
   jobForm.elements.depositPercent.value = job.depositPercent || settings.defaultDepositPercent || 25;
+  renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...serviceCatalog[4], quantity: 1 }]);
+  discountSelect.value = String(job.discountPercent || 0);
+  updateEstimateTotals();
   jobForm.elements.notes.value = job.notes || "";
   jobForm.elements.accessNotes.value = job.accessNotes || "";
   jobForm.elements.sensitiveAreas.value = job.sensitiveAreas || "";
@@ -204,6 +230,108 @@ function openEditJob() {
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
   jobDialogTitle.textContent = "New pressure washing job";
+  renderLineItems([{ ...serviceCatalog[4], quantity: 1 }]);
+  discountSelect.value = "0";
+  updateEstimateTotals();
+}
+
+function renderLineItems(items) {
+  lineItemsContainer.innerHTML = "";
+  const normalizedItems = items.length ? items : [{ ...serviceCatalog[4], quantity: 1 }];
+  normalizedItems.forEach((item) => addLineItemRow(item));
+  updateEstimateTotals();
+}
+
+function addLineItemRow(item = serviceCatalog[0]) {
+  const catalogItem = serviceCatalog.find((service) => service.name === item.name) || serviceCatalog[0];
+  const row = document.createElement("div");
+  row.className = "line-item-row";
+  row.innerHTML = `
+    <label>
+      Service
+      <select class="line-service">
+        ${serviceCatalog.map((service) => `
+          <option value="${escapeHtml(service.name)}" ${service.name === catalogItem.name ? "selected" : ""}>
+            ${escapeHtml(service.name)}
+          </option>
+        `).join("")}
+      </select>
+    </label>
+    <label>
+      Qty
+      <input class="line-quantity" type="number" min="0" step="0.25" value="${Number(item.quantity || 1)}">
+    </label>
+    <label>
+      Rate
+      <input class="line-rate" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
+    </label>
+    <div class="line-item-total">
+      <span>${escapeHtml(catalogItem.unit)}</span>
+      <strong>$0</strong>
+    </div>
+    <button class="icon-button line-remove" type="button" title="Remove service">X</button>
+  `;
+
+  row.querySelector(".line-service").addEventListener("change", (event) => {
+    const selected = serviceCatalog.find((service) => service.name === event.target.value);
+    if (!selected) return;
+    row.querySelector(".line-rate").value = selected.price;
+    row.querySelector(".line-item-total span").textContent = selected.unit;
+    updateEstimateTotals();
+  });
+  row.querySelector(".line-quantity").addEventListener("input", updateEstimateTotals);
+  row.querySelector(".line-rate").addEventListener("input", updateEstimateTotals);
+  row.querySelector(".line-remove").addEventListener("click", () => {
+    row.remove();
+    if (!lineItemsContainer.children.length) {
+      addLineItemRow();
+    }
+    updateEstimateTotals();
+  });
+
+  lineItemsContainer.append(row);
+  updateEstimateTotals();
+}
+
+function getEstimateLineItems() {
+  return Array.from(lineItemsContainer.querySelectorAll(".line-item-row")).map((row) => {
+    const service = serviceCatalog.find((item) => item.name === row.querySelector(".line-service").value) || serviceCatalog[0];
+    const quantity = Number(row.querySelector(".line-quantity").value || 0);
+    const price = Number(row.querySelector(".line-rate").value || 0);
+    return {
+      name: service.name,
+      unit: service.unit,
+      quantity,
+      price,
+      total: roundMoney(quantity * price)
+    };
+  }).filter((item) => item.quantity > 0 && item.price >= 0);
+}
+
+function updateEstimateTotals() {
+  const lineItems = getEstimateLineItems();
+  const subtotal = roundMoney(lineItems.reduce((sum, item) => sum + item.total, 0));
+  const discountPercent = Number(discountSelect.value || 0);
+  const discountAmount = roundMoney(subtotal * (discountPercent / 100));
+  const total = roundMoney(subtotal - discountAmount);
+
+  lineItemsContainer.querySelectorAll(".line-item-row").forEach((row) => {
+    const quantity = Number(row.querySelector(".line-quantity").value || 0);
+    const price = Number(row.querySelector(".line-rate").value || 0);
+    row.querySelector(".line-item-total strong").textContent = currency.format(roundMoney(quantity * price));
+  });
+
+  estimateSubtotal.textContent = currency.format(subtotal);
+  estimateDiscount.textContent = discountAmount > 0 ? `-${currency.format(discountAmount)}` : currency.format(0);
+  estimateTotal.textContent = currency.format(total);
+
+  if (lineItems.length) {
+    jobForm.elements.estimate.value = total.toFixed(2);
+  }
+}
+
+function roundMoney(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
 }
 
 function render() {
@@ -285,6 +413,7 @@ function renderJobDetail() {
     <section class="detail-section">
       <div class="detail-row"><span>Status</span><strong>${job.status}</strong></div>
       <div class="detail-row"><span>Estimate</span><strong>${currency.format(job.estimate)}</strong></div>
+      ${renderEstimateItems(job)}
       <div class="detail-row"><span>Deposit</span><strong>${currency.format(getDeposit(job))}</strong></div>
       <div class="detail-row"><span>Final balance</span><strong>${currency.format(getFinalBalance(job))}</strong></div>
       <div class="detail-row"><span>Scheduled</span><strong>${escapeHtml(job.scheduledAt || "Not scheduled")}</strong></div>
@@ -336,6 +465,30 @@ function renderTimelineStep(job, status) {
       <span class="timeline-dot"></span>
       <span>${status}</span>
     </div>
+  `;
+}
+
+function renderEstimateItems(job) {
+  if (!job.lineItems?.length) {
+    return "";
+  }
+
+  const rows = job.lineItems.map((item) => `
+    <div class="detail-row estimate-item">
+      <span>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</span>
+      <strong>${currency.format(Number(item.total || 0))}</strong>
+    </div>
+  `).join("");
+  const discount = Number(job.discountPercent || 0);
+
+  return `
+    ${rows}
+    ${discount ? `
+      <div class="detail-row estimate-item">
+        <span>Discount</span>
+        <strong>${discount}%</strong>
+      </div>
+    ` : ""}
   `;
 }
 

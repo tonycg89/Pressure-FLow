@@ -428,6 +428,91 @@ label {
   gap: 12px;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.estimate-builder {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.line-items {
+  display: grid;
+  gap: 10px;
+}
+
+.line-item-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.3fr) minmax(82px, 0.45fr) minmax(96px, 0.55fr) minmax(86px, 0.45fr) 40px;
+  gap: 8px;
+  align-items: end;
+}
+
+.line-item-total {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.line-item-total strong {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--ink);
+}
+
+.discount-panel {
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.discount-panel summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.discount-panel label {
+  margin-top: 10px;
+}
+
+.estimate-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.estimate-summary div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.estimate-summary span,
+.estimate-item span {
+  color: var(--muted);
+}
+
 .full-field {
   grid-column: 1 / -1;
 }
@@ -535,7 +620,9 @@ label {
 
   .job-card,
   .field-row,
-  .settings-grid {
+  .settings-grid,
+  .line-item-row,
+  .estimate-summary {
     grid-template-columns: 1fr;
   }
 

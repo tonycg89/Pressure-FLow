@@ -110,6 +110,7 @@ async function writeJson(file, value) {
 
 async function readJobs() {
   if (usePostgres) {
+    await ensurePostgresSchema();
     const result = await getPool().query("select * from jobs order by created_at desc");
     return result.rows.map(jobFromRow);
   }
@@ -119,6 +120,7 @@ async function readJobs() {
 
 async function writeJobs(jobs) {
   if (usePostgres) {
+    await ensurePostgresSchema();
     const client = await getPool().connect();
     try {
       await client.query("begin");
@@ -264,6 +266,8 @@ function getPool() {
 async function ensurePostgresSchema() {
   if (postgresSchemaReady) return;
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
+  await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
   postgresSchemaReady = true;
 }
 
@@ -389,6 +393,10 @@ async function upsertJob(client, job) {
       job.updatedAt || new Date().toISOString()
     ]
   );
+  await client.query(
+    "update jobs set line_items = $1::jsonb, estimate_discount_percent = $2 where id = $3",
+    [JSON.stringify(job.lineItems || []), Number(job.discountPercent || 0), job.id]
+  );
 }
 
 function jobFromRow(row) {
@@ -400,6 +408,8 @@ function jobFromRow(row) {
     address: row.address,
     serviceType: row.service_type,
     estimate: Number(row.estimate || 0),
+    lineItems: Array.isArray(row.line_items) ? row.line_items : [],
+    discountPercent: Number(row.estimate_discount_percent || 0),
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,
     scheduledAt: row.scheduled_at ? toLocalInputValue(row.scheduled_at) : "",

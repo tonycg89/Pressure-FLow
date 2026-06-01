@@ -9,6 +9,8 @@ create table if not exists jobs (
   address text not null,
   service_type text not null,
   estimate numeric(10, 2) not null default 0,
+  line_items jsonb not null default '[]'::jsonb,
+  estimate_discount_percent numeric(5, 2) not null default 0,
   deposit_percent numeric(5, 2) not null default 25,
   status text not null default 'Lead',
   scheduled_at timestamptz,

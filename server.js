@@ -151,6 +151,8 @@ function normalizeJob(input) {
     address: String(input.address || "").trim(),
     serviceType: String(input.serviceType || "Driveway cleaning").trim(),
     estimate: Number(input.estimate || 0),
+    lineItems: normalizeLineItems(input.lineItems),
+    discountPercent: Number(input.discountPercent || 0),
     depositPercent: Number(input.depositPercent ?? defaultSettings.defaultDepositPercent),
     notes: String(input.notes || "").trim(),
     accessNotes: String(input.accessNotes || "").trim(),
@@ -182,6 +184,9 @@ function validateJob(job) {
   if (!job.phone) return "Phone is required.";
   if (!job.address) return "Service address is required.";
   if (!Number.isFinite(job.estimate) || job.estimate < 0) return "Estimate must be 0 or greater.";
+  if (!Number.isFinite(job.discountPercent) || job.discountPercent < 0 || job.discountPercent > 100) {
+    return "Discount percent must be between 0 and 100.";
+  }
   if (!Number.isFinite(job.depositPercent) || job.depositPercent < 0 || job.depositPercent > 100) {
     return "Deposit percent must be between 0 and 100.";
   }
@@ -197,6 +202,8 @@ function jobsToCsv(jobs) {
     "address",
     "serviceType",
     "estimate",
+    "lineItems",
+    "discountPercent",
     "depositPercent",
     "status",
     "scheduledAt",
@@ -221,8 +228,29 @@ function jobsToCsv(jobs) {
   return `${columns.join(",")}\n${rows.join("\n")}\n`;
 }
 
+function normalizeLineItems(value) {
+  let items = [];
+  try {
+    items = Array.isArray(value)
+      ? value
+      : typeof value === "string" && value
+        ? JSON.parse(value)
+        : [];
+  } catch {
+    items = [];
+  }
+
+  return items.map((item) => ({
+    name: String(item.name || "").trim(),
+    unit: String(item.unit || "").trim(),
+    quantity: Number(item.quantity || 0),
+    price: Number(item.price || 0),
+    total: Number(item.total || 0)
+  })).filter((item) => item.name && item.quantity > 0);
+}
+
 function csvEscape(value) {
-  const text = String(value);
+  const text = typeof value === "object" && value !== null ? JSON.stringify(value) : String(value);
   if (/[",\r\n]/.test(text)) {
     return `"${text.replaceAll('"', '""')}"`;
   }
@@ -661,6 +689,14 @@ function updateJob(job, input) {
 
   if (Object.hasOwn(input, "estimate")) {
     job.estimate = Number(input.estimate);
+  }
+
+  if (Object.hasOwn(input, "lineItems")) {
+    job.lineItems = normalizeLineItems(input.lineItems);
+  }
+
+  if (Object.hasOwn(input, "discountPercent")) {
+    job.discountPercent = Number(input.discountPercent);
   }
 
   if (Object.hasOwn(input, "depositPercent")) {
