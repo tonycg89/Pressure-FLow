@@ -4,15 +4,15 @@ let selectedJobId = null;
 let settings = {};
 
 const serviceCatalog = [
-  { name: "Fence Cleaning", unit: "PLF", price: 2.5 },
-  { name: "Holiday Light Installation", unit: "PLF", price: 5 },
-  { name: "House Washing", unit: "sqft", price: 0.25 },
-  { name: "Paver Cleaning", unit: "sqft", price: 0.3 },
-  { name: "Pressure Washing", unit: "sqft", price: 0.2 },
-  { name: "Roof Blow Off (Debris Only)", unit: "ea", price: 100 },
-  { name: "Roof Wash", unit: "sqft", price: 0.4 },
-  { name: "Solar Panel Cleaning", unit: "ea", price: 10 },
-  { name: "Trash Can Cleaning", unit: "ea", price: 15 }
+  { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
+  { name: "Holiday Light Installation", unit: "LNF", price: 5 },
+  { name: "House Washing", unit: "SqFt", price: 0.25 },
+  { name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
+  { name: "Pressure Washing", unit: "SqFt", price: 0.2 },
+  { name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
+  { name: "Roof Wash", unit: "SqFt", price: 0.4 },
+  { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
+  { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -277,7 +277,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
       </select>
     </label>
     <label>
-      Qty
+      <span class="line-quantity-label">${escapeHtml(catalogItem.unit)}</span>
       <input class="line-quantity" type="number" min="0" step="1" value="${Number(item.quantity || 1)}">
     </label>
     <label>
@@ -295,6 +295,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
     const selected = serviceCatalog.find((service) => service.name === event.target.value);
     if (!selected) return;
     row.querySelector(".line-rate").value = selected.price;
+    row.querySelector(".line-quantity-label").textContent = selected.unit;
     row.querySelector(".line-item-total span").textContent = selected.unit;
     updateEstimateTotals();
   });
