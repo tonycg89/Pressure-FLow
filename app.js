@@ -40,6 +40,7 @@ const lineItemsContainer = document.querySelector("#lineItems");
 const discountSelect = document.querySelector("#discountSelect");
 const estimateSubtotal = document.querySelector("#estimateSubtotal");
 const estimateDiscount = document.querySelector("#estimateDiscount");
+const estimateDiscountRow = document.querySelector("#estimateDiscountRow");
 const estimateTotal = document.querySelector("#estimateTotal");
 let pendingScheduleResolve = null;
 
@@ -259,7 +260,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
     </label>
     <label>
       Qty
-      <input class="line-quantity" type="number" min="0" step="0.25" value="${Number(item.quantity || 1)}">
+      <input class="line-quantity" type="number" min="0" step="1" value="${Number(item.quantity || 1)}">
     </label>
     <label>
       Rate
@@ -322,7 +323,8 @@ function updateEstimateTotals() {
   });
 
   estimateSubtotal.textContent = currency.format(subtotal);
-  estimateDiscount.textContent = discountAmount > 0 ? `-${currency.format(discountAmount)}` : currency.format(0);
+  estimateDiscountRow.hidden = discountAmount <= 0;
+  estimateDiscount.textContent = `-${currency.format(discountAmount)}`;
   estimateTotal.textContent = currency.format(total);
 
   if (lineItems.length) {
