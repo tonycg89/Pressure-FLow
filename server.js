@@ -1182,7 +1182,7 @@ function getFinalBalanceCents(job) {
 }
 
 async function serveStatic(response, url) {
-  const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+  const requestedPath = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
   const safePath = path.normalize(requestedPath).replace(/^(\.\.[/\\])+/, "");
   const filePath = path.join(ROOT, safePath);
 
