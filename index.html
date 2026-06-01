@@ -106,7 +106,7 @@
       <form method="dialog" id="jobForm">
         <div class="dialog-header">
           <h2>New pressure washing job</h2>
-          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
         <label>
@@ -187,7 +187,7 @@
         <div class="field-row">
           <label>
             Estimate
-            <input name="estimate" required type="number" min="0" step="25" value="450">
+            <input name="estimate" required type="number" min="0" step="0.01" value="450">
           </label>
           <label>
             Deposit %
@@ -208,7 +208,7 @@
         </label>
 
         <menu class="dialog-actions">
-          <button value="cancel" type="submit">Cancel</button>
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Create Job</button>
         </menu>
       </form>
@@ -218,7 +218,7 @@
       <form method="dialog" id="settingsForm">
         <div class="dialog-header">
           <h2>Business settings</h2>
-          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
         <div class="settings-grid">
@@ -288,7 +288,7 @@
 
         <menu class="dialog-actions">
           <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
-          <button value="cancel" type="submit">Cancel</button>
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
         </menu>
       </form>
@@ -298,7 +298,7 @@
       <form method="dialog" id="scheduleForm">
         <div class="dialog-header">
           <h2>Schedule job</h2>
-          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
         <label>
@@ -322,7 +322,7 @@
         </div>
 
         <menu class="dialog-actions">
-          <button value="cancel" type="submit">Cancel</button>
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Schedule Job</button>
         </menu>
       </form>

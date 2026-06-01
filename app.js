@@ -18,7 +18,7 @@ const serviceCatalog = [
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  maximumFractionDigits: 0
+  maximumFractionDigits: 2
 });
 
 const jobList = document.querySelector("#jobList");
@@ -53,6 +53,9 @@ async function init() {
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   discountSelect.addEventListener("change", updateEstimateTotals);
   jobForm.elements.estimate.addEventListener("input", updateEstimateTotals);
+  document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+    button.addEventListener("click", closeDialogFromButton);
+  });
   settingsForm.addEventListener("submit", saveSettings);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
@@ -234,6 +237,22 @@ function resetJobDialog() {
   renderLineItems([{ ...serviceCatalog[4], quantity: 1 }]);
   discountSelect.value = "0";
   updateEstimateTotals();
+}
+
+function closeDialogFromButton(event) {
+  const dialog = event.currentTarget.closest("dialog");
+  if (!dialog) return;
+
+  if (dialog === jobDialog) {
+    jobForm.reset();
+    resetJobDialog();
+  }
+
+  if (dialog === scheduleDialog) {
+    resolveScheduleDialog(null);
+  }
+
+  dialog.close();
 }
 
 function renderLineItems(items) {
