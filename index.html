@@ -265,6 +265,40 @@
       </form>
     </dialog>
 
+    <dialog id="scheduleDialog">
+      <form method="dialog" id="scheduleForm">
+        <div class="dialog-header">
+          <h2>Schedule job</h2>
+          <button value="cancel" class="icon-button" title="Close" type="submit">X</button>
+        </div>
+
+        <label>
+          Duration in hours
+          <div class="stepper-control">
+            <button type="button" class="stepper-button" data-duration-step="-0.25" aria-label="Decrease duration">-</button>
+            <input name="durationHours" type="number" min="0.25" max="12" step="0.25" value="3">
+            <button type="button" class="stepper-button" data-duration-step="0.25" aria-label="Increase duration">+</button>
+          </div>
+        </label>
+
+        <div class="field-row">
+          <label>
+            Date
+            <input name="scheduleDate" type="date" required>
+          </label>
+          <label>
+            Start time
+            <input name="scheduleTime" type="time" required step="900">
+          </label>
+        </div>
+
+        <menu class="dialog-actions">
+          <button value="cancel" type="submit">Cancel</button>
+          <button value="default" class="primary-button" type="submit">Schedule Job</button>
+        </menu>
+      </form>
+    </dialog>
+
     <script src="app.js"></script>
   </body>
 </html>

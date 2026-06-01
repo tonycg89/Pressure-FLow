@@ -21,6 +21,9 @@ const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
+const scheduleDialog = document.querySelector("#scheduleDialog");
+const scheduleForm = document.querySelector("#scheduleForm");
+let pendingScheduleResolve = null;
 
 async function init() {
   statusFilter.addEventListener("change", render);
@@ -29,6 +32,11 @@ async function init() {
   settingsButton.addEventListener("click", openSettings);
   jobForm.addEventListener("submit", createJob);
   settingsForm.addEventListener("submit", saveSettings);
+  scheduleForm.addEventListener("submit", submitScheduleDialog);
+  scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
+    button.addEventListener("click", adjustScheduleDuration);
+  });
+  scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
   await loadSettings();
   await loadJobs();
 }
@@ -367,12 +375,11 @@ async function runAction(jobId, action) {
   const payload = {};
 
   if (action === "schedule") {
-    const scheduledAt = prompt("Enter schedule date/time, for example 2026-06-05T09:00", getDefaultScheduleValue());
-    if (!scheduledAt) return;
+    const schedule = await openScheduleDialog();
+    if (!schedule) return;
 
-    const duration = prompt("Job duration in minutes", String(settings.defaultJobDurationMinutes || 180));
-    payload.scheduledAt = scheduledAt;
-    payload.jobDurationMinutes = Number(duration || settings.defaultJobDurationMinutes || 180);
+    payload.scheduledAt = schedule.scheduledAt;
+    payload.jobDurationMinutes = schedule.jobDurationMinutes;
   }
 
   if (action === "send-square-estimate") {
@@ -443,6 +450,67 @@ function getDefaultScheduleValue() {
   const hour = String(date.getHours()).padStart(2, "0");
   const minute = String(date.getMinutes()).padStart(2, "0");
   return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function openScheduleDialog() {
+  const defaultValue = getDefaultScheduleValue();
+  const [date, time] = defaultValue.split("T");
+  const durationHours = Math.max(Number(settings.defaultJobDurationMinutes || 180) / 60, 0.25);
+
+  scheduleForm.elements.durationHours.value = formatDurationHours(durationHours);
+  scheduleForm.elements.scheduleDate.value = date;
+  scheduleForm.elements.scheduleTime.value = time;
+  scheduleDialog.showModal();
+
+  return new Promise((resolve) => {
+    pendingScheduleResolve = resolve;
+  });
+}
+
+function submitScheduleDialog(event) {
+  event.preventDefault();
+
+  if (event.submitter?.value === "cancel") {
+    scheduleDialog.close();
+    resolveScheduleDialog(null);
+    return;
+  }
+
+  const durationHours = normalizeDurationHours(scheduleForm.elements.durationHours.value);
+  const scheduleDate = scheduleForm.elements.scheduleDate.value;
+  const scheduleTime = scheduleForm.elements.scheduleTime.value;
+
+  if (!scheduleDate || !scheduleTime) {
+    return;
+  }
+
+  scheduleDialog.close();
+  resolveScheduleDialog({
+    scheduledAt: `${scheduleDate}T${scheduleTime}`,
+    jobDurationMinutes: Math.round(durationHours * 60)
+  });
+}
+
+function adjustScheduleDuration(event) {
+  const input = scheduleForm.elements.durationHours;
+  const step = Number(event.currentTarget.dataset.durationStep || 0);
+  input.value = formatDurationHours(normalizeDurationHours(input.value) + step);
+}
+
+function normalizeDurationHours(value) {
+  const numeric = Number(value || 0);
+  const rounded = Math.round(numeric * 4) / 4;
+  return Math.min(Math.max(rounded || 0.25, 0.25), 12);
+}
+
+function formatDurationHours(value) {
+  return normalizeDurationHours(value).toFixed(2).replace(/\.00$/, "").replace(/0$/, "");
+}
+
+function resolveScheduleDialog(value) {
+  if (!pendingScheduleResolve) return;
+  pendingScheduleResolve(value);
+  pendingScheduleResolve = null;
 }
 
 function getStatusClass(status) {

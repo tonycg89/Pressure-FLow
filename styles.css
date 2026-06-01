@@ -446,6 +446,34 @@ label {
   padding-top: 4px;
 }
 
+.stepper-control {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+.stepper-control input {
+  text-align: center;
+  font-weight: 800;
+}
+
+.stepper-button {
+  width: 44px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stepper-button:hover {
+  background: #f2f7f5;
+}
+
 .icon-button {
   width: 40px;
   background: white;
