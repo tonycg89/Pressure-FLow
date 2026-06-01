@@ -52,7 +52,6 @@ async function init() {
   jobForm.addEventListener("submit", createJob);
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   discountSelect.addEventListener("change", updateEstimateTotals);
-  jobForm.elements.estimate.addEventListener("input", updateEstimateTotals);
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", closeDialogFromButton);
   });
