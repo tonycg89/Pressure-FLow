@@ -51,6 +51,7 @@ create table if not exists app_settings (
   final_invoice_timing text not null default 'immediate_after_completion',
   square_environment text not null default 'sandbox',
   square_location_id text not null default '',
+  google_refresh_token text not null default '',
   google_calendar_id text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -78,4 +79,3 @@ create index if not exists idx_jobs_status on jobs(status);
 create index if not exists idx_jobs_deposit_invoice on jobs(square_deposit_invoice_id);
 create index if not exists idx_jobs_final_invoice on jobs(square_final_invoice_id);
 create index if not exists idx_webhook_events_received_at on webhook_events(received_at desc);
-

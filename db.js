@@ -10,6 +10,7 @@ const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
 const WEBHOOK_LOG_FILE = path.join(DATA_DIR, "webhook-events.json");
 const usePostgres = Boolean(process.env.DATABASE_URL);
 let pool;
+let postgresSchemaReady = false;
 
 const defaultSettings = {
   businessName: "",
@@ -140,6 +141,7 @@ async function writeJobs(jobs) {
 
 async function readSettings() {
   if (usePostgres) {
+    await ensurePostgresSchema();
     const result = await getPool().query("select * from app_settings where id = 1");
     const rowSettings = result.rows[0] ? settingsFromRow(result.rows[0]) : defaultSettings;
     return {
@@ -152,7 +154,7 @@ async function readSettings() {
       googleClientId: process.env.GOOGLE_CLIENT_ID || rowSettings.googleClientId || "",
       googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
-      googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || "",
+      googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || rowSettings.googleRefreshToken || "",
       googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId
     };
   }
@@ -162,6 +164,7 @@ async function readSettings() {
 
 async function writeSettings(settings) {
   if (usePostgres) {
+    await ensurePostgresSchema();
     await getPool().query(
       `insert into app_settings (
         id,
@@ -173,9 +176,10 @@ async function writeSettings(settings) {
         final_invoice_timing,
         square_environment,
         square_location_id,
+        google_refresh_token,
         google_calendar_id,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -185,6 +189,7 @@ async function writeSettings(settings) {
         final_invoice_timing = excluded.final_invoice_timing,
         square_environment = excluded.square_environment,
         square_location_id = excluded.square_location_id,
+        google_refresh_token = excluded.google_refresh_token,
         google_calendar_id = excluded.google_calendar_id,
         updated_at = now()`,
       [
@@ -196,6 +201,7 @@ async function writeSettings(settings) {
         settings.finalInvoiceTiming || "immediate_after_completion",
         settings.squareEnvironment || "sandbox",
         settings.squareLocationId || "",
+        settings.googleRefreshToken || "",
         settings.googleCalendarId || ""
       ]
     );
@@ -253,6 +259,12 @@ function getPool() {
   }
 
   return pool;
+}
+
+async function ensurePostgresSchema() {
+  if (postgresSchemaReady) return;
+  await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
+  postgresSchemaReady = true;
 }
 
 async function upsertJob(client, job) {
@@ -431,6 +443,7 @@ function settingsFromRow(row) {
     finalInvoiceTiming: row.final_invoice_timing || "immediate_after_completion",
     squareEnvironment: row.square_environment || "sandbox",
     squareLocationId: row.square_location_id || "",
+    googleRefreshToken: row.google_refresh_token || "",
     googleCalendarId: row.google_calendar_id || ""
   };
 }
