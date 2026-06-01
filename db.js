@@ -268,6 +268,11 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
+  await getPool().query("alter table jobs add column if not exists estimate_approval_token text not null default ''");
+  await getPool().query("alter table jobs add column if not exists estimate_approval_url text not null default ''");
+  await getPool().query("alter table jobs add column if not exists estimate_mailto text not null default ''");
+  await getPool().query("alter table jobs add column if not exists estimate_sent_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists estimate_approved_at timestamptz");
   postgresSchemaReady = true;
 }
 
@@ -394,8 +399,25 @@ async function upsertJob(client, job) {
     ]
   );
   await client.query(
-    "update jobs set line_items = $1::jsonb, estimate_discount_percent = $2 where id = $3",
-    [JSON.stringify(job.lineItems || []), Number(job.discountPercent || 0), job.id]
+    `update jobs set
+      line_items = $1::jsonb,
+      estimate_discount_percent = $2,
+      estimate_approval_token = $3,
+      estimate_approval_url = $4,
+      estimate_mailto = $5,
+      estimate_sent_at = nullif($6, '')::timestamptz,
+      estimate_approved_at = nullif($7, '')::timestamptz
+    where id = $8`,
+    [
+      JSON.stringify(job.lineItems || []),
+      Number(job.discountPercent || 0),
+      job.estimateApprovalToken || "",
+      job.estimateApprovalUrl || "",
+      job.estimateMailto || "",
+      job.estimateSentAt || "",
+      job.estimateApprovedAt || "",
+      job.id
+    ]
   );
 }
 
@@ -410,6 +432,11 @@ function jobFromRow(row) {
     estimate: Number(row.estimate || 0),
     lineItems: Array.isArray(row.line_items) ? row.line_items : [],
     discountPercent: Number(row.estimate_discount_percent || 0),
+    estimateApprovalToken: row.estimate_approval_token || "",
+    estimateApprovalUrl: row.estimate_approval_url || "",
+    estimateMailto: row.estimate_mailto || "",
+    estimateSentAt: row.estimate_sent_at?.toISOString?.() || "",
+    estimateApprovedAt: row.estimate_approved_at?.toISOString?.() || "",
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,
     scheduledAt: row.scheduled_at ? toLocalInputValue(row.scheduled_at) : "",

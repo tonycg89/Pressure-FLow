@@ -164,6 +164,11 @@ function normalizeJob(input) {
     googleCalendarEventUrl: "",
     squareEstimateId: String(input.squareEstimateId || "").trim(),
     squareEstimateUrl: String(input.squareEstimateUrl || "").trim(),
+    estimateApprovalToken: "",
+    estimateApprovalUrl: "",
+    estimateMailto: "",
+    estimateSentAt: "",
+    estimateApprovedAt: "",
     squareCustomerId: "",
     squareDepositOrderId: "",
     squareDepositInvoiceId: "",
@@ -210,6 +215,9 @@ function jobsToCsv(jobs) {
     "jobDurationMinutes",
     "squareEstimateId",
     "squareEstimateUrl",
+    "estimateApprovalUrl",
+    "estimateSentAt",
+    "estimateApprovedAt",
     "squareContractId",
     "squareContractUrl",
     "squareDepositInvoiceId",
@@ -247,6 +255,151 @@ function normalizeLineItems(value) {
     price: Number(item.price || 0),
     total: Number(item.total || 0)
   })).filter((item) => item.name && item.quantity > 0);
+}
+
+async function findPublicEstimate(jobId, token) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.estimateApprovalToken || job.estimateApprovalToken !== token) {
+    return null;
+  }
+  return job;
+}
+
+async function approvePublicEstimate(jobId, token) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.estimateApprovalToken || job.estimateApprovalToken !== token) {
+    return null;
+  }
+
+  job.status = "Estimate Signed";
+  job.estimateApprovedAt = new Date().toISOString();
+  job.updatedAt = new Date().toISOString();
+  await writeJobs(jobs);
+  return job;
+}
+
+function buildEstimateApprovalUrl(baseUrl, job) {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return `${root}/estimate/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.estimateApprovalToken)}`;
+}
+
+function buildEstimateMailto(job) {
+  const subject = `Estimate for ${job.serviceType} at ${job.address}`;
+  const body = [
+    `Hi ${job.customerName},`,
+    "",
+    "Your pressure washing estimate is ready for review.",
+    "",
+    `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
+    `Approve estimate: ${job.estimateApprovalUrl}`,
+    "",
+    "Thank you."
+  ].join("\n");
+
+  return `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function getAppBaseUrl(request) {
+  if (process.env.APP_BASE_URL) {
+    return process.env.APP_BASE_URL;
+  }
+
+  const proto = request.headers["x-forwarded-proto"] || "http";
+  const host = request.headers["x-forwarded-host"] || request.headers.host;
+  return `${proto}://${host}`;
+}
+
+function renderEstimateApprovalPage(job) {
+  const subtotal = (job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const discountPercent = Number(job.discountPercent || 0);
+  const discountAmount = subtotal * (discountPercent / 100);
+  const lineRows = (job.lineItems || []).map((item) => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</td>
+      <td>$${Number(item.price || 0).toFixed(2)}</td>
+      <td>$${Number(item.total || 0).toFixed(2)}</td>
+    </tr>
+  `).join("");
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estimate Approval</title>
+    ${estimatePageStyles()}
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PressureFlow Estimate</p>
+      <h1>${escapeHtml(job.serviceType)} for ${escapeHtml(job.customerName)}</h1>
+      <p>${escapeHtml(job.address)}</p>
+      <section>
+        <table>
+          <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
+          <tbody>${lineRows}</tbody>
+        </table>
+      </section>
+      <section class="totals">
+        <div><span>Subtotal</span><strong>$${subtotal.toFixed(2)}</strong></div>
+        ${discountAmount > 0 ? `<div><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
+        <div><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
+      </section>
+      <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
+        <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
+        <button type="submit">Approve Estimate</button>
+      </form>
+    </main>
+  </body>
+</html>`;
+}
+
+function renderEstimateMessagePage(title, message) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${escapeHtml(title)}</title>
+    ${estimatePageStyles()}
+  </head>
+  <body>
+    <main>
+      <h1>${escapeHtml(title)}</h1>
+      <p>${escapeHtml(message)}</p>
+    </main>
+  </body>
+</html>`;
+}
+
+function estimatePageStyles() {
+  return `<style>
+    body { margin: 0; min-height: 100vh; background: #f7f8fb; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { width: min(760px, calc(100vw - 32px)); margin: 32px auto; padding: 24px; border: 1px solid #d8dee8; border-radius: 8px; background: white; box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08); }
+    h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
+    p { margin: 0 0 20px; color: #667085; line-height: 1.45; }
+    .eyebrow { margin: 0 0 8px; color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; margin: 18px 0; }
+    th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
+    th { color: #667085; font-size: 13px; }
+    td:last-child, th:last-child { text-align: right; }
+    .totals { display: grid; gap: 8px; margin: 18px 0; }
+    .totals div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
+    .totals span { color: #667085; }
+    button { width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; cursor: pointer; }
+  </style>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function csvEscape(value) {
@@ -293,6 +446,33 @@ async function handleApi(request, response, url) {
       location: "/login"
     });
     response.end();
+    return;
+  }
+
+  const estimatePageMatch = url.pathname.match(/^\/estimate\/([^/]+)$/);
+  if (request.method === "GET" && estimatePageMatch) {
+    const [, jobId] = estimatePageMatch;
+    const job = await findPublicEstimate(jobId, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Estimate not found", "This estimate link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderEstimateApprovalPage(job));
+    return;
+  }
+
+  const approveEstimateMatch = url.pathname.match(/^\/api\/public\/estimates\/([^/]+)\/approve$/);
+  if (request.method === "POST" && approveEstimateMatch) {
+    const [, jobId] = approveEstimateMatch;
+    const body = await readFormOrJsonBody(request);
+    const result = await approvePublicEstimate(jobId, body.token || "");
+    if (!result) {
+      sendHtml(response, 404, renderEstimateMessagePage("Estimate not found", "This estimate link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded, and we will follow up with the next step."));
     return;
   }
 
@@ -446,6 +626,7 @@ async function handleApi(request, response, url) {
     }
 
     const input = await readRequestBody(request);
+    input._baseUrl = getAppBaseUrl(request);
     await applyAction(job, action, input);
     job.updatedAt = new Date().toISOString();
     await writeJobs(jobs);
@@ -476,6 +657,8 @@ function isPublicPath(pathname) {
     pathname === "/auth/login" ||
     pathname === "/health" ||
     pathname === "/webhooks/square" ||
+    pathname.startsWith("/estimate/") ||
+    pathname.startsWith("/api/public/") ||
     pathname === "/favicon.ico";
 }
 
@@ -737,8 +920,12 @@ async function applyAction(job, action, input) {
 
   if (action === "send-square-estimate") {
     job.status = "Estimate Sent";
-    job.squareEstimateId = input.squareEstimateId || job.squareEstimateId || `manual-square-estimate-${Date.now()}`;
-    job.squareEstimateUrl = input.squareEstimateUrl || job.squareEstimateUrl || "";
+    job.estimateApprovalToken = job.estimateApprovalToken || crypto.randomBytes(24).toString("hex");
+    job.estimateApprovalUrl = buildEstimateApprovalUrl(input._baseUrl, job);
+    job.estimateMailto = buildEstimateMailto(job);
+    job.estimateSentAt = new Date().toISOString();
+    job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
+    job.squareEstimateUrl = job.estimateApprovalUrl;
   }
 
   if (action === "mark-estimate-signed") {

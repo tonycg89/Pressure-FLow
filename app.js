@@ -444,7 +444,7 @@ function renderJobDetail() {
 
     <section class="detail-section">
       <h4>Provider IDs</h4>
-      <div class="detail-row"><span>Square estimate</span><strong>${renderLinkedValue(job.squareEstimateId, job.squareEstimateUrl)}</strong></div>
+      <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
       <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job.squareDepositInvoiceId, job.squareDepositInvoiceUrl)}</strong></div>
       <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job.squareFinalInvoiceId, job.squareFinalInvoiceUrl)}</strong></div>
       <div class="detail-row"><span>Square contract</span><strong>${renderLinkedValue(job.squareContractId || job.docusignEnvelopeId, job.squareContractUrl)}</strong></div>
@@ -515,7 +515,7 @@ function renderEstimateItems(job) {
 
 function getNextAction(job) {
   const actions = {
-    "Lead": { label: "Send Square Estimate", action: "send-square-estimate" },
+    "Lead": { label: "Send PressureFlow Estimate", action: "send-square-estimate" },
     "Estimate Sent": { label: "Mark Estimate Signed", action: "mark-estimate-signed" },
     "Estimate Signed": { label: "Send Contract", action: "send-contract" },
     "Contract Sent": { label: "Mark Contract Signed", action: "mark-contract-signed" },
@@ -556,11 +556,6 @@ async function runAction(jobId, action) {
     payload.jobDurationMinutes = schedule.jobDurationMinutes;
   }
 
-  if (action === "send-square-estimate") {
-    payload.squareEstimateId = prompt("Paste the Square estimate ID or short reference", "") || "";
-    payload.squareEstimateUrl = prompt("Paste the Square estimate link, if you have it", "") || "";
-  }
-
   if (action === "send-contract") {
     payload.squareContractId = prompt("Paste the Square contract ID or short reference", "") || "";
     payload.squareContractUrl = prompt("Paste the Square contract link, if you have it", "") || "";
@@ -569,6 +564,9 @@ async function runAction(jobId, action) {
   try {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
+    if (action === "send-square-estimate" && updated.job.estimateMailto) {
+      window.location.href = updated.job.estimateMailto;
+    }
     await loadJobs();
   } catch (error) {
     alert(error.message);
