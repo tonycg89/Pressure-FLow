@@ -17,17 +17,13 @@
         </div>
 
         <nav class="nav-list" aria-label="Primary">
-          <button class="nav-item active" type="button" title="Pipeline">
+          <button class="nav-item active" type="button" title="Pipeline" data-view="pipeline">
             <span aria-hidden="true">P</span>
             <span>Pipeline</span>
           </button>
-          <button class="nav-item" type="button" title="Calendar">
+          <button class="nav-item" type="button" title="Customers" data-view="customers">
             <span aria-hidden="true">C</span>
-            <span>Calendar</span>
-          </button>
-          <button class="nav-item" type="button" title="Invoices">
-            <span aria-hidden="true">I</span>
-            <span>Invoices</span>
+            <span>Customers</span>
           </button>
           <button id="templatesButton" class="nav-item" type="button" title="Templates">
             <span aria-hidden="true">T</span>
@@ -38,17 +34,9 @@
             <span>Settings</span>
           </button>
         </nav>
-
-        <section class="integration-list" aria-label="Integrations">
-          <h2>Integrations</h2>
-          <div class="integration ready">Square Contracts <span>planned</span></div>
-          <div class="integration ready">Google Calendar <span>planned</span></div>
-          <div class="integration ready">Square <span>planned</span></div>
-          <div class="integration ready">Email <span>planned</span></div>
-        </section>
       </aside>
 
-      <section class="workspace">
+      <section class="workspace workspace-view" id="pipelineView" data-view-panel="pipeline">
         <header class="topbar">
           <div>
             <p class="eyebrow">Today's Work</p>
@@ -102,6 +90,39 @@
       </aside>
         </section>
       </section>
+
+      <section class="workspace workspace-view" id="customersView" data-view-panel="customers" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Customer File</p>
+            <h2>Store contacts, service-area photos, and job history before the first estimate.</h2>
+          </div>
+          <button id="newCustomerButton" class="primary-button" type="button">New Customer</button>
+        </header>
+
+        <section class="content-grid customer-grid">
+          <section class="panel customer-panel" aria-labelledby="customersTitle">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Customers</p>
+                <h3 id="customersTitle">Contact files</h3>
+              </div>
+            </div>
+            <div id="customerList" class="job-list"></div>
+          </section>
+
+          <aside class="panel detail-panel" aria-labelledby="customerDetailTitle">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Selected Customer</p>
+                <h3 id="customerDetailTitle">Customer details</h3>
+              </div>
+              <button id="editCustomerButton" class="secondary-small-button" type="button">Edit</button>
+            </div>
+            <div id="customerDetail" class="job-detail"></div>
+          </aside>
+        </section>
+      </section>
     </main>
 
     <dialog id="jobDialog">
@@ -110,6 +131,8 @@
           <h2>New pressure washing job</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
+
+        <input name="customerId" type="hidden">
 
         <label>
           Customer name
@@ -198,9 +221,87 @@
           <textarea name="sensitiveAreas" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
         </label>
 
+        <section class="photo-uploader" aria-label="Job photos">
+          <div class="section-header compact-header">
+            <div>
+              <p class="eyebrow">Job Photos</p>
+              <h3>Before and after</h3>
+            </div>
+          </div>
+          <div class="field-row">
+            <label>
+              Before photos
+              <input id="beforePhotoInput" type="file" accept="image/*" multiple>
+            </label>
+            <label>
+              After photos
+              <input id="afterPhotoInput" type="file" accept="image/*" multiple>
+            </label>
+          </div>
+          <div class="field-row">
+            <div>
+              <p class="photo-label">Before</p>
+              <div id="beforePhotoPreview" class="photo-grid"></div>
+            </div>
+            <div>
+              <p class="photo-label">After</p>
+              <div id="afterPhotoPreview" class="photo-grid"></div>
+            </div>
+          </div>
+        </section>
+
         <menu class="dialog-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Create Job</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="customerDialog">
+      <form method="dialog" id="customerForm">
+        <div class="dialog-header">
+          <h2>New customer</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+
+        <label>
+          Customer name
+          <input name="customerName" required placeholder="Maria Johnson">
+        </label>
+        <label>
+          Email
+          <input name="email" type="email" placeholder="maria@example.com">
+        </label>
+        <label>
+          Phone
+          <input name="phone" placeholder="(555) 123-4567">
+        </label>
+        <label>
+          Service address
+          <input name="address" placeholder="214 Oak Ridge Dr">
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
+        </label>
+
+        <section class="photo-uploader" aria-label="Service area photos">
+          <div class="section-header compact-header">
+            <div>
+              <p class="eyebrow">Property Photos</p>
+              <h3>Service area</h3>
+            </div>
+          </div>
+          <label>
+            Add service-area photos
+            <input id="serviceAreaPhotoInput" type="file" accept="image/*" multiple>
+          </label>
+          <div id="serviceAreaPhotoPreview" class="photo-grid"></div>
+        </section>
+
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Save Customer</button>
         </menu>
       </form>
     </dialog>

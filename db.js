@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
+const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
 const WEBHOOK_LOG_FILE = path.join(DATA_DIR, "webhook-events.json");
 const usePostgres = Boolean(process.env.DATABASE_URL);
@@ -91,6 +92,10 @@ async function ensureDataFile() {
     await writeJson(JOBS_FILE, seedJobs());
   }
 
+  if (!existsSync(CUSTOMERS_FILE)) {
+    await writeJson(CUSTOMERS_FILE, []);
+  }
+
   if (!existsSync(SETTINGS_FILE)) {
     await writeJson(SETTINGS_FILE, defaultSettings);
   }
@@ -140,6 +145,39 @@ async function writeJobs(jobs) {
   }
 
   await writeJson(JOBS_FILE, jobs);
+}
+
+async function readCustomers() {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const result = await getPool().query("select * from customers order by updated_at desc");
+    return result.rows.map(customerFromRow);
+  }
+
+  return readJson(CUSTOMERS_FILE);
+}
+
+async function writeCustomers(customers) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      await client.query("delete from customers");
+      for (const customer of customers) {
+        await upsertCustomer(client, customer);
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  await writeJson(CUSTOMERS_FILE, customers);
 }
 
 async function readSettings() {
@@ -270,8 +308,21 @@ function getPool() {
 
 async function ensurePostgresSchema() {
   if (postgresSchemaReady) return;
+  await getPool().query(`create table if not exists customers (
+    id uuid primary key default gen_random_uuid(),
+    customer_name text not null,
+    email text not null default '',
+    phone text not null default '',
+    address text not null default '',
+    notes text not null default '',
+    service_area_photos jsonb not null default '[]'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
+  await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
+  await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists measurement jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
@@ -294,6 +345,7 @@ async function upsertJob(client, job) {
   await client.query(
     `insert into jobs (
       id,
+      customer_id,
       customer_name,
       email,
       phone,
@@ -331,12 +383,13 @@ async function upsertJob(client, job) {
       created_at,
       updated_at
     ) values (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, nullif($10, '')::timestamptz,
-      $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
-      nullif($24, '')::timestamptz, $25, $26, $27, $28, nullif($29, '')::timestamptz,
-      $30, $31, nullif($32, '')::timestamptz, $33, $34, $35, $36, $37
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, nullif($11, '')::timestamptz,
+      $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
+      nullif($25, '')::timestamptz, $26, $27, $28, $29, nullif($30, '')::timestamptz,
+      $31, $32, nullif($33, '')::timestamptz, $34, $35, $36, $37, $38
     )
     on conflict (id) do update set
+      customer_id = excluded.customer_id,
       customer_name = excluded.customer_name,
       email = excluded.email,
       phone = excluded.phone,
@@ -374,6 +427,7 @@ async function upsertJob(client, job) {
       updated_at = excluded.updated_at`,
     [
       job.id,
+      job.customerId || "",
       job.customerName,
       job.email,
       job.phone,
@@ -417,23 +471,25 @@ async function upsertJob(client, job) {
       line_items = $1::jsonb,
       estimate_discount_percent = $2,
       measurement = $3::jsonb,
-      estimate_approval_token = $4,
-      estimate_approval_url = $5,
-      estimate_mailto = $6,
-      estimate_sent_at = nullif($7, '')::timestamptz,
-      estimate_approved_at = nullif($8, '')::timestamptz,
-      contract_approval_token = $9,
-      contract_approval_url = $10,
-      contract_mailto = $11,
-      contract_sent_at = nullif($12, '')::timestamptz,
-      contract_signed_at = nullif($13, '')::timestamptz,
-      contract_signed_date = $14,
-      contract_signer_name = $15
-    where id = $16`,
+      job_photos = $4::jsonb,
+      estimate_approval_token = $5,
+      estimate_approval_url = $6,
+      estimate_mailto = $7,
+      estimate_sent_at = nullif($8, '')::timestamptz,
+      estimate_approved_at = nullif($9, '')::timestamptz,
+      contract_approval_token = $10,
+      contract_approval_url = $11,
+      contract_mailto = $12,
+      contract_sent_at = nullif($13, '')::timestamptz,
+      contract_signed_at = nullif($14, '')::timestamptz,
+      contract_signed_date = $15,
+      contract_signer_name = $16
+    where id = $17`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
       JSON.stringify(job.measurement || {}),
+      JSON.stringify(job.jobPhotos || {}),
       job.estimateApprovalToken || "",
       job.estimateApprovalUrl || "",
       job.estimateMailto || "",
@@ -454,6 +510,7 @@ async function upsertJob(client, job) {
 function jobFromRow(row) {
   return {
     id: row.id,
+    customerId: row.customer_id || "",
     customerName: row.customer_name,
     email: row.email,
     phone: row.phone,
@@ -462,6 +519,7 @@ function jobFromRow(row) {
     estimate: Number(row.estimate || 0),
     lineItems: Array.isArray(row.line_items) ? row.line_items : [],
     measurement: row.measurement && typeof row.measurement === "object" ? row.measurement : {},
+    jobPhotos: row.job_photos && typeof row.job_photos === "object" ? row.job_photos : {},
     discountPercent: Number(row.estimate_discount_percent || 0),
     estimateApprovalToken: row.estimate_approval_token || "",
     estimateApprovalUrl: row.estimate_approval_url || "",
@@ -508,6 +566,55 @@ function jobFromRow(row) {
   };
 }
 
+async function upsertCustomer(client, customer) {
+  await client.query(
+    `insert into customers (
+      id,
+      customer_name,
+      email,
+      phone,
+      address,
+      notes,
+      service_area_photos,
+      created_at,
+      updated_at
+    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+    on conflict (id) do update set
+      customer_name = excluded.customer_name,
+      email = excluded.email,
+      phone = excluded.phone,
+      address = excluded.address,
+      notes = excluded.notes,
+      service_area_photos = excluded.service_area_photos,
+      updated_at = excluded.updated_at`,
+    [
+      customer.id,
+      customer.customerName || "",
+      customer.email || "",
+      customer.phone || "",
+      customer.address || "",
+      customer.notes || "",
+      JSON.stringify(customer.serviceAreaPhotos || []),
+      customer.createdAt || new Date().toISOString(),
+      customer.updatedAt || new Date().toISOString()
+    ]
+  );
+}
+
+function customerFromRow(row) {
+  return {
+    id: row.id,
+    customerName: row.customer_name || "",
+    email: row.email || "",
+    phone: row.phone || "",
+    address: row.address || "",
+    notes: row.notes || "",
+    serviceAreaPhotos: Array.isArray(row.service_area_photos) ? row.service_area_photos : [],
+    createdAt: row.created_at?.toISOString?.() || "",
+    updatedAt: row.updated_at?.toISOString?.() || ""
+  };
+}
+
 function settingsFromRow(row) {
   return {
     businessName: row.business_name || "",
@@ -541,6 +648,8 @@ module.exports = {
   ensureDataFile,
   readJobs,
   writeJobs,
+  readCustomers,
+  writeCustomers,
   readSettings,
   writeSettings,
   readWebhookEvents,

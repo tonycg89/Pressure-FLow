@@ -1,6 +1,8 @@
 let statuses = [];
 let jobs = [];
+let customers = [];
 let selectedJobId = null;
+let selectedCustomerId = null;
 let settings = {};
 
 const serviceCatalog = [
@@ -23,18 +25,27 @@ const currency = new Intl.NumberFormat("en-US", {
 
 const jobList = document.querySelector("#jobList");
 const jobDetail = document.querySelector("#jobDetail");
+const customerList = document.querySelector("#customerList");
+const customerDetail = document.querySelector("#customerDetail");
 const statusFilter = document.querySelector("#statusFilter");
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
+const newCustomerButton = document.querySelector("#newCustomerButton");
+const editCustomerButton = document.querySelector("#editCustomerButton");
 const settingsButton = document.querySelector("#settingsButton");
 const templatesButton = document.querySelector("#templatesButton");
+const navItems = document.querySelectorAll("[data-view]");
+const viewPanels = document.querySelectorAll("[data-view-panel]");
 const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
+const customerDialog = document.querySelector("#customerDialog");
+const customerForm = document.querySelector("#customerForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const templatesDialog = document.querySelector("#templatesDialog");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
+const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
 const addLineItemButton = document.querySelector("#addLineItemButton");
@@ -56,19 +67,34 @@ const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel")
 const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
+const serviceAreaPhotoInput = document.querySelector("#serviceAreaPhotoInput");
+const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
+const beforePhotoInput = document.querySelector("#beforePhotoInput");
+const afterPhotoInput = document.querySelector("#afterPhotoInput");
+const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
+const afterPhotoPreview = document.querySelector("#afterPhotoPreview");
 let pendingScheduleResolve = null;
 let currentMeasurement = {};
+let currentServiceAreaPhotos = [];
+let currentJobPhotos = { before: [], after: [] };
 let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 
 async function init() {
+  navItems.forEach((item) => item.addEventListener("click", switchView));
   statusFilter.addEventListener("change", render);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
+  newCustomerButton.addEventListener("click", openNewCustomer);
+  editCustomerButton.addEventListener("click", openEditCustomer);
   settingsButton.addEventListener("click", openSettings);
   templatesButton.addEventListener("click", () => templatesDialog.showModal());
   jobForm.addEventListener("submit", createJob);
+  customerForm.addEventListener("submit", saveCustomer);
+  serviceAreaPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
+  beforePhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews));
+  afterPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.after, renderJobPhotoPreviews));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   measureFromMapButton.addEventListener("click", openMeasurementDialog);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
@@ -85,7 +111,16 @@ async function init() {
   });
   scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
   await loadSettings();
+  await loadCustomers();
   await loadJobs();
+}
+
+function switchView(event) {
+  const view = event.currentTarget.dataset.view;
+  navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === view));
+  viewPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.viewPanel !== view;
+  });
 }
 
 async function loadSettings() {
@@ -130,6 +165,23 @@ async function loadJobs() {
       </p>
     `;
     jobDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+async function loadCustomers() {
+  try {
+    const response = await fetch("/api/customers");
+    if (!response.ok) {
+      throw new Error("Unable to load customers.");
+    }
+
+    const data = await response.json();
+    customers = data.customers || [];
+    selectedCustomerId = selectedCustomerId ?? customers[0]?.id ?? null;
+    renderCustomers();
+  } catch (error) {
+    customerList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+    customerDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -205,6 +257,7 @@ async function createJob(event) {
   const job = Object.fromEntries(formData.entries());
   job.lineItems = getEstimateLineItems();
   job.measurement = currentMeasurement;
+  job.jobPhotos = currentJobPhotos;
   job.estimate = Number(job.estimate);
   job.depositPercent = Number(job.depositPercent);
   const editingId = jobForm.dataset.editingId;
@@ -218,6 +271,7 @@ async function createJob(event) {
     resetJobDialog();
     jobDialog.close();
     await loadJobs();
+    await loadCustomers();
     if (editingId && saved.job.status === "Lead") {
       alert("Pricing changed, so the previous estimate/contract/invoice links were reset. Send the updated estimate again.");
     }
@@ -232,12 +286,77 @@ function openNewJob() {
   jobDialog.showModal();
 }
 
+function openNewJobForCustomer(customer) {
+  openNewJob();
+  jobForm.elements.customerId.value = customer.id;
+  jobForm.elements.customerName.value = customer.customerName || "";
+  jobForm.elements.email.value = customer.email || "";
+  jobForm.elements.phone.value = customer.phone || "";
+  jobForm.elements.address.value = customer.address || "";
+}
+
+function openNewCustomer() {
+  customerForm.reset();
+  resetCustomerDialog();
+  customerDialog.showModal();
+}
+
+function openEditCustomer() {
+  const customer = customers.find((item) => item.id === selectedCustomerId);
+  if (!customer) return;
+
+  customerForm.dataset.editingId = customer.id;
+  customerDialogTitle.textContent = "Edit customer";
+  customerForm.elements.customerName.value = customer.customerName || "";
+  customerForm.elements.email.value = customer.email || "";
+  customerForm.elements.phone.value = customer.phone || "";
+  customerForm.elements.address.value = customer.address || "";
+  customerForm.elements.notes.value = customer.notes || "";
+  currentServiceAreaPhotos = [...(customer.serviceAreaPhotos || [])];
+  renderServiceAreaPhotos();
+  customerDialog.showModal();
+}
+
+function resetCustomerDialog() {
+  customerForm.dataset.editingId = "";
+  customerDialogTitle.textContent = "New customer";
+  currentServiceAreaPhotos = [];
+  serviceAreaPhotoInput.value = "";
+  renderServiceAreaPhotos();
+}
+
+async function saveCustomer(event) {
+  if (event.submitter?.value === "cancel") {
+    resetCustomerDialog();
+    return;
+  }
+
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(customerForm).entries());
+  payload.serviceAreaPhotos = currentServiceAreaPhotos;
+  const editingId = customerForm.dataset.editingId;
+
+  try {
+    const saved = editingId
+      ? await apiRequest(`/api/customers/${editingId}`, payload, "PATCH")
+      : await apiRequest("/api/customers", payload);
+    selectedCustomerId = saved.customer.id;
+    customerForm.reset();
+    resetCustomerDialog();
+    customerDialog.close();
+    await loadCustomers();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function openEditJob() {
   const job = jobs.find((item) => item.id === selectedJobId);
   if (!job) return;
 
   jobForm.dataset.editingId = job.id;
   jobDialogTitle.textContent = "Edit pressure washing job";
+  jobForm.elements.customerId.value = job.customerId || "";
   jobForm.elements.customerName.value = job.customerName || "";
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
@@ -249,6 +368,11 @@ function openEditJob() {
   jobForm.elements.depositPercent.value = job.depositPercent || settings.defaultDepositPercent || 25;
   renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...serviceCatalog[4], quantity: 1 }]);
   currentMeasurement = job.measurement || {};
+  currentJobPhotos = {
+    before: [...(job.jobPhotos?.before || [])],
+    after: [...(job.jobPhotos?.after || [])]
+  };
+  renderJobPhotoPreviews();
   discountSelect.value = String(job.discountPercent || 0);
   updateEstimateTotals();
   jobForm.elements.notes.value = job.notes || "";
@@ -262,8 +386,71 @@ function resetJobDialog() {
   jobDialogTitle.textContent = "New pressure washing job";
   renderLineItems([{ ...serviceCatalog[4], quantity: 1 }]);
   currentMeasurement = {};
+  currentJobPhotos = { before: [], after: [] };
+  beforePhotoInput.value = "";
+  afterPhotoInput.value = "";
+  renderJobPhotoPreviews();
   discountSelect.value = "0";
   updateEstimateTotals();
+}
+
+async function addPhotosFromInput(event, target, renderCallback) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  const photos = await Promise.all(files.map(fileToPhoto));
+  target.push(...photos);
+  event.target.value = "";
+  renderCallback();
+}
+
+function fileToPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      resolve({
+        id: crypto.randomUUID(),
+        name: file.name,
+        dataUrl: reader.result,
+        capturedAt: new Date().toISOString()
+      });
+    });
+    reader.addEventListener("error", reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderServiceAreaPhotos() {
+  renderEditablePhotoGrid(serviceAreaPhotoPreview, currentServiceAreaPhotos, () => renderServiceAreaPhotos());
+}
+
+function renderJobPhotoPreviews() {
+  renderEditablePhotoGrid(beforePhotoPreview, currentJobPhotos.before, () => renderJobPhotoPreviews());
+  renderEditablePhotoGrid(afterPhotoPreview, currentJobPhotos.after, () => renderJobPhotoPreviews());
+}
+
+function renderEditablePhotoGrid(container, photos, rerender) {
+  container.innerHTML = "";
+  if (!photos.length) {
+    container.innerHTML = '<p class="photo-empty">No photos yet.</p>';
+    return;
+  }
+
+  photos.forEach((photo) => {
+    const figure = document.createElement("figure");
+    figure.innerHTML = `
+      <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+      <button class="photo-remove" type="button" title="Remove photo">X</button>
+    `;
+    figure.querySelector("button").addEventListener("click", () => {
+      const index = photos.findIndex((item) => item.id === photo.id);
+      if (index >= 0) {
+        photos.splice(index, 1);
+        rerender();
+      }
+    });
+    container.append(figure);
+  });
 }
 
 function closeDialogFromButton(event) {
@@ -273,6 +460,10 @@ function closeDialogFromButton(event) {
   if (dialog === jobDialog) {
     jobForm.reset();
     resetJobDialog();
+  }
+
+  if (dialog === customerDialog) {
+    resetCustomerDialog();
   }
 
   if (dialog === scheduleDialog) {
@@ -611,6 +802,7 @@ function render() {
   renderMetrics();
   renderJobList();
   renderJobDetail();
+  renderCustomers();
 }
 
 function renderMetrics() {
@@ -695,6 +887,8 @@ function renderJobDetail() {
       <div class="detail-row"><span>Completion notice</span><strong>${renderCompletionNotice(job)}</strong></div>
     </section>
 
+    ${renderJobPhotos(job)}
+
     <section class="detail-section">
       <h4>Provider IDs</h4>
       <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
@@ -731,6 +925,135 @@ function renderJobDetail() {
   jobDetail.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => runAction(job.id, button.dataset.action));
   });
+}
+
+function renderCustomers() {
+  customerList.innerHTML = "";
+
+  if (customers.length === 0) {
+    customerList.innerHTML = '<p class="empty-state">No customer files yet. Add a customer before creating a job.</p>';
+    customerDetail.innerHTML = '<p class="empty-state">Create your first customer file to store contact info and service-area photos.</p>';
+    return;
+  }
+
+  if (!customers.some((customer) => customer.id === selectedCustomerId)) {
+    selectedCustomerId = customers[0].id;
+  }
+
+  customers.forEach((customer) => {
+    const relatedJobs = getCustomerJobs(customer);
+    const card = document.createElement("button");
+    card.className = `job-card ${customer.id === selectedCustomerId ? "selected" : ""}`;
+    card.type = "button";
+    card.addEventListener("click", () => {
+      selectedCustomerId = customer.id;
+      renderCustomers();
+    });
+    card.innerHTML = `
+      <div>
+        <h4>${escapeHtml(customer.customerName)}</h4>
+        <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
+        <p>${escapeHtml(customer.address || "No address")} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
+      </div>
+      <span class="status-pill">${customer.serviceAreaPhotos?.length || 0} photos</span>
+    `;
+    customerList.append(card);
+  });
+
+  renderCustomerDetail();
+}
+
+function renderCustomerDetail() {
+  const customer = customers.find((item) => item.id === selectedCustomerId);
+  if (!customer) {
+    customerDetail.innerHTML = '<p class="empty-state">Select a customer.</p>';
+    return;
+  }
+
+  const relatedJobs = getCustomerJobs(customer);
+  customerDetail.innerHTML = `
+    <section class="detail-section">
+      <h4>${escapeHtml(customer.customerName)}</h4>
+      <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
+      <p>${escapeHtml(customer.address || "No address")}</p>
+    </section>
+
+    <section class="detail-section">
+      <h4>Service Area Photos</h4>
+      ${renderPhotoGrid(customer.serviceAreaPhotos || [])}
+    </section>
+
+    <section class="detail-section">
+      <h4>Notes</h4>
+      <p>${escapeHtml(customer.notes || "No notes yet.")}</p>
+    </section>
+
+    <section class="detail-section">
+      <h4>Jobs</h4>
+      ${relatedJobs.length ? relatedJobs.map((job) => `
+        <button class="related-job-button" type="button" data-job-id="${escapeHtml(job.id)}">
+          <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}</span>
+          <strong>${currency.format(job.estimate)}</strong>
+        </button>
+      `).join("") : '<p>No jobs yet.</p>'}
+    </section>
+
+    <section class="detail-section">
+      <button class="action-button" type="button" data-create-job-from-customer="${escapeHtml(customer.id)}">Create Job From Customer</button>
+    </section>
+  `;
+
+  customerDetail.querySelectorAll("[data-job-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedJobId = button.dataset.jobId;
+      document.querySelector('[data-view="pipeline"]').click();
+      render();
+    });
+  });
+  customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
+}
+
+function renderJobPhotos(job) {
+  const before = job.jobPhotos?.before || [];
+  const after = job.jobPhotos?.after || [];
+  if (!before.length && !after.length) {
+    return "";
+  }
+
+  return `
+    <section class="detail-section">
+      <h4>Job Photos</h4>
+      <p><strong>Before</strong></p>
+      ${renderPhotoGrid(before)}
+      <p><strong>After</strong></p>
+      ${renderPhotoGrid(after)}
+    </section>
+  `;
+}
+
+function renderPhotoGrid(photos) {
+  if (!photos.length) {
+    return '<p>No photos saved.</p>';
+  }
+
+  return `
+    <div class="photo-grid saved-photo-grid">
+      ${photos.map((photo) => `
+        <figure>
+          <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+        </figure>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getCustomerJobs(customer) {
+  const addressKey = normalizeKey(customer.address);
+  return jobs.filter((job) => (
+    job.customerId === customer.id ||
+    (customer.email && job.email === customer.email) ||
+    (addressKey && normalizeKey(job.address) === addressKey)
+  ));
 }
 
 function renderTimelineStep(job, status) {
@@ -1021,6 +1344,14 @@ function renderCompletionNotice(job) {
   }
 
   return `<a href="${escapeHtml(job.completionNoticeMailto)}">Open email</a>`;
+}
+
+function normalizeKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function escapeHtml(value) {

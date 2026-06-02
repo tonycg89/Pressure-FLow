@@ -8,6 +8,8 @@ const {
   ensureDataFile,
   readJobs,
   writeJobs,
+  readCustomers,
+  writeCustomers,
   readSettings,
   writeSettings,
   readWebhookEvents,
@@ -146,6 +148,7 @@ function getNextStatus(status) {
 function normalizeJob(input) {
   return {
     id: crypto.randomUUID(),
+    customerId: String(input.customerId || "").trim(),
     customerName: String(input.customerName || "").trim(),
     email: String(input.email || "").trim(),
     phone: String(input.phone || "").trim(),
@@ -154,6 +157,7 @@ function normalizeJob(input) {
     estimate: Number(input.estimate || 0),
     lineItems: normalizeLineItems(input.lineItems),
     measurement: normalizeMeasurement(input.measurement),
+    jobPhotos: normalizeJobPhotos(input.jobPhotos),
     discountPercent: Number(input.discountPercent || 0),
     depositPercent: Number(input.depositPercent ?? defaultSettings.defaultDepositPercent),
     notes: String(input.notes || "").trim(),
@@ -190,6 +194,26 @@ function normalizeJob(input) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeCustomer(input, existing = {}) {
+  return {
+    id: existing.id || input.id || crypto.randomUUID(),
+    customerName: String(input.customerName || existing.customerName || "").trim(),
+    email: String(input.email || existing.email || "").trim(),
+    phone: String(input.phone || existing.phone || "").trim(),
+    address: String(input.address || existing.address || "").trim(),
+    notes: String(input.notes || existing.notes || "").trim(),
+    serviceAreaPhotos: normalizePhotos(input.serviceAreaPhotos ?? existing.serviceAreaPhotos),
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function validateCustomer(customer) {
+  if (!customer.customerName) return "Customer name is required.";
+  if (!customer.email && !customer.phone) return "Email or phone is required.";
+  return "";
 }
 
 function validateJob(job) {
@@ -288,6 +312,40 @@ function normalizeMeasurement(value) {
     staticImageUrl: String(measurement.staticImageUrl || "").trim(),
     capturedAt: String(measurement.capturedAt || new Date().toISOString())
   };
+}
+
+function normalizeJobPhotos(value) {
+  let photos = {};
+  try {
+    photos = typeof value === "string" && value ? JSON.parse(value) : value || {};
+  } catch {
+    photos = {};
+  }
+
+  return {
+    before: normalizePhotos(photos.before),
+    after: normalizePhotos(photos.after)
+  };
+}
+
+function normalizePhotos(value) {
+  let photos = [];
+  try {
+    photos = Array.isArray(value)
+      ? value
+      : typeof value === "string" && value
+        ? JSON.parse(value)
+        : [];
+  } catch {
+    photos = [];
+  }
+
+  return photos.map((photo) => ({
+    id: String(photo.id || crypto.randomUUID()),
+    name: String(photo.name || "Photo").trim(),
+    dataUrl: String(photo.dataUrl || "").trim(),
+    capturedAt: String(photo.capturedAt || new Date().toISOString())
+  })).filter((photo) => photo.dataUrl.startsWith("data:image/"));
 }
 
 async function findPublicEstimate(jobId, token) {
@@ -947,6 +1005,11 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/customers") {
+    sendJson(response, 200, { customers: await readCustomers() });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/property-measurements") {
     const address = url.searchParams.get("address") || "";
     sendJson(response, 200, { measurements: await findSavedMeasurements(address) });
@@ -1040,6 +1103,22 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/customers") {
+    const customer = normalizeCustomer(await readRequestBody(request));
+    const validationError = validateCustomer(customer);
+
+    if (validationError) {
+      sendError(response, 400, validationError);
+      return;
+    }
+
+    const customers = await readCustomers();
+    customers.unshift(customer);
+    await writeCustomers(customers);
+    sendJson(response, 201, { customer });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/webhooks/square") {
     const settings = await readSettings();
     const rawBody = await readRawRequestBody(request);
@@ -1063,6 +1142,31 @@ async function handleApi(request, response, url) {
   }
 
   const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
+  const customerUpdateMatch = url.pathname.match(/^\/api\/customers\/([^/]+)$/);
+
+  if (request.method === "PATCH" && customerUpdateMatch) {
+    const [, customerId] = customerUpdateMatch;
+    const customers = await readCustomers();
+    const customer = customers.find((item) => item.id === customerId);
+
+    if (!customer) {
+      sendError(response, 404, "Customer not found.");
+      return;
+    }
+
+    const updatedCustomer = normalizeCustomer(await readRequestBody(request), customer);
+    const validationError = validateCustomer(updatedCustomer);
+    if (validationError) {
+      sendError(response, 400, validationError);
+      return;
+    }
+
+    Object.assign(customer, updatedCustomer);
+    await writeCustomers(customers);
+    sendJson(response, 200, { customer });
+    return;
+  }
+
   if (request.method === "DELETE" && updateMatch) {
     const [, jobId] = updateMatch;
     const jobs = await readJobs();
@@ -1346,6 +1450,7 @@ function setInvoiceStatus(job, invoice) {
 function updateJob(job, input) {
   const fields = [
     "customerName",
+    "customerId",
     "email",
     "phone",
     "address",
@@ -1375,6 +1480,10 @@ function updateJob(job, input) {
 
   if (Object.hasOwn(input, "measurement")) {
     job.measurement = normalizeMeasurement(input.measurement);
+  }
+
+  if (Object.hasOwn(input, "jobPhotos")) {
+    job.jobPhotos = normalizeJobPhotos(input.jobPhotos);
   }
 
   if (Object.hasOwn(input, "discountPercent")) {
