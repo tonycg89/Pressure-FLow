@@ -1254,6 +1254,11 @@ function renderCustomerDetail() {
     </section>
 
     <section class="detail-section">
+      <h4>Saved Map Measurements</h4>
+      ${renderCustomerMeasurements(customer.propertyMeasurements || [])}
+    </section>
+
+    <section class="detail-section">
       <h4>Before Photos</h4>
       ${renderPhotoGrid(getCustomerJobPhotos(relatedJobs, "before"))}
       <h4>After Photos</h4>
@@ -1289,6 +1294,20 @@ function renderCustomerDetail() {
   });
   customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
   attachPhotoViewerHandlers(customerDetail);
+}
+
+function renderCustomerMeasurements(measurements) {
+  const reusable = (measurements || []).filter((item) => item.measurement?.squareFeet);
+  if (!reusable.length) {
+    return '<p>No saved map measurements yet.</p>';
+  }
+
+  return reusable.map((item) => `
+    <div class="detail-row">
+      <span>${escapeHtml(item.label || "Service area")}<br><small>${escapeHtml(item.address || "")}</small></span>
+      <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
+    </div>
+  `).join("");
 }
 
 function renderJobPhotos(job) {

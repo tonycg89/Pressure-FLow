@@ -376,6 +376,7 @@ async function ensurePostgresSchema() {
     lead_source text not null default '',
     notes text not null default '',
     service_area_photos jsonb not null default '[]'::jsonb,
+    property_measurements jsonb not null default '[]'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   )`);
@@ -397,6 +398,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
+  await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
   await getPool().query("alter table jobs add column if not exists lead_source text not null default ''");
   await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
@@ -668,9 +670,10 @@ async function upsertCustomer(client, customer) {
       lead_source,
       notes,
       service_area_photos,
+      property_measurements,
       created_at,
       updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+    ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11)
     on conflict (id) do update set
       customer_name = excluded.customer_name,
       email = excluded.email,
@@ -679,6 +682,7 @@ async function upsertCustomer(client, customer) {
       lead_source = excluded.lead_source,
       notes = excluded.notes,
       service_area_photos = excluded.service_area_photos,
+      property_measurements = excluded.property_measurements,
       updated_at = excluded.updated_at`,
     [
       customer.id,
@@ -689,6 +693,7 @@ async function upsertCustomer(client, customer) {
       customer.leadSource || "",
       customer.notes || "",
       JSON.stringify(customer.serviceAreaPhotos || []),
+      JSON.stringify(customer.propertyMeasurements || []),
       customer.createdAt || new Date().toISOString(),
       customer.updatedAt || new Date().toISOString()
     ]
@@ -705,6 +710,7 @@ function customerFromRow(row) {
     leadSource: row.lead_source || "",
     notes: row.notes || "",
     serviceAreaPhotos: Array.isArray(row.service_area_photos) ? row.service_area_photos : [],
+    propertyMeasurements: Array.isArray(row.property_measurements) ? row.property_measurements : [],
     createdAt: row.created_at?.toISOString?.() || "",
     updatedAt: row.updated_at?.toISOString?.() || ""
   };

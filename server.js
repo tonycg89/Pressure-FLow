@@ -214,9 +214,41 @@ function normalizeCustomer(input, existing = {}) {
     leadSource: normalizeLeadSource(input.leadSource || existing.leadSource),
     notes: String(input.notes || existing.notes || "").trim(),
     serviceAreaPhotos: normalizePhotos(input.serviceAreaPhotos ?? existing.serviceAreaPhotos),
+    propertyMeasurements: normalizePropertyMeasurements(input.propertyMeasurements ?? existing.propertyMeasurements),
     createdAt: existing.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizePropertyMeasurements(value) {
+  let measurements = [];
+  try {
+    measurements = Array.isArray(value)
+      ? value
+      : typeof value === "string" && value
+        ? JSON.parse(value)
+        : [];
+  } catch {
+    measurements = [];
+  }
+
+  return measurements
+    .map((item) => {
+      const measurement = normalizeMeasurement(item.measurement || item);
+      if (!measurement.geojson || !measurement.squareFeet) {
+        return null;
+      }
+
+      return {
+        id: String(item.id || crypto.randomUUID()),
+        label: String(item.label || "Service area").trim(),
+        address: String(item.address || measurement.address || "").trim(),
+        sourceJobId: String(item.sourceJobId || "").trim(),
+        updatedAt: String(item.updatedAt || item.capturedAt || measurement.capturedAt || new Date().toISOString()),
+        measurement
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeExpense(input, existing = {}) {
@@ -1104,12 +1136,28 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
       <h2>Payment Options</h2>
       ${renderPaymentMethods(settings)}
       ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
+      ${renderCardPaymentForm(job, invoiceType)}
       ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
       ${!isDeposit ? `<h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}<h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}` : ""}
       <button type="button" onclick="window.print()">Print or Save as PDF</button>
     </main>
   </body>
 </html>`;
+}
+
+function renderCardPaymentForm(job, invoiceType) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return "";
+  }
+
+  const token = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
+  return `
+    <form method="post" action="/api/public/invoices/${encodeURIComponent(job.id)}/pay-card" style="margin:18px 0">
+      <input type="hidden" name="type" value="${escapeHtml(invoiceType)}">
+      <input type="hidden" name="token" value="${escapeHtml(token)}">
+      <button type="submit">Pay by Credit Card</button>
+    </form>
+  `;
 }
 
 function renderPaymentMethods(settings) {
@@ -1589,6 +1637,7 @@ async function handleApi(request, response, url) {
 
     const jobs = await readJobs();
     jobs.unshift(job);
+    await syncJobMeasurementToCustomerFile(job);
     await writeJobs(jobs);
     sendJson(response, 201, { job });
     return;
@@ -1645,6 +1694,36 @@ async function handleApi(request, response, url) {
       result
     });
     sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/webhooks/stripe") {
+    const rawBody = await readRawRequestBody(request);
+    if (!verifyStripeWebhookSignature(request, rawBody)) {
+      sendError(response, 401, "Invalid Stripe webhook signature.");
+      return;
+    }
+
+    const event = JSON.parse(rawBody || "{}");
+    const result = await handleStripeWebhook(event);
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  const cardPayMatch = url.pathname.match(/^\/api\/public\/invoices\/([^/]+)\/pay-card$/);
+  if (request.method === "POST" && cardPayMatch) {
+    const [, jobId] = cardPayMatch;
+    const body = await readFormOrJsonBody(request);
+    const invoiceType = body.type === "deposit" ? "deposit" : "final";
+    const job = await findPublicInvoice(jobId, invoiceType, body.token || "");
+    if (!job) {
+      sendError(response, 404, "Invoice not found.");
+      return;
+    }
+
+    const checkout = await createStripeCheckoutSession(job, invoiceType, getAppBaseUrl(request));
+    response.writeHead(303, { location: checkout.url });
+    response.end();
     return;
   }
 
@@ -1712,6 +1791,7 @@ async function handleApi(request, response, url) {
       await resetJobForPricingChange(job);
     }
 
+    await syncJobMeasurementToCustomerFile(job);
     job.updatedAt = new Date().toISOString();
     await writeJobs(jobs);
     sendJson(response, 200, { job });
@@ -1767,6 +1847,7 @@ function isPublicPath(pathname) {
     pathname.startsWith("/invoice/") ||
     pathname.startsWith("/assets/") ||
     pathname.startsWith("/api/public/") ||
+    pathname === "/webhooks/stripe" ||
     pathname === "/favicon.ico";
 }
 
@@ -2018,7 +2099,17 @@ async function findSavedMeasurements(address) {
   }
 
   const seen = new Set();
-  return (await readJobs())
+  const customerMeasurements = (await readCustomers())
+    .filter((customer) => normalizeAddressKey(customer.address) === target)
+    .flatMap((customer) => (customer.propertyMeasurements || []).map((item) => ({
+      customerId: customer.id,
+      customerName: customer.customerName,
+      address: item.address || customer.address,
+      updatedAt: item.updatedAt || customer.updatedAt || "",
+      measurement: item.measurement || item
+    })));
+
+  const jobMeasurements = (await readJobs())
     .filter((job) => normalizeAddressKey(job.address) === target && job.measurement?.geojson && job.measurement?.squareFeet)
     .map((job) => ({
       jobId: job.id,
@@ -2026,7 +2117,9 @@ async function findSavedMeasurements(address) {
       address: job.address,
       updatedAt: job.updatedAt || job.createdAt || "",
       measurement: job.measurement
-    }))
+    }));
+
+  return [...customerMeasurements, ...jobMeasurements]
     .filter((item) => {
       const key = JSON.stringify(item.measurement.geojson);
       if (seen.has(key)) {
@@ -2079,6 +2172,52 @@ async function syncJobPhotosToCustomerFile(job) {
   }
 
   customer.serviceAreaPhotos = [...(customer.serviceAreaPhotos || []), ...additions];
+  customer.updatedAt = new Date().toISOString();
+  await writeCustomers(customers);
+}
+
+async function syncJobMeasurementToCustomerFile(job) {
+  if (!job.measurement?.geojson || !job.measurement?.squareFeet) {
+    return;
+  }
+
+  const customers = await readCustomers();
+  let customer = customers.find((item) =>
+    item.id === job.customerId ||
+    (job.email && item.email === job.email) ||
+    (normalizeAddressKey(item.address) && normalizeAddressKey(item.address) === normalizeAddressKey(job.address))
+  );
+
+  if (!customer) {
+    customer = normalizeCustomer({
+      customerName: job.customerName,
+      email: job.email,
+      phone: job.phone,
+      address: job.address,
+      leadSource: job.leadSource,
+      notes: `Created from measured job on ${new Date().toLocaleDateString("en-US")}.`,
+      serviceAreaPhotos: [],
+      propertyMeasurements: []
+    });
+    customers.unshift(customer);
+    job.customerId = customer.id;
+  }
+
+  const propertyMeasurements = normalizePropertyMeasurements(customer.propertyMeasurements || []);
+  const measurementKey = JSON.stringify(job.measurement.geojson);
+  const existing = propertyMeasurements.find((item) => JSON.stringify(item.measurement?.geojson) === measurementKey);
+  const savedMeasurement = {
+    id: existing?.id || crypto.randomUUID(),
+    label: existing?.label || `${job.serviceType || "Service area"} measurement`,
+    address: job.measurement.address || job.address,
+    sourceJobId: job.id,
+    updatedAt: new Date().toISOString(),
+    measurement: job.measurement
+  };
+
+  customer.propertyMeasurements = existing
+    ? propertyMeasurements.map((item) => item.id === existing.id ? savedMeasurement : item)
+    : [savedMeasurement, ...propertyMeasurements].slice(0, 12);
   customer.updatedAt = new Date().toISOString();
   await writeCustomers(customers);
 }
@@ -2201,6 +2340,7 @@ async function applyAction(job, action, input) {
     job.jobDurationMinutes = duration;
     job.googleCalendarEventId = calendarEvent.id;
     job.googleCalendarEventUrl = calendarEvent.htmlLink || "";
+    await sendScheduleConfirmationEmail(job, settings, input._baseUrl);
   }
 
   if (action === "send-square-estimate") {
@@ -2333,6 +2473,96 @@ function buildCompletionNotice(job, settings) {
   return { subject, body, mailto };
 }
 
+async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} schedule confirmation - ${job.address}`;
+  const scheduleText = formatScheduledWindow(job);
+  const instructions = getDayOfServiceInstructions();
+  const textBody = [
+    `Hi ${job.customerName},`,
+    "",
+    `Your ${businessName} service has been scheduled.`,
+    "",
+    `Service: ${job.serviceType}`,
+    `Address: ${job.address}`,
+    `Scheduled time: ${scheduleText}`,
+    "",
+    "Day-of-service instructions:",
+    ...instructions.map((item) => `- ${item}`),
+    "",
+    "Thank you,",
+    businessName
+  ].join("\n");
+
+  await sendGoogleEmail(settings, {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody: renderScheduleConfirmationEmailHtml(job, settings, baseUrl)
+  });
+}
+
+function renderScheduleConfirmationEmailHtml(job, settings, baseUrl) {
+  const businessName = getBusinessName(settings);
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      ${renderLogoHtml(baseUrl, 190)}
+      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      <h2 style="margin:0 0 12px">Schedule Confirmation</h2>
+      <p>Hi ${escapeHtml(job.customerName)},</p>
+      <p>Your ${escapeHtml(businessName)} service has been scheduled.</p>
+      <table style="border-collapse:collapse;width:100%;max-width:560px;margin:12px 0">
+        <tbody>
+          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Service</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(job.serviceType)}</td></tr>
+          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Address</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(job.address)}</td></tr>
+          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Scheduled time</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(formatScheduledWindow(job))}</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Day-of-service instructions</strong></p>
+      <ul>
+        ${getDayOfServiceInstructions().map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+      <p>Thank you,<br>${escapeHtml(businessName)}</p>
+    </div>
+  `;
+}
+
+function getDayOfServiceInstructions() {
+  return [
+    "Move all personal items, outdoor furniture, decor, and fragile items away from the service area.",
+    "Move vehicles away from the service area and any areas that may receive water runoff or overspray.",
+    "Leave access to the water source unrestricted and make sure exterior water spigots are working.",
+    "Close and lock all windows and doors before service begins.",
+    "Keep all animals inside the house for the full duration of service.",
+    "Unlock gates or provide access instructions before the scheduled arrival window.",
+    "Point out any known leaks, loose paint, damaged seals, electrical concerns, or sensitive plants before work begins."
+  ];
+}
+
+function formatScheduledWindow(job) {
+  if (!job.scheduledAt) {
+    return "To be scheduled";
+  }
+
+  const start = parseLocalDateTime(job.scheduledAt);
+  if (!start) {
+    return job.scheduledAt;
+  }
+
+  const end = new Date(start.getTime() + Number(job.jobDurationMinutes || 180) * 60000);
+  const date = start.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const startTime = start.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
+  const endTime = end.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  return `${date}, ${startTime} - ${endTime}`;
+}
+
+function parseLocalDateTime(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match.map(Number);
+  return new Date(year, month - 1, day, hour, minute);
+}
+
 async function createSquareInvoice(job, settings, invoiceType) {
   requireSquareSettings(settings);
 
@@ -2352,6 +2582,103 @@ async function createSquareInvoice(job, settings, invoiceType) {
     invoiceId: published.id || invoice.id,
     publicUrl: published.public_url || invoice.public_url || ""
   };
+}
+
+async function createStripeCheckoutSession(job, invoiceType, baseUrl) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY in Render.");
+  }
+
+  const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
+  if (amount <= 0) {
+    throw new Error("Payment amount must be greater than $0.");
+  }
+
+  const invoiceToken = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
+  const invoiceUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceToken);
+  const params = new URLSearchParams({
+    mode: "payment",
+    "line_items[0][price_data][currency]": "usd",
+    "line_items[0][price_data][product_data][name]": `${getBusinessName()} ${invoiceType === "deposit" ? "deposit" : "final balance"}`,
+    "line_items[0][price_data][product_data][description]": `${job.serviceType} at ${job.address}`,
+    "line_items[0][price_data][unit_amount]": String(amount),
+    "line_items[0][quantity]": "1",
+    customer_email: job.email,
+    success_url: `${invoiceUrl}&card=paid`,
+    cancel_url: invoiceUrl,
+    "metadata[jobId]": job.id,
+    "metadata[invoiceType]": invoiceType,
+    "metadata[invoiceId]": invoiceToken
+  });
+
+  const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: params
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Unable to create Stripe Checkout session.");
+  }
+
+  return data;
+}
+
+function verifyStripeWebhookSignature(request, rawBody) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    return true;
+  }
+
+  const signature = request.headers["stripe-signature"] || "";
+  const timestamp = String(signature).split(",").find((part) => part.startsWith("t="))?.slice(2);
+  const expected = String(signature).split(",").filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
+  if (!timestamp || !expected.length) {
+    return false;
+  }
+
+  const hmac = crypto.createHmac("sha256", secret);
+  hmac.update(`${timestamp}.${rawBody}`);
+  const digest = hmac.digest("hex");
+  return expected.some((candidate) => safeCompare(candidate, digest));
+}
+
+async function handleStripeWebhook(event) {
+  if (event.type !== "checkout.session.completed") {
+    return { action: "ignored", type: event.type || "" };
+  }
+
+  const session = event.data?.object || {};
+  if (session.payment_status && session.payment_status !== "paid") {
+    return { action: "ignored", reason: "checkout not paid" };
+  }
+
+  const jobId = session.metadata?.jobId || "";
+  const invoiceType = session.metadata?.invoiceType === "deposit" ? "deposit" : "final";
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job) {
+    return { action: "ignored", reason: "job not found", jobId };
+  }
+
+  if (invoiceType === "deposit") {
+    job.status = "Deposit Paid";
+    job.squareDepositInvoiceStatus = "PAID";
+    job.squareDepositPaidAt = new Date().toISOString();
+  } else {
+    job.status = "Paid";
+    job.squareFinalInvoiceStatus = "PAID";
+    job.squareFinalPaidAt = new Date().toISOString();
+    await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+  }
+
+  job.updatedAt = new Date().toISOString();
+  await writeJobs(jobs);
+  return { action: "job_updated", jobId: job.id, invoiceType, status: job.status };
 }
 
 function buildGoogleAuthUrl(settings) {
@@ -2778,7 +3105,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
       await handleApi(request, response, url);
       return;
     }

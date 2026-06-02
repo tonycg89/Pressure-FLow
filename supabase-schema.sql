@@ -70,6 +70,7 @@ create table if not exists customers (
   lead_source text not null default '',
   notes text not null default '',
   service_area_photos jsonb not null default '[]'::jsonb,
+  property_measurements jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
