@@ -562,8 +562,8 @@ async function runAction(jobId, action) {
   try {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
-    if (action === "send-square-estimate" && updated.job.estimateMailto) {
-      window.location.href = updated.job.estimateMailto;
+    if (action === "send-square-estimate") {
+      alert(`Estimate sent to ${updated.job.email}.`);
     }
     await loadJobs();
   } catch (error) {

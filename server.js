@@ -301,6 +301,104 @@ function buildEstimateMailto(job) {
   return `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+async function sendEstimateEmail(job, settings) {
+  const subject = `Estimate for ${job.serviceType} at ${job.address}`;
+  const textBody = [
+    `Hi ${job.customerName},`,
+    "",
+    "Your pressure washing estimate is ready for review.",
+    "",
+    `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
+    `Approve estimate: ${job.estimateApprovalUrl}`,
+    "",
+    "Thank you."
+  ].join("\n");
+  const htmlBody = renderEstimateEmailHtml(job);
+
+  await sendGoogleEmail(settings, {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody
+  });
+}
+
+async function sendGoogleEmail(settings, message) {
+  const accessToken = await getGoogleAccessToken(settings);
+  const raw = buildMimeEmail({
+    from: settings.businessEmail || settings.googleCalendarId || "me",
+    to: message.to,
+    subject: message.subject,
+    textBody: message.textBody,
+    htmlBody: message.htmlBody
+  });
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ raw })
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const messageText = data.error?.message || data.error_description || "Google email send failed.";
+    throw new Error(`${messageText} Reconnect Google Calendar from Settings so PressureFlow can send estimate emails.`);
+  }
+
+  return data;
+}
+
+function buildMimeEmail({ from, to, subject, textBody, htmlBody }) {
+  const boundary = `pressureflow-${crypto.randomBytes(12).toString("hex")}`;
+  const mime = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${encodeMimeHeader(subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    textBody,
+    "",
+    `--${boundary}`,
+    "Content-Type: text/html; charset=UTF-8",
+    "Content-Transfer-Encoding: 7bit",
+    "",
+    htmlBody,
+    "",
+    `--${boundary}--`
+  ].join("\r\n");
+
+  return Buffer.from(mime).toString("base64url");
+}
+
+function encodeMimeHeader(value) {
+  return `=?UTF-8?B?${Buffer.from(String(value)).toString("base64")}?=`;
+}
+
+function renderEstimateEmailHtml(job) {
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      <h2 style="margin:0 0 12px">Your pressure washing estimate is ready</h2>
+      <p>Hi ${escapeHtml(job.customerName)},</p>
+      <p>Your estimate for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
+      <p style="font-size:18px"><strong>Total: $${Number(job.estimate || 0).toFixed(2)}</strong></p>
+      <p>
+        <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+          Review and approve estimate
+        </a>
+      </p>
+      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.estimateApprovalUrl)}</p>
+    </div>
+  `;
+}
+
 function getAppBaseUrl(request) {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL;
@@ -919,10 +1017,12 @@ async function applyAction(job, action, input) {
   }
 
   if (action === "send-square-estimate") {
+    const settings = await readSettings();
     job.status = "Estimate Sent";
     job.estimateApprovalToken = job.estimateApprovalToken || crypto.randomBytes(24).toString("hex");
     job.estimateApprovalUrl = buildEstimateApprovalUrl(input._baseUrl, job);
     job.estimateMailto = buildEstimateMailto(job);
+    await sendEstimateEmail(job, settings);
     job.estimateSentAt = new Date().toISOString();
     job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
     job.squareEstimateUrl = job.estimateApprovalUrl;
@@ -1069,7 +1169,7 @@ function buildGoogleAuthUrl(settings) {
     client_id: settings.googleClientId,
     redirect_uri: settings.googleRedirectUri,
     response_type: "code",
-    scope: "https://www.googleapis.com/auth/calendar.events",
+    scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send",
     access_type: "offline",
     prompt: "consent"
   });
