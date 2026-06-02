@@ -323,6 +323,8 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
   await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
+  await getPool().query("alter table jobs add column if not exists completion_proof_token text not null default ''");
+  await getPool().query("alter table jobs add column if not exists completion_proof_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists measurement jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
@@ -380,13 +382,15 @@ async function upsertJob(client, job) {
       completion_notice_subject,
       completion_notice_body,
       completion_notice_mailto,
+      completion_proof_token,
+      completion_proof_url,
       created_at,
       updated_at
     ) values (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, nullif($11, '')::timestamptz,
       $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
       nullif($25, '')::timestamptz, $26, $27, $28, $29, nullif($30, '')::timestamptz,
-      $31, $32, nullif($33, '')::timestamptz, $34, $35, $36, $37, $38
+      $31, $32, nullif($33, '')::timestamptz, $34, $35, $36, $37, $38, $39, $40
     )
     on conflict (id) do update set
       customer_id = excluded.customer_id,
@@ -424,6 +428,8 @@ async function upsertJob(client, job) {
       completion_notice_subject = excluded.completion_notice_subject,
       completion_notice_body = excluded.completion_notice_body,
       completion_notice_mailto = excluded.completion_notice_mailto,
+      completion_proof_token = excluded.completion_proof_token,
+      completion_proof_url = excluded.completion_proof_url,
       updated_at = excluded.updated_at`,
     [
       job.id,
@@ -462,6 +468,8 @@ async function upsertJob(client, job) {
       job.completionNoticeSubject || "",
       job.completionNoticeBody || "",
       job.completionNoticeMailto || "",
+      job.completionProofToken || "",
+      job.completionProofUrl || "",
       job.createdAt || new Date().toISOString(),
       job.updatedAt || new Date().toISOString()
     ]
@@ -561,6 +569,8 @@ function jobFromRow(row) {
     completionNoticeSubject: row.completion_notice_subject || "",
     completionNoticeBody: row.completion_notice_body || "",
     completionNoticeMailto: row.completion_notice_mailto || "",
+    completionProofToken: row.completion_proof_token || "",
+    completionProofUrl: row.completion_proof_url || "",
     createdAt: row.created_at?.toISOString?.() || "",
     updatedAt: row.updated_at?.toISOString?.() || ""
   };

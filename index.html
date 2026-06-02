@@ -448,6 +448,44 @@
       </form>
     </dialog>
 
+    <dialog id="completionDialog">
+      <form method="dialog" id="completionForm">
+        <div class="dialog-header">
+          <h2>Complete job</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+
+        <p class="form-note">Add before and after photos before sending the final invoice.</p>
+
+        <div class="field-row">
+          <label>
+            Before photos
+            <input id="completionBeforePhotoInput" type="file" accept="image/*" multiple>
+          </label>
+          <label>
+            Completed work photos
+            <input id="completionAfterPhotoInput" type="file" accept="image/*" multiple>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <div>
+            <p class="photo-label">Before</p>
+            <div id="completionBeforePhotoPreview" class="photo-grid"></div>
+          </div>
+          <div>
+            <p class="photo-label">Completed</p>
+            <div id="completionAfterPhotoPreview" class="photo-grid"></div>
+          </div>
+        </div>
+
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Send Final Invoice</button>
+        </menu>
+      </form>
+    </dialog>
+
     <dialog id="measurementDialog" class="map-dialog">
       <form method="dialog" id="measurementForm">
         <div class="dialog-header">

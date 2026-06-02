@@ -191,6 +191,8 @@ function normalizeJob(input) {
     contractSignedAt: "",
     contractSignedDate: "",
     contractSignerName: "",
+    completionProofToken: "",
+    completionProofUrl: "",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -388,6 +390,15 @@ async function findPublicContract(jobId, token) {
   return job;
 }
 
+async function findPublicCompletionProof(jobId, token) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.completionProofToken || job.completionProofToken !== token) {
+    return null;
+  }
+  return job;
+}
+
 async function signPublicContract(jobId, token, signerName, signedDate) {
   const jobs = await readJobs();
   const job = jobs.find((item) => item.id === jobId);
@@ -420,6 +431,11 @@ function buildEstimateApprovalUrl(baseUrl, job) {
 function buildContractApprovalUrl(baseUrl, job) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
   return `${root}/contract/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.contractApprovalToken)}`;
+}
+
+function buildCompletionProofUrl(baseUrl, job) {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return `${root}/proof/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.completionProofToken)}`;
 }
 
 function getBaseUrlFromLink(link) {
@@ -688,6 +704,61 @@ function renderEstimateMessagePage(title, message) {
     </main>
   </body>
 </html>`;
+}
+
+function renderCompletionProofPage(job) {
+  const before = job.jobPhotos?.before || [];
+  const after = job.jobPhotos?.after || [];
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Completion Proof - ${escapeHtml(job.customerName)}</title>
+    ${estimatePageStyles()}
+    <style>
+      .proof-meta { display: grid; gap: 6px; margin: 16px 0 22px; color: #667085; }
+      .proof-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0 24px; }
+      .proof-grid figure { margin: 0; border: 1px solid #d8dee8; border-radius: 8px; overflow: hidden; background: #f7f8fb; }
+      .proof-grid img { display: block; width: 100%; height: 240px; object-fit: cover; }
+      .print-actions { margin-top: 20px; }
+      @media (max-width: 640px) { .proof-grid { grid-template-columns: 1fr; } }
+      @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } .print-actions { display: none; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Completion Proof</p>
+      <h1>${escapeHtml(job.serviceType)} Completed</h1>
+      <div class="proof-meta">
+        <span>${escapeHtml(job.customerName)}</span>
+        <span>${escapeHtml(job.address)}</span>
+        <span>${escapeHtml(new Date(job.completionNoticeSentAt || Date.now()).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</span>
+      </div>
+      <h2>Before Photos</h2>
+      ${renderProofPhotoGrid(before)}
+      <h2>Completed Work Photos</h2>
+      ${renderProofPhotoGrid(after)}
+      <div class="print-actions">
+        <button type="button" onclick="window.print()">Print or Save as PDF</button>
+      </div>
+    </main>
+  </body>
+</html>`;
+}
+
+function renderProofPhotoGrid(photos) {
+  if (!photos.length) {
+    return "<p>No photos provided.</p>";
+  }
+
+  return `<div class="proof-grid">
+    ${photos.map((photo) => `
+      <figure>
+        <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+      </figure>
+    `).join("")}
+  </div>`;
 }
 
 function renderContractSigningPage(job) {
@@ -1000,6 +1071,19 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  const proofPageMatch = url.pathname.match(/^\/proof\/([^/]+)$/);
+  if (request.method === "GET" && proofPageMatch) {
+    const [, jobId] = proofPageMatch;
+    const job = await findPublicCompletionProof(jobId, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Proof page not found", "This completion proof link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderCompletionProofPage(job));
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/jobs") {
     sendJson(response, 200, { jobs: await readJobs(), statuses });
     return;
@@ -1256,6 +1340,7 @@ function isPublicPath(pathname) {
     pathname === "/webhooks/square" ||
     pathname.startsWith("/estimate/") ||
     pathname.startsWith("/contract/") ||
+    pathname.startsWith("/proof/") ||
     pathname.startsWith("/api/public/") ||
     pathname === "/favicon.ico";
 }
@@ -1522,6 +1607,51 @@ async function findSavedMeasurements(address) {
     .slice(0, 5);
 }
 
+async function syncJobPhotosToCustomerFile(job) {
+  const photos = [
+    ...(job.jobPhotos?.before || []),
+    ...(job.jobPhotos?.after || [])
+  ];
+  if (!photos.length) {
+    return;
+  }
+
+  const customers = await readCustomers();
+  let customer = customers.find((item) =>
+    item.id === job.customerId ||
+    (job.email && item.email === job.email) ||
+    (normalizeAddressKey(item.address) && normalizeAddressKey(item.address) === normalizeAddressKey(job.address))
+  );
+
+  if (!customer) {
+    customer = normalizeCustomer({
+      customerName: job.customerName,
+      email: job.email,
+      phone: job.phone,
+      address: job.address,
+      notes: `Created from completed job on ${new Date().toLocaleDateString("en-US")}.`,
+      serviceAreaPhotos: []
+    });
+    customers.unshift(customer);
+    job.customerId = customer.id;
+  }
+
+  const existingIds = new Set((customer.serviceAreaPhotos || []).map((photo) => photo.id));
+  const additions = photos
+    .filter((photo) => !existingIds.has(photo.id))
+    .map((photo) => ({
+      ...photo,
+      name: `${job.status === "Final Invoice Sent" ? "Completed" : "Job"} - ${photo.name || "Photo"}`
+    }));
+  if (!additions.length) {
+    return;
+  }
+
+  customer.serviceAreaPhotos = [...(customer.serviceAreaPhotos || []), ...additions];
+  customer.updatedAt = new Date().toISOString();
+  await writeCustomers(customers);
+}
+
 function normalizeAddressKey(address) {
   return String(address || "")
     .toLowerCase()
@@ -1702,6 +1832,11 @@ async function applyAction(job, action, input) {
 
   if (action === "complete") {
     const settings = await readSettings();
+    if (Object.hasOwn(input, "jobPhotos")) {
+      job.jobPhotos = normalizeJobPhotos(input.jobPhotos);
+    }
+    job.completionProofToken = job.completionProofToken || crypto.randomBytes(24).toString("hex");
+    job.completionProofUrl = buildCompletionProofUrl(input._baseUrl, job);
     const notice = buildCompletionNotice(job, settings);
     const invoice = job.squareFinalInvoiceId
       ? {
@@ -1720,6 +1855,7 @@ async function applyAction(job, action, input) {
     job.squareFinalOrderId = invoice.orderId;
     job.squareFinalInvoiceId = invoice.invoiceId;
     job.squareFinalInvoiceUrl = invoice.publicUrl;
+    await syncJobPhotosToCustomerFile(job);
   }
 
   if (action === "send-final-invoice") {
@@ -1765,10 +1901,11 @@ function buildCompletionNotice(job, settings) {
     "Please review the completed work and let us know within 24 hours if you believe any agreed-upon service was not completed. If anything needs review, we will be happy to take a look.",
     "",
     "Your final invoice for the remaining balance has been sent separately through Square.",
+    job.completionProofUrl ? `Completion photos and proof page: ${job.completionProofUrl}` : "",
     "",
     "Thank you,",
     businessName
-  ].join("\n");
+  ].filter((line) => line !== "").join("\n");
   const mailto = `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return { subject, body, mailto };
@@ -2017,7 +2154,7 @@ async function createSquareDraftInvoice(job, settings, customerId, orderId, invo
   const title = invoiceType === "deposit" ? "Deposit Invoice" : "Final Invoice";
   const description = invoiceType === "deposit"
     ? `Deposit required before scheduling ${job.serviceType} at ${job.address}.`
-    : `Final balance due for completed ${job.serviceType} at ${job.address}.`;
+    : `Final balance due for completed ${job.serviceType} at ${job.address}.${job.completionProofUrl ? ` Completion photos: ${job.completionProofUrl}` : ""}`;
   const result = await squareRequest(settings, "/v2/invoices", {
     idempotency_key: shortSquareKey(`invoice-${invoiceType}`, job.id),
     invoice: {

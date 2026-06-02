@@ -54,6 +54,8 @@ create table if not exists jobs (
   completion_notice_subject text not null default '',
   completion_notice_body text not null default '',
   completion_notice_mailto text not null default '',
+  completion_proof_token text not null default '',
+  completion_proof_url text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

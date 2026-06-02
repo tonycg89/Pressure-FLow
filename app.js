@@ -48,6 +48,8 @@ const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
+const completionDialog = document.querySelector("#completionDialog");
+const completionForm = document.querySelector("#completionForm");
 const addLineItemButton = document.querySelector("#addLineItemButton");
 const lineItemsContainer = document.querySelector("#lineItems");
 const discountSelect = document.querySelector("#discountSelect");
@@ -73,10 +75,16 @@ const beforePhotoInput = document.querySelector("#beforePhotoInput");
 const afterPhotoInput = document.querySelector("#afterPhotoInput");
 const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
 const afterPhotoPreview = document.querySelector("#afterPhotoPreview");
+const completionBeforePhotoInput = document.querySelector("#completionBeforePhotoInput");
+const completionAfterPhotoInput = document.querySelector("#completionAfterPhotoInput");
+const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
+const completionAfterPhotoPreview = document.querySelector("#completionAfterPhotoPreview");
 let pendingScheduleResolve = null;
+let pendingCompletionResolve = null;
 let currentMeasurement = {};
 let currentServiceAreaPhotos = [];
 let currentJobPhotos = { before: [], after: [] };
+let currentCompletionPhotos = { before: [], after: [] };
 let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
@@ -106,10 +114,14 @@ async function init() {
   });
   settingsForm.addEventListener("submit", saveSettings);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
+  completionForm.addEventListener("submit", submitCompletionDialog);
+  completionBeforePhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.before, renderCompletionPhotoPreviews));
+  completionAfterPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.after, renderCompletionPhotoPreviews));
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
     button.addEventListener("click", adjustScheduleDuration);
   });
   scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
+  completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
   await loadSettings();
   await loadCustomers();
   await loadJobs();
@@ -429,6 +441,11 @@ function renderJobPhotoPreviews() {
   renderEditablePhotoGrid(afterPhotoPreview, currentJobPhotos.after, () => renderJobPhotoPreviews());
 }
 
+function renderCompletionPhotoPreviews() {
+  renderEditablePhotoGrid(completionBeforePhotoPreview, currentCompletionPhotos.before, () => renderCompletionPhotoPreviews());
+  renderEditablePhotoGrid(completionAfterPhotoPreview, currentCompletionPhotos.after, () => renderCompletionPhotoPreviews());
+}
+
 function renderEditablePhotoGrid(container, photos, rerender) {
   container.innerHTML = "";
   if (!photos.length) {
@@ -468,6 +485,10 @@ function closeDialogFromButton(event) {
 
   if (dialog === scheduleDialog) {
     resolveScheduleDialog(null);
+  }
+
+  if (dialog === completionDialog) {
+    resolveCompletionDialog(null);
   }
 
   dialog.close();
@@ -1151,6 +1172,13 @@ async function runAction(jobId, action) {
     payload.jobDurationMinutes = schedule.jobDurationMinutes;
   }
 
+  if (action === "complete") {
+    const completion = await openCompletionDialog(jobs.find((item) => item.id === jobId));
+    if (!completion) return;
+
+    payload.jobPhotos = completion.jobPhotos;
+  }
+
   try {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
@@ -1160,7 +1188,11 @@ async function runAction(jobId, action) {
     if (action === "send-contract") {
       alert(`Contract sent to ${updated.job.email}.`);
     }
+    if (action === "complete") {
+      alert(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);
+    }
     await loadJobs();
+    await loadCustomers();
   } catch (error) {
     alert(error.message);
   }
@@ -1293,6 +1325,42 @@ function resolveScheduleDialog(value) {
   if (!pendingScheduleResolve) return;
   pendingScheduleResolve(value);
   pendingScheduleResolve = null;
+}
+
+function openCompletionDialog(job) {
+  currentCompletionPhotos = {
+    before: [...(job?.jobPhotos?.before || [])],
+    after: [...(job?.jobPhotos?.after || [])]
+  };
+  completionBeforePhotoInput.value = "";
+  completionAfterPhotoInput.value = "";
+  renderCompletionPhotoPreviews();
+  completionDialog.showModal();
+
+  return new Promise((resolve) => {
+    pendingCompletionResolve = resolve;
+  });
+}
+
+function submitCompletionDialog(event) {
+  event.preventDefault();
+
+  if (event.submitter?.value === "cancel") {
+    completionDialog.close();
+    resolveCompletionDialog(null);
+    return;
+  }
+
+  completionDialog.close();
+  resolveCompletionDialog({
+    jobPhotos: currentCompletionPhotos
+  });
+}
+
+function resolveCompletionDialog(value) {
+  if (!pendingCompletionResolve) return;
+  pendingCompletionResolve(value);
+  pendingCompletionResolve = null;
 }
 
 function getStatusClass(status) {
