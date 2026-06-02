@@ -987,6 +987,7 @@ function renderDashboard() {
   });
   renderLeadSourceChart(bySource);
   renderLeadSourceBreakdown(bySource);
+  renderDashboardNotifications(scopedJobs);
 }
 
 function filterByTimeframe(items, dateField) {
@@ -1037,6 +1038,112 @@ function renderLeadSourceBreakdown(rows) {
       <strong>${currency.format(row.revenue)}</strong>
     </div>
   `).join("");
+}
+
+function renderDashboardNotifications(scopedJobs) {
+  const container = document.querySelector("#dashboardNotifications");
+  if (!container) return;
+
+  const notifications = scopedJobs
+    .flatMap(buildJobNotifications)
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 12);
+
+  if (!notifications.length) {
+    container.innerHTML = '<p class="empty-state compact-empty">No recent notifications yet.</p>';
+    return;
+  }
+
+  container.innerHTML = notifications.map((item) => `
+    <button class="notification-item" type="button" data-job-id="${escapeHtml(item.jobId)}">
+      <span class="notification-icon ${escapeHtml(item.level)}">${escapeHtml(item.icon)}</span>
+      <span>
+        <strong>${escapeHtml(item.title)}</strong>
+        <small>${escapeHtml(item.customer)} | ${escapeHtml(item.detail)} | ${formatNotificationDate(item.at)}</small>
+      </span>
+    </button>
+  `).join("");
+
+  container.querySelectorAll("[data-job-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedJobId = button.dataset.jobId;
+      document.querySelector('[data-view="pipeline"]').click();
+      render();
+    });
+  });
+}
+
+function buildJobNotifications(job) {
+  return [
+    job.estimateApprovedAt ? {
+      jobId: job.id,
+      at: job.estimateApprovedAt,
+      level: "success",
+      icon: "OK",
+      title: "Estimate accepted",
+      customer: job.customerName,
+      detail: currency.format(job.estimate)
+    } : null,
+    job.estimateRejectedAt ? {
+      jobId: job.id,
+      at: job.estimateRejectedAt,
+      level: "warning",
+      icon: "NO",
+      title: "Estimate rejected",
+      customer: job.customerName,
+      detail: job.estimateRejectionReason ? formatEstimateRejectionReason(job.estimateRejectionReason) : "Follow up"
+    } : null,
+    job.contractSignedAt ? {
+      jobId: job.id,
+      at: job.contractSignedAt,
+      level: "success",
+      icon: "SG",
+      title: "Contract signed",
+      customer: job.customerName,
+      detail: "Ready for deposit"
+    } : null,
+    job.squareDepositPaidAt ? {
+      jobId: job.id,
+      at: job.squareDepositPaidAt,
+      level: "success",
+      icon: "$",
+      title: "Deposit paid",
+      customer: job.customerName,
+      detail: currency.format(getDeposit(job))
+    } : null,
+    job.scheduledAt ? {
+      jobId: job.id,
+      at: job.scheduledAt,
+      level: "info",
+      icon: "CAL",
+      title: "Job scheduled",
+      customer: job.customerName,
+      detail: job.address
+    } : null,
+    job.squareFinalPaidAt ? {
+      jobId: job.id,
+      at: job.squareFinalPaidAt,
+      level: "success",
+      icon: "$",
+      title: "Final invoice paid",
+      customer: job.customerName,
+      detail: currency.format(getFinalBalance(job))
+    } : null
+  ].filter(Boolean);
+}
+
+function formatNotificationDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value || "");
+  }
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function renderMetrics() {

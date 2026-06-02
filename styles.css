@@ -426,7 +426,73 @@ textarea {
 }
 
 .dashboard-grid {
+  margin-top: 18px;
   align-items: start;
+}
+
+.notifications-panel {
+  margin: 0 0 18px;
+}
+
+.notification-list {
+  display: grid;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  text-align: left;
+}
+
+.notification-item:hover {
+  background: #f2f7f5;
+}
+
+.notification-item strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+
+.notification-item small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.notification-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eef6ff;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.notification-icon.success {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.notification-icon.warning {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.compact-empty {
+  padding: 16px 14px;
 }
 
 .chart-wrap {
