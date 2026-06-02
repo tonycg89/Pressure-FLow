@@ -522,6 +522,7 @@ async function signPublicContract(jobId, token, signerName, signedDate) {
   job.contractSignerName = String(signerName || "").trim();
   job.contractSignedAt = new Date().toISOString();
   job.contractSignedDate = String(signedDate || "").trim();
+  job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);
 
   const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
   job.status = "Deposit Sent";
@@ -550,6 +551,27 @@ function buildCompletionProofUrl(baseUrl, job) {
 function buildInvoiceUrl(baseUrl, job, invoiceType, token) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
   return `${root}/invoice/${encodeURIComponent(job.id)}?type=${encodeURIComponent(invoiceType)}&token=${encodeURIComponent(token)}`;
+}
+
+function buildExecutedContractUrl(baseUrl, job) {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return `${root}/contract/${encodeURIComponent(job.id)}/executed?token=${encodeURIComponent(job.contractApprovalToken)}`;
+}
+
+function getPressureFlowInvoiceNumber(job, invoiceType) {
+  const prefix = invoiceType === "deposit" ? "PPW-D" : "PPW-F";
+  const source = `${job.id}-${invoiceType}`;
+  return `${prefix}-${displayHash(source).slice(0, 6).toUpperCase()}`;
+}
+
+function displayHash(value) {
+  let hash = 0x811c9dc5;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function getBaseUrlFromLink(link) {
@@ -673,11 +695,13 @@ async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceU
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const businessName = getBusinessName(settings);
-  const subject = `${businessName} ${isDeposit ? "deposit" : "final"} invoice for ${job.serviceType} at ${job.address}`;
+  const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
+  const subject = `${businessName} ${isDeposit ? "deposit" : "final"} invoice ${invoiceNumber} for ${job.serviceType} at ${job.address}`;
   const textBody = [
     `Hi ${job.customerName},`,
     "",
     `Your ${isDeposit ? "deposit" : "final"} invoice from ${businessName} is ready.`,
+    `Invoice number: ${invoiceNumber}`,
     `Amount due: $${amount.toFixed(2)}`,
     `Invoice: ${invoiceUrl}`,
     !isDeposit && job.completionProofUrl ? `Completion photos: ${job.completionProofUrl}` : "",
@@ -704,6 +728,7 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const businessName = getBusinessName(settings);
+  const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
       ${renderLogoHtml(getBaseUrlFromLink(invoiceUrl))}
@@ -711,6 +736,7 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
       <h2 style="margin:0 0 12px">${isDeposit ? "Deposit invoice" : "Final invoice"}</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your ${isDeposit ? "deposit" : "final"} invoice from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
+      <p><strong>Invoice number:</strong> ${escapeHtml(invoiceNumber)}</p>
       <p style="font-size:18px"><strong>Amount due: $${amount.toFixed(2)}</strong></p>
       <p>
         <a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
@@ -1182,6 +1208,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
   const businessName = getBusinessName(settings);
+  const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -1207,7 +1234,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
       ${renderLogoHtml("", 190)}
       <p class="eyebrow">${escapeHtml(businessName)} Invoice</p>
       <h1>${title}</h1>
-      <p>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+      <p>${escapeHtml(invoiceNumber)} | ${escapeHtml(businessName)} for ${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
       <section class="invoice-total">
         <span>Amount Due</span>
         <strong>$${amount.toFixed(2)}</strong>
@@ -1267,7 +1294,7 @@ function renderPaymentMethods(settings) {
   </div>`;
 }
 
-function renderContractSigningPage(job) {
+function renderContractSigningPage(job, options = {}) {
   const lineRows = (job.lineItems || []).map((item) => `
     <tr>
       <td>${escapeHtml(item.name)}</td>
@@ -1311,12 +1338,21 @@ function renderContractSigningPage(job) {
         <div><span>Final Balance After Completion</span><strong>$${finalAmount.toFixed(2)}</strong></div>
       </section>
 
-      ${renderContractTerms(job)}
+      ${renderContractTerms(job, { executed: alreadySigned || options.executedOnly, initials })}
 
       ${alreadySigned ? `
         <section class="notice">
           <strong>Signed</strong>
           <p>This contract was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
+        </section>
+        <section>
+          <h2>Signature</h2>
+          <table>
+            <tbody>
+              <tr><th>Signer</th><td>${escapeHtml(job.contractSignerName || job.customerName)}</td></tr>
+              <tr><th>Date signed</th><td>${escapeHtml(job.contractSignedDate || new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</td></tr>
+            </tbody>
+          </table>
         </section>
       ` : `
         <form id="contractSignForm" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
@@ -1339,14 +1375,19 @@ function renderContractSigningPage(job) {
 </html>`;
 }
 
-function renderContractTerms(job) {
+function renderContractTerms(job, options = {}) {
   return `<section>
     <h2>Terms and Conditions</h2>
     ${serviceAgreementTemplate.sections.map((section, index) => `
       <article class="term">
         <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
         ${escapeHtml(section.body).split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}
-        ${section.initialsRequired ? `
+        ${section.initialsRequired && options.executed ? `
+          <div class="executed-initials">
+            <span>Client initials</span>
+            <strong>${escapeHtml(options.initials || getCustomerInitials(job.customerName))}</strong>
+          </div>
+        ` : section.initialsRequired ? `
           <label class="initials-field">
             Initials
             <input name="initials_${index}" class="initials-input" form="contractSignForm" required placeholder="Click to initial" autocomplete="off">
@@ -1450,6 +1491,9 @@ function estimatePageStyles() {
     textarea { padding: 10px; resize: vertical; }
     .initials-field { max-width: 180px; }
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
+    .executed-initials { display: inline-grid; gap: 4px; min-width: 120px; margin-top: 12px; padding: 10px 12px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
+    .executed-initials span { color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .executed-initials strong { font-size: 18px; }
     .measurement-preview-wrap { position: relative; overflow: hidden; border: 1px solid #d8dee8; border-radius: 8px; background: #101828; }
     .measurement-preview { display: block; width: 100%; }
     .measurement-badge { position: absolute; left: 50%; padding: 0; border: 0; background: transparent; color: #ff1f1f; font-size: 13px; font-weight: 900; line-height: 1.15; text-align: center; text-shadow: 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95), 1px 0 2px rgba(255,255,255,0.95), -1px 0 2px rgba(255,255,255,0.95); transform: translate(-50%, -50%); pointer-events: none; }
@@ -1579,6 +1623,19 @@ async function handleApi(request, response, url) {
     }
 
     sendHtml(response, 200, renderContractSigningPage(job));
+    return;
+  }
+
+  const executedContractMatch = url.pathname.match(/^\/contract\/([^/]+)\/executed$/);
+  if (request.method === "GET" && executedContractMatch) {
+    const [, jobId] = executedContractMatch;
+    const job = await findPublicContract(jobId, url.searchParams.get("token") || "");
+    if (!job || !job.contractSignedAt) {
+      sendHtml(response, 404, renderEstimateMessagePage("Executed contract not found", "This executed contract link is invalid or has not been signed yet."));
+      return;
+    }
+
+    sendHtml(response, 200, renderContractSigningPage(job, { executedOnly: true }));
     return;
   }
 

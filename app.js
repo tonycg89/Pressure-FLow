@@ -1159,9 +1159,9 @@ function renderJobDetail() {
     <section class="detail-section">
       <h4>Links</h4>
       <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
-      <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job.squareDepositInvoiceId, job.squareDepositInvoiceUrl)}</strong></div>
-      <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job.squareFinalInvoiceId, job.squareFinalInvoiceUrl)}</strong></div>
-      <div class="detail-row"><span>PressureFlow contract</span><strong>${renderLinkedValue("signing link", job.contractApprovalUrl || job.squareContractUrl)}</strong></div>
+      <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job, "deposit")}</strong></div>
+      <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job, "final")}</strong></div>
+      <div class="detail-row"><span>PressureFlow contract</span><strong>${renderContractLink(job)}</strong></div>
     </section>
 
     <section class="detail-section">
@@ -1305,10 +1305,10 @@ function renderCustomerJobMilestonesText(job) {
     job.estimateRejectedAt ? `Estimate rejected ${formatShortDate(job.estimateRejectedAt)}${job.estimateRejectionReason ? ` (${formatEstimateRejectionReason(job.estimateRejectionReason)})` : ""}` : "",
     job.contractSentAt ? `Contract sent ${formatShortDate(job.contractSentAt)}` : "",
     job.contractSignedAt ? `Contract signed ${formatShortDate(job.contractSignedAt)}` : "",
-    job.squareDepositInvoiceId ? `Deposit invoice sent${job.squareDepositPaidAt ? `, paid ${formatShortDate(job.squareDepositPaidAt)}` : ""}` : "",
+    job.squareDepositInvoiceId ? `Deposit ${getPressureFlowInvoiceNumber(job, "deposit")} sent${job.squareDepositPaidAt ? `, paid ${formatShortDate(job.squareDepositPaidAt)}` : ""}` : "",
     job.scheduledAt ? `Scheduled ${formatShortDate(job.scheduledAt)}` : "",
     job.completionNoticeSentAt ? `Completion notice ${formatShortDate(job.completionNoticeSentAt)}` : "",
-    job.squareFinalInvoiceId ? `Final invoice sent${job.squareFinalPaidAt ? `, paid ${formatShortDate(job.squareFinalPaidAt)}` : ""}` : ""
+    job.squareFinalInvoiceId ? `Final ${getPressureFlowInvoiceNumber(job, "final")} sent${job.squareFinalPaidAt ? `, paid ${formatShortDate(job.squareFinalPaidAt)}` : ""}` : ""
   ].filter(Boolean);
 
   return milestones.length ? milestones.join(" | ") : "No documents sent yet";
@@ -1815,16 +1815,53 @@ function getStatusClass(status) {
   return "";
 }
 
-function renderInvoiceValue(invoiceId, url) {
+function renderInvoiceValue(job, invoiceType) {
+  const invoiceId = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
+  const url = invoiceType === "deposit" ? job.squareDepositInvoiceUrl : job.squareFinalInvoiceUrl;
   if (!invoiceId) {
     return "Not set";
   }
 
+  const label = `${invoiceType === "deposit" ? "Deposit" : "Final"} ${getPressureFlowInvoiceNumber(job, invoiceType)}`;
   if (!url) {
-    return escapeHtml(invoiceId);
+    return escapeHtml(label);
   }
 
-  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(invoiceId)}</a>`;
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+}
+
+function renderContractLink(job) {
+  const url = job.contractSignedAt ? getExecutedContractUrl(job) : (job.contractApprovalUrl || job.squareContractUrl);
+  const label = job.contractSignedAt ? "Executed contract" : "Signing link";
+  return renderLinkedValue(label, url);
+}
+
+function getExecutedContractUrl(job) {
+  const source = job.squareContractUrl || job.contractApprovalUrl || "";
+  if (source.includes("/executed")) {
+    return source;
+  }
+
+  if (job.contractApprovalUrl) {
+    return job.contractApprovalUrl.replace(`/contract/${encodeURIComponent(job.id)}`, `/contract/${encodeURIComponent(job.id)}/executed`);
+  }
+
+  return source;
+}
+
+function getPressureFlowInvoiceNumber(job, invoiceType) {
+  const prefix = invoiceType === "deposit" ? "PPW-D" : "PPW-F";
+  return `${prefix}-${compactHash(`${job.id}-${invoiceType}`).slice(0, 6).toUpperCase()}`;
+}
+
+function compactHash(value) {
+  let hash = 0x811c9dc5;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function renderLinkedValue(id, url) {
