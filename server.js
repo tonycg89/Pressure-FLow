@@ -31,6 +31,7 @@ const contentTypes = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".md": "text/markdown; charset=utf-8",
+  ".png": "image/png",
   ".doc": "application/msword",
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 };
@@ -404,7 +405,7 @@ async function approvePublicEstimate(jobId, token) {
   job.estimateApprovedAt = new Date().toISOString();
   job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
   job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
-  job.contractMailto = buildContractMailto(job);
+  job.contractMailto = buildContractMailto(job, settings);
   await sendContractEmail(job, settings);
   job.contractSentAt = new Date().toISOString();
   job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
@@ -493,50 +494,69 @@ function getBaseUrlFromLink(link) {
   }
 }
 
-function buildEstimateMailto(job) {
-  const subject = `Estimate for ${job.serviceType} at ${job.address}`;
+function getBusinessName(settings = {}) {
+  return settings.businessName || "Precision Power Washing";
+}
+
+function getLogoUrl(baseUrl = "") {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return root ? `${root}/assets/logo.png` : "/assets/logo.png";
+}
+
+function renderLogoHtml(baseUrl = "", width = 190) {
+  return `<img src="${escapeHtml(getLogoUrl(baseUrl))}" alt="Precision Power Washing" style="display:block;max-width:${width}px;width:100%;height:auto;margin:0 0 14px">`;
+}
+
+function buildEstimateMailto(job, settings = {}) {
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} estimate for ${job.serviceType} at ${job.address}`;
   const body = [
     `Hi ${job.customerName},`,
     "",
-    "Your pressure washing estimate is ready for review.",
+    `Your estimate from ${businessName} is ready for review.`,
     "",
     `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
     `Approve estimate: ${job.estimateApprovalUrl}`,
     "",
-    "Thank you."
+    "Thank you,",
+    businessName
   ].join("\n");
 
   return `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function buildContractMailto(job) {
-  const subject = `Contract for ${job.serviceType} at ${job.address}`;
+function buildContractMailto(job, settings = {}) {
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} contract for ${job.serviceType} at ${job.address}`;
   const body = [
     `Hi ${job.customerName},`,
     "",
-    "Your pressure washing service contract is ready for review and signature.",
+    `Your ${businessName} pressure washing service contract is ready for review and signature.`,
     "",
     `Review and sign: ${job.contractApprovalUrl}`,
     "",
-    "Thank you."
+    "Thank you,",
+    businessName
   ].join("\n");
 
   return `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 async function sendEstimateEmail(job, settings) {
-  const subject = `Estimate for ${job.serviceType} at ${job.address}`;
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} estimate for ${job.serviceType} at ${job.address}`;
   const textBody = [
     `Hi ${job.customerName},`,
     "",
-    "Your pressure washing estimate is ready for review.",
+    `Your estimate from ${businessName} is ready for review.`,
     "",
     `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
     `Approve estimate: ${job.estimateApprovalUrl}`,
     "",
-    "Thank you."
+    "Thank you,",
+    businessName
   ].join("\n");
-  const htmlBody = renderEstimateEmailHtml(job);
+  const htmlBody = renderEstimateEmailHtml(job, settings);
 
   await sendGoogleEmail(settings, {
     to: job.email,
@@ -547,22 +567,24 @@ async function sendEstimateEmail(job, settings) {
 }
 
 async function sendContractEmail(job, settings) {
-  const subject = `Contract for ${job.serviceType} at ${job.address}`;
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} contract for ${job.serviceType} at ${job.address}`;
   const textBody = [
     `Hi ${job.customerName},`,
     "",
-    "Your pressure washing service contract is ready for review and signature.",
+    `Your ${businessName} pressure washing service contract is ready for review and signature.`,
     "",
     `Review and sign: ${job.contractApprovalUrl}`,
     "",
-    "Thank you."
+    "Thank you,",
+    businessName
   ].join("\n");
 
   await sendGoogleEmail(settings, {
     to: job.email,
     subject,
     textBody,
-    htmlBody: renderContractEmailHtml(job)
+    htmlBody: renderContractEmailHtml(job, settings)
   });
 }
 
@@ -579,11 +601,12 @@ async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl) {
 async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceUrl) {
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
-  const subject = `${isDeposit ? "Deposit" : "Final"} invoice for ${job.serviceType} at ${job.address}`;
+  const businessName = getBusinessName(settings);
+  const subject = `${businessName} ${isDeposit ? "deposit" : "final"} invoice for ${job.serviceType} at ${job.address}`;
   const textBody = [
     `Hi ${job.customerName},`,
     "",
-    `Your ${isDeposit ? "deposit" : "final"} invoice is ready.`,
+    `Your ${isDeposit ? "deposit" : "final"} invoice from ${businessName} is ready.`,
     `Amount due: $${amount.toFixed(2)}`,
     `Invoice: ${invoiceUrl}`,
     !isDeposit && job.completionProofUrl ? `Completion photos: ${job.completionProofUrl}` : "",
@@ -594,7 +617,8 @@ async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceU
     settings.venmoPayment ? `Venmo: ${settings.venmoPayment}` : "",
     settings.paymentInstructions || "",
     "",
-    "Thank you."
+    "Thank you,",
+    businessName
   ].filter((line) => line !== "").join("\n");
 
   await sendGoogleEmail(settings, {
@@ -608,11 +632,14 @@ async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceU
 function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceUrl) {
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
+  const businessName = getBusinessName(settings);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      ${renderLogoHtml(getBaseUrlFromLink(invoiceUrl))}
+      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
       <h2 style="margin:0 0 12px">${isDeposit ? "Deposit invoice" : "Final invoice"}</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Your ${isDeposit ? "deposit" : "final"} invoice for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
+      <p>Your ${isDeposit ? "deposit" : "final"} invoice from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
       <p style="font-size:18px"><strong>Amount due: $${amount.toFixed(2)}</strong></p>
       <p>
         <a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
@@ -628,7 +655,73 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
       </ul>
       ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
       <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(invoiceUrl)}</p>
+      <p>Thank you,<br>${escapeHtml(businessName)}</p>
     </div>
+  `;
+}
+
+async function sendCompletionCertificateEmail(job, settings, baseUrl) {
+  const businessName = getBusinessName(settings);
+  const paidAmount = getFinalBalanceCents(job) / 100;
+  const subject = `${businessName} Certificate of Completion - ${job.address}`;
+  const textBody = [
+    `Hi ${job.customerName},`,
+    "",
+    `Thank you for your business! This email confirms that ${businessName} has completed the pressure washing work at ${job.address}.`,
+    "",
+    `Amount paid: $${paidAmount.toFixed(2)}`,
+    job.completionProofUrl ? `Before and after photos: ${job.completionProofUrl}` : "",
+    "",
+    "We appreciate the opportunity to work on your property.",
+    "",
+    "Thank you,",
+    businessName
+  ].filter((line) => line !== "").join("\n");
+
+  await sendGoogleEmail(settings, {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody: renderCompletionCertificateEmailHtml(job, settings, baseUrl)
+  });
+}
+
+function renderCompletionCertificateEmailHtml(job, settings, baseUrl) {
+  const businessName = getBusinessName(settings);
+  const paidAmount = getFinalBalanceCents(job) / 100;
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      ${renderLogoHtml(baseUrl, 210)}
+      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      <h2 style="margin:0 0 12px">Certificate of Completion</h2>
+      <p>Hi ${escapeHtml(job.customerName)},</p>
+      <p>Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the pressure washing work at ${escapeHtml(job.address)}.</p>
+      <p style="font-size:18px"><strong>Amount paid: $${paidAmount.toFixed(2)}</strong></p>
+      ${job.completionProofUrl ? `<p><a href="${escapeHtml(job.completionProofUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">View before and after photos</a></p>` : ""}
+      <h3 style="margin:18px 0 8px">Before Photos</h3>
+      ${renderEmailPhotoGrid(job.jobPhotos?.before || [])}
+      <h3 style="margin:18px 0 8px">Completed Work Photos</h3>
+      ${renderEmailPhotoGrid(job.jobPhotos?.after || [])}
+      <p>We appreciate the opportunity to work on your property.</p>
+      <p>Thank you,<br>${escapeHtml(businessName)}</p>
+    </div>
+  `;
+}
+
+function renderEmailPhotoGrid(photos) {
+  if (!photos.length) {
+    return `<p style="color:#667085">No photos provided.</p>`;
+  }
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:560px">
+      ${photos.slice(0, 8).map((photo) => `
+        <div style="border:1px solid #d8dee8;border-radius:8px;overflow:hidden;background:#f7f8fb">
+          <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}" style="display:block;width:100%;height:150px;object-fit:cover">
+        </div>
+      `).join("")}
+    </div>
+    ${photos.length > 8 ? `<p style="color:#667085">${photos.length - 8} additional photo${photos.length - 8 === 1 ? "" : "s"} available in the proof link.</p>` : ""}
   `;
 }
 
@@ -691,12 +784,15 @@ function encodeMimeHeader(value) {
   return `=?UTF-8?B?${Buffer.from(String(value)).toString("base64")}?=`;
 }
 
-function renderEstimateEmailHtml(job) {
+function renderEstimateEmailHtml(job, settings) {
+  const businessName = getBusinessName(settings);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      ${renderLogoHtml(getBaseUrlFromLink(job.estimateApprovalUrl))}
+      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
       <h2 style="margin:0 0 12px">Your pressure washing estimate is ready</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Your estimate for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
+      <p>Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
       <p style="font-size:18px"><strong>Total: $${Number(job.estimate || 0).toFixed(2)}</strong></p>
       <p>
         <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
@@ -704,22 +800,27 @@ function renderEstimateEmailHtml(job) {
         </a>
       </p>
       <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.estimateApprovalUrl)}</p>
+      <p>Thank you,<br>${escapeHtml(businessName)}</p>
     </div>
   `;
 }
 
-function renderContractEmailHtml(job) {
+function renderContractEmailHtml(job, settings) {
+  const businessName = getBusinessName(settings);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      ${renderLogoHtml(getBaseUrlFromLink(job.contractApprovalUrl))}
+      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
       <h2 style="margin:0 0 12px">Your service contract is ready</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Please review and sign the service contract for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
+      <p>Please review and sign the ${escapeHtml(businessName)} service contract for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
       <p>
         <a href="${escapeHtml(job.contractApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
           Review and sign contract
         </a>
       </p>
       <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.contractApprovalUrl)}</p>
+      <p>Thank you,<br>${escapeHtml(businessName)}</p>
     </div>
   `;
 }
@@ -734,7 +835,8 @@ function getAppBaseUrl(request) {
   return `${proto}://${host}`;
 }
 
-function renderEstimateApprovalPage(job) {
+function renderEstimateApprovalPage(job, settings = {}) {
+  const businessName = getBusinessName(settings);
   const subtotal = (job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0);
   const discountPercent = Number(job.discountPercent || 0);
   const discountAmount = subtotal * (discountPercent / 100);
@@ -757,7 +859,8 @@ function renderEstimateApprovalPage(job) {
   </head>
   <body>
     <main>
-      <p class="eyebrow">PressureFlow Estimate</p>
+      ${renderLogoHtml("", 190)}
+      <p class="eyebrow">${escapeHtml(businessName)} Estimate</p>
       <h1>${escapeHtml(job.serviceType)} for ${escapeHtml(job.customerName)}</h1>
       <p>${escapeHtml(job.address)}</p>
       <section>
@@ -886,6 +989,7 @@ function renderEstimateMessagePage(title, message) {
   </head>
   <body>
     <main>
+      ${renderLogoHtml("", 190)}
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(message)}</p>
     </main>
@@ -896,6 +1000,7 @@ function renderEstimateMessagePage(title, message) {
 function renderCompletionProofPage(job) {
   const before = job.jobPhotos?.before || [];
   const after = job.jobPhotos?.after || [];
+  const businessName = "Precision Power Washing";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -915,7 +1020,8 @@ function renderCompletionProofPage(job) {
   </head>
   <body>
     <main>
-      <p class="eyebrow">Completion Proof</p>
+      ${renderLogoHtml("", 190)}
+      <p class="eyebrow">${escapeHtml(businessName)} Completion Proof</p>
       <h1>${escapeHtml(job.serviceType)} Completed</h1>
       <div class="proof-meta">
         <span>${escapeHtml(job.customerName)}</span>
@@ -952,6 +1058,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
+  const businessName = getBusinessName(settings);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -974,9 +1081,10 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   </head>
   <body>
     <main>
-      <p class="eyebrow">PressureFlow Invoice</p>
+      ${renderLogoHtml("", 190)}
+      <p class="eyebrow">${escapeHtml(businessName)} Invoice</p>
       <h1>${title}</h1>
-      <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+      <p>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
       <section class="invoice-total">
         <span>Amount Due</span>
         <strong>$${amount.toFixed(2)}</strong>
@@ -1043,7 +1151,8 @@ function renderContractSigningPage(job) {
   </head>
   <body>
     <main>
-      <p class="eyebrow">PressureFlow Contract</p>
+      ${renderLogoHtml("", 190)}
+      <p class="eyebrow">Precision Power Washing Contract</p>
       <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
       <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
 
@@ -1284,7 +1393,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateApprovalPage(job));
+    sendHtml(response, 200, renderEstimateApprovalPage(job, await readSettings()));
     return;
   }
 
@@ -1656,6 +1765,7 @@ function isPublicPath(pathname) {
     pathname.startsWith("/contract/") ||
     pathname.startsWith("/proof/") ||
     pathname.startsWith("/invoice/") ||
+    pathname.startsWith("/assets/") ||
     pathname.startsWith("/api/public/") ||
     pathname === "/favicon.ico";
 }
@@ -1830,6 +1940,7 @@ async function handleSquareWebhook(event) {
     job.status = "Paid";
     job.squareFinalInvoiceStatus = invoice.status || "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
+    await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
   }
 
   job.updatedAt = new Date().toISOString();
@@ -2097,7 +2208,7 @@ async function applyAction(job, action, input) {
     job.status = "Estimate Sent";
     job.estimateApprovalToken = job.estimateApprovalToken || crypto.randomBytes(24).toString("hex");
     job.estimateApprovalUrl = buildEstimateApprovalUrl(input._baseUrl, job);
-    job.estimateMailto = buildEstimateMailto(job);
+    job.estimateMailto = buildEstimateMailto(job, settings);
     await sendEstimateEmail(job, settings);
     job.estimateSentAt = new Date().toISOString();
     job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
@@ -2113,7 +2224,7 @@ async function applyAction(job, action, input) {
     job.status = "Contract Sent";
     job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
     job.contractApprovalUrl = buildContractApprovalUrl(input._baseUrl, job);
-    job.contractMailto = buildContractMailto(job);
+    job.contractMailto = buildContractMailto(job, settings);
     await sendContractEmail(job, settings);
     job.contractSentAt = new Date().toISOString();
     job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
@@ -2172,28 +2283,42 @@ async function applyAction(job, action, input) {
   }
 
   if (action === "mark-paid") {
-    job.status = "Paid";
-  }
-
-  if (action === "check-final-payment") {
+    const settings = await readSettings();
     job.status = "Paid";
     job.squareFinalInvoiceStatus = "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
+    await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+  }
+
+  if (action === "check-final-payment") {
+    const settings = await readSettings();
+    job.status = "Paid";
+    job.squareFinalInvoiceStatus = "PAID";
+    job.squareFinalPaidAt = new Date().toISOString();
+    await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+  }
+}
+
+async function sendCompletionCertificateEmailSafe(job, settings, baseUrl) {
+  try {
+    await sendCompletionCertificateEmail(job, settings, baseUrl || getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+  } catch (error) {
+    console.warn(`Unable to send completion certificate for job ${job.id}: ${error.message}`);
   }
 }
 
 function buildCompletionNotice(job, settings) {
-  const businessName = settings.businessName || "the Business";
+  const businessName = getBusinessName(settings);
   const completedAt = new Date().toLocaleString("en-US", {
     timeZone: "America/Los_Angeles",
     dateStyle: "medium",
     timeStyle: "short"
   });
-  const subject = `Service Completed - ${job.address}`;
+  const subject = `${businessName} service completed - ${job.address}`;
   const body = [
     `Hi ${job.customerName},`,
     "",
-    `The pressure washing services at ${job.address} have been completed as of ${completedAt}.`,
+    `The pressure washing services by ${businessName} at ${job.address} have been completed as of ${completedAt}.`,
     "",
     "Please review the completed work and let us know within 24 hours if you believe any agreed-upon service was not completed. If anything needs review, we will be happy to take a look.",
     "",
