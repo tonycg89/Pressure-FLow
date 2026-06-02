@@ -399,6 +399,16 @@ async function findPublicCompletionProof(jobId, token) {
   return job;
 }
 
+async function findPublicInvoice(jobId, invoiceType, token) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  const expectedToken = invoiceType === "deposit" ? job?.squareDepositInvoiceId : job?.squareFinalInvoiceId;
+  if (!job || !expectedToken || expectedToken !== token) {
+    return null;
+  }
+  return job;
+}
+
 async function signPublicContract(jobId, token, signerName, signedDate) {
   const jobs = await readJobs();
   const job = jobs.find((item) => item.id === jobId);
@@ -412,10 +422,8 @@ async function signPublicContract(jobId, token, signerName, signedDate) {
   job.contractSignedAt = new Date().toISOString();
   job.contractSignedDate = String(signedDate || "").trim();
 
-  const invoice = await createSquareInvoice(job, settings, "deposit");
+  const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
   job.status = "Deposit Sent";
-  job.squareCustomerId = invoice.customerId;
-  job.squareDepositOrderId = invoice.orderId;
   job.squareDepositInvoiceId = invoice.invoiceId;
   job.squareDepositInvoiceUrl = invoice.publicUrl;
   job.updatedAt = new Date().toISOString();
@@ -436,6 +444,11 @@ function buildContractApprovalUrl(baseUrl, job) {
 function buildCompletionProofUrl(baseUrl, job) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
   return `${root}/proof/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.completionProofToken)}`;
+}
+
+function buildInvoiceUrl(baseUrl, job, invoiceType, token) {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return `${root}/invoice/${encodeURIComponent(job.id)}?type=${encodeURIComponent(invoiceType)}&token=${encodeURIComponent(token)}`;
 }
 
 function getBaseUrlFromLink(link) {
@@ -518,6 +531,72 @@ async function sendContractEmail(job, settings) {
     textBody,
     htmlBody: renderContractEmailHtml(job)
   });
+}
+
+async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl) {
+  const invoiceId = invoiceType === "deposit"
+    ? job.squareDepositInvoiceId || `pf-deposit-${crypto.randomBytes(16).toString("hex")}`
+    : job.squareFinalInvoiceId || `pf-final-${crypto.randomBytes(16).toString("hex")}`;
+  const publicUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceId);
+
+  await sendPressureFlowInvoiceEmail(job, settings, invoiceType, publicUrl);
+  return { invoiceId, publicUrl };
+}
+
+async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceUrl) {
+  const isDeposit = invoiceType === "deposit";
+  const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
+  const subject = `${isDeposit ? "Deposit" : "Final"} invoice for ${job.serviceType} at ${job.address}`;
+  const textBody = [
+    `Hi ${job.customerName},`,
+    "",
+    `Your ${isDeposit ? "deposit" : "final"} invoice is ready.`,
+    `Amount due: $${amount.toFixed(2)}`,
+    `Invoice: ${invoiceUrl}`,
+    !isDeposit && job.completionProofUrl ? `Completion photos: ${job.completionProofUrl}` : "",
+    "",
+    "Payment options:",
+    settings.zellePayment ? `Zelle: ${settings.zellePayment}` : "",
+    settings.cashAppPayment ? `Cash App: ${settings.cashAppPayment}` : "",
+    settings.venmoPayment ? `Venmo: ${settings.venmoPayment}` : "",
+    settings.paymentInstructions || "",
+    "",
+    "Thank you."
+  ].filter((line) => line !== "").join("\n");
+
+  await sendGoogleEmail(settings, {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody: renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceUrl)
+  });
+}
+
+function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceUrl) {
+  const isDeposit = invoiceType === "deposit";
+  const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      <h2 style="margin:0 0 12px">${isDeposit ? "Deposit invoice" : "Final invoice"}</h2>
+      <p>Hi ${escapeHtml(job.customerName)},</p>
+      <p>Your ${isDeposit ? "deposit" : "final"} invoice for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
+      <p style="font-size:18px"><strong>Amount due: $${amount.toFixed(2)}</strong></p>
+      <p>
+        <a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+          View invoice
+        </a>
+      </p>
+      ${!isDeposit && job.completionProofUrl ? `<p><a href="${escapeHtml(job.completionProofUrl)}">View completion photos</a></p>` : ""}
+      <p><strong>Payment options</strong></p>
+      <ul>
+        ${settings.zellePayment ? `<li>Zelle: ${escapeHtml(settings.zellePayment)}</li>` : ""}
+        ${settings.cashAppPayment ? `<li>Cash App: ${escapeHtml(settings.cashAppPayment)}</li>` : ""}
+        ${settings.venmoPayment ? `<li>Venmo: ${escapeHtml(settings.venmoPayment)}</li>` : ""}
+      </ul>
+      ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
+      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(invoiceUrl)}</p>
+    </div>
+  `;
 }
 
 async function sendGoogleEmail(settings, message) {
@@ -675,15 +754,12 @@ function renderMeasurementPreview(job) {
   }
 
   const area = Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US");
-  const perimeter = Math.round(Number(job.measurement.perimeterFeet || 0)).toLocaleString("en-US");
-
   return `<section>
     <h2>Measured Surface</h2>
-    <p>${escapeHtml(job.measurement.address || job.address)} | ${area} SqFt${Number(job.measurement.perimeterFeet || 0) ? ` | ${perimeter} LF perimeter` : ""}</p>
+    <p>${escapeHtml(job.measurement.address || job.address)} | ${area} SqFt</p>
     <div class="measurement-preview-wrap">
       <img class="measurement-preview" src="${escapeHtml(job.measurement.staticImageUrl)}" alt="Satellite measurement with traced polygon">
       <div class="measurement-badge measurement-badge-area">${area} SqFt</div>
-      ${Number(job.measurement.perimeterFeet || 0) ? `<div class="measurement-badge measurement-badge-perimeter">${perimeter} LF perimeter</div>` : ""}
     </div>
   </section>`;
 }
@@ -758,6 +834,75 @@ function renderProofPhotoGrid(photos) {
         <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
       </figure>
     `).join("")}
+  </div>`;
+}
+
+function renderPressureFlowInvoicePage(job, settings, invoiceType) {
+  const isDeposit = invoiceType === "deposit";
+  const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
+  const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${title} - ${escapeHtml(job.customerName)}</title>
+    ${estimatePageStyles()}
+    <style>
+      .invoice-total { margin: 18px 0; padding: 18px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
+      .invoice-total span { display: block; color: #667085; font-weight: 800; }
+      .invoice-total strong { display: block; margin-top: 4px; font-size: 32px; }
+      .payment-methods { display: grid; gap: 10px; margin: 18px 0; }
+      .payment-methods div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
+      .proof-link { margin: 18px 0; padding: 14px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
+      @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } button { display: none; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PressureFlow Invoice</p>
+      <h1>${title}</h1>
+      <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+      <section class="invoice-total">
+        <span>Amount Due</span>
+        <strong>$${amount.toFixed(2)}</strong>
+      </section>
+      <h2>Service</h2>
+      <table>
+        <tbody>
+          ${(job.lineItems || []).map((item) => `
+            <tr>
+              <td>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</td>
+              <td>$${Number(item.total || 0).toFixed(2)}</td>
+            </tr>
+          `).join("")}
+          <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td>$${amount.toFixed(2)}</td></tr>
+        </tbody>
+      </table>
+      <h2>Payment Options</h2>
+      ${renderPaymentMethods(settings)}
+      ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
+      ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
+      ${!isDeposit ? `<h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}<h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}` : ""}
+      <button type="button" onclick="window.print()">Print or Save as PDF</button>
+    </main>
+  </body>
+</html>`;
+}
+
+function renderPaymentMethods(settings) {
+  const methods = [
+    ["Zelle", settings.zellePayment],
+    ["Cash App", settings.cashAppPayment],
+    ["Venmo", settings.venmoPayment]
+  ].filter(([, value]) => value);
+
+  if (!methods.length) {
+    return "<p>Payment instructions will be provided by the business.</p>";
+  }
+
+  return `<div class="payment-methods">
+    ${methods.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
   </div>`;
 }
 
@@ -945,7 +1090,6 @@ function estimatePageStyles() {
     .measurement-preview { display: block; width: 100%; }
     .measurement-badge { position: absolute; left: 50%; padding: 0; border: 0; background: transparent; color: #ff1f1f; font-size: 13px; font-weight: 900; line-height: 1.15; text-align: center; text-shadow: 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95), 1px 0 2px rgba(255,255,255,0.95), -1px 0 2px rgba(255,255,255,0.95); transform: translate(-50%, -50%); pointer-events: none; }
     .measurement-badge-area { top: 50%; }
-    .measurement-badge-perimeter { top: calc(50% + 18px); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
@@ -1081,6 +1225,20 @@ async function handleApi(request, response, url) {
     }
 
     sendHtml(response, 200, renderCompletionProofPage(job));
+    return;
+  }
+
+  const invoicePageMatch = url.pathname.match(/^\/invoice\/([^/]+)$/);
+  if (request.method === "GET" && invoicePageMatch) {
+    const [, jobId] = invoicePageMatch;
+    const invoiceType = url.searchParams.get("type") === "deposit" ? "deposit" : "final";
+    const job = await findPublicInvoice(jobId, invoiceType, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Invoice not found", "This invoice link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderPressureFlowInvoicePage(job, await readSettings(), invoiceType));
     return;
   }
 
@@ -1341,6 +1499,7 @@ function isPublicPath(pathname) {
     pathname.startsWith("/estimate/") ||
     pathname.startsWith("/contract/") ||
     pathname.startsWith("/proof/") ||
+    pathname.startsWith("/invoice/") ||
     pathname.startsWith("/api/public/") ||
     pathname === "/favicon.ico";
 }
@@ -1424,15 +1583,19 @@ function normalizeSettings(input, existing) {
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
     finalInvoiceTiming: "immediate_after_completion",
-    squareEnvironment: input.squareEnvironment === "production" ? "production" : "sandbox",
-    squareAccessToken: String(input.squareAccessToken || "").trim() || existing.squareAccessToken,
-    squareLocationId: String(input.squareLocationId || "").trim(),
-    squareWebhookSignatureKey: String(input.squareWebhookSignatureKey || "").trim() || existing.squareWebhookSignatureKey,
+    squareEnvironment: existing.squareEnvironment || "sandbox",
+    squareAccessToken: existing.squareAccessToken || "",
+    squareLocationId: existing.squareLocationId || "",
+    squareWebhookSignatureKey: existing.squareWebhookSignatureKey || "",
     googleClientId: String(input.googleClientId || "").trim(),
     googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
     googleRedirectUri: "http://localhost:3000/auth/google/callback",
     googleCalendarId: String(input.googleCalendarId || "").trim(),
-    mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken
+    mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
+    zellePayment: String(input.zellePayment || "").trim(),
+    cashAppPayment: String(input.cashAppPayment || "").trim(),
+    venmoPayment: String(input.venmoPayment || "").trim(),
+    paymentInstructions: String(input.paymentInstructions || "").trim()
   };
 }
 
@@ -1806,10 +1969,8 @@ async function applyAction(job, action, input) {
 
   if (action === "send-deposit-invoice") {
     const settings = await readSettings();
-    const invoice = await createSquareInvoice(job, settings, "deposit");
+    const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl);
     job.status = "Deposit Sent";
-    job.squareCustomerId = invoice.customerId;
-    job.squareDepositOrderId = invoice.orderId;
     job.squareDepositInvoiceId = invoice.invoiceId;
     job.squareDepositInvoiceUrl = invoice.publicUrl;
   }
@@ -1819,15 +1980,9 @@ async function applyAction(job, action, input) {
   }
 
   if (action === "check-deposit-payment") {
-    const settings = await readSettings();
-    const invoice = await getSquareInvoice(settings, job.squareDepositInvoiceId);
-    job.squareDepositInvoiceStatus = invoice.status || "";
-    if (isSquareInvoicePaid(invoice)) {
-      job.status = "Deposit Paid";
-      job.squareDepositPaidAt = new Date().toISOString();
-    } else {
-      throw new Error(`Square deposit invoice is ${invoice.status || "not paid yet"}.`);
-    }
+    job.status = "Deposit Paid";
+    job.squareDepositInvoiceStatus = "PAID";
+    job.squareDepositPaidAt = new Date().toISOString();
   }
 
   if (action === "complete") {
@@ -1839,20 +1994,13 @@ async function applyAction(job, action, input) {
     job.completionProofUrl = buildCompletionProofUrl(input._baseUrl, job);
     const notice = buildCompletionNotice(job, settings);
     const invoice = job.squareFinalInvoiceId
-      ? {
-          customerId: job.squareCustomerId,
-          orderId: job.squareFinalOrderId,
-          invoiceId: job.squareFinalInvoiceId,
-          publicUrl: job.squareFinalInvoiceUrl
-        }
-      : await createSquareInvoice(job, settings, "final");
+      ? { invoiceId: job.squareFinalInvoiceId, publicUrl: job.squareFinalInvoiceUrl }
+      : await createPressureFlowInvoice(job, settings, "final", input._baseUrl);
     job.status = "Final Invoice Sent";
     job.completionNoticeSentAt = new Date().toISOString();
     job.completionNoticeSubject = notice.subject;
     job.completionNoticeBody = notice.body;
     job.completionNoticeMailto = notice.mailto;
-    job.squareCustomerId = invoice.customerId;
-    job.squareFinalOrderId = invoice.orderId;
     job.squareFinalInvoiceId = invoice.invoiceId;
     job.squareFinalInvoiceUrl = invoice.publicUrl;
     await syncJobPhotosToCustomerFile(job);
@@ -1860,10 +2008,8 @@ async function applyAction(job, action, input) {
 
   if (action === "send-final-invoice") {
     const settings = await readSettings();
-    const invoice = await createSquareInvoice(job, settings, "final");
+    const invoice = await createPressureFlowInvoice(job, settings, "final", input._baseUrl);
     job.status = "Final Invoice Sent";
-    job.squareCustomerId = invoice.customerId;
-    job.squareFinalOrderId = invoice.orderId;
     job.squareFinalInvoiceId = invoice.invoiceId;
     job.squareFinalInvoiceUrl = invoice.publicUrl;
   }
@@ -1873,15 +2019,9 @@ async function applyAction(job, action, input) {
   }
 
   if (action === "check-final-payment") {
-    const settings = await readSettings();
-    const invoice = await getSquareInvoice(settings, job.squareFinalInvoiceId);
-    job.squareFinalInvoiceStatus = invoice.status || "";
-    if (isSquareInvoicePaid(invoice)) {
-      job.status = "Paid";
-      job.squareFinalPaidAt = new Date().toISOString();
-    } else {
-      throw new Error(`Square final invoice is ${invoice.status || "not paid yet"}.`);
-    }
+    job.status = "Paid";
+    job.squareFinalInvoiceStatus = "PAID";
+    job.squareFinalPaidAt = new Date().toISOString();
   }
 }
 
@@ -1900,7 +2040,7 @@ function buildCompletionNotice(job, settings) {
     "",
     "Please review the completed work and let us know within 24 hours if you believe any agreed-upon service was not completed. If anything needs review, we will be happy to take a look.",
     "",
-    "Your final invoice for the remaining balance has been sent separately through Square.",
+    "Your final invoice for the remaining balance has been sent through PressureFlow.",
     job.completionProofUrl ? `Completion photos and proof page: ${job.completionProofUrl}` : "",
     "",
     "Thank you,",
@@ -2356,7 +2496,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
       await handleApi(request, response, url);
       return;
     }

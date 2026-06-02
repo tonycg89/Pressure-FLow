@@ -152,11 +152,11 @@
         </label>
         <div class="field-row">
           <label>
-            Square contract ID
+            Contract ID
             <input name="squareContractId" placeholder="Optional">
           </label>
           <label>
-            Square contract link
+            Contract link
             <input name="squareContractUrl" type="url" placeholder="Optional">
           </label>
         </div>
@@ -335,23 +335,20 @@
             <input name="defaultJobDurationMinutes" type="number" min="30" max="720" step="15" value="180">
           </label>
           <label>
-            Square environment
-            <select name="squareEnvironment">
-              <option value="sandbox">Sandbox</option>
-              <option value="production">Production</option>
-            </select>
+            Zelle
+            <input name="zellePayment" placeholder="Email or phone for Zelle">
           </label>
           <label>
-            Square location ID
-            <input name="squareLocationId" placeholder="LMAS5W0GDF117">
+            Cash App
+            <input name="cashAppPayment" placeholder="$YourCashtag">
+          </label>
+          <label>
+            Venmo
+            <input name="venmoPayment" placeholder="@YourVenmo">
           </label>
           <label class="full-field">
-            Square access token
-            <input name="squareAccessToken" type="password" autocomplete="off" placeholder="Leave blank to keep saved token">
-          </label>
-          <label class="full-field">
-            Square webhook signature key
-            <input name="squareWebhookSignatureKey" type="password" autocomplete="off" placeholder="Leave blank to keep saved key">
+            Payment instructions
+            <textarea name="paymentInstructions" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
           </label>
           <label class="full-field">
             Google calendar ID
@@ -511,7 +508,6 @@
         <div id="measurementMap" class="measurement-map"></div>
         <div class="measurement-summary">
           <div><span>Measured Area</span><strong id="measuredArea">0 SqFt</strong></div>
-          <div><span>Outer Perimeter</span><strong id="measuredPerimeter">0 LF</strong></div>
           <div><span>Status</span><strong id="measurementStatus">Draw a polygon around the surface.</strong></div>
         </div>
         <menu class="dialog-actions">

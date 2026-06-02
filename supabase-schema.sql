@@ -85,6 +85,10 @@ create table if not exists app_settings (
   google_refresh_token text not null default '',
   google_calendar_id text not null default '',
   mapbox_public_token text not null default '',
+  zelle_payment text not null default '',
+  cash_app_payment text not null default '',
+  venmo_payment text not null default '',
+  payment_instructions text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id = 1)

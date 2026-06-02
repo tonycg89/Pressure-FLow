@@ -29,7 +29,11 @@ const defaultSettings = {
   googleRedirectUri: "http://localhost:3000/auth/google/callback",
   googleRefreshToken: "",
   googleCalendarId: "tonycg89@gmail.com",
-  mapboxPublicToken: ""
+  mapboxPublicToken: "",
+  zellePayment: "",
+  cashAppPayment: "",
+  venmoPayment: "",
+  paymentInstructions: ""
 };
 
 const statuses = [
@@ -197,7 +201,11 @@ async function readSettings() {
       googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
       googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || rowSettings.googleRefreshToken || "",
       googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId,
-      mapboxPublicToken: process.env.MAPBOX_PUBLIC_TOKEN || rowSettings.mapboxPublicToken || ""
+      mapboxPublicToken: process.env.MAPBOX_PUBLIC_TOKEN || rowSettings.mapboxPublicToken || "",
+      zellePayment: rowSettings.zellePayment || "",
+      cashAppPayment: rowSettings.cashAppPayment || "",
+      venmoPayment: rowSettings.venmoPayment || "",
+      paymentInstructions: rowSettings.paymentInstructions || ""
     };
   }
 
@@ -221,8 +229,12 @@ async function writeSettings(settings) {
         google_refresh_token,
         google_calendar_id,
         mapbox_public_token,
+        zelle_payment,
+        cash_app_payment,
+        venmo_payment,
+        payment_instructions,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -235,6 +247,10 @@ async function writeSettings(settings) {
         google_refresh_token = excluded.google_refresh_token,
         google_calendar_id = excluded.google_calendar_id,
         mapbox_public_token = excluded.mapbox_public_token,
+        zelle_payment = excluded.zelle_payment,
+        cash_app_payment = excluded.cash_app_payment,
+        venmo_payment = excluded.venmo_payment,
+        payment_instructions = excluded.payment_instructions,
         updated_at = now()`,
       [
         settings.businessName || "",
@@ -247,7 +263,11 @@ async function writeSettings(settings) {
         settings.squareLocationId || "",
         settings.googleRefreshToken || "",
         settings.googleCalendarId || "",
-        settings.mapboxPublicToken || ""
+        settings.mapboxPublicToken || "",
+        settings.zellePayment || "",
+        settings.cashAppPayment || "",
+        settings.venmoPayment || "",
+        settings.paymentInstructions || ""
       ]
     );
     return;
@@ -321,6 +341,10 @@ async function ensurePostgresSchema() {
   )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists zelle_payment text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
   await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists completion_proof_token text not null default ''");
@@ -637,7 +661,11 @@ function settingsFromRow(row) {
     squareLocationId: row.square_location_id || "",
     googleRefreshToken: row.google_refresh_token || "",
     googleCalendarId: row.google_calendar_id || "",
-    mapboxPublicToken: row.mapbox_public_token || ""
+    mapboxPublicToken: row.mapbox_public_token || "",
+    zellePayment: row.zelle_payment || "",
+    cashAppPayment: row.cash_app_payment || "",
+    venmoPayment: row.venmo_payment || "",
+    paymentInstructions: row.payment_instructions || ""
   };
 }
 

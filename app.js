@@ -63,7 +63,6 @@ const measurementAddress = document.querySelector("#measurementAddress");
 const measurementMapElement = document.querySelector("#measurementMap");
 const geocodeAddressButton = document.querySelector("#geocodeAddressButton");
 const measuredArea = document.querySelector("#measuredArea");
-const measuredPerimeter = document.querySelector("#measuredPerimeter");
 const measurementStatus = document.querySelector("#measurementStatus");
 const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel");
 const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
@@ -222,20 +221,18 @@ function fillSettingsForm() {
   settingsForm.elements.businessPhone.value = settings.businessPhone || "";
   settingsForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
   settingsForm.elements.defaultJobDurationMinutes.value = settings.defaultJobDurationMinutes || 180;
-  settingsForm.elements.squareEnvironment.value = settings.squareEnvironment || "sandbox";
-  settingsForm.elements.squareLocationId.value = settings.squareLocationId || "";
-  settingsForm.elements.squareAccessToken.value = "";
-  settingsForm.elements.squareWebhookSignatureKey.value = "";
+  settingsForm.elements.zellePayment.value = settings.zellePayment || "";
+  settingsForm.elements.cashAppPayment.value = settings.cashAppPayment || "";
+  settingsForm.elements.venmoPayment.value = settings.venmoPayment || "";
+  settingsForm.elements.paymentInstructions.value = settings.paymentInstructions || "";
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
   settingsForm.elements.googleClientSecret.value = "";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "http://localhost:3000/auth/google/callback";
   settingsForm.elements.mapboxPublicToken.value = settings.mapboxPublicToken || "";
 
-  const tokenText = settings.hasSquareAccessToken ? "Square token saved. Leave blank to keep it." : "Square token not saved yet.";
-  const webhookText = settings.hasSquareWebhookSignatureKey ? " Webhook key saved." : "";
   const googleText = settings.hasGoogleRefreshToken ? " Google Calendar connected." : settings.hasGoogleClientSecret ? " Google secret saved. Connect Calendar next." : "";
-  settingsStatus.textContent = `${tokenText}${webhookText}${googleText}`;
+  settingsStatus.textContent = googleText || "PressureFlow invoices will use the payment methods saved above.";
 }
 
 async function saveSettings(event) {
@@ -606,9 +603,6 @@ function openMeasurementDialog() {
   measuredArea.textContent = currentMeasurement.squareFeet
     ? `${Math.round(currentMeasurement.squareFeet).toLocaleString("en-US")} SqFt`
     : "0 SqFt";
-  measuredPerimeter.textContent = currentMeasurement.perimeterFeet
-    ? `${Math.round(currentMeasurement.perimeterFeet).toLocaleString("en-US")} LF`
-    : "0 LF";
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
   renderSavedMeasurements([]);
   measurementDialog.showModal();
@@ -712,7 +706,6 @@ function renderSavedMeasurements(measurements) {
     button.innerHTML = `
       <span>
         <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
-        ${item.measurement.perimeterFeet ? `<small>${Math.round(item.measurement.perimeterFeet).toLocaleString("en-US")} LF perimeter</small>` : ""}
       </span>
       <span>Use saved</span>
     `;
@@ -725,7 +718,6 @@ function applySavedMeasurement(measurement) {
   currentMeasurement = { ...measurement, capturedAt: new Date().toISOString() };
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
   measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
-  measuredPerimeter.textContent = `${Math.round(currentMeasurement.perimeterFeet || 0).toLocaleString("en-US")} LF`;
   initializeMeasurementMap();
   if (currentMeasurement.center?.length) {
     mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
@@ -738,7 +730,6 @@ function updateMeasurementFromDraw() {
   if (!feature) {
     currentMeasurement = { ...currentMeasurement, geojson: null, squareFeet: 0, perimeterFeet: 0, staticImageUrl: "" };
     measuredArea.textContent = "0 SqFt";
-    measuredPerimeter.textContent = "0 LF";
     measurementStatus.textContent = "Draw a polygon around the surface.";
     return;
   }
@@ -758,7 +749,6 @@ function updateMeasurementFromDraw() {
   };
   currentMeasurement.staticImageUrl = buildStaticMapUrl(currentMeasurement);
   measuredArea.textContent = `${squareFeet.toLocaleString("en-US")} SqFt`;
-  measuredPerimeter.textContent = `${perimeterFeet.toLocaleString("en-US")} LF`;
   measurementStatus.textContent = "Measurement ready.";
 }
 
@@ -911,7 +901,7 @@ function renderJobDetail() {
     ${renderJobPhotos(job)}
 
     <section class="detail-section">
-      <h4>Provider IDs</h4>
+      <h4>Links</h4>
       <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
       <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job.squareDepositInvoiceId, job.squareDepositInvoiceUrl)}</strong></div>
       <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job.squareFinalInvoiceId, job.squareFinalInvoiceUrl)}</strong></div>
@@ -1119,7 +1109,7 @@ function renderMeasurementDetail(job) {
   return `
     <div class="detail-row">
       <span>Map measurement</span>
-      <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt${job.measurement.perimeterFeet ? ` | ${Math.round(job.measurement.perimeterFeet).toLocaleString("en-US")} LF` : ""}</strong>
+      <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
     </div>
   `;
 }
@@ -1131,11 +1121,11 @@ function getNextAction(job) {
     "Estimate Signed": { label: "Send Contract", action: "send-contract" },
     "Contract Sent": { label: "Mark Contract Signed", action: "mark-contract-signed" },
     "Contract Signed": { label: "Send Deposit Invoice", action: "send-deposit-invoice" },
-    "Deposit Sent": { label: "Check Deposit Payment", action: "check-deposit-payment" },
+    "Deposit Sent": { label: "Mark Deposit Paid", action: "mark-deposit-paid" },
     "Deposit Paid": { label: "Schedule Job", action: "schedule" },
     "Scheduled": { label: "Complete Job + Send Final Invoice", action: "complete" },
     "Completed": { label: "Send Final Invoice", action: "send-final-invoice" },
-    "Final Invoice Sent": { label: "Check Final Payment", action: "check-final-payment" }
+    "Final Invoice Sent": { label: "Mark Paid", action: "mark-paid" }
   };
 
   return actions[job.status] ?? null;
@@ -1143,8 +1133,8 @@ function getNextAction(job) {
 
 function getFallbackAction(job) {
   const actions = {
-    "Deposit Sent": { label: "Manual: Mark Deposit Paid", action: "mark-deposit-paid" },
-    "Final Invoice Sent": { label: "Manual: Mark Paid", action: "mark-paid" }
+    "Deposit Sent": { label: "Open Deposit Invoice", action: "open-deposit-invoice" },
+    "Final Invoice Sent": { label: "Open Final Invoice", action: "open-final-invoice" }
   };
 
   return actions[job.status] ?? null;
@@ -1159,6 +1149,15 @@ async function runAction(jobId, action) {
   if (action === "reminder") {
     const job = jobs.find((item) => item.id === jobId);
     alert(buildReminderMessage(job));
+    return;
+  }
+
+  if (action === "open-deposit-invoice" || action === "open-final-invoice") {
+    const job = jobs.find((item) => item.id === jobId);
+    const url = action === "open-deposit-invoice" ? job?.squareDepositInvoiceUrl : job?.squareFinalInvoiceUrl;
+    if (url) {
+      window.open(url, "_blank", "noopener");
+    }
     return;
   }
 
