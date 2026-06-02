@@ -794,11 +794,11 @@ function renderCompletionProofPage(job) {
     ${estimatePageStyles()}
     <style>
       .proof-meta { display: grid; gap: 6px; margin: 16px 0 22px; color: #667085; }
-      .proof-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0 24px; }
+      .proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 24px; }
       .proof-grid figure { margin: 0; border: 1px solid #d8dee8; border-radius: 8px; overflow: hidden; background: #f7f8fb; }
-      .proof-grid img { display: block; width: 100%; height: 240px; object-fit: cover; }
+      .proof-grid img { display: block; width: 100%; height: 150px; object-fit: cover; }
       .print-actions { margin-top: 20px; }
-      @media (max-width: 640px) { .proof-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 640px) { .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proof-grid img { height: 128px; } }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } .print-actions { display: none; } }
     </style>
   </head>
@@ -855,6 +855,9 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
       .payment-methods { display: grid; gap: 10px; margin: 18px 0; }
       .payment-methods div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
       .proof-link { margin: 18px 0; padding: 14px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
+      .proof-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .proof-grid img { height: 150px; }
+      @media (max-width: 640px) { .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proof-grid img { height: 128px; } }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } button { display: none; } }
     </style>
   </head>
