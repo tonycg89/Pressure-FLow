@@ -34,7 +34,8 @@ const defaultSettings = {
   zellePayment: "",
   cashAppPayment: "",
   venmoPayment: "",
-  paymentInstructions: ""
+  paymentInstructions: "",
+  customTemplates: []
 };
 
 const statuses = [
@@ -244,7 +245,8 @@ async function readSettings() {
       zellePayment: rowSettings.zellePayment || "",
       cashAppPayment: rowSettings.cashAppPayment || "",
       venmoPayment: rowSettings.venmoPayment || "",
-      paymentInstructions: rowSettings.paymentInstructions || ""
+      paymentInstructions: rowSettings.paymentInstructions || "",
+      customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : []
     };
   }
 
@@ -272,8 +274,9 @@ async function writeSettings(settings) {
         cash_app_payment,
         venmo_payment,
         payment_instructions,
+        custom_templates,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -290,6 +293,7 @@ async function writeSettings(settings) {
         cash_app_payment = excluded.cash_app_payment,
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
+        custom_templates = excluded.custom_templates,
         updated_at = now()`,
       [
         settings.businessName || "",
@@ -306,7 +310,8 @@ async function writeSettings(settings) {
         settings.zellePayment || "",
         settings.cashAppPayment || "",
         settings.venmoPayment || "",
-        settings.paymentInstructions || ""
+        settings.paymentInstructions || "",
+        JSON.stringify(settings.customTemplates || [])
       ]
     );
     return;
@@ -391,12 +396,33 @@ async function ensurePostgresSchema() {
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   )`);
+  await getPool().query(`create table if not exists app_settings (
+    id integer primary key,
+    business_name text not null default '',
+    business_email text not null default '',
+    business_phone text not null default '',
+    default_deposit_percent numeric not null default 25,
+    default_job_duration_minutes integer not null default 180,
+    final_invoice_timing text not null default 'immediate_after_completion',
+    square_environment text not null default 'sandbox',
+    square_location_id text not null default '',
+    google_refresh_token text not null default '',
+    google_calendar_id text not null default '',
+    mapbox_public_token text not null default '',
+    zelle_payment text not null default '',
+    cash_app_payment text not null default '',
+    venmo_payment text not null default '',
+    payment_instructions text not null default '',
+    custom_templates jsonb not null default '[]'::jsonb,
+    updated_at timestamptz not null default now()
+  )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists zelle_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
@@ -415,6 +441,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists estimate_rejected_at timestamptz");
   await getPool().query("alter table jobs add column if not exists estimate_rejection_reason text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_rejection_note text not null default ''");
+  await getPool().query("alter table jobs add column if not exists scheduled_event_at timestamptz");
   await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
@@ -579,8 +606,9 @@ async function upsertJob(client, job) {
       contract_sent_at = nullif($16, '')::timestamptz,
       contract_signed_at = nullif($17, '')::timestamptz,
       contract_signed_date = $18,
-      contract_signer_name = $19
-    where id = $20`,
+      contract_signer_name = $19,
+      scheduled_event_at = nullif($20, '')::timestamptz
+    where id = $21`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -601,6 +629,7 @@ async function upsertJob(client, job) {
       job.contractSignedAt || "",
       job.contractSignedDate || "",
       job.contractSignerName || "",
+      job.scheduledEventAt || "",
       job.id
     ]
   );
@@ -638,6 +667,7 @@ function jobFromRow(row) {
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,
     scheduledAt: row.scheduled_at ? toLocalInputValue(row.scheduled_at) : "",
+    scheduledEventAt: row.scheduled_event_at?.toISOString?.() || "",
       jobDurationMinutes: Number(row.job_duration_minutes || 180),
     leadSource: row.lead_source || "",
     notes: row.notes || "",
@@ -744,7 +774,8 @@ function settingsFromRow(row) {
     zellePayment: row.zelle_payment || "",
     cashAppPayment: row.cash_app_payment || "",
     venmoPayment: row.venmo_payment || "",
-    paymentInstructions: row.payment_instructions || ""
+    paymentInstructions: row.payment_instructions || "",
+    customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : []
   };
 }
 

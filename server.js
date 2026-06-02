@@ -95,10 +95,12 @@ function publicSettings(settings) {
     squareWebhookSignatureKey,
     googleClientSecret,
     googleRefreshToken,
+    customTemplates,
     ...publicValues
   } = settings;
   return {
     ...publicValues,
+    customTemplates: getTemplateMetadata(customTemplates || []),
     hasSquareAccessToken: Boolean(squareAccessToken),
     hasSquareWebhookSignatureKey: Boolean(squareWebhookSignatureKey),
     hasGoogleClientSecret: Boolean(googleClientSecret),
@@ -141,6 +143,37 @@ function sendError(response, statusCode, message) {
   sendJson(response, statusCode, { error: message });
 }
 
+function getTemplateMetadata(templates = []) {
+  return templates.map(({ dataUrl, ...template }) => template);
+}
+
+function normalizeCustomTemplates(value) {
+  const templates = Array.isArray(value) ? value : [];
+  return templates
+    .map((template) => ({
+      id: String(template.id || crypto.randomUUID()),
+      name: String(template.name || template.fileName || "Uploaded template").trim(),
+      description: String(template.description || "").trim(),
+      fileName: String(template.fileName || "template.docx").trim(),
+      mimeType: normalizeTemplateMimeType(template.mimeType, template.fileName),
+      dataUrl: String(template.dataUrl || "").trim(),
+      uploadedAt: String(template.uploadedAt || new Date().toISOString())
+    }))
+    .filter((template) => template.dataUrl.startsWith("data:") && template.name);
+}
+
+function normalizeTemplateMimeType(mimeType, fileName = "") {
+  const lowerName = String(fileName || "").toLowerCase();
+  if (mimeType === "application/msword" || lowerName.endsWith(".doc")) {
+    return "application/msword";
+  }
+  return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+}
+
+function sanitizeDownloadFileName(fileName) {
+  return String(fileName || "template.docx").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120) || "template.docx";
+}
+
 function getNextStatus(status) {
   const currentIndex = statuses.indexOf(status);
   if (currentIndex === -1 || currentIndex === statuses.length - 1) {
@@ -171,6 +204,7 @@ function normalizeJob(input) {
     sensitiveAreas: String(input.sensitiveAreas || "").trim(),
     status: "Lead",
     scheduledAt: "",
+    scheduledEventAt: "",
     jobDurationMinutes: defaultSettings.defaultJobDurationMinutes,
     googleCalendarEventId: "",
     googleCalendarEventUrl: "",
@@ -1816,6 +1850,70 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  const customTemplateMatch = url.pathname.match(/^\/api\/templates\/custom\/([^/]+)$/);
+  if (request.method === "GET" && customTemplateMatch) {
+    const [, templateId] = customTemplateMatch;
+    const settings = await readSettings();
+    const template = normalizeCustomTemplates(settings.customTemplates).find((item) => item.id === templateId);
+    if (!template) {
+      sendError(response, 404, "Template not found.");
+      return;
+    }
+
+    const [, base64Data = ""] = template.dataUrl.split(",");
+    const file = Buffer.from(base64Data, "base64");
+    response.writeHead(200, {
+      "content-type": template.mimeType,
+      "content-disposition": `attachment; filename="${sanitizeDownloadFileName(template.fileName)}"`
+    });
+    response.end(file);
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/templates/custom") {
+    const input = await readRequestBody(request);
+    const settings = await readSettings();
+    const templates = normalizeCustomTemplates(settings.customTemplates);
+    const template = normalizeCustomTemplates([{
+      id: crypto.randomUUID(),
+      name: input.name,
+      description: input.description,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      dataUrl: input.dataUrl,
+      uploadedAt: new Date().toISOString()
+    }])[0];
+
+    if (!template) {
+      sendError(response, 400, "Upload a valid Word document.");
+      return;
+    }
+
+    if (!/\.docx?$/i.test(template.fileName)) {
+      sendError(response, 400, "Only .doc and .docx templates are supported.");
+      return;
+    }
+
+    if (Buffer.byteLength(template.dataUrl, "utf8") > 7_000_000) {
+      sendError(response, 400, "Template is too large. Please upload a smaller Word document.");
+      return;
+    }
+
+    settings.customTemplates = [template, ...templates].slice(0, 25);
+    await writeSettings(settings);
+    sendJson(response, 200, { templates: getTemplateMetadata(settings.customTemplates) });
+    return;
+  }
+
+  if (request.method === "DELETE" && customTemplateMatch) {
+    const [, templateId] = customTemplateMatch;
+    const settings = await readSettings();
+    settings.customTemplates = normalizeCustomTemplates(settings.customTemplates).filter((template) => template.id !== templateId);
+    await writeSettings(settings);
+    sendJson(response, 200, { templates: getTemplateMetadata(settings.customTemplates) });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/settings") {
     sendJson(response, 200, { settings: publicSettings(await readSettings()) });
     return;
@@ -2176,7 +2274,8 @@ function normalizeSettings(input, existing) {
     zellePayment: String(input.zellePayment || "").trim(),
     cashAppPayment: String(input.cashAppPayment || "").trim(),
     venmoPayment: String(input.venmoPayment || "").trim(),
-    paymentInstructions: String(input.paymentInstructions || "").trim()
+    paymentInstructions: String(input.paymentInstructions || "").trim(),
+    customTemplates: normalizeCustomTemplates(existing.customTemplates)
   };
 }
 
@@ -2576,6 +2675,7 @@ async function applyAction(job, action, input) {
     const calendarEvent = await createGoogleCalendarEvent(job, settings, scheduledAt, duration);
     job.status = "Scheduled";
     job.scheduledAt = scheduledAt;
+    job.scheduledEventAt = new Date().toISOString();
     job.jobDurationMinutes = duration;
     job.googleCalendarEventId = calendarEvent.id;
     job.googleCalendarEventUrl = calendarEvent.htmlLink || "";

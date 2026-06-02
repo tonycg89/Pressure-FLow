@@ -6,6 +6,7 @@ let selectedJobId = null;
 let selectedCustomerId = null;
 let selectedExpenseId = null;
 let settings = {};
+let dismissedNotificationIds = new Set(loadDismissedNotificationIds());
 
 const serviceCatalog = [
   { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
@@ -46,6 +47,7 @@ const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
 const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const notificationCount = document.querySelector("#notificationCount");
+const notificationClearAll = document.querySelector("#notificationClearAll");
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
 const newCustomerButton = document.querySelector("#newCustomerButton");
@@ -64,7 +66,10 @@ const expenseForm = document.querySelector("#expenseForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
-const templatesDialog = document.querySelector("#templatesDialog");
+const templateList = document.querySelector("#templateList");
+const templateUploadForm = document.querySelector("#templateUploadForm");
+const templateFileInput = document.querySelector("#templateFileInput");
+const templateUploadStatus = document.querySelector("#templateUploadStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
 const scheduleDialog = document.querySelector("#scheduleDialog");
@@ -130,6 +135,7 @@ async function init() {
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
   notificationToggle?.addEventListener("click", toggleNotificationDropdown);
+  notificationClearAll?.addEventListener("click", clearAllDashboardNotifications);
   document.addEventListener("click", closeNotificationDropdownFromOutside);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
@@ -137,7 +143,7 @@ async function init() {
   editCustomerButton.addEventListener("click", openEditCustomer);
   newExpenseButton.addEventListener("click", openNewExpense);
   settingsButton.addEventListener("click", openSettings);
-  templatesButton.addEventListener("click", () => templatesDialog.showModal());
+  templateUploadForm?.addEventListener("submit", uploadTemplate);
   jobForm.addEventListener("submit", createJob);
   customerForm.addEventListener("submit", saveCustomer);
   expenseForm.addEventListener("submit", saveExpense);
@@ -194,6 +200,7 @@ async function loadSettings() {
     const data = await response.json();
     settings = data.settings;
     applySettingsDefaults();
+    renderTemplates();
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
@@ -320,6 +327,104 @@ async function saveSettings(event) {
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
+}
+
+function renderTemplates() {
+  if (!templateList) return;
+
+  const builtInTemplates = [
+    {
+      id: "service-agreement",
+      type: "Contract",
+      name: "Pressure Washing Service Agreement",
+      description: "Used when you click Send Contract. Customer reviews and signs this agreement online.",
+      url: "/api/templates/service-agreement.docx",
+      removable: false
+    },
+    {
+      id: "estimate-approval",
+      type: "Estimate",
+      name: "PressureFlow Estimate Approval",
+      description: "Used when you click Send Estimate. Customer reviews itemized services and approves online.",
+      url: "/api/templates/estimate-approval.doc",
+      removable: false
+    }
+  ];
+  const uploadedTemplates = (settings.customTemplates || []).map((template) => ({
+    ...template,
+    type: "Uploaded",
+    url: `/api/templates/custom/${encodeURIComponent(template.id)}`,
+    removable: true
+  }));
+  const templates = [...builtInTemplates, ...uploadedTemplates];
+
+  templateList.innerHTML = templates.map((template) => `
+    <article class="template-card">
+      <p class="eyebrow">${escapeHtml(template.type)}</p>
+      <h3>${escapeHtml(template.name)}</h3>
+      <p>${escapeHtml(template.description || template.fileName || "Saved template document.")}</p>
+      <div class="template-card-actions">
+        <a class="secondary-link-button" href="${escapeHtml(template.url)}">Download Word Doc</a>
+        ${template.removable ? `<button class="action-button danger" type="button" data-delete-template="${escapeHtml(template.id)}">Delete</button>` : ""}
+      </div>
+    </article>
+  `).join("");
+
+  templateList.querySelectorAll("[data-delete-template]").forEach((button) => {
+    button.addEventListener("click", () => deleteTemplate(button.dataset.deleteTemplate));
+  });
+}
+
+async function uploadTemplate(event) {
+  event.preventDefault();
+  const file = templateFileInput.files?.[0];
+  if (!file) {
+    templateUploadStatus.textContent = "Choose a Word document first.";
+    return;
+  }
+
+  try {
+    templateUploadStatus.textContent = "Uploading template...";
+    const payload = Object.fromEntries(new FormData(templateUploadForm).entries());
+    payload.fileName = file.name;
+    payload.mimeType = file.type || inferTemplateMimeType(file.name);
+    payload.dataUrl = await readFileAsDataUrl(file);
+    const data = await apiRequest("/api/templates/custom", payload);
+    settings.customTemplates = data.templates || [];
+    templateUploadForm.reset();
+    templateUploadStatus.textContent = "Template uploaded.";
+    renderTemplates();
+  } catch (error) {
+    templateUploadStatus.textContent = error.message;
+  }
+}
+
+async function deleteTemplate(templateId) {
+  if (!templateId) return;
+  if (!confirm("Delete this uploaded template?")) return;
+
+  try {
+    const data = await apiRequest(`/api/templates/custom/${encodeURIComponent(templateId)}`, {}, "DELETE");
+    settings.customTemplates = data.templates || [];
+    renderTemplates();
+  } catch (error) {
+    templateUploadStatus.textContent = error.message;
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", () => reject(new Error("Unable to read file.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+function inferTemplateMimeType(fileName) {
+  return String(fileName || "").toLowerCase().endsWith(".doc")
+    ? "application/msword"
+    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 
 async function createJob(event) {
@@ -1049,10 +1154,10 @@ function renderDashboardNotifications(scopedJobs) {
   const container = document.querySelector("#dashboardNotifications");
   if (!container) return;
 
-  const notifications = scopedJobs
+  const allNotifications = scopedJobs
     .flatMap(buildJobNotifications)
-    .sort((a, b) => new Date(b.at) - new Date(a.at))
-    .slice(0, 12);
+    .sort((a, b) => new Date(b.receivedAt || b.at) - new Date(a.receivedAt || a.at));
+  const notifications = allNotifications.filter((item) => !dismissedNotificationIds.has(item.id));
 
   if (notificationCount) {
     notificationCount.textContent = String(notifications.length);
@@ -1060,22 +1165,23 @@ function renderDashboardNotifications(scopedJobs) {
   }
 
   if (!notifications.length) {
-    container.innerHTML = '<p class="empty-state compact-empty">No recent notifications yet.</p>';
+    container.innerHTML = '<p class="empty-state compact-empty">No unread notifications.</p>';
     return;
   }
 
-  container.innerHTML = notifications.map((item) => `
-    <button class="notification-item" type="button" data-job-id="${escapeHtml(item.jobId)}">
+  container.innerHTML = notifications.slice(0, 12).map((item) => `
+    <button class="notification-item" type="button" data-job-id="${escapeHtml(item.jobId)}" data-notification-id="${escapeHtml(item.id)}">
       <span class="notification-icon ${escapeHtml(item.level)}" data-kind="${escapeHtml(item.kind)}" aria-hidden="true"></span>
       <span>
         <strong>${escapeHtml(item.title)}</strong>
-        <small>${escapeHtml(item.customer)} | ${escapeHtml(item.detail)} | ${formatNotificationDate(item.at)}</small>
+        <small>${escapeHtml(item.customer)} | ${escapeHtml(item.detail)} | ${formatNotificationDate(item.receivedAt || item.at)}</small>
       </span>
     </button>
   `).join("");
 
   container.querySelectorAll("[data-job-id]").forEach((button) => {
     button.addEventListener("click", () => {
+      dismissNotification(button.dataset.notificationId);
       selectedJobId = button.dataset.jobId;
       document.querySelector('[data-view="pipeline"]').click();
       closeNotificationDropdown();
@@ -1105,9 +1211,36 @@ function closeNotificationDropdownFromOutside(event) {
   closeNotificationDropdown();
 }
 
+function clearAllDashboardNotifications(event) {
+  event?.stopPropagation();
+  jobs.flatMap(buildJobNotifications).forEach((item) => dismissedNotificationIds.add(item.id));
+  saveDismissedNotificationIds();
+  renderDashboard();
+}
+
+function dismissNotification(id) {
+  if (!id) return;
+  dismissedNotificationIds.add(id);
+  saveDismissedNotificationIds();
+}
+
+function loadDismissedNotificationIds() {
+  try {
+    const stored = JSON.parse(localStorage.getItem("pressureflow.dismissedNotifications") || "[]");
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDismissedNotificationIds() {
+  localStorage.setItem("pressureflow.dismissedNotifications", JSON.stringify([...dismissedNotificationIds].slice(-300)));
+}
+
 function buildJobNotifications(job) {
   return [
     job.estimateApprovedAt ? {
+      id: `estimate-approved-${job.id}-${job.estimateApprovedAt}`,
       jobId: job.id,
       at: job.estimateApprovedAt,
       level: "success",
@@ -1117,6 +1250,7 @@ function buildJobNotifications(job) {
       detail: currency.format(job.estimate)
     } : null,
     job.estimateRejectedAt ? {
+      id: `estimate-rejected-${job.id}-${job.estimateRejectedAt}`,
       jobId: job.id,
       at: job.estimateRejectedAt,
       level: "warning",
@@ -1126,6 +1260,7 @@ function buildJobNotifications(job) {
       detail: job.estimateRejectionReason ? formatEstimateRejectionReason(job.estimateRejectionReason) : "Follow up"
     } : null,
     job.contractSignedAt ? {
+      id: `contract-signed-${job.id}-${job.contractSignedAt}`,
       jobId: job.id,
       at: job.contractSignedAt,
       level: "success",
@@ -1135,6 +1270,7 @@ function buildJobNotifications(job) {
       detail: "Ready for deposit"
     } : null,
     job.squareDepositPaidAt ? {
+      id: `deposit-paid-${job.id}-${job.squareDepositPaidAt}`,
       jobId: job.id,
       at: job.squareDepositPaidAt,
       level: "success",
@@ -1144,15 +1280,18 @@ function buildJobNotifications(job) {
       detail: currency.format(getDeposit(job))
     } : null,
     job.scheduledAt ? {
+      id: `job-scheduled-${job.id}-${job.scheduledEventAt || job.scheduledAt}`,
       jobId: job.id,
       at: job.scheduledAt,
+      receivedAt: job.scheduledEventAt || job.updatedAt || job.scheduledAt,
       level: "info",
       kind: "calendar",
       title: "Job scheduled",
       customer: job.customerName,
-      detail: job.address
+      detail: `Scheduled for ${formatShortDate(job.scheduledAt)}`
     } : null,
     job.squareFinalPaidAt ? {
+      id: `final-paid-${job.id}-${job.squareFinalPaidAt}`,
       jobId: job.id,
       at: job.squareFinalPaidAt,
       level: "success",
