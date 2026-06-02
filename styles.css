@@ -297,6 +297,37 @@ textarea {
   margin-top: 1px;
 }
 
+.completed-jobs {
+  border-top: 1px solid var(--line);
+  background: #fbfcfe;
+}
+
+.completed-jobs summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.completed-jobs summary span {
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.completed-job-list {
+  border-top: 1px solid var(--line);
+}
+
 .status-pill.done {
   background: var(--green-soft);
   color: var(--green);

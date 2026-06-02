@@ -111,12 +111,15 @@ let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 const beforePhotoSections = [
   "Main driveway",
+  "Back patio",
+  "Fence",
   "House #1",
   "House #2",
   "House #3",
   "House #4",
   "Roof",
-  "Gutters"
+  "Gutters",
+  "Trash cans"
 ];
 
 async function init() {
@@ -1054,41 +1057,71 @@ function renderMetrics() {
 
 function renderJobList() {
   const selectedStatus = statusFilter.value;
-  const visibleJobs = selectedStatus === "all"
-    ? jobs
-    : jobs.filter((job) => job.status === selectedStatus);
-
   jobList.innerHTML = "";
 
+  if (selectedStatus === "all") {
+    const activeJobs = jobs.filter((job) => job.status !== "Paid");
+    const completedJobs = jobs.filter((job) => job.status === "Paid");
+
+    if (!activeJobs.length && !completedJobs.length) {
+      jobList.innerHTML = '<p class="empty-state">No jobs match this filter.</p>';
+      return;
+    }
+
+    if (activeJobs.length) {
+      activeJobs.forEach((job) => appendJobCard(jobList, job));
+    } else {
+      jobList.innerHTML = '<p class="empty-state">No in-progress jobs right now.</p>';
+    }
+
+    if (completedJobs.length) {
+      const completedSection = document.createElement("details");
+      completedSection.className = "completed-jobs";
+      completedSection.innerHTML = `
+        <summary>Completed jobs <span>${completedJobs.length}</span></summary>
+        <div class="completed-job-list"></div>
+      `;
+      const completedList = completedSection.querySelector(".completed-job-list");
+      completedJobs.forEach((job) => appendJobCard(completedList, job));
+      jobList.append(completedSection);
+    }
+    return;
+  }
+
+  const visibleJobs = jobs.filter((job) => job.status === selectedStatus);
   if (visibleJobs.length === 0) {
     jobList.innerHTML = '<p class="empty-state">No jobs match this filter.</p>';
     return;
   }
 
   visibleJobs.forEach((job) => {
-    const card = document.createElement("button");
-    card.className = `job-card ${job.id === selectedJobId ? "selected" : ""}`;
-    card.type = "button";
-    card.addEventListener("click", () => {
-      selectedJobId = job.id;
-      render();
-    });
-
-    card.innerHTML = `
-      <div>
-        <h4>${escapeHtml(job.customerName)}</h4>
-        <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
-        <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit | ${formatLeadSource(job.leadSource)}</p>
-      </div>
-      <span class="status-pill ${getStatusClass(job.status)}">${job.status}</span>
-    `;
-
-    jobList.append(card);
+    appendJobCard(jobList, job);
   });
 }
 
+function appendJobCard(container, job) {
+  const card = document.createElement("button");
+  card.className = `job-card ${job.id === selectedJobId ? "selected" : ""}`;
+  card.type = "button";
+  card.addEventListener("click", () => {
+    selectedJobId = job.id;
+    render();
+  });
+
+  card.innerHTML = `
+    <div>
+      <h4>${escapeHtml(job.customerName)}</h4>
+      <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
+      <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit | ${formatLeadSource(job.leadSource)}</p>
+    </div>
+    <span class="status-pill ${getStatusClass(job.status)}">${job.status}</span>
+  `;
+
+  container.append(card);
+}
+
 function renderJobDetail() {
-  const job = jobs.find((item) => item.id === selectedJobId) ?? jobs[0];
+  const job = jobs.find((item) => item.id === selectedJobId) ?? jobs.find((item) => item.status !== "Paid") ?? jobs[0];
 
   if (!job) {
     jobDetail.innerHTML = '<p class="empty-state">Create your first job to start the workflow.</p>';
