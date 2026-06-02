@@ -52,6 +52,8 @@ const geocodeAddressButton = document.querySelector("#geocodeAddressButton");
 const measuredArea = document.querySelector("#measuredArea");
 const measuredPerimeter = document.querySelector("#measuredPerimeter");
 const measurementStatus = document.querySelector("#measurementStatus");
+const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel");
+const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 let pendingScheduleResolve = null;
@@ -396,11 +398,13 @@ function openMeasurementDialog() {
     ? `${Math.round(currentMeasurement.perimeterFeet).toLocaleString("en-US")} LF`
     : "0 LF";
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
+  renderSavedMeasurements([]);
   measurementDialog.showModal();
   setTimeout(() => {
     initializeMeasurementMap();
     if (measurementAddress.value) {
       geocodeMeasurementAddress();
+      loadSavedMeasurementsForAddress(measurementAddress.value);
     }
   }, 50);
 }
@@ -462,6 +466,59 @@ async function geocodeMeasurementAddress() {
   initializeMeasurementMap();
   mapboxMap?.flyTo({ center, zoom: 19, essential: true });
   measurementStatus.textContent = "Draw a polygon around the surface.";
+  await loadSavedMeasurementsForAddress(currentMeasurement.address);
+}
+
+async function loadSavedMeasurementsForAddress(address) {
+  const normalizedAddress = String(address || "").trim();
+  if (!normalizedAddress) {
+    renderSavedMeasurements([]);
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/property-measurements?address=${encodeURIComponent(normalizedAddress)}`);
+    if (!response.ok) {
+      throw new Error("Unable to load saved measurements.");
+    }
+    const data = await response.json();
+    renderSavedMeasurements(data.measurements || []);
+  } catch {
+    renderSavedMeasurements([]);
+  }
+}
+
+function renderSavedMeasurements(measurements) {
+  const reusable = measurements.filter((item) => item.measurement?.geojson && item.measurement?.squareFeet);
+  savedMeasurementsPanel.hidden = reusable.length === 0;
+  savedMeasurementsList.innerHTML = "";
+
+  reusable.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "saved-measurement-button";
+    button.innerHTML = `
+      <span>
+        <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
+        ${item.measurement.perimeterFeet ? `<small>${Math.round(item.measurement.perimeterFeet).toLocaleString("en-US")} LF perimeter</small>` : ""}
+      </span>
+      <span>Use saved</span>
+    `;
+    button.addEventListener("click", () => applySavedMeasurement(item.measurement));
+    savedMeasurementsList.append(button);
+  });
+}
+
+function applySavedMeasurement(measurement) {
+  currentMeasurement = { ...measurement, capturedAt: new Date().toISOString() };
+  measurementAddress.value = currentMeasurement.address || measurementAddress.value;
+  measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
+  measuredPerimeter.textContent = `${Math.round(currentMeasurement.perimeterFeet || 0).toLocaleString("en-US")} LF`;
+  initializeMeasurementMap();
+  if (currentMeasurement.center?.length) {
+    mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
+  }
+  measurementStatus.textContent = "Saved measurement loaded.";
 }
 
 function updateMeasurementFromDraw() {

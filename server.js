@@ -947,6 +947,12 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/property-measurements") {
+    const address = url.searchParams.get("address") || "";
+    sendJson(response, 200, { measurements: await findSavedMeasurements(address) });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/export/jobs.csv") {
     const csv = jobsToCsv(await readJobs());
     response.writeHead(200, {
@@ -1378,6 +1384,41 @@ function updateJob(job, input) {
   if (Object.hasOwn(input, "depositPercent")) {
     job.depositPercent = Number(input.depositPercent);
   }
+}
+
+async function findSavedMeasurements(address) {
+  const target = normalizeAddressKey(address);
+  if (!target) {
+    return [];
+  }
+
+  const seen = new Set();
+  return (await readJobs())
+    .filter((job) => normalizeAddressKey(job.address) === target && job.measurement?.geojson && job.measurement?.squareFeet)
+    .map((job) => ({
+      jobId: job.id,
+      customerName: job.customerName,
+      address: job.address,
+      updatedAt: job.updatedAt || job.createdAt || "",
+      measurement: job.measurement
+    }))
+    .filter((item) => {
+      const key = JSON.stringify(item.measurement.geojson);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 5);
+}
+
+function normalizeAddressKey(address) {
+  return String(address || "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function didPricingChange(job, input) {

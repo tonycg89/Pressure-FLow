@@ -600,6 +600,51 @@ label {
   font-size: 13px;
 }
 
+.compact-header {
+  align-items: end;
+}
+
+.saved-measurements {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #b8e3dc;
+  border-radius: 8px;
+  background: #eef9f7;
+}
+
+.saved-measurements[hidden] {
+  display: none;
+}
+
+.saved-measurements-list {
+  display: grid;
+  gap: 8px;
+}
+
+.saved-measurement-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: white;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.saved-measurement-button span:first-child {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.saved-measurement-button small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .measurement-preview {
   width: 100%;
   border: 1px solid #d8dee8;
