@@ -638,18 +638,17 @@ function renderContractSigningPage(job) {
           <p>This contract was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
         </section>
       ` : `
-        <form method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
+        <form id="contractSignForm" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
           <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
           <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
           <label>
-            Signature date
-            <input name="signedDate" type="date" required>
+            Signature date and time
+            <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add current date and time">
           </label>
           <label>
             Type your full name to sign
             <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
           </label>
-          <div class="signature-preview" id="signaturePreview">Signature preview</div>
           <button type="submit">Sign Contract</button>
         </form>
         ${contractSigningScript()}
@@ -669,7 +668,7 @@ function renderContractTerms(job) {
         ${section.initialsRequired ? `
           <label class="initials-field">
             Initials
-            <input name="initials_${index}" class="initials-input" required placeholder="Click to initial" autocomplete="off">
+            <input name="initials_${index}" class="initials-input" form="contractSignForm" required placeholder="Click to initial" autocomplete="off">
           </label>
         ` : ""}
       </article>
@@ -714,6 +713,7 @@ function getCustomerInitials(name) {
 function contractSigningScript() {
   return `<script>
     const expectedInitials = document.querySelector("#expectedInitials")?.value || "";
+    const signedDateInput = document.querySelector("#signedDateInput");
     document.querySelectorAll(".initials-input").forEach((input) => {
       input.addEventListener("click", () => {
         input.value = expectedInitials;
@@ -723,13 +723,34 @@ function contractSigningScript() {
       });
     });
 
-    const signatureInput = document.querySelector("#signatureInput");
-    const signaturePreview = document.querySelector("#signaturePreview");
-    if (signatureInput && signaturePreview) {
-      signatureInput.addEventListener("input", () => {
-        signaturePreview.textContent = signatureInput.value || "Signature preview";
-      });
+    if (signedDateInput) {
+      const fillSignedDate = () => {
+        signedDateInput.value = new Date().toLocaleString("en-US", {
+          timeZone: "America/Los_Angeles",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit"
+        });
+      };
+      signedDateInput.addEventListener("click", fillSignedDate);
+      signedDateInput.addEventListener("focus", fillSignedDate);
     }
+
+    document.querySelector("#contractSignForm")?.addEventListener("submit", (event) => {
+      const missingInitials = Array.from(document.querySelectorAll(".initials-input")).some((input) => !input.value.trim());
+      if (missingInitials) {
+        event.preventDefault();
+        alert("Please click each initials box before signing.");
+        return;
+      }
+
+      if (!signedDateInput?.value.trim()) {
+        event.preventDefault();
+        alert("Please click the signature date and time box before signing.");
+      }
+    });
   </script>`;
 }
 
@@ -746,7 +767,6 @@ function estimatePageStyles() {
     input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
     .initials-field { max-width: 180px; }
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
-    .signature-preview { min-height: 56px; margin: 4px 0 18px; padding: 10px 0; border-bottom: 2px solid #202124; color: #202124; font-family: "Brush Script MT", "Segoe Script", cursive; font-size: 34px; line-height: 1.1; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
