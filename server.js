@@ -30,7 +30,9 @@ const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".md": "text/markdown; charset=utf-8"
+  ".md": "text/markdown; charset=utf-8",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 };
 
 const loginPage = `<!doctype html>
@@ -778,6 +780,84 @@ function renderEstimateApprovalPage(job) {
 </html>`;
 }
 
+function renderEstimateApprovalWordTemplate(settings) {
+  const businessName = settings.businessName || "Precision Power Washing";
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>PressureFlow Estimate Approval Template</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #202124; line-height: 1.45; }
+      h1 { font-size: 24pt; margin: 0 0 6pt; }
+      h2 { font-size: 14pt; margin: 18pt 0 8pt; }
+      p { margin: 0 0 8pt; }
+      table { width: 100%; border-collapse: collapse; margin: 8pt 0 14pt; }
+      th, td { border: 1px solid #808080; padding: 7pt; text-align: left; vertical-align: top; }
+      th { background: #f2f2f2; }
+      .muted { color: #666666; }
+      .signature { height: 36pt; }
+    </style>
+  </head>
+  <body>
+    <h1>Estimate Approval</h1>
+    <p><strong>Business:</strong> ${escapeHtml(businessName)}</p>
+    <p><strong>Customer:</strong> [Customer Name]</p>
+    <p><strong>Property Address:</strong> [Service Address]</p>
+    <p><strong>Email:</strong> [Customer Email]</p>
+    <p><strong>Phone:</strong> [Customer Phone]</p>
+
+    <h2>Scope and Pricing</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Area / Quantity</th>
+          <th>Rate</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>[Service Name]</td>
+          <td>[SqFt, LNF, or Qty]</td>
+          <td>[$ Rate]</td>
+          <td>[$ Total]</td>
+        </tr>
+        <tr>
+          <td>[Additional Service]</td>
+          <td>[SqFt, LNF, or Qty]</td>
+          <td>[$ Rate]</td>
+          <td>[$ Total]</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table>
+      <tbody>
+        <tr><td><strong>Subtotal</strong></td><td>[$ Subtotal]</td></tr>
+        <tr><td><strong>Discount</strong></td><td>[$ Discount, if any]</td></tr>
+        <tr><td><strong>Total Estimate</strong></td><td>[$ Total]</td></tr>
+        <tr><td><strong>Deposit Required</strong></td><td>[Deposit % and $ Amount]</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Customer Approval</h2>
+    <p>The Customer acknowledges that this estimate identifies the services, pricing, and scope of work for the project. By approving or signing this estimate, the Customer authorizes the Business to proceed with the services described, subject to the service agreement and any written changes approved by both parties.</p>
+    <p class="muted">Services, areas, conditions, or work not listed in this estimate are excluded unless approved in writing and may require additional charges.</p>
+
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Customer Signature</strong><br><br><div class="signature">[Signature]</div></td>
+          <td><strong>Date</strong><br><br>[Date]</td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>`;
+}
+
 function renderMeasurementPreview(job) {
   if (!job.measurement?.staticImageUrl) {
     return "";
@@ -1320,6 +1400,27 @@ async function handleApi(request, response, url) {
       "content-disposition": `attachment; filename="pressureflow-backup-${dateStamp()}.json"`
     });
     response.end(JSON.stringify(backup, null, 2));
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/templates/service-agreement.docx") {
+    const file = await readFile(path.join(ROOT, "Pressure Washing Service Agreement.docx"));
+    response.writeHead(200, {
+      "content-type": contentTypes[".docx"],
+      "content-disposition": 'attachment; filename="Pressure Washing Service Agreement.docx"'
+    });
+    response.end(file);
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/templates/estimate-approval.doc") {
+    const settings = await readSettings();
+    const doc = renderEstimateApprovalWordTemplate(settings);
+    response.writeHead(200, {
+      "content-type": `${contentTypes[".doc"]}; charset=utf-8`,
+      "content-disposition": 'attachment; filename="PressureFlow Estimate Approval Template.doc"'
+    });
+    response.end(doc);
     return;
   }
 
