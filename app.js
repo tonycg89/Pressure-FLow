@@ -11,10 +11,12 @@ const serviceCatalog = [
   { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
   { name: "Holiday Light Installation", unit: "LNF", price: 5 },
   { name: "House Washing", unit: "SqFt", price: 0.25 },
+  { name: "Oil Stain Cleanup", unit: "Qty", price: 75 },
   { name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
   { name: "Pressure Washing", unit: "SqFt", price: 0.2 },
   { name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
   { name: "Roof Wash", unit: "SqFt", price: 0.4 },
+  { name: "Gutter Cleaning", unit: "LNF", price: 1 },
   { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
   { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
