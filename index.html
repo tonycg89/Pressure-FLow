@@ -18,19 +18,32 @@
 
         <nav class="nav-list" aria-label="Primary">
           <button class="nav-item active" type="button" title="Dashboard" data-view="dashboard">
-            <span aria-hidden="true">D</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M5 7h14M5 12h10M5 17h6"></path>
+            </svg>
             <span>Dashboard</span>
           </button>
           <button class="nav-item" type="button" title="Pipeline" data-view="pipeline">
-            <span aria-hidden="true">P</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 8h6a3 3 0 0 1 3 3v2a3 3 0 0 0 3 3h4"></path>
+              <path d="M7 5v6M17 13v6"></path>
+            </svg>
             <span>Pipeline</span>
           </button>
           <button class="nav-item" type="button" title="Customers" data-view="customers">
-            <span aria-hidden="true">C</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
+              <path d="M17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+              <path d="M3.5 20a6.5 6.5 0 0 1 13 0"></path>
+              <path d="M14.5 15.5A5.5 5.5 0 0 1 21 20"></path>
+            </svg>
             <span>Customers</span>
           </button>
           <button id="templatesButton" class="nav-item" type="button" title="Templates">
-            <span aria-hidden="true">T</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M7 3h7l5 5v13H7Z"></path>
+              <path d="M14 3v5h5M10 13h6M10 17h6"></path>
+            </svg>
             <span>Templates</span>
           </button>
           <button class="nav-item" type="button" title="Expenses" data-view="expenses">
@@ -38,7 +51,10 @@
             <span>Expenses</span>
           </button>
           <button id="settingsButton" class="nav-item" type="button" title="Settings">
-            <span aria-hidden="true">S</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+              <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66V21a2.1 2.1 0 0 1-4.2 0v-.06a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 1 1-2.97-2.97l.04-.04a1.8 1.8 0 0 0 .36-1.98 1.8 1.8 0 0 0-1.66-1.1H2a2.1 2.1 0 0 1 0-4.2h.06a1.8 1.8 0 0 0 1.66-1.1 1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.1-1.66V2a2.1 2.1 0 0 1 4.2 0v.06a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.66 1.1H22a2.1 2.1 0 0 1 0 4.2h-.06a1.8 1.8 0 0 0-1.54 1Z"></path>
+            </svg>
             <span>Settings</span>
           </button>
         </nav>
@@ -53,7 +69,10 @@
           <div class="dashboard-actions">
             <div class="notification-menu">
               <button id="notificationToggle" class="icon-button notification-toggle" type="button" title="Notifications" aria-expanded="false" aria-controls="notificationDropdown">
-                <span aria-hidden="true">!</span>
+                <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                  <path d="M10 21h4"></path>
+                </svg>
                 <strong id="notificationCount">0</strong>
               </button>
               <div id="notificationDropdown" class="notification-dropdown" hidden>

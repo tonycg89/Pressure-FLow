@@ -1066,7 +1066,7 @@ function renderDashboardNotifications(scopedJobs) {
 
   container.innerHTML = notifications.map((item) => `
     <button class="notification-item" type="button" data-job-id="${escapeHtml(item.jobId)}">
-      <span class="notification-icon ${escapeHtml(item.level)}">${escapeHtml(item.icon)}</span>
+      <span class="notification-icon ${escapeHtml(item.level)}" data-kind="${escapeHtml(item.kind)}" aria-hidden="true"></span>
       <span>
         <strong>${escapeHtml(item.title)}</strong>
         <small>${escapeHtml(item.customer)} | ${escapeHtml(item.detail)} | ${formatNotificationDate(item.at)}</small>
@@ -1111,7 +1111,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.estimateApprovedAt,
       level: "success",
-      icon: "OK",
+      kind: "check",
       title: "Estimate accepted",
       customer: job.customerName,
       detail: currency.format(job.estimate)
@@ -1120,7 +1120,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.estimateRejectedAt,
       level: "warning",
-      icon: "NO",
+      kind: "reject",
       title: "Estimate rejected",
       customer: job.customerName,
       detail: job.estimateRejectionReason ? formatEstimateRejectionReason(job.estimateRejectionReason) : "Follow up"
@@ -1129,7 +1129,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.contractSignedAt,
       level: "success",
-      icon: "SG",
+      kind: "check",
       title: "Contract signed",
       customer: job.customerName,
       detail: "Ready for deposit"
@@ -1138,7 +1138,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.squareDepositPaidAt,
       level: "success",
-      icon: "$",
+      kind: "money",
       title: "Deposit paid",
       customer: job.customerName,
       detail: currency.format(getDeposit(job))
@@ -1147,7 +1147,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.scheduledAt,
       level: "info",
-      icon: "CAL",
+      kind: "calendar",
       title: "Job scheduled",
       customer: job.customerName,
       detail: job.address
@@ -1156,7 +1156,7 @@ function buildJobNotifications(job) {
       jobId: job.id,
       at: job.squareFinalPaidAt,
       level: "success",
-      icon: "$",
+      kind: "money",
       title: "Final invoice paid",
       customer: job.customerName,
       detail: currency.format(getFinalBalance(job))

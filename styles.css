@@ -105,15 +105,29 @@ button {
   text-align: left;
 }
 
-.nav-item span:first-child {
+.nav-item span:first-child,
+.nav-icon {
   display: grid;
   width: 28px;
   height: 28px;
   place-items: center;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.14);
+}
+
+.nav-item span:first-child {
   font-size: 12px;
   font-weight: 800;
+}
+
+.nav-icon {
+  flex: 0 0 28px;
+  padding: 6px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .nav-item.active,
@@ -214,6 +228,16 @@ button {
   min-width: 40px;
   border-radius: 999px;
   font-weight: 900;
+}
+
+.button-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .notification-toggle strong {
@@ -540,7 +564,7 @@ textarea {
   border-radius: 8px;
   background: #eef6ff;
   color: var(--blue);
-  font-size: 10px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -552,6 +576,51 @@ textarea {
 .notification-icon.warning {
   background: var(--amber-soft);
   color: var(--amber);
+}
+
+.notification-icon[data-kind="check"]::before {
+  content: "";
+  width: 13px;
+  height: 7px;
+  border-left: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.notification-icon[data-kind="reject"] {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.notification-icon[data-kind="reject"]::before,
+.notification-icon[data-kind="reject"]::after {
+  content: "";
+  grid-area: 1 / 1;
+  width: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.notification-icon[data-kind="reject"]::before {
+  transform: rotate(45deg);
+}
+
+.notification-icon[data-kind="reject"]::after {
+  transform: rotate(-45deg);
+}
+
+.notification-icon[data-kind="money"]::before {
+  content: "$";
+}
+
+.notification-icon[data-kind="calendar"]::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-top-width: 5px;
+  border-radius: 4px;
 }
 
 .compact-empty {
