@@ -412,6 +412,9 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists estimate_mailto text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_sent_at timestamptz");
   await getPool().query("alter table jobs add column if not exists estimate_approved_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists estimate_rejected_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists estimate_rejection_reason text not null default ''");
+  await getPool().query("alter table jobs add column if not exists estimate_rejection_note text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
@@ -567,14 +570,17 @@ async function upsertJob(client, job) {
       estimate_mailto = $7,
       estimate_sent_at = nullif($8, '')::timestamptz,
       estimate_approved_at = nullif($9, '')::timestamptz,
-      contract_approval_token = $10,
-      contract_approval_url = $11,
-      contract_mailto = $12,
-      contract_sent_at = nullif($13, '')::timestamptz,
-      contract_signed_at = nullif($14, '')::timestamptz,
-      contract_signed_date = $15,
-      contract_signer_name = $16
-    where id = $17`,
+      estimate_rejected_at = nullif($10, '')::timestamptz,
+      estimate_rejection_reason = $11,
+      estimate_rejection_note = $12,
+      contract_approval_token = $13,
+      contract_approval_url = $14,
+      contract_mailto = $15,
+      contract_sent_at = nullif($16, '')::timestamptz,
+      contract_signed_at = nullif($17, '')::timestamptz,
+      contract_signed_date = $18,
+      contract_signer_name = $19
+    where id = $20`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -585,6 +591,9 @@ async function upsertJob(client, job) {
       job.estimateMailto || "",
       job.estimateSentAt || "",
       job.estimateApprovedAt || "",
+      job.estimateRejectedAt || "",
+      job.estimateRejectionReason || "",
+      job.estimateRejectionNote || "",
       job.contractApprovalToken || "",
       job.contractApprovalUrl || "",
       job.contractMailto || "",
@@ -616,6 +625,9 @@ function jobFromRow(row) {
     estimateMailto: row.estimate_mailto || "",
     estimateSentAt: row.estimate_sent_at?.toISOString?.() || "",
     estimateApprovedAt: row.estimate_approved_at?.toISOString?.() || "",
+    estimateRejectedAt: row.estimate_rejected_at?.toISOString?.() || "",
+    estimateRejectionReason: row.estimate_rejection_reason || "",
+    estimateRejectionNote: row.estimate_rejection_note || "",
     contractApprovalToken: row.contract_approval_token || "",
     contractApprovalUrl: row.contract_approval_url || "",
     contractMailto: row.contract_mailto || "",

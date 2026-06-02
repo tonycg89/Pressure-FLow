@@ -1142,6 +1142,8 @@ function renderJobDetail() {
     <section class="detail-section">
       <div class="detail-row"><span>Status</span><strong>${job.status}</strong></div>
       <div class="detail-row"><span>Lead source</span><strong>${formatLeadSource(job.leadSource)}</strong></div>
+      ${job.estimateRejectedAt ? `<div class="detail-row"><span>Estimate rejected</span><strong>${formatShortDate(job.estimateRejectedAt)}${job.estimateRejectionReason ? ` - ${formatEstimateRejectionReason(job.estimateRejectionReason)}` : ""}</strong></div>` : ""}
+      ${job.estimateRejectionNote ? `<div class="detail-row"><span>Rejection note</span><strong>${escapeHtml(job.estimateRejectionNote)}</strong></div>` : ""}
       <div class="detail-row"><span>Estimate</span><strong>${currency.format(job.estimate)}</strong></div>
       ${renderEstimateItems(job)}
       <div class="detail-row"><span>Deposit</span><strong>${currency.format(getDeposit(job))}</strong></div>
@@ -1274,7 +1276,7 @@ function renderCustomerDetail() {
       <h4>Jobs</h4>
       ${relatedJobs.length ? relatedJobs.map((job) => `
         <button class="related-job-button" type="button" data-job-id="${escapeHtml(job.id)}">
-          <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}<br><small>${escapeHtml(job.squareFinalInvoiceId ? "Final invoice saved" : job.squareDepositInvoiceId ? "Deposit invoice saved" : "No invoice yet")}</small></span>
+          <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}<br><small>${escapeHtml(renderCustomerJobMilestonesText(job))}</small></span>
           <strong>${currency.format(job.estimate)}</strong>
         </button>
       `).join("") : '<p>No jobs yet.</p>'}
@@ -1294,6 +1296,47 @@ function renderCustomerDetail() {
   });
   customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
   attachPhotoViewerHandlers(customerDetail);
+}
+
+function renderCustomerJobMilestonesText(job) {
+  const milestones = [
+    job.estimateSentAt ? `Estimate sent ${formatShortDate(job.estimateSentAt)}` : "",
+    job.estimateApprovedAt ? `Estimate accepted ${formatShortDate(job.estimateApprovedAt)}` : "",
+    job.estimateRejectedAt ? `Estimate rejected ${formatShortDate(job.estimateRejectedAt)}${job.estimateRejectionReason ? ` (${formatEstimateRejectionReason(job.estimateRejectionReason)})` : ""}` : "",
+    job.contractSentAt ? `Contract sent ${formatShortDate(job.contractSentAt)}` : "",
+    job.contractSignedAt ? `Contract signed ${formatShortDate(job.contractSignedAt)}` : "",
+    job.squareDepositInvoiceId ? `Deposit invoice sent${job.squareDepositPaidAt ? `, paid ${formatShortDate(job.squareDepositPaidAt)}` : ""}` : "",
+    job.scheduledAt ? `Scheduled ${formatShortDate(job.scheduledAt)}` : "",
+    job.completionNoticeSentAt ? `Completion notice ${formatShortDate(job.completionNoticeSentAt)}` : "",
+    job.squareFinalInvoiceId ? `Final invoice sent${job.squareFinalPaidAt ? `, paid ${formatShortDate(job.squareFinalPaidAt)}` : ""}` : ""
+  ].filter(Boolean);
+
+  return milestones.length ? milestones.join(" | ") : "No documents sent yet";
+}
+
+function formatShortDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value || "");
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function formatEstimateRejectionReason(value) {
+  const labels = {
+    "price-too-high": "Price too high",
+    "timing-not-right": "Timing not right",
+    "went-with-another-company": "Went with another company",
+    "scope-changed": "Scope changed",
+    "just-researching": "Just researching",
+    other: "Other"
+  };
+  return labels[value] || "No reason provided";
 }
 
 function renderCustomerMeasurements(measurements) {

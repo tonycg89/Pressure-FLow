@@ -181,6 +181,9 @@ function normalizeJob(input) {
     estimateMailto: "",
     estimateSentAt: "",
     estimateApprovedAt: "",
+    estimateRejectedAt: "",
+    estimateRejectionReason: "",
+    estimateRejectionNote: "",
     squareCustomerId: "",
     squareDepositOrderId: "",
     squareDepositInvoiceId: "",
@@ -435,6 +438,9 @@ async function approvePublicEstimate(jobId, token) {
   const settings = await readSettings();
   job.status = "Contract Sent";
   job.estimateApprovedAt = new Date().toISOString();
+  job.estimateRejectedAt = "";
+  job.estimateRejectionReason = "";
+  job.estimateRejectionNote = "";
   job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
   job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
   job.contractMailto = buildContractMailto(job, settings);
@@ -445,6 +451,35 @@ async function approvePublicEstimate(jobId, token) {
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
   return job;
+}
+
+async function rejectPublicEstimate(jobId, token, reason, note) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.estimateApprovalToken || job.estimateApprovalToken !== token) {
+    return null;
+  }
+
+  job.status = "Lead";
+  job.estimateRejectedAt = new Date().toISOString();
+  job.estimateRejectionReason = normalizeEstimateRejectionReason(reason);
+  job.estimateRejectionNote = String(note || "").trim().slice(0, 500);
+  job.updatedAt = new Date().toISOString();
+  await writeJobs(jobs);
+  return job;
+}
+
+function normalizeEstimateRejectionReason(reason) {
+  const allowed = new Set([
+    "price-too-high",
+    "timing-not-right",
+    "went-with-another-company",
+    "scope-changed",
+    "just-researching",
+    "other"
+  ]);
+  const value = String(reason || "").trim();
+  return allowed.has(value) ? value : "";
 }
 
 async function findPublicContract(jobId, token) {
@@ -541,6 +576,7 @@ function renderLogoHtml(baseUrl = "", width = 190) {
 
 function buildEstimateMailto(job, settings = {}) {
   const businessName = getBusinessName(settings);
+  const validUntil = getEstimateValidUntil(job);
   const subject = `${businessName} estimate for ${job.serviceType} at ${job.address}`;
   const body = [
     `Hi ${job.customerName},`,
@@ -548,6 +584,7 @@ function buildEstimateMailto(job, settings = {}) {
     `Your estimate from ${businessName} is ready for review.`,
     "",
     `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
+    `This estimate is valid through ${formatPublicDate(validUntil)}.`,
     `Approve estimate: ${job.estimateApprovalUrl}`,
     "",
     "Thank you,",
@@ -576,6 +613,7 @@ function buildContractMailto(job, settings = {}) {
 
 async function sendEstimateEmail(job, settings) {
   const businessName = getBusinessName(settings);
+  const validUntil = getEstimateValidUntil(job);
   const subject = `${businessName} estimate for ${job.serviceType} at ${job.address}`;
   const textBody = [
     `Hi ${job.customerName},`,
@@ -583,6 +621,7 @@ async function sendEstimateEmail(job, settings) {
     `Your estimate from ${businessName} is ready for review.`,
     "",
     `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
+    `This estimate is valid through ${formatPublicDate(validUntil)}.`,
     `Approve estimate: ${job.estimateApprovalUrl}`,
     "",
     "Thank you,",
@@ -818,6 +857,7 @@ function encodeMimeHeader(value) {
 
 function renderEstimateEmailHtml(job, settings) {
   const businessName = getBusinessName(settings);
+  const validUntil = getEstimateValidUntil(job);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
       ${renderLogoHtml(getBaseUrlFromLink(job.estimateApprovalUrl))}
@@ -826,6 +866,7 @@ function renderEstimateEmailHtml(job, settings) {
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
       <p style="font-size:18px"><strong>Total: $${Number(job.estimate || 0).toFixed(2)}</strong></p>
+      <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
       <p>
         <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
           Review and approve estimate
@@ -869,6 +910,7 @@ function getAppBaseUrl(request) {
 
 function renderEstimateApprovalPage(job, settings = {}) {
   const businessName = getBusinessName(settings);
+  const validUntil = getEstimateValidUntil(job);
   const subtotal = (job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0);
   const discountPercent = Number(job.discountPercent || 0);
   const discountAmount = subtotal * (discountPercent / 100);
@@ -906,11 +948,45 @@ function renderEstimateApprovalPage(job, settings = {}) {
         ${discountAmount > 0 ? `<div><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
         <div><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
       </section>
+      <section class="notice">
+        <strong>Estimate valid for 30 days</strong>
+        <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
+      </section>
       ${renderMeasurementPreview(job)}
       <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
         <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
         <button type="submit">Approve Estimate</button>
       </form>
+      <details class="reject-estimate">
+        <summary>Decline estimate</summary>
+        <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/reject">
+          <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
+          <label>
+            Reason for declining
+            <select name="reason" id="estimateRejectReason">
+              <option value="">Prefer not to say</option>
+              <option value="price-too-high">Price was too high</option>
+              <option value="timing-not-right">Timing is not right</option>
+              <option value="went-with-another-company">Went with another company</option>
+              <option value="scope-changed">Scope changed</option>
+              <option value="just-researching">Just researching</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label id="estimateRejectOtherWrap" hidden>
+            Other reason
+            <textarea name="otherReason" rows="3" placeholder="Optional"></textarea>
+          </label>
+          <button type="submit" class="secondary-action">Decline Estimate</button>
+        </form>
+      </details>
+      <script>
+        const rejectReason = document.querySelector("#estimateRejectReason");
+        const otherWrap = document.querySelector("#estimateRejectOtherWrap");
+        rejectReason?.addEventListener("change", () => {
+          otherWrap.hidden = rejectReason.value !== "other";
+        });
+      </script>
     </main>
   </body>
 </html>`;
@@ -1008,6 +1084,21 @@ function renderMeasurementPreview(job) {
       <div class="measurement-badge measurement-badge-area">${area} SqFt</div>
     </div>
   </section>`;
+}
+
+function getEstimateValidUntil(job) {
+  const sentDate = job.estimateSentAt ? new Date(job.estimateSentAt) : new Date();
+  const base = Number.isNaN(sentDate.getTime()) ? new Date() : sentDate;
+  return new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+}
+
+function formatPublicDate(date) {
+  return date.toLocaleDateString("en-US", {
+    timeZone: "America/Los_Angeles",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 }
 
 function renderEstimateMessagePage(title, message) {
@@ -1354,7 +1445,9 @@ function estimatePageStyles() {
     h3 { margin: 0 0 4px; font-size: 15px; }
     .eyebrow { margin: 0 0 8px; color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
     label { display: grid; gap: 6px; margin: 18px 0; color: #667085; font-size: 13px; font-weight: 700; }
-    input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
+    input, select, textarea { width: 100%; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
+    input, select { min-height: 42px; padding: 0 10px; }
+    textarea { padding: 10px; resize: vertical; }
     .initials-field { max-width: 180px; }
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
     .measurement-preview-wrap { position: relative; overflow: hidden; border: 1px solid #d8dee8; border-radius: 8px; background: #101828; }
@@ -1372,7 +1465,10 @@ function estimatePageStyles() {
     .term p { margin: 0; }
     .term p + p { margin-top: 10px; }
     .notice { padding: 14px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
+    .reject-estimate { margin-top: 18px; padding: 14px; border: 1px solid #d8dee8; border-radius: 8px; background: #fbfcfe; }
+    .reject-estimate summary { color: #667085; font-weight: 800; cursor: pointer; }
     button { width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; cursor: pointer; }
+    button.secondary-action { background: #fee4e2; color: #b42318; }
   </style>`;
 }
 
@@ -1456,6 +1552,20 @@ async function handleApi(request, response, url) {
     }
 
     sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded. Your service contract has been sent to your email."));
+    return;
+  }
+
+  const rejectEstimateMatch = url.pathname.match(/^\/api\/public\/estimates\/([^/]+)\/reject$/);
+  if (request.method === "POST" && rejectEstimateMatch) {
+    const [, jobId] = rejectEstimateMatch;
+    const body = await readFormOrJsonBody(request);
+    const result = await rejectPublicEstimate(jobId, body.token || "", body.reason || "", body.otherReason || "");
+    if (!result) {
+      sendHtml(response, 404, renderEstimateMessagePage("Estimate not found", "This estimate link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderEstimateMessagePage("Estimate declined", "Thank you for letting us know. Precision Power Washing has recorded your response and may follow up if needed."));
     return;
   }
 
@@ -2271,6 +2381,9 @@ async function resetJobForPricingChange(job) {
   job.estimateMailto = "";
   job.estimateSentAt = "";
   job.estimateApprovedAt = "";
+  job.estimateRejectedAt = "";
+  job.estimateRejectionReason = "";
+  job.estimateRejectionNote = "";
   job.squareEstimateId = "";
   job.squareEstimateUrl = "";
   job.contractApprovalToken = "";
@@ -2351,6 +2464,9 @@ async function applyAction(job, action, input) {
     job.estimateMailto = buildEstimateMailto(job, settings);
     await sendEstimateEmail(job, settings);
     job.estimateSentAt = new Date().toISOString();
+    job.estimateRejectedAt = "";
+    job.estimateRejectionReason = "";
+    job.estimateRejectionNote = "";
     job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
     job.squareEstimateUrl = job.estimateApprovalUrl;
   }
