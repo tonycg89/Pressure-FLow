@@ -689,6 +689,21 @@ async function handleApi(request, response, url) {
   }
 
   const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
+  if (request.method === "DELETE" && updateMatch) {
+    const [, jobId] = updateMatch;
+    const jobs = await readJobs();
+    const remainingJobs = jobs.filter((item) => item.id !== jobId);
+
+    if (remainingJobs.length === jobs.length) {
+      sendError(response, 404, "Job not found.");
+      return;
+    }
+
+    await writeJobs(remainingJobs);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
   if (request.method === "PATCH" && updateMatch) {
     const [, jobId] = updateMatch;
     const jobs = await readJobs();

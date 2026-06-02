@@ -461,6 +461,7 @@ function renderJobDetail() {
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}">${nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}">${fallbackAction.label}</button>` : ""}
         <button class="action-button secondary" type="button" data-action="reminder">Send Follow-up Email</button>
+        <button class="action-button danger" type="button" data-action="delete-job">Delete Job</button>
       </div>
     </section>
 
@@ -538,6 +539,11 @@ function getFallbackAction(job) {
 }
 
 async function runAction(jobId, action) {
+  if (action === "delete-job") {
+    await deleteJob(jobId);
+    return;
+  }
+
   if (action === "reminder") {
     const job = jobs.find((item) => item.id === jobId);
     alert(buildReminderMessage(job));
@@ -565,6 +571,23 @@ async function runAction(jobId, action) {
     if (action === "send-square-estimate") {
       alert(`Estimate sent to ${updated.job.email}.`);
     }
+    await loadJobs();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function deleteJob(jobId) {
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job) return;
+
+  const confirmed = confirm(`Delete ${job.customerName}'s job? This removes it from PressureFlow.`);
+  if (!confirmed) return;
+
+  try {
+    await apiRequest(`/api/jobs/${jobId}`, {}, "DELETE");
+    jobs = jobs.filter((item) => item.id !== jobId);
+    selectedJobId = jobs[0]?.id ?? null;
     await loadJobs();
   } catch (error) {
     alert(error.message);

@@ -387,6 +387,12 @@ textarea {
   border-color: #b8e3dc;
 }
 
+.action-button.danger {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: #fecdca;
+}
+
 .empty-state {
   padding: 26px 18px;
   color: var(--muted);
