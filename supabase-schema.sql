@@ -10,6 +10,7 @@ create table if not exists jobs (
   service_type text not null,
   estimate numeric(10, 2) not null default 0,
   line_items jsonb not null default '[]'::jsonb,
+  measurement jsonb not null default '{}'::jsonb,
   estimate_discount_percent numeric(5, 2) not null default 0,
   estimate_approval_token text not null default '',
   estimate_approval_url text not null default '',
@@ -67,6 +68,7 @@ create table if not exists app_settings (
   square_location_id text not null default '',
   google_refresh_token text not null default '',
   google_calendar_id text not null default '',
+  mapbox_public_token text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id = 1)

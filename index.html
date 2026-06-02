@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PressureFlow MVP</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -153,6 +155,10 @@
               <h3>Services and rates</h3>
             </div>
             <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
+            <button id="measureFromMapButton" class="secondary-small-button" type="button" title="Measure from map">
+              <span aria-hidden="true">&#127760;</span>
+              Measure from Map
+            </button>
           </div>
           <div id="lineItems" class="line-items"></div>
           <details class="discount-panel">
@@ -262,6 +268,10 @@
             Google redirect URI
             <input name="googleRedirectUri" readonly value="http://localhost:3000/auth/google/callback">
           </label>
+          <label class="full-field">
+            Mapbox public token
+            <input name="mapboxPublicToken" autocomplete="off" placeholder="Required for map measurements">
+          </label>
         </div>
 
         <p id="settingsStatus" class="form-note"></p>
@@ -337,6 +347,35 @@
       </form>
     </dialog>
 
+    <dialog id="measurementDialog" class="map-dialog">
+      <form method="dialog" id="measurementForm">
+        <div class="dialog-header">
+          <h2>Measure from Map</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+        <div class="map-address-row">
+          <label>
+            Address
+            <input id="measurementAddress" placeholder="Customer service address">
+          </label>
+          <button id="geocodeAddressButton" class="secondary-small-button" type="button">Find Address</button>
+        </div>
+        <div id="measurementMap" class="measurement-map"></div>
+        <div class="measurement-summary">
+          <div><span>Measured Area</span><strong id="measuredArea">0 SqFt</strong></div>
+          <div><span>Status</span><strong id="measurementStatus">Draw a polygon around the surface.</strong></div>
+        </div>
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button id="clearMeasurementButton" type="button">Clear</button>
+          <button id="useMeasurementButton" class="primary-button" type="button">Use Measurement</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.5.0/mapbox-gl-draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

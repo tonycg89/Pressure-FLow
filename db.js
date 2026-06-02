@@ -27,7 +27,8 @@ const defaultSettings = {
   googleClientSecret: "",
   googleRedirectUri: "http://localhost:3000/auth/google/callback",
   googleRefreshToken: "",
-  googleCalendarId: "tonycg89@gmail.com"
+  googleCalendarId: "tonycg89@gmail.com",
+  mapboxPublicToken: ""
 };
 
 const statuses = [
@@ -157,7 +158,8 @@ async function readSettings() {
       googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
       googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || rowSettings.googleRefreshToken || "",
-      googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId
+      googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId,
+      mapboxPublicToken: process.env.MAPBOX_PUBLIC_TOKEN || rowSettings.mapboxPublicToken || ""
     };
   }
 
@@ -180,8 +182,9 @@ async function writeSettings(settings) {
         square_location_id,
         google_refresh_token,
         google_calendar_id,
+        mapbox_public_token,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -193,6 +196,7 @@ async function writeSettings(settings) {
         square_location_id = excluded.square_location_id,
         google_refresh_token = excluded.google_refresh_token,
         google_calendar_id = excluded.google_calendar_id,
+        mapbox_public_token = excluded.mapbox_public_token,
         updated_at = now()`,
       [
         settings.businessName || "",
@@ -204,7 +208,8 @@ async function writeSettings(settings) {
         settings.squareEnvironment || "sandbox",
         settings.squareLocationId || "",
         settings.googleRefreshToken || "",
-        settings.googleCalendarId || ""
+        settings.googleCalendarId || "",
+        settings.mapboxPublicToken || ""
       ]
     );
     return;
@@ -266,7 +271,9 @@ function getPool() {
 async function ensurePostgresSchema() {
   if (postgresSchemaReady) return;
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table jobs add column if not exists measurement jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
   await getPool().query("alter table jobs add column if not exists estimate_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_approval_url text not null default ''");
@@ -409,22 +416,24 @@ async function upsertJob(client, job) {
     `update jobs set
       line_items = $1::jsonb,
       estimate_discount_percent = $2,
-      estimate_approval_token = $3,
-      estimate_approval_url = $4,
-      estimate_mailto = $5,
-      estimate_sent_at = nullif($6, '')::timestamptz,
-      estimate_approved_at = nullif($7, '')::timestamptz,
-      contract_approval_token = $8,
-      contract_approval_url = $9,
-      contract_mailto = $10,
-      contract_sent_at = nullif($11, '')::timestamptz,
-      contract_signed_at = nullif($12, '')::timestamptz,
-      contract_signed_date = $13,
-      contract_signer_name = $14
-    where id = $15`,
+      measurement = $3::jsonb,
+      estimate_approval_token = $4,
+      estimate_approval_url = $5,
+      estimate_mailto = $6,
+      estimate_sent_at = nullif($7, '')::timestamptz,
+      estimate_approved_at = nullif($8, '')::timestamptz,
+      contract_approval_token = $9,
+      contract_approval_url = $10,
+      contract_mailto = $11,
+      contract_sent_at = nullif($12, '')::timestamptz,
+      contract_signed_at = nullif($13, '')::timestamptz,
+      contract_signed_date = $14,
+      contract_signer_name = $15
+    where id = $16`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
+      JSON.stringify(job.measurement || {}),
       job.estimateApprovalToken || "",
       job.estimateApprovalUrl || "",
       job.estimateMailto || "",
@@ -452,6 +461,7 @@ function jobFromRow(row) {
     serviceType: row.service_type,
     estimate: Number(row.estimate || 0),
     lineItems: Array.isArray(row.line_items) ? row.line_items : [],
+    measurement: row.measurement && typeof row.measurement === "object" ? row.measurement : {},
     discountPercent: Number(row.estimate_discount_percent || 0),
     estimateApprovalToken: row.estimate_approval_token || "",
     estimateApprovalUrl: row.estimate_approval_url || "",
@@ -509,7 +519,8 @@ function settingsFromRow(row) {
     squareEnvironment: row.square_environment || "sandbox",
     squareLocationId: row.square_location_id || "",
     googleRefreshToken: row.google_refresh_token || "",
-    googleCalendarId: row.google_calendar_id || ""
+    googleCalendarId: row.google_calendar_id || "",
+    mapboxPublicToken: row.mapbox_public_token || ""
   };
 }
 

@@ -153,6 +153,7 @@ function normalizeJob(input) {
     serviceType: String(input.serviceType || "Driveway cleaning").trim(),
     estimate: Number(input.estimate || 0),
     lineItems: normalizeLineItems(input.lineItems),
+    measurement: normalizeMeasurement(input.measurement),
     discountPercent: Number(input.discountPercent || 0),
     depositPercent: Number(input.depositPercent ?? defaultSettings.defaultDepositPercent),
     notes: String(input.notes || "").trim(),
@@ -263,6 +264,29 @@ function normalizeLineItems(value) {
     price: Number(item.price || 0),
     total: Number(item.total || 0)
   })).filter((item) => item.name && item.quantity > 0);
+}
+
+function normalizeMeasurement(value) {
+  let measurement = {};
+  try {
+    measurement = typeof value === "string" && value ? JSON.parse(value) : value || {};
+  } catch {
+    measurement = {};
+  }
+
+  if (!measurement || typeof measurement !== "object" || !measurement.geojson) {
+    return {};
+  }
+
+  return {
+    address: String(measurement.address || "").trim(),
+    squareFeet: Number(measurement.squareFeet || 0),
+    geojson: measurement.geojson,
+    center: Array.isArray(measurement.center) ? measurement.center.map(Number).slice(0, 2) : [],
+    zoom: Number(measurement.zoom || 18),
+    staticImageUrl: String(measurement.staticImageUrl || "").trim(),
+    capturedAt: String(measurement.capturedAt || new Date().toISOString())
+  };
 }
 
 async function findPublicEstimate(jobId, token) {
@@ -560,6 +584,7 @@ function renderEstimateApprovalPage(job) {
         ${discountAmount > 0 ? `<div><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
         <div><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
       </section>
+      ${renderMeasurementPreview(job)}
       <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
         <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
         <button type="submit">Approve Estimate</button>
@@ -567,6 +592,18 @@ function renderEstimateApprovalPage(job) {
     </main>
   </body>
 </html>`;
+}
+
+function renderMeasurementPreview(job) {
+  if (!job.measurement?.staticImageUrl) {
+    return "";
+  }
+
+  return `<section>
+    <h2>Measured Surface</h2>
+    <p>${escapeHtml(job.measurement.address || job.address)} | ${Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US")} SqFt</p>
+    <img class="measurement-preview" src="${escapeHtml(job.measurement.staticImageUrl)}" alt="Satellite measurement with traced polygon">
+  </section>`;
 }
 
 function renderEstimateMessagePage(title, message) {
@@ -767,6 +804,7 @@ function estimatePageStyles() {
     input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
     .initials-field { max-width: 180px; }
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
+    .measurement-preview { width: 100%; border: 1px solid #d8dee8; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
@@ -1186,7 +1224,8 @@ function normalizeSettings(input, existing) {
     googleClientId: String(input.googleClientId || "").trim(),
     googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
     googleRedirectUri: "http://localhost:3000/auth/google/callback",
-    googleCalendarId: String(input.googleCalendarId || "").trim()
+    googleCalendarId: String(input.googleCalendarId || "").trim(),
+    mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken
   };
 }
 
@@ -1314,6 +1353,10 @@ function updateJob(job, input) {
 
   if (Object.hasOwn(input, "lineItems")) {
     job.lineItems = normalizeLineItems(input.lineItems);
+  }
+
+  if (Object.hasOwn(input, "measurement")) {
+    job.measurement = normalizeMeasurement(input.measurement);
   }
 
   if (Object.hasOwn(input, "discountPercent")) {

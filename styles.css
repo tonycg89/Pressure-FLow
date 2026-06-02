@@ -561,6 +561,51 @@ label {
   line-height: 1.45;
 }
 
+.map-dialog {
+  width: min(980px, calc(100vw - 24px));
+}
+
+.map-address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.measurement-map {
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #e8eef5;
+}
+
+.measurement-summary {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.measurement-summary div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.measurement-summary span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.measurement-preview {
+  width: 100%;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+}
+
 .stepper-control {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -652,8 +697,14 @@ label {
   .field-row,
   .settings-grid,
   .line-item-row,
-  .estimate-summary {
+  .estimate-summary,
+  .map-address-row,
+  .measurement-summary {
     grid-template-columns: 1fr;
+  }
+
+  .measurement-map {
+    min-height: 420px;
   }
 
   .full-field {
