@@ -21,6 +21,7 @@ create table if not exists jobs (
   contract_mailto text not null default '',
   contract_sent_at timestamptz,
   contract_signed_at timestamptz,
+  contract_signed_date text not null default '',
   contract_signer_name text not null default '',
   deposit_percent numeric(5, 2) not null default 25,
   status text not null default 'Lead',

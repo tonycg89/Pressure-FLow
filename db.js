@@ -278,6 +278,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_sent_at timestamptz");
   await getPool().query("alter table jobs add column if not exists contract_signed_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists contract_signed_date text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_signer_name text not null default ''");
   postgresSchemaReady = true;
 }
@@ -418,8 +419,9 @@ async function upsertJob(client, job) {
       contract_mailto = $10,
       contract_sent_at = nullif($11, '')::timestamptz,
       contract_signed_at = nullif($12, '')::timestamptz,
-      contract_signer_name = $13
-    where id = $14`,
+      contract_signed_date = $13,
+      contract_signer_name = $14
+    where id = $15`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -433,6 +435,7 @@ async function upsertJob(client, job) {
       job.contractMailto || "",
       job.contractSentAt || "",
       job.contractSignedAt || "",
+      job.contractSignedDate || "",
       job.contractSignerName || "",
       job.id
     ]
@@ -460,6 +463,7 @@ function jobFromRow(row) {
     contractMailto: row.contract_mailto || "",
     contractSentAt: row.contract_sent_at?.toISOString?.() || "",
     contractSignedAt: row.contract_signed_at?.toISOString?.() || "",
+    contractSignedDate: row.contract_signed_date || "",
     contractSignerName: row.contract_signer_name || "",
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,

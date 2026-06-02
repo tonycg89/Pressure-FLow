@@ -184,6 +184,7 @@ function normalizeJob(input) {
     contractMailto: "",
     contractSentAt: "",
     contractSignedAt: "",
+    contractSignedDate: "",
     contractSignerName: "",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -280,8 +281,16 @@ async function approvePublicEstimate(jobId, token) {
     return null;
   }
 
-  job.status = "Estimate Signed";
+  const settings = await readSettings();
+  job.status = "Contract Sent";
   job.estimateApprovedAt = new Date().toISOString();
+  job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
+  job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
+  job.contractMailto = buildContractMailto(job);
+  await sendContractEmail(job, settings);
+  job.contractSentAt = new Date().toISOString();
+  job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
+  job.squareContractUrl = job.contractApprovalUrl;
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
   return job;
@@ -296,16 +305,25 @@ async function findPublicContract(jobId, token) {
   return job;
 }
 
-async function signPublicContract(jobId, token, signerName) {
+async function signPublicContract(jobId, token, signerName, signedDate) {
   const jobs = await readJobs();
   const job = jobs.find((item) => item.id === jobId);
   if (!job || !job.contractApprovalToken || job.contractApprovalToken !== token) {
     return null;
   }
 
+  const settings = await readSettings();
   job.status = "Contract Signed";
-  job.contractSignerName = String(signerName || job.customerName || "").trim();
+  job.contractSignerName = String(signerName || "").trim();
   job.contractSignedAt = new Date().toISOString();
+  job.contractSignedDate = String(signedDate || "").trim();
+
+  const invoice = await createSquareInvoice(job, settings, "deposit");
+  job.status = "Deposit Sent";
+  job.squareCustomerId = invoice.customerId;
+  job.squareDepositOrderId = invoice.orderId;
+  job.squareDepositInvoiceId = invoice.invoiceId;
+  job.squareDepositInvoiceUrl = invoice.publicUrl;
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
   return job;
@@ -319,6 +337,15 @@ function buildEstimateApprovalUrl(baseUrl, job) {
 function buildContractApprovalUrl(baseUrl, job) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
   return `${root}/contract/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.contractApprovalToken)}`;
+}
+
+function getBaseUrlFromLink(link) {
+  try {
+    const url = new URL(link);
+    return url.origin;
+  } catch {
+    return process.env.APP_BASE_URL || "";
+  }
 }
 
 function buildEstimateMailto(job) {
@@ -571,6 +598,7 @@ function renderContractSigningPage(job) {
   const depositAmount = Number(job.estimate || 0) * (Number(job.depositPercent || 25) / 100);
   const finalAmount = Math.max(Number(job.estimate || 0) - depositAmount, 0);
   const alreadySigned = Boolean(job.contractSignedAt);
+  const initials = getCustomerInitials(job.customerName);
 
   return `<!doctype html>
 <html lang="en">
@@ -612,12 +640,19 @@ function renderContractSigningPage(job) {
       ` : `
         <form method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
           <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
+          <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
+          <label>
+            Signature date
+            <input name="signedDate" type="date" required>
+          </label>
           <label>
             Type your full name to sign
-            <input name="signerName" required value="${escapeHtml(job.customerName)}">
+            <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
           </label>
+          <div class="signature-preview" id="signaturePreview">Signature preview</div>
           <button type="submit">Sign Contract</button>
         </form>
+        ${contractSigningScript()}
       `}
     </main>
   </body>
@@ -631,7 +666,12 @@ function renderContractTerms(job) {
       <article class="term">
         <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
         ${escapeHtml(section.body).split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}
-        ${section.initialsRequired ? '<p class="initials-note">Client initials required in original agreement.</p>' : ""}
+        ${section.initialsRequired ? `
+          <label class="initials-field">
+            Initials
+            <input name="initials_${index}" class="initials-input" required placeholder="Click to initial" autocomplete="off">
+          </label>
+        ` : ""}
       </article>
     `).join("")}
   </section>`;
@@ -642,7 +682,7 @@ function renderContractProjectDetails(job, depositAmount) {
     ["Business", "Precision Power Washing"],
     ["Client", job.customerName],
     ["Service Address", job.address],
-    ["Approved Estimate", job.estimateApprovalUrl || job.squareEstimateUrl || "PressureFlow estimate"],
+    ["Approved Estimate", "PressureFlow estimate approved online"],
     ["Estimated Price", `$${Number(job.estimate || 0).toFixed(2)}`],
     ["Deposit", `$${depositAmount.toFixed(2)} (${Number(job.depositPercent || 25)}%)`],
     ["Scheduled Date", job.scheduledAt || "To be scheduled after deposit payment"]
@@ -663,6 +703,36 @@ function renderContractProjectDetails(job, depositAmount) {
   </section>`;
 }
 
+function getCustomerInitials(name) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  const first = parts[0]?.[0] || "";
+  const last = (parts.length > 1 ? parts.at(-1)?.[0] : "") || "";
+  return `${first}${last}`.toUpperCase();
+}
+
+function contractSigningScript() {
+  return `<script>
+    const expectedInitials = document.querySelector("#expectedInitials")?.value || "";
+    document.querySelectorAll(".initials-input").forEach((input) => {
+      input.addEventListener("click", () => {
+        input.value = expectedInitials;
+      });
+      input.addEventListener("focus", () => {
+        if (!input.value) input.value = expectedInitials;
+      });
+    });
+
+    const signatureInput = document.querySelector("#signatureInput");
+    const signaturePreview = document.querySelector("#signaturePreview");
+    if (signatureInput && signaturePreview) {
+      signatureInput.addEventListener("input", () => {
+        signaturePreview.textContent = signatureInput.value || "Signature preview";
+      });
+    }
+  </script>`;
+}
+
 function estimatePageStyles() {
   return `<style>
     body { margin: 0; min-height: 100vh; background: #f7f8fb; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -674,6 +744,9 @@ function estimatePageStyles() {
     .eyebrow { margin: 0 0 8px; color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
     label { display: grid; gap: 6px; margin: 18px 0; color: #667085; font-size: 13px; font-weight: 700; }
     input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
+    .initials-field { max-width: 180px; }
+    .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
+    .signature-preview { min-height: 56px; margin: 4px 0 18px; padding: 10px 0; border-bottom: 2px solid #202124; color: #202124; font-family: "Brush Script MT", "Segoe Script", cursive; font-size: 34px; line-height: 1.1; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
@@ -684,7 +757,6 @@ function estimatePageStyles() {
     .term { padding: 12px 0; border-bottom: 1px solid #d8dee8; }
     .term p { margin: 0; }
     .term p + p { margin-top: 10px; }
-    .initials-note { color: #1c7c54; font-weight: 700; }
     .notice { padding: 14px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
     button { width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; cursor: pointer; }
   </style>`;
@@ -769,7 +841,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded, and we will follow up with the next step."));
+    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded. Your service contract has been sent to your email."));
     return;
   }
 
@@ -790,13 +862,13 @@ async function handleApi(request, response, url) {
   if (request.method === "POST" && signContractMatch) {
     const [, jobId] = signContractMatch;
     const body = await readFormOrJsonBody(request);
-    const result = await signPublicContract(jobId, body.token || "", body.signerName || "");
+    const result = await signPublicContract(jobId, body.token || "", body.signerName || "", body.signedDate || "");
     if (!result) {
       sendHtml(response, 404, renderEstimateMessagePage("Contract not found", "This contract link is invalid or has expired."));
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Contract signed", "Thank you. Your signed contract has been recorded, and we will follow up with the deposit invoice."));
+    sendHtml(response, 200, renderEstimateMessagePage("Contract signed", "Thank you. Your signed contract has been recorded. The deposit invoice has been sent to your email."));
     return;
   }
 
@@ -1561,12 +1633,12 @@ async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMin
   }
 
   const accessToken = await getGoogleAccessToken(settings);
-  const start = new Date(scheduledAt);
-  if (Number.isNaN(start.getTime())) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(scheduledAt))) {
     throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
   }
 
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+  const startDateTime = scheduledAt.slice(0, 16);
+  const endDateTime = addMinutesToLocalDateTime(startDateTime, durationMinutes);
   const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
   const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
     method: "POST",
@@ -1590,11 +1662,11 @@ async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMin
         `Sensitive areas: ${job.sensitiveAreas || "None"}`
       ].join("\n"),
       start: {
-        dateTime: start.toISOString(),
+        dateTime: startDateTime,
         timeZone: "America/Los_Angeles"
       },
       end: {
-        dateTime: end.toISOString(),
+        dateTime: endDateTime,
         timeZone: "America/Los_Angeles"
       },
       reminders: {
@@ -1624,6 +1696,19 @@ function requireGoogleSettings(settings, requireRefreshToken) {
   if (requireRefreshToken && !settings.googleRefreshToken) {
     throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
   }
+}
+
+function addMinutesToLocalDateTime(value, minutes) {
+  const [datePart, timePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const date = new Date(year, month - 1, day, hour, minute + Number(minutes || 0), 0, 0);
+  const nextYear = date.getFullYear();
+  const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+  const nextDay = String(date.getDate()).padStart(2, "0");
+  const nextHour = String(date.getHours()).padStart(2, "0");
+  const nextMinute = String(date.getMinutes()).padStart(2, "0");
+  return `${nextYear}-${nextMonth}-${nextDay}T${nextHour}:${nextMinute}`;
 }
 
 function requireSquareSettings(settings) {
