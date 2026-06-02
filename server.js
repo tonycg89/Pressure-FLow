@@ -281,6 +281,7 @@ function normalizeMeasurement(value) {
   return {
     address: String(measurement.address || "").trim(),
     squareFeet: Number(measurement.squareFeet || 0),
+    perimeterFeet: Number(measurement.perimeterFeet || 0),
     geojson: measurement.geojson,
     center: Array.isArray(measurement.center) ? measurement.center.map(Number).slice(0, 2) : [],
     zoom: Number(measurement.zoom || 18),
@@ -599,10 +600,17 @@ function renderMeasurementPreview(job) {
     return "";
   }
 
+  const area = Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US");
+  const perimeter = Math.round(Number(job.measurement.perimeterFeet || 0)).toLocaleString("en-US");
+
   return `<section>
     <h2>Measured Surface</h2>
-    <p>${escapeHtml(job.measurement.address || job.address)} | ${Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US")} SqFt</p>
-    <img class="measurement-preview" src="${escapeHtml(job.measurement.staticImageUrl)}" alt="Satellite measurement with traced polygon">
+    <p>${escapeHtml(job.measurement.address || job.address)} | ${area} SqFt${Number(job.measurement.perimeterFeet || 0) ? ` | ${perimeter} LF perimeter` : ""}</p>
+    <div class="measurement-preview-wrap">
+      <img class="measurement-preview" src="${escapeHtml(job.measurement.staticImageUrl)}" alt="Satellite measurement with traced polygon">
+      <div class="measurement-badge measurement-badge-area">${area} SqFt</div>
+      ${Number(job.measurement.perimeterFeet || 0) ? `<div class="measurement-badge measurement-badge-perimeter">${perimeter} LF perimeter</div>` : ""}
+    </div>
   </section>`;
 }
 
@@ -804,7 +812,11 @@ function estimatePageStyles() {
     input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
     .initials-field { max-width: 180px; }
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
-    .measurement-preview { width: 100%; border: 1px solid #d8dee8; border-radius: 8px; }
+    .measurement-preview-wrap { position: relative; overflow: hidden; border: 1px solid #d8dee8; border-radius: 8px; background: #101828; }
+    .measurement-preview { display: block; width: 100%; }
+    .measurement-badge { position: absolute; left: 50%; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.72); border-radius: 8px; background: rgba(15,23,42,0.82); color: white; font-weight: 900; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0,0,0,0.28); }
+    .measurement-badge-area { top: 46%; }
+    .measurement-badge-perimeter { bottom: 16px; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }

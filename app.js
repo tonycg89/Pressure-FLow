@@ -50,6 +50,7 @@ const measurementAddress = document.querySelector("#measurementAddress");
 const measurementMapElement = document.querySelector("#measurementMap");
 const geocodeAddressButton = document.querySelector("#geocodeAddressButton");
 const measuredArea = document.querySelector("#measuredArea");
+const measuredPerimeter = document.querySelector("#measuredPerimeter");
 const measurementStatus = document.querySelector("#measurementStatus");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
@@ -391,6 +392,9 @@ function openMeasurementDialog() {
   measuredArea.textContent = currentMeasurement.squareFeet
     ? `${Math.round(currentMeasurement.squareFeet).toLocaleString("en-US")} SqFt`
     : "0 SqFt";
+  measuredPerimeter.textContent = currentMeasurement.perimeterFeet
+    ? `${Math.round(currentMeasurement.perimeterFeet).toLocaleString("en-US")} LF`
+    : "0 LF";
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
   measurementDialog.showModal();
   setTimeout(() => {
@@ -463,18 +467,21 @@ async function geocodeMeasurementAddress() {
 function updateMeasurementFromDraw() {
   const feature = mapboxDraw?.getAll().features?.[0];
   if (!feature) {
-    currentMeasurement = { ...currentMeasurement, geojson: null, squareFeet: 0, staticImageUrl: "" };
+    currentMeasurement = { ...currentMeasurement, geojson: null, squareFeet: 0, perimeterFeet: 0, staticImageUrl: "" };
     measuredArea.textContent = "0 SqFt";
+    measuredPerimeter.textContent = "0 LF";
     measurementStatus.textContent = "Draw a polygon around the surface.";
     return;
   }
 
   const squareFeet = Math.round(turf.area(feature) * 10.7639);
+  const perimeterFeet = calculatePerimeterFeet(feature);
   const center = mapboxMap.getCenter();
   currentMeasurement = {
     ...currentMeasurement,
     address: measurementAddress.value.trim(),
     squareFeet,
+    perimeterFeet,
     geojson: feature,
     center: [center.lng, center.lat],
     zoom: mapboxMap.getZoom(),
@@ -482,7 +489,18 @@ function updateMeasurementFromDraw() {
   };
   currentMeasurement.staticImageUrl = buildStaticMapUrl(currentMeasurement);
   measuredArea.textContent = `${squareFeet.toLocaleString("en-US")} SqFt`;
+  measuredPerimeter.textContent = `${perimeterFeet.toLocaleString("en-US")} LF`;
   measurementStatus.textContent = "Measurement ready.";
+}
+
+function calculatePerimeterFeet(feature) {
+  const outerRing = feature?.geometry?.coordinates?.[0];
+  if (!Array.isArray(outerRing) || outerRing.length < 2) {
+    return 0;
+  }
+
+  const line = turf.lineString(outerRing);
+  return Math.round(turf.length(line, { units: "feet" }));
 }
 
 function clearMeasurementPolygon() {
@@ -700,7 +718,7 @@ function renderMeasurementDetail(job) {
   return `
     <div class="detail-row">
       <span>Map measurement</span>
-      <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
+      <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt${job.measurement.perimeterFeet ? ` | ${Math.round(job.measurement.perimeterFeet).toLocaleString("en-US")} LF` : ""}</strong>
     </div>
   `;
 }
