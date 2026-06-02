@@ -86,10 +86,8 @@ const clearMeasurementButton = document.querySelector("#clearMeasurementButton")
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInput = document.querySelector("#serviceAreaPhotoInput");
 const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
-const beforePhotoInput = document.querySelector("#beforePhotoInput");
-const afterPhotoInput = document.querySelector("#afterPhotoInput");
-const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
-const afterPhotoPreview = document.querySelector("#afterPhotoPreview");
+const beforePhotoInputs = document.querySelectorAll("[data-before-photo-input]");
+const beforePhotoPreviews = document.querySelectorAll("[data-before-photo-preview]");
 const completionBeforePhotoInput = document.querySelector("#completionBeforePhotoInput");
 const completionAfterPhotoInput = document.querySelector("#completionAfterPhotoInput");
 const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
@@ -109,6 +107,15 @@ let currentReceiptPhotos = [];
 let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
+const beforePhotoSections = [
+  "Main driveway",
+  "House #1",
+  "House #2",
+  "House #3",
+  "House #4",
+  "Roof",
+  "Gutters"
+];
 
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
@@ -125,8 +132,14 @@ async function init() {
   customerForm.addEventListener("submit", saveCustomer);
   expenseForm.addEventListener("submit", saveExpense);
   serviceAreaPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
-  beforePhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews));
-  afterPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.after, renderJobPhotoPreviews));
+  beforePhotoInputs.forEach((input) => {
+    input.addEventListener("change", (event) => addPhotosFromInput(
+      event,
+      currentJobPhotos.before,
+      renderJobPhotoPreviews,
+      { section: input.dataset.sectionLabel || "Before" }
+    ));
+  });
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   measureFromMapButton.addEventListener("click", openMeasurementDialog);
@@ -476,24 +489,25 @@ function resetJobDialog() {
   renderLineItems([{ ...serviceCatalog[4], quantity: 1 }]);
   currentMeasurement = {};
   currentJobPhotos = { before: [], after: [] };
-  beforePhotoInput.value = "";
-  afterPhotoInput.value = "";
+  beforePhotoInputs.forEach((input) => {
+    input.value = "";
+  });
   renderJobPhotoPreviews();
   discountSelect.value = "0";
   updateEstimateTotals();
 }
 
-async function addPhotosFromInput(event, target, renderCallback) {
+async function addPhotosFromInput(event, target, renderCallback, metadata = {}) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
 
-  const photos = await Promise.all(files.map(fileToPhoto));
+  const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
   target.push(...photos);
   event.target.value = "";
   renderCallback();
 }
 
-function fileToPhoto(file) {
+function fileToPhoto(file, metadata = {}) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.addEventListener("load", () => {
@@ -513,7 +527,8 @@ function fileToPhoto(file) {
           id: crypto.randomUUID(),
           name: file.name.replace(/\.[^.]+$/, ".jpg"),
           dataUrl: canvas.toDataURL("image/jpeg", 0.72),
-          capturedAt: new Date().toISOString()
+          capturedAt: new Date().toISOString(),
+          ...metadata
         });
       });
       image.addEventListener("error", () => {
@@ -521,7 +536,8 @@ function fileToPhoto(file) {
           id: crypto.randomUUID(),
           name: file.name,
           dataUrl: reader.result,
-          capturedAt: new Date().toISOString()
+          capturedAt: new Date().toISOString(),
+          ...metadata
         });
       });
       image.src = reader.result;
@@ -540,8 +556,16 @@ function renderReceiptPhotos() {
 }
 
 function renderJobPhotoPreviews() {
-  renderEditablePhotoGrid(beforePhotoPreview, currentJobPhotos.before, () => renderJobPhotoPreviews());
-  renderEditablePhotoGrid(afterPhotoPreview, currentJobPhotos.after, () => renderJobPhotoPreviews());
+  beforePhotoPreviews.forEach((preview) => {
+    const section = preview.dataset.beforePhotoPreview;
+    const photos = (currentJobPhotos.before || []).filter((photo) => (photo.section || "Main driveway") === section);
+    renderEditablePhotoGrid(preview, photos, () => renderJobPhotoPreviews(), (photo) => {
+      const index = currentJobPhotos.before.findIndex((item) => item.id === photo.id);
+      if (index >= 0) {
+        currentJobPhotos.before.splice(index, 1);
+      }
+    });
+  });
 }
 
 function renderCompletionPhotoPreviews() {
@@ -549,7 +573,7 @@ function renderCompletionPhotoPreviews() {
   renderEditablePhotoGrid(completionAfterPhotoPreview, currentCompletionPhotos.after, () => renderCompletionPhotoPreviews());
 }
 
-function renderEditablePhotoGrid(container, photos, rerender) {
+function renderEditablePhotoGrid(container, photos, rerender, removePhoto) {
   container.innerHTML = "";
   if (!photos.length) {
     container.innerHTML = '<p class="photo-empty">No photos yet.</p>';
@@ -563,11 +587,15 @@ function renderEditablePhotoGrid(container, photos, rerender) {
       <button class="photo-remove" type="button" title="Remove photo">X</button>
     `;
     figure.querySelector("button").addEventListener("click", () => {
-      const index = photos.findIndex((item) => item.id === photo.id);
-      if (index >= 0) {
-        photos.splice(index, 1);
-        rerender();
+      if (removePhoto) {
+        removePhoto(photo);
+      } else {
+        const index = photos.findIndex((item) => item.id === photo.id);
+        if (index >= 0) {
+          photos.splice(index, 1);
+        }
       }
+      rerender();
     });
     container.append(figure);
   });
@@ -1239,11 +1267,38 @@ function renderJobPhotos(job) {
     <section class="detail-section">
       <h4>Job Photos</h4>
       <p><strong>Before</strong></p>
-      ${renderPhotoGrid(before)}
+      ${renderBeforePhotoSections(before)}
       <p><strong>After</strong></p>
       ${renderPhotoGrid(after)}
     </section>
   `;
+}
+
+function renderBeforePhotoSections(photos) {
+  if (!photos.length) {
+    return '<p>No photos saved.</p>';
+  }
+
+  const sections = [...beforePhotoSections];
+  photos.forEach((photo) => {
+    const section = photo.section || "Main driveway";
+    if (!sections.includes(section)) {
+      sections.push(section);
+    }
+  });
+
+  return sections
+    .map((section) => {
+      const sectionPhotos = photos.filter((photo) => (photo.section || "Main driveway") === section);
+      if (!sectionPhotos.length) return "";
+      return `
+        <div class="saved-photo-section">
+          <p class="photo-label">${escapeHtml(section)}</p>
+          ${renderPhotoGrid(sectionPhotos)}
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderPhotoGrid(photos) {

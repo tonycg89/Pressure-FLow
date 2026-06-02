@@ -377,6 +377,7 @@ function normalizePhotos(value) {
   return photos.map((photo) => ({
     id: String(photo.id || crypto.randomUUID()),
     name: String(photo.name || "Photo").trim(),
+    section: String(photo.section || "").trim(),
     dataUrl: String(photo.dataUrl || "").trim(),
     capturedAt: String(photo.capturedAt || new Date().toISOString())
   })).filter((photo) => photo.dataUrl.startsWith("data:image/"));

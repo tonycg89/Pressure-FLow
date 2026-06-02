@@ -324,31 +324,41 @@
           <textarea name="sensitiveAreas" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
         </label>
 
-        <section class="photo-uploader" aria-label="Job photos">
+        <section class="photo-uploader" aria-label="Before job photos">
           <div class="section-header compact-header">
             <div>
-              <p class="eyebrow">Job Photos</p>
-              <h3>Before and after</h3>
+              <p class="eyebrow">Before Photos</p>
+              <h3>Property areas</h3>
             </div>
           </div>
-          <div class="field-row">
-            <label>
-              Before photos
-              <input id="beforePhotoInput" type="file" accept="image/*" multiple>
-            </label>
-            <label>
-              After photos
-              <input id="afterPhotoInput" type="file" accept="image/*" multiple>
-            </label>
-          </div>
-          <div class="field-row">
-            <div>
-              <p class="photo-label">Before</p>
-              <div id="beforePhotoPreview" class="photo-grid"></div>
+          <div class="photo-section-list">
+            <div class="photo-section" data-before-section="main-driveway">
+              <label>Main driveway<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="Main driveway"></label>
+              <div class="photo-grid" data-before-photo-preview="Main driveway"></div>
             </div>
-            <div>
-              <p class="photo-label">After</p>
-              <div id="afterPhotoPreview" class="photo-grid"></div>
+            <div class="photo-section" data-before-section="house-1">
+              <label>House #1<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="House #1"></label>
+              <div class="photo-grid" data-before-photo-preview="House #1"></div>
+            </div>
+            <div class="photo-section" data-before-section="house-2">
+              <label>House #2<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="House #2"></label>
+              <div class="photo-grid" data-before-photo-preview="House #2"></div>
+            </div>
+            <div class="photo-section" data-before-section="house-3">
+              <label>House #3<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="House #3"></label>
+              <div class="photo-grid" data-before-photo-preview="House #3"></div>
+            </div>
+            <div class="photo-section" data-before-section="house-4">
+              <label>House #4<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="House #4"></label>
+              <div class="photo-grid" data-before-photo-preview="House #4"></div>
+            </div>
+            <div class="photo-section" data-before-section="roof">
+              <label>Roof<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="Roof"></label>
+              <div class="photo-grid" data-before-photo-preview="Roof"></div>
+            </div>
+            <div class="photo-section" data-before-section="gutters">
+              <label>Gutters<input type="file" accept="image/*" capture="environment" multiple data-before-photo-input data-section-label="Gutters"></label>
+              <div class="photo-grid" data-before-photo-preview="Gutters"></div>
             </div>
           </div>
         </section>
@@ -407,7 +417,7 @@
           </div>
           <label>
             Add service-area photos
-            <input id="serviceAreaPhotoInput" type="file" accept="image/*" multiple>
+            <input id="serviceAreaPhotoInput" type="file" accept="image/*" capture="environment" multiple>
           </label>
           <div id="serviceAreaPhotoPreview" class="photo-grid"></div>
         </section>
@@ -618,11 +628,11 @@
         <div class="field-row">
           <label>
             Before photos
-            <input id="completionBeforePhotoInput" type="file" accept="image/*" multiple>
+            <input id="completionBeforePhotoInput" type="file" accept="image/*" capture="environment" multiple>
           </label>
           <label>
             Completed work photos
-            <input id="completionAfterPhotoInput" type="file" accept="image/*" multiple>
+            <input id="completionAfterPhotoInput" type="file" accept="image/*" capture="environment" multiple>
           </label>
         </div>
 

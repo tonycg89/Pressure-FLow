@@ -664,6 +664,25 @@ label {
   background: #fbfcfe;
 }
 
+.photo-section-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.photo-section label {
+  margin: 0;
+}
+
 .photo-label {
   margin: 0 0 8px;
   color: var(--muted);
@@ -730,6 +749,11 @@ label {
 
 .saved-photo-grid {
   margin: 10px 0 14px;
+}
+
+.saved-photo-section {
+  display: grid;
+  gap: 4px;
 }
 
 .related-job-button {
@@ -957,6 +981,7 @@ label {
   .expense-card,
   .field-row,
   .settings-grid,
+  .photo-section-list,
   .line-item-row,
   .estimate-summary,
   .map-address-row,
