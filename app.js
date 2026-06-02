@@ -43,6 +43,9 @@ const expenseList = document.querySelector("#expenseList");
 const expenseDetail = document.querySelector("#expenseDetail");
 const statusFilter = document.querySelector("#statusFilter");
 const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
+const notificationToggle = document.querySelector("#notificationToggle");
+const notificationDropdown = document.querySelector("#notificationDropdown");
+const notificationCount = document.querySelector("#notificationCount");
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
 const newCustomerButton = document.querySelector("#newCustomerButton");
@@ -126,6 +129,8 @@ async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
+  notificationToggle?.addEventListener("click", toggleNotificationDropdown);
+  document.addEventListener("click", closeNotificationDropdownFromOutside);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
   newCustomerButton.addEventListener("click", openNewCustomer);
@@ -1049,6 +1054,11 @@ function renderDashboardNotifications(scopedJobs) {
     .sort((a, b) => new Date(b.at) - new Date(a.at))
     .slice(0, 12);
 
+  if (notificationCount) {
+    notificationCount.textContent = String(notifications.length);
+    notificationCount.hidden = notifications.length === 0;
+  }
+
   if (!notifications.length) {
     container.innerHTML = '<p class="empty-state compact-empty">No recent notifications yet.</p>';
     return;
@@ -1068,9 +1078,31 @@ function renderDashboardNotifications(scopedJobs) {
     button.addEventListener("click", () => {
       selectedJobId = button.dataset.jobId;
       document.querySelector('[data-view="pipeline"]').click();
+      closeNotificationDropdown();
       render();
     });
   });
+}
+
+function toggleNotificationDropdown(event) {
+  event?.stopPropagation();
+  if (!notificationDropdown || !notificationToggle) return;
+
+  const isOpen = !notificationDropdown.hidden;
+  notificationDropdown.hidden = isOpen;
+  notificationToggle.setAttribute("aria-expanded", String(!isOpen));
+}
+
+function closeNotificationDropdown() {
+  if (!notificationDropdown || !notificationToggle) return;
+  notificationDropdown.hidden = true;
+  notificationToggle.setAttribute("aria-expanded", "false");
+}
+
+function closeNotificationDropdownFromOutside(event) {
+  if (!notificationDropdown || notificationDropdown.hidden) return;
+  if (event.target.closest(".notification-menu")) return;
+  closeNotificationDropdown();
 }
 
 function buildJobNotifications(job) {

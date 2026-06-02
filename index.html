@@ -50,12 +50,27 @@
             <p class="eyebrow">Business Dashboard</p>
             <h2>Track estimates, accepted work, revenue, expenses, and lead sources.</h2>
           </div>
-          <select id="dashboardTimeframe" class="compact-select" aria-label="Dashboard timeframe">
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-            <option value="365">Last year</option>
-            <option value="all">All time</option>
-          </select>
+          <div class="dashboard-actions">
+            <div class="notification-menu">
+              <button id="notificationToggle" class="icon-button notification-toggle" type="button" title="Notifications" aria-expanded="false" aria-controls="notificationDropdown">
+                <span aria-hidden="true">!</span>
+                <strong id="notificationCount">0</strong>
+              </button>
+              <div id="notificationDropdown" class="notification-dropdown" hidden>
+                <div class="notification-dropdown-header">
+                  <p class="eyebrow">Notifications</p>
+                  <h3>Recent activity</h3>
+                </div>
+                <div id="dashboardNotifications" class="notification-list"></div>
+              </div>
+            </div>
+            <select id="dashboardTimeframe" class="compact-select" aria-label="Dashboard timeframe">
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last year</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
         </header>
 
         <section class="metrics dashboard-metrics" aria-label="Dashboard snapshot">
@@ -63,16 +78,6 @@
           <article><span>Estimates Accepted</span><strong id="dashEstimatesAccepted">0</strong></article>
           <article><span>Revenue</span><strong id="dashRevenue">$0</strong></article>
           <article><span>Expenses</span><strong id="dashExpenses">$0</strong></article>
-        </section>
-
-        <section class="panel notifications-panel" aria-labelledby="notificationsTitle">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Notifications</p>
-              <h3 id="notificationsTitle">Recent activity</h3>
-            </div>
-          </div>
-          <div id="dashboardNotifications" class="notification-list"></div>
         </section>
 
         <section class="content-grid dashboard-grid">

@@ -450,6 +450,7 @@ async function approvePublicEstimate(jobId, token) {
   job.squareContractUrl = job.contractApprovalUrl;
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
+  await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
   return job;
 }
 
@@ -466,6 +467,8 @@ async function rejectPublicEstimate(jobId, token, reason, note) {
   job.estimateRejectionNote = String(note || "").trim().slice(0, 500);
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
+  const reasonText = job.estimateRejectionReason ? formatEstimateRejectionReason(job.estimateRejectionReason) : "No reason given";
+  await sendAdminTextAlertSafe(`PressureFlow: Estimate rejected by ${formatAlertCustomer(job)}. Reason: ${reasonText}.`);
   return job;
 }
 
@@ -480,6 +483,17 @@ function normalizeEstimateRejectionReason(reason) {
   ]);
   const value = String(reason || "").trim();
   return allowed.has(value) ? value : "";
+}
+
+function formatEstimateRejectionReason(reason) {
+  return {
+    "price-too-high": "Price was too high",
+    "timing-not-right": "Timing was not right",
+    "went-with-another-company": "Went with another company",
+    "scope-changed": "Scope changed",
+    "just-researching": "Just researching",
+    "other": "Other"
+  }[reason] || "";
 }
 
 async function findPublicContract(jobId, token) {
@@ -530,6 +544,7 @@ async function signPublicContract(jobId, token, signerName, signedDate) {
   job.squareDepositInvoiceUrl = invoice.publicUrl;
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
+  await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`);
   return job;
 }
 
@@ -585,6 +600,14 @@ function getBaseUrlFromLink(link) {
 
 function getBusinessName(settings = {}) {
   return settings.businessName || "Precision Power Washing";
+}
+
+function formatAlertMoney(amount) {
+  return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+function formatAlertCustomer(job) {
+  return `${job.customerName || "Customer"} - ${job.address || "No address"}`;
 }
 
 function getLogoUrl(baseUrl = "") {
@@ -845,6 +868,50 @@ async function sendGoogleEmail(settings, message) {
   if (!response.ok) {
     const messageText = data.error?.message || data.error_description || "Google email send failed.";
     throw new Error(`${messageText} Reconnect Google Calendar from Settings so PressureFlow can send estimate emails.`);
+  }
+
+  return data;
+}
+
+async function sendAdminTextAlertSafe(message) {
+  try {
+    await sendAdminTextAlert(message);
+  } catch (error) {
+    console.warn(`Unable to send admin text alert: ${error.message}`);
+  }
+}
+
+async function sendAdminTextAlert(message) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID || "";
+  const authToken = process.env.TWILIO_AUTH_TOKEN || "";
+  const fromPhone = process.env.TWILIO_FROM_PHONE || "";
+  const toPhone = process.env.ADMIN_ALERT_PHONE || "";
+
+  if (!accountSid || !authToken || !fromPhone || !toPhone) {
+    return null;
+  }
+
+  const body = String(message || "").trim().slice(0, 1500);
+  if (!body) {
+    return null;
+  }
+
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      From: fromPhone,
+      To: toPhone,
+      Body: body
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error_message || "Twilio text send failed.");
   }
 
   return data;
@@ -2182,6 +2249,7 @@ async function handleSquareWebhook(event) {
     job.status = "Deposit Paid";
     job.squareDepositInvoiceStatus = invoice.status || "PAID";
     job.squareDepositPaidAt = new Date().toISOString();
+    await sendAdminTextAlertSafe(`PressureFlow: Square deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
   }
 
   if (job.squareFinalInvoiceId === invoice.id) {
@@ -2189,6 +2257,7 @@ async function handleSquareWebhook(event) {
     job.squareFinalInvoiceStatus = invoice.status || "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
     await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+    await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 
   job.updatedAt = new Date().toISOString();
@@ -2511,6 +2580,7 @@ async function applyAction(job, action, input) {
     job.googleCalendarEventId = calendarEvent.id;
     job.googleCalendarEventUrl = calendarEvent.htmlLink || "";
     await sendScheduleConfirmationEmail(job, settings, input._baseUrl);
+    await sendAdminTextAlertSafe(`PressureFlow: Job scheduled for ${formatAlertCustomer(job)}. ${formatScheduledWindow(job)}.`);
   }
 
   if (action === "send-square-estimate") {
@@ -2558,12 +2628,16 @@ async function applyAction(job, action, input) {
 
   if (action === "mark-deposit-paid") {
     job.status = "Deposit Paid";
+    job.squareDepositInvoiceStatus = "PAID";
+    job.squareDepositPaidAt = job.squareDepositPaidAt || new Date().toISOString();
+    await sendAdminTextAlertSafe(`PressureFlow: Deposit marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
   }
 
   if (action === "check-deposit-payment") {
     job.status = "Deposit Paid";
     job.squareDepositInvoiceStatus = "PAID";
     job.squareDepositPaidAt = new Date().toISOString();
+    await sendAdminTextAlertSafe(`PressureFlow: Deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
   }
 
   if (action === "complete") {
@@ -2601,6 +2675,7 @@ async function applyAction(job, action, input) {
     job.squareFinalInvoiceStatus = "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
     await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+    await sendAdminTextAlertSafe(`PressureFlow: Final invoice marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 
   if (action === "check-final-payment") {
@@ -2609,6 +2684,7 @@ async function applyAction(job, action, input) {
     job.squareFinalInvoiceStatus = "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
     await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+    await sendAdminTextAlertSafe(`PressureFlow: Final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 }
 
@@ -2859,11 +2935,13 @@ async function handleStripeWebhook(event) {
     job.status = "Deposit Paid";
     job.squareDepositInvoiceStatus = "PAID";
     job.squareDepositPaidAt = new Date().toISOString();
+    await sendAdminTextAlertSafe(`PressureFlow: Card deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
   } else {
     job.status = "Paid";
     job.squareFinalInvoiceStatus = "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
     await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+    await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 
   job.updatedAt = new Date().toISOString();

@@ -198,6 +198,73 @@ button {
   min-width: 160px;
 }
 
+.dashboard-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-menu {
+  position: relative;
+}
+
+.notification-toggle {
+  position: relative;
+  min-width: 40px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+.notification-toggle strong {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: var(--red);
+  color: white;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 440px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+}
+
+.notification-dropdown[hidden] {
+  display: none;
+}
+
+.notification-dropdown-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+  background: white;
+}
+
+.notification-dropdown-header h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
@@ -428,10 +495,6 @@ textarea {
 .dashboard-grid {
   margin-top: 18px;
   align-items: start;
-}
-
-.notifications-panel {
-  margin: 0 0 18px;
 }
 
 .notification-list {
@@ -1068,6 +1131,10 @@ label {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .dashboard-actions {
+    justify-content: space-between;
   }
 
   .topbar h2 {
