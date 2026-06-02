@@ -1775,8 +1775,8 @@ async function findSavedMeasurements(address) {
 
 async function syncJobPhotosToCustomerFile(job) {
   const photos = [
-    ...(job.jobPhotos?.before || []),
-    ...(job.jobPhotos?.after || [])
+    ...(job.jobPhotos?.before || []).map((photo) => ({ ...photo, category: "before" })),
+    ...(job.jobPhotos?.after || []).map((photo) => ({ ...photo, category: "after" }))
   ];
   if (!photos.length) {
     return;

@@ -78,6 +78,9 @@ const completionBeforePhotoInput = document.querySelector("#completionBeforePhot
 const completionAfterPhotoInput = document.querySelector("#completionAfterPhotoInput");
 const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
 const completionAfterPhotoPreview = document.querySelector("#completionAfterPhotoPreview");
+const photoViewerDialog = document.querySelector("#photoViewerDialog");
+const photoViewerTitle = document.querySelector("#photoViewerTitle");
+const photoViewerImage = document.querySelector("#photoViewerImage");
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
 let currentMeasurement = {};
@@ -958,6 +961,7 @@ function renderJobDetail() {
   jobDetail.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => runAction(job.id, button.dataset.action));
   });
+  attachPhotoViewerHandlers(jobDetail);
 }
 
 function renderCustomers() {
@@ -975,6 +979,9 @@ function renderCustomers() {
 
   customers.forEach((customer) => {
     const relatedJobs = getCustomerJobs(customer);
+    const photoCount = (customer.serviceAreaPhotos?.length || 0) +
+      getCustomerJobPhotos(relatedJobs, "before").length +
+      getCustomerJobPhotos(relatedJobs, "after").length;
     const card = document.createElement("button");
     card.className = `job-card ${customer.id === selectedCustomerId ? "selected" : ""}`;
     card.type = "button";
@@ -988,7 +995,7 @@ function renderCustomers() {
         <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
         <p>${escapeHtml(customer.address || "No address")} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
       </div>
-      <span class="status-pill">${customer.serviceAreaPhotos?.length || 0} photos</span>
+      <span class="status-pill">${photoCount} photos</span>
     `;
     customerList.append(card);
   });
@@ -1017,6 +1024,13 @@ function renderCustomerDetail() {
     </section>
 
     <section class="detail-section">
+      <h4>Before Photos</h4>
+      ${renderPhotoGrid(getCustomerJobPhotos(relatedJobs, "before"))}
+      <h4>After Photos</h4>
+      ${renderPhotoGrid(getCustomerJobPhotos(relatedJobs, "after"))}
+    </section>
+
+    <section class="detail-section">
       <h4>Notes</h4>
       <p>${escapeHtml(customer.notes || "No notes yet.")}</p>
     </section>
@@ -1025,7 +1039,7 @@ function renderCustomerDetail() {
       <h4>Jobs</h4>
       ${relatedJobs.length ? relatedJobs.map((job) => `
         <button class="related-job-button" type="button" data-job-id="${escapeHtml(job.id)}">
-          <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}</span>
+          <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}<br><small>${escapeHtml(job.squareFinalInvoiceId ? "Final invoice saved" : job.squareDepositInvoiceId ? "Deposit invoice saved" : "No invoice yet")}</small></span>
           <strong>${currency.format(job.estimate)}</strong>
         </button>
       `).join("") : '<p>No jobs yet.</p>'}
@@ -1044,6 +1058,7 @@ function renderCustomerDetail() {
     });
   });
   customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
+  attachPhotoViewerHandlers(customerDetail);
 }
 
 function renderJobPhotos(job) {
@@ -1073,11 +1088,20 @@ function renderPhotoGrid(photos) {
     <div class="photo-grid saved-photo-grid">
       ${photos.map((photo) => `
         <figure>
-          <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+          <button class="photo-open" type="button" data-photo-src="${escapeHtml(photo.dataUrl)}" data-photo-name="${escapeHtml(photo.name)}">
+            <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+          </button>
         </figure>
       `).join("")}
     </div>
   `;
+}
+
+function getCustomerJobPhotos(relatedJobs, type) {
+  return relatedJobs.flatMap((job) => (job.jobPhotos?.[type] || []).map((photo) => ({
+    ...photo,
+    name: `${job.serviceType} - ${photo.name || type}`
+  })));
 }
 
 function getCustomerJobs(customer) {
@@ -1087,6 +1111,16 @@ function getCustomerJobs(customer) {
     (customer.email && job.email === customer.email) ||
     (addressKey && normalizeKey(job.address) === addressKey)
   ));
+}
+
+function attachPhotoViewerHandlers(container) {
+  container.querySelectorAll(".photo-open").forEach((button) => {
+    button.addEventListener("click", () => {
+      photoViewerTitle.textContent = button.dataset.photoName || "Photo";
+      photoViewerImage.src = button.dataset.photoSrc || "";
+      photoViewerDialog.showModal();
+    });
+  });
 }
 
 function renderTimelineStep(job, status) {

@@ -577,6 +577,16 @@ label {
   background: #edf2f7;
 }
 
+.photo-open {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .photo-grid img {
   display: block;
   width: 100%;
@@ -626,6 +636,25 @@ label {
   background: white;
   color: var(--ink);
   text-align: left;
+}
+
+.related-job-button small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.photo-viewer-dialog {
+  width: min(980px, calc(100vw - 24px));
+}
+
+.photo-viewer-image {
+  display: block;
+  width: 100%;
+  max-height: 76vh;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #101828;
 }
 
 .map-dialog {
