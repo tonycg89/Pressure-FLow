@@ -178,6 +178,12 @@ function normalizeJob(input) {
     squareFinalInvoiceUrl: "",
     squareContractId: "",
     squareContractUrl: String(input.squareContractUrl || "").trim(),
+    contractApprovalToken: "",
+    contractApprovalUrl: "",
+    contractMailto: "",
+    contractSentAt: "",
+    contractSignedAt: "",
+    contractSignerName: "",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -280,9 +286,38 @@ async function approvePublicEstimate(jobId, token) {
   return job;
 }
 
+async function findPublicContract(jobId, token) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.contractApprovalToken || job.contractApprovalToken !== token) {
+    return null;
+  }
+  return job;
+}
+
+async function signPublicContract(jobId, token, signerName) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job || !job.contractApprovalToken || job.contractApprovalToken !== token) {
+    return null;
+  }
+
+  job.status = "Contract Signed";
+  job.contractSignerName = String(signerName || job.customerName || "").trim();
+  job.contractSignedAt = new Date().toISOString();
+  job.updatedAt = new Date().toISOString();
+  await writeJobs(jobs);
+  return job;
+}
+
 function buildEstimateApprovalUrl(baseUrl, job) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
   return `${root}/estimate/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.estimateApprovalToken)}`;
+}
+
+function buildContractApprovalUrl(baseUrl, job) {
+  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
+  return `${root}/contract/${encodeURIComponent(job.id)}?token=${encodeURIComponent(job.contractApprovalToken)}`;
 }
 
 function buildEstimateMailto(job) {
@@ -294,6 +329,21 @@ function buildEstimateMailto(job) {
     "",
     `Estimate total: $${Number(job.estimate || 0).toFixed(2)}`,
     `Approve estimate: ${job.estimateApprovalUrl}`,
+    "",
+    "Thank you."
+  ].join("\n");
+
+  return `mailto:${encodeURIComponent(job.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function buildContractMailto(job) {
+  const subject = `Contract for ${job.serviceType} at ${job.address}`;
+  const body = [
+    `Hi ${job.customerName},`,
+    "",
+    "Your pressure washing service contract is ready for review and signature.",
+    "",
+    `Review and sign: ${job.contractApprovalUrl}`,
     "",
     "Thank you."
   ].join("\n");
@@ -320,6 +370,26 @@ async function sendEstimateEmail(job, settings) {
     subject,
     textBody,
     htmlBody
+  });
+}
+
+async function sendContractEmail(job, settings) {
+  const subject = `Contract for ${job.serviceType} at ${job.address}`;
+  const textBody = [
+    `Hi ${job.customerName},`,
+    "",
+    "Your pressure washing service contract is ready for review and signature.",
+    "",
+    `Review and sign: ${job.contractApprovalUrl}`,
+    "",
+    "Thank you."
+  ].join("\n");
+
+  await sendGoogleEmail(settings, {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody: renderContractEmailHtml(job)
   });
 }
 
@@ -399,6 +469,22 @@ function renderEstimateEmailHtml(job) {
   `;
 }
 
+function renderContractEmailHtml(job) {
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+      <h2 style="margin:0 0 12px">Your service contract is ready</h2>
+      <p>Hi ${escapeHtml(job.customerName)},</p>
+      <p>Please review and sign the service contract for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
+      <p>
+        <a href="${escapeHtml(job.contractApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+          Review and sign contract
+        </a>
+      </p>
+      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.contractApprovalUrl)}</p>
+    </div>
+  `;
+}
+
 function getAppBaseUrl(request) {
   if (process.env.APP_BASE_URL) {
     return process.env.APP_BASE_URL;
@@ -473,13 +559,102 @@ function renderEstimateMessagePage(title, message) {
 </html>`;
 }
 
+function renderContractSigningPage(job) {
+  const lineRows = (job.lineItems || []).map((item) => `
+    <tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</td>
+      <td>$${Number(item.total || 0).toFixed(2)}</td>
+    </tr>
+  `).join("");
+  const depositAmount = Number(job.estimate || 0) * (Number(job.depositPercent || 25) / 100);
+  const finalAmount = Math.max(Number(job.estimate || 0) - depositAmount, 0);
+  const alreadySigned = Boolean(job.contractSignedAt);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Contract</title>
+    ${estimatePageStyles()}
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">PressureFlow Contract</p>
+      <h1>Pressure Washing Service Agreement</h1>
+      <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+
+      <section>
+        <h2>Scope of Work</h2>
+        <table>
+          <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
+          <tbody>${lineRows}</tbody>
+        </table>
+      </section>
+
+      <section class="totals">
+        <div><span>Estimate Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
+        <div><span>Deposit Due Before Scheduling</span><strong>$${depositAmount.toFixed(2)}</strong></div>
+        <div><span>Final Balance After Completion</span><strong>$${finalAmount.toFixed(2)}</strong></div>
+      </section>
+
+      ${renderContractTerms(job)}
+
+      ${alreadySigned ? `
+        <section class="notice">
+          <strong>Signed</strong>
+          <p>This contract was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
+        </section>
+      ` : `
+        <form method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
+          <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
+          <label>
+            Type your full name to sign
+            <input name="signerName" required value="${escapeHtml(job.customerName)}">
+          </label>
+          <button type="submit">Sign Contract</button>
+        </form>
+      `}
+    </main>
+  </body>
+</html>`;
+}
+
+function renderContractTerms(job) {
+  const terms = [
+    ["Estimate Approval", "The Client approves the listed services, rates, and estimated total shown in this agreement."],
+    ["Deposit and Payment", `A ${Number(job.depositPercent || 25)}% deposit is due before work is scheduled. The remaining balance is due after completion unless otherwise agreed in writing.`],
+    ["Scheduling", "Work will be scheduled after the deposit is paid. Weather, site access, water availability, and unsafe conditions may require rescheduling."],
+    ["Access and Preparation", "The Client is responsible for providing access to the work area, water access when needed, and removing fragile or movable items before service."],
+    ["Pre-existing Conditions", "The Business is not responsible for damage caused by pre-existing conditions, including loose paint, failing seals, oxidized surfaces, damaged screens, cracked concrete, unstable fixtures, or poorly sealed doors and windows."],
+    ["Chemical Overspray and Sensitive Areas", `The Client agrees to identify sensitive areas before work begins. Noted sensitive areas: ${job.sensitiveAreas || "none provided"}. The Business will take reasonable care but is not responsible for damage caused by undisclosed sensitive areas or pre-existing vulnerabilities.`],
+    ["Changes", "Any material changes to scope, price, or schedule must be agreed to in writing."],
+    ["Completion", "Upon completion, the Client should report concerns promptly so the Business can review and address reasonable workmanship issues."]
+  ];
+
+  return `<section>
+    <h2>Terms</h2>
+    ${terms.map(([title, body]) => `
+      <article class="term">
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(body)}</p>
+      </article>
+    `).join("")}
+  </section>`;
+}
+
 function estimatePageStyles() {
   return `<style>
     body { margin: 0; min-height: 100vh; background: #f7f8fb; color: #202124; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     main { width: min(760px, calc(100vw - 32px)); margin: 32px auto; padding: 24px; border: 1px solid #d8dee8; border-radius: 8px; background: white; box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08); }
     h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
     p { margin: 0 0 20px; color: #667085; line-height: 1.45; }
+    h2 { margin: 24px 0 8px; font-size: 20px; }
+    h3 { margin: 0 0 4px; font-size: 15px; }
     .eyebrow { margin: 0 0 8px; color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    label { display: grid; gap: 6px; margin: 18px 0; color: #667085; font-size: 13px; font-weight: 700; }
+    input { min-height: 42px; padding: 0 10px; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
@@ -487,6 +662,9 @@ function estimatePageStyles() {
     .totals { display: grid; gap: 8px; margin: 18px 0; }
     .totals div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
     .totals span { color: #667085; }
+    .term { padding: 12px 0; border-bottom: 1px solid #d8dee8; }
+    .term p { margin: 0; }
+    .notice { padding: 14px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
     button { width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; cursor: pointer; }
   </style>`;
 }
@@ -571,6 +749,33 @@ async function handleApi(request, response, url) {
     }
 
     sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded, and we will follow up with the next step."));
+    return;
+  }
+
+  const contractPageMatch = url.pathname.match(/^\/contract\/([^/]+)$/);
+  if (request.method === "GET" && contractPageMatch) {
+    const [, jobId] = contractPageMatch;
+    const job = await findPublicContract(jobId, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Contract not found", "This contract link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderContractSigningPage(job));
+    return;
+  }
+
+  const signContractMatch = url.pathname.match(/^\/api\/public\/contracts\/([^/]+)\/sign$/);
+  if (request.method === "POST" && signContractMatch) {
+    const [, jobId] = signContractMatch;
+    const body = await readFormOrJsonBody(request);
+    const result = await signPublicContract(jobId, body.token || "", body.signerName || "");
+    if (!result) {
+      sendHtml(response, 404, renderEstimateMessagePage("Contract not found", "This contract link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderEstimateMessagePage("Contract signed", "Thank you. Your signed contract has been recorded, and we will follow up with the deposit invoice."));
     return;
   }
 
@@ -771,6 +976,7 @@ function isPublicPath(pathname) {
     pathname === "/health" ||
     pathname === "/webhooks/square" ||
     pathname.startsWith("/estimate/") ||
+    pathname.startsWith("/contract/") ||
     pathname.startsWith("/api/public/") ||
     pathname === "/favicon.ico";
 }
@@ -1048,9 +1254,15 @@ async function applyAction(job, action, input) {
   }
 
   if (action === "send-contract") {
+    const settings = await readSettings();
     job.status = "Contract Sent";
-    job.squareContractId = input.squareContractId || job.squareContractId || `manual-square-contract-${Date.now()}`;
-    job.squareContractUrl = input.squareContractUrl || job.squareContractUrl || "";
+    job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
+    job.contractApprovalUrl = buildContractApprovalUrl(input._baseUrl, job);
+    job.contractMailto = buildContractMailto(job);
+    await sendContractEmail(job, settings);
+    job.contractSentAt = new Date().toISOString();
+    job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
+    job.squareContractUrl = job.contractApprovalUrl;
   }
 
   if (action === "mark-contract-signed") {
@@ -1555,7 +1767,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
       await handleApi(request, response, url);
       return;
     }

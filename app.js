@@ -445,7 +445,7 @@ function renderJobDetail() {
       <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
       <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job.squareDepositInvoiceId, job.squareDepositInvoiceUrl)}</strong></div>
       <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job.squareFinalInvoiceId, job.squareFinalInvoiceUrl)}</strong></div>
-      <div class="detail-row"><span>Square contract</span><strong>${renderLinkedValue(job.squareContractId || job.docusignEnvelopeId, job.squareContractUrl)}</strong></div>
+      <div class="detail-row"><span>PressureFlow contract</span><strong>${renderLinkedValue("signing link", job.contractApprovalUrl || job.squareContractUrl)}</strong></div>
     </section>
 
     <section class="detail-section">
@@ -560,16 +560,14 @@ async function runAction(jobId, action) {
     payload.jobDurationMinutes = schedule.jobDurationMinutes;
   }
 
-  if (action === "send-contract") {
-    payload.squareContractId = prompt("Paste the Square contract ID or short reference", "") || "";
-    payload.squareContractUrl = prompt("Paste the Square contract link, if you have it", "") || "";
-  }
-
   try {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
     if (action === "send-square-estimate") {
       alert(`Estimate sent to ${updated.job.email}.`);
+    }
+    if (action === "send-contract") {
+      alert(`Contract sent to ${updated.job.email}.`);
     }
     await loadJobs();
   } catch (error) {

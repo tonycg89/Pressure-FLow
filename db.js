@@ -273,6 +273,12 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists estimate_mailto text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_sent_at timestamptz");
   await getPool().query("alter table jobs add column if not exists estimate_approved_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
+  await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
+  await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
+  await getPool().query("alter table jobs add column if not exists contract_sent_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists contract_signed_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists contract_signer_name text not null default ''");
   postgresSchemaReady = true;
 }
 
@@ -406,8 +412,14 @@ async function upsertJob(client, job) {
       estimate_approval_url = $4,
       estimate_mailto = $5,
       estimate_sent_at = nullif($6, '')::timestamptz,
-      estimate_approved_at = nullif($7, '')::timestamptz
-    where id = $8`,
+      estimate_approved_at = nullif($7, '')::timestamptz,
+      contract_approval_token = $8,
+      contract_approval_url = $9,
+      contract_mailto = $10,
+      contract_sent_at = nullif($11, '')::timestamptz,
+      contract_signed_at = nullif($12, '')::timestamptz,
+      contract_signer_name = $13
+    where id = $14`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -416,6 +428,12 @@ async function upsertJob(client, job) {
       job.estimateMailto || "",
       job.estimateSentAt || "",
       job.estimateApprovedAt || "",
+      job.contractApprovalToken || "",
+      job.contractApprovalUrl || "",
+      job.contractMailto || "",
+      job.contractSentAt || "",
+      job.contractSignedAt || "",
+      job.contractSignerName || "",
       job.id
     ]
   );
@@ -437,6 +455,12 @@ function jobFromRow(row) {
     estimateMailto: row.estimate_mailto || "",
     estimateSentAt: row.estimate_sent_at?.toISOString?.() || "",
     estimateApprovedAt: row.estimate_approved_at?.toISOString?.() || "",
+    contractApprovalToken: row.contract_approval_token || "",
+    contractApprovalUrl: row.contract_approval_url || "",
+    contractMailto: row.contract_mailto || "",
+    contractSentAt: row.contract_sent_at?.toISOString?.() || "",
+    contractSignedAt: row.contract_signed_at?.toISOString?.() || "",
+    contractSignerName: row.contract_signer_name || "",
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,
     scheduledAt: row.scheduled_at ? toLocalInputValue(row.scheduled_at) : "",
