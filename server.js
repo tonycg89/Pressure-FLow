@@ -2717,23 +2717,40 @@ function formatScheduledWindow(job) {
     return "To be scheduled";
   }
 
-  const start = parseLocalDateTime(job.scheduledAt);
+  const start = parseLocalDateTimeParts(job.scheduledAt);
   if (!start) {
     return job.scheduledAt;
   }
 
-  const end = new Date(start.getTime() + Number(job.jobDurationMinutes || 180) * 60000);
-  const date = start.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const startTime = start.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" });
-  const endTime = end.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
-  return `${date}, ${startTime} - ${endTime}`;
+  const endValue = addMinutesToLocalDateTime(job.scheduledAt.slice(0, 16), Number(job.jobDurationMinutes || 180));
+  const end = parseLocalDateTimeParts(endValue);
+  const zone = isPacificDaylightTime(job.scheduledAt.slice(0, 16)) ? "PDT" : "PST";
+  return `${formatLocalScheduleDate(start)}, ${formatLocalTime(start)} - ${formatLocalTime(end)} ${zone}`;
 }
 
-function parseLocalDateTime(value) {
+function parseLocalDateTimeParts(value) {
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   if (!match) return null;
   const [, year, month, day, hour, minute] = match.map(Number);
-  return new Date(year, month - 1, day, hour, minute);
+  return { year, month, day, hour, minute };
+}
+
+function formatLocalScheduleDate(parts) {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  return date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function formatLocalTime(parts) {
+  if (!parts) return "";
+  const suffix = parts.hour >= 12 ? "PM" : "AM";
+  const hour = parts.hour % 12 || 12;
+  return `${hour}:${String(parts.minute).padStart(2, "0")} ${suffix}`;
 }
 
 async function createSquareInvoice(job, settings, invoiceType) {
