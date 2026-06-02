@@ -1657,8 +1657,8 @@ async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMin
     throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
   }
 
-  const startDateTime = scheduledAt.slice(0, 16);
-  const endDateTime = addMinutesToLocalDateTime(startDateTime, durationMinutes);
+  const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
+  const endDateTime = withPacificOffset(addMinutesToLocalDateTime(scheduledAt.slice(0, 16), durationMinutes));
   const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
   const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
     method: "POST",
@@ -1697,7 +1697,7 @@ async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMin
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error?.message || "Google Calendar event creation failed.");
+    throw new Error(data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`);
   }
 
   return data;
@@ -1729,6 +1729,28 @@ function addMinutesToLocalDateTime(value, minutes) {
   const nextHour = String(date.getHours()).padStart(2, "0");
   const nextMinute = String(date.getMinutes()).padStart(2, "0");
   return `${nextYear}-${nextMonth}-${nextDay}T${nextHour}:${nextMinute}`;
+}
+
+function withPacificOffset(localDateTime) {
+  const offset = isPacificDaylightTime(localDateTime) ? "-07:00" : "-08:00";
+  return `${localDateTime}:00${offset}`;
+}
+
+function isPacificDaylightTime(localDateTime) {
+  const [datePart] = localDateTime.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const dstStartDay = nthSundayOfMonth(year, 3, 2);
+  const dstEndDay = nthSundayOfMonth(year, 11, 1);
+  const dateKey = month * 100 + day;
+  const startKey = 3 * 100 + dstStartDay;
+  const endKey = 11 * 100 + dstEndDay;
+  return dateKey >= startKey && dateKey < endKey;
+}
+
+function nthSundayOfMonth(year, month, nth) {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const firstSunday = 1 + ((7 - firstDay.getUTCDay()) % 7);
+  return firstSunday + (nth - 1) * 7;
 }
 
 function requireSquareSettings(settings) {
