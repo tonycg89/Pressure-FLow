@@ -27,11 +27,13 @@ const statusFilter = document.querySelector("#statusFilter");
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
 const settingsButton = document.querySelector("#settingsButton");
+const templatesButton = document.querySelector("#templatesButton");
 const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
+const templatesDialog = document.querySelector("#templatesDialog");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
@@ -49,6 +51,7 @@ async function init() {
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
   settingsButton.addEventListener("click", openSettings);
+  templatesButton.addEventListener("click", () => templatesDialog.showModal());
   jobForm.addEventListener("submit", createJob);
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   discountSelect.addEventListener("change", updateEstimateTotals);
@@ -193,6 +196,9 @@ async function createJob(event) {
     resetJobDialog();
     jobDialog.close();
     await loadJobs();
+    if (editingId && saved.job.status === "Lead") {
+      alert("Pricing changed, so the previous estimate/contract/invoice links were reset. Send the updated estimate again.");
+    }
   } catch (error) {
     alert(error.message);
   }

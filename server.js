@@ -940,11 +940,17 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    updateJob(job, await readRequestBody(request));
+    const input = await readRequestBody(request);
+    const pricingChanged = didPricingChange(job, input);
+    updateJob(job, input);
     const validationError = validateJob(job);
     if (validationError) {
       sendError(response, 400, validationError);
       return;
+    }
+
+    if (pricingChanged) {
+      await resetJobForPricingChange(job);
     }
 
     job.updatedAt = new Date().toISOString();
@@ -1224,6 +1230,87 @@ function updateJob(job, input) {
 
   if (Object.hasOwn(input, "depositPercent")) {
     job.depositPercent = Number(input.depositPercent);
+  }
+}
+
+function didPricingChange(job, input) {
+  if (Object.hasOwn(input, "estimate") && Number(input.estimate) !== Number(job.estimate || 0)) {
+    return true;
+  }
+  if (Object.hasOwn(input, "discountPercent") && Number(input.discountPercent) !== Number(job.discountPercent || 0)) {
+    return true;
+  }
+  if (Object.hasOwn(input, "depositPercent") && Number(input.depositPercent) !== Number(job.depositPercent || 0)) {
+    return true;
+  }
+  if (Object.hasOwn(input, "lineItems")) {
+    return JSON.stringify(normalizeComparableLineItems(normalizeLineItems(input.lineItems))) !==
+      JSON.stringify(normalizeComparableLineItems(job.lineItems || []));
+  }
+  return false;
+}
+
+function normalizeComparableLineItems(items) {
+  return items.map((item) => ({
+    name: String(item.name || ""),
+    unit: String(item.unit || ""),
+    quantity: Number(item.quantity || 0),
+    price: Number(item.price || 0),
+    total: Number(item.total || 0)
+  }));
+}
+
+async function resetJobForPricingChange(job) {
+  if (statuses.indexOf(job.status) < statuses.indexOf("Estimate Sent")) {
+    return;
+  }
+
+  await cancelStoredInvoiceIfPossible(job, "deposit");
+  await cancelStoredInvoiceIfPossible(job, "final");
+
+  job.status = "Lead";
+  job.estimateApprovalToken = "";
+  job.estimateApprovalUrl = "";
+  job.estimateMailto = "";
+  job.estimateSentAt = "";
+  job.estimateApprovedAt = "";
+  job.squareEstimateId = "";
+  job.squareEstimateUrl = "";
+  job.contractApprovalToken = "";
+  job.contractApprovalUrl = "";
+  job.contractMailto = "";
+  job.contractSentAt = "";
+  job.contractSignedAt = "";
+  job.contractSignerName = "";
+  job.squareContractId = "";
+  job.squareContractUrl = "";
+  job.squareDepositOrderId = "";
+  job.squareDepositInvoiceId = "";
+  job.squareDepositInvoiceUrl = "";
+  job.squareDepositInvoiceStatus = "";
+  job.squareDepositPaidAt = "";
+  job.squareFinalOrderId = "";
+  job.squareFinalInvoiceId = "";
+  job.squareFinalInvoiceUrl = "";
+  job.squareFinalInvoiceStatus = "";
+  job.squareFinalPaidAt = "";
+}
+
+async function cancelStoredInvoiceIfPossible(job, invoiceType) {
+  const invoiceId = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
+  const status = invoiceType === "deposit" ? job.squareDepositInvoiceStatus : job.squareFinalInvoiceStatus;
+  if (!invoiceId || status === "PAID") {
+    return;
+  }
+
+  try {
+    const settings = await readSettings();
+    const invoice = await getSquareInvoice(settings, invoiceId);
+    if (!isSquareInvoicePaid(invoice) && invoice.status !== "CANCELED") {
+      await cancelSquareInvoice(settings, invoice.id, invoice.version);
+    }
+  } catch (error) {
+    console.warn(`Unable to cancel ${invoiceType} invoice ${invoiceId}: ${error.message}`);
   }
 }
 
@@ -1653,6 +1740,18 @@ async function getSquareInvoice(settings, invoiceId) {
     undefined,
     "GET"
   );
+  return result.invoice;
+}
+
+async function cancelSquareInvoice(settings, invoiceId, version) {
+  requireSquareSettings(settings);
+  if (!invoiceId || version === undefined || version === null) {
+    throw new Error("Square invoice ID and version are required to cancel an invoice.");
+  }
+
+  const result = await squareRequest(settings, `/v2/invoices/${encodeURIComponent(invoiceId)}/cancel`, {
+    version
+  });
   return result.invoice;
 }
 

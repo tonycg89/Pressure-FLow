@@ -27,7 +27,7 @@
             <span aria-hidden="true">I</span>
             <span>Invoices</span>
           </button>
-          <button class="nav-item" type="button" title="Templates">
+          <button id="templatesButton" class="nav-item" type="button" title="Templates">
             <span aria-hidden="true">T</span>
             <span>Templates</span>
           </button>
@@ -275,6 +275,30 @@
           <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="templatesDialog">
+      <form method="dialog">
+        <div class="dialog-header">
+          <h2>Templates</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+        <section class="template-list">
+          <article class="template-card">
+            <p class="eyebrow">Contract</p>
+            <h3>Pressure Washing Service Agreement</h3>
+            <p>Used when you click Send Contract. Customer reviews and signs this agreement online.</p>
+          </article>
+          <article class="template-card">
+            <p class="eyebrow">Estimate</p>
+            <h3>PressureFlow Estimate Approval</h3>
+            <p>Used when you click Send Estimate. Customer reviews itemized services and approves online.</p>
+          </article>
+        </section>
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Close</button>
         </menu>
       </form>
     </dialog>
