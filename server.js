@@ -18,6 +18,7 @@ const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const SQUARE_VERSION = "2026-05-20";
 const SESSION_COOKIE = "pressureflow_session";
+const serviceAgreementTemplate = require("./templates/pressure-washing-service-agreement.json");
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 
 const contentTypes = {
@@ -582,8 +583,10 @@ function renderContractSigningPage(job) {
   <body>
     <main>
       <p class="eyebrow">PressureFlow Contract</p>
-      <h1>Pressure Washing Service Agreement</h1>
+      <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
       <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+
+      ${renderContractProjectDetails(job, depositAmount)}
 
       <section>
         <h2>Scope of Work</h2>
@@ -622,25 +625,41 @@ function renderContractSigningPage(job) {
 }
 
 function renderContractTerms(job) {
-  const terms = [
-    ["Estimate Approval", "The Client approves the listed services, rates, and estimated total shown in this agreement."],
-    ["Deposit and Payment", `A ${Number(job.depositPercent || 25)}% deposit is due before work is scheduled. The remaining balance is due after completion unless otherwise agreed in writing.`],
-    ["Scheduling", "Work will be scheduled after the deposit is paid. Weather, site access, water availability, and unsafe conditions may require rescheduling."],
-    ["Access and Preparation", "The Client is responsible for providing access to the work area, water access when needed, and removing fragile or movable items before service."],
-    ["Pre-existing Conditions", "The Business is not responsible for damage caused by pre-existing conditions, including loose paint, failing seals, oxidized surfaces, damaged screens, cracked concrete, unstable fixtures, or poorly sealed doors and windows."],
-    ["Chemical Overspray and Sensitive Areas", `The Client agrees to identify sensitive areas before work begins. Noted sensitive areas: ${job.sensitiveAreas || "none provided"}. The Business will take reasonable care but is not responsible for damage caused by undisclosed sensitive areas or pre-existing vulnerabilities.`],
-    ["Changes", "Any material changes to scope, price, or schedule must be agreed to in writing."],
-    ["Completion", "Upon completion, the Client should report concerns promptly so the Business can review and address reasonable workmanship issues."]
+  return `<section>
+    <h2>Terms and Conditions</h2>
+    ${serviceAgreementTemplate.sections.map((section, index) => `
+      <article class="term">
+        <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
+        ${escapeHtml(section.body).split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}
+        ${section.initialsRequired ? '<p class="initials-note">Client initials required in original agreement.</p>' : ""}
+      </article>
+    `).join("")}
+  </section>`;
+}
+
+function renderContractProjectDetails(job, depositAmount) {
+  const details = [
+    ["Business", "Precision Power Washing"],
+    ["Client", job.customerName],
+    ["Service Address", job.address],
+    ["Approved Estimate", job.estimateApprovalUrl || job.squareEstimateUrl || "PressureFlow estimate"],
+    ["Estimated Price", `$${Number(job.estimate || 0).toFixed(2)}`],
+    ["Deposit", `$${depositAmount.toFixed(2)} (${Number(job.depositPercent || 25)}%)`],
+    ["Scheduled Date", job.scheduledAt || "To be scheduled after deposit payment"]
   ];
 
   return `<section>
-    <h2>Terms</h2>
-    ${terms.map(([title, body]) => `
-      <article class="term">
-        <h3>${escapeHtml(title)}</h3>
-        <p>${escapeHtml(body)}</p>
-      </article>
-    `).join("")}
+    <h2>Project Details</h2>
+    <table>
+      <tbody>
+        ${details.map(([label, value]) => `
+          <tr>
+            <th>${escapeHtml(label)}</th>
+            <td>${escapeHtml(value)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
   </section>`;
 }
 
@@ -664,6 +683,8 @@ function estimatePageStyles() {
     .totals span { color: #667085; }
     .term { padding: 12px 0; border-bottom: 1px solid #d8dee8; }
     .term p { margin: 0; }
+    .term p + p { margin-top: 10px; }
+    .initials-note { color: #1c7c54; font-weight: 700; }
     .notice { padding: 14px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
     button { width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; cursor: pointer; }
   </style>`;
