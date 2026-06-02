@@ -814,9 +814,9 @@ function estimatePageStyles() {
     .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
     .measurement-preview-wrap { position: relative; overflow: hidden; border: 1px solid #d8dee8; border-radius: 8px; background: #101828; }
     .measurement-preview { display: block; width: 100%; }
-    .measurement-badge { position: absolute; left: 50%; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.72); border-radius: 8px; background: rgba(15,23,42,0.82); color: white; font-weight: 900; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(0,0,0,0.28); }
-    .measurement-badge-area { top: 46%; }
-    .measurement-badge-perimeter { bottom: 16px; font-size: 14px; }
+    .measurement-badge { position: absolute; left: 50%; padding: 0; border: 0; background: transparent; color: #ff1f1f; font-size: 13px; font-weight: 900; line-height: 1.15; text-align: center; text-shadow: 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95), 1px 0 2px rgba(255,255,255,0.95), -1px 0 2px rgba(255,255,255,0.95); transform: translate(-50%, -50%); pointer-events: none; }
+    .measurement-badge-area { top: 50%; }
+    .measurement-badge-perimeter { top: calc(50% + 18px); font-size: 12px; }
     table { width: 100%; border-collapse: collapse; margin: 18px 0; }
     th, td { padding: 12px 8px; border-bottom: 1px solid #d8dee8; text-align: left; }
     th { color: #667085; font-size: 13px; }
