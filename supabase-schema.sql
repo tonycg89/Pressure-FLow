@@ -9,6 +9,7 @@ create table if not exists jobs (
   phone text not null,
   address text not null,
   service_type text not null,
+  lead_source text not null default '',
   estimate numeric(10, 2) not null default 0,
   line_items jsonb not null default '[]'::jsonb,
   measurement jsonb not null default '{}'::jsonb,
@@ -66,8 +67,21 @@ create table if not exists customers (
   email text not null default '',
   phone text not null default '',
   address text not null default '',
+  lead_source text not null default '',
   notes text not null default '',
   service_area_photos jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists expenses (
+  id uuid primary key default gen_random_uuid(),
+  vendor text not null default '',
+  category text not null default '',
+  amount numeric(10, 2) not null default 0,
+  expense_date date not null default current_date,
+  notes text not null default '',
+  receipt_photos jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -113,7 +127,10 @@ create table if not exists webhook_events (
 
 create index if not exists idx_jobs_status on jobs(status);
 create index if not exists idx_jobs_customer_id on jobs(customer_id);
+create index if not exists idx_jobs_lead_source on jobs(lead_source);
 create index if not exists idx_jobs_deposit_invoice on jobs(square_deposit_invoice_id);
 create index if not exists idx_jobs_final_invoice on jobs(square_final_invoice_id);
 create index if not exists idx_customers_updated_at on customers(updated_at desc);
+create index if not exists idx_customers_lead_source on customers(lead_source);
+create index if not exists idx_expenses_expense_date on expenses(expense_date desc);
 create index if not exists idx_webhook_events_received_at on webhook_events(received_at desc);

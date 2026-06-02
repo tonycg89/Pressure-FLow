@@ -7,6 +7,7 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
 const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
+const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
 const WEBHOOK_LOG_FILE = path.join(DATA_DIR, "webhook-events.json");
 const usePostgres = Boolean(process.env.DATABASE_URL);
@@ -59,6 +60,7 @@ function seedJobs() {
       phone: "(555) 123-4567",
       address: "214 Oak Ridge Dr",
       serviceType: "Driveway cleaning",
+      leadSource: "referral",
       estimate: 475,
       depositPercent: 25,
       notes: "Oil stains near garage. Customer asked for Saturday availability.",
@@ -98,6 +100,10 @@ async function ensureDataFile() {
 
   if (!existsSync(CUSTOMERS_FILE)) {
     await writeJson(CUSTOMERS_FILE, []);
+  }
+
+  if (!existsSync(EXPENSES_FILE)) {
+    await writeJson(EXPENSES_FILE, []);
   }
 
   if (!existsSync(SETTINGS_FILE)) {
@@ -182,6 +188,39 @@ async function writeCustomers(customers) {
   }
 
   await writeJson(CUSTOMERS_FILE, customers);
+}
+
+async function readExpenses() {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const result = await getPool().query("select * from expenses order by expense_date desc, created_at desc");
+    return result.rows.map(expenseFromRow);
+  }
+
+  return readJson(EXPENSES_FILE);
+}
+
+async function writeExpenses(expenses) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      await client.query("delete from expenses");
+      for (const expense of expenses) {
+        await upsertExpense(client, expense);
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  await writeJson(EXPENSES_FILE, expenses);
 }
 
 async function readSettings() {
@@ -334,8 +373,20 @@ async function ensurePostgresSchema() {
     email text not null default '',
     phone text not null default '',
     address text not null default '',
+    lead_source text not null default '',
     notes text not null default '',
     service_area_photos jsonb not null default '[]'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await getPool().query(`create table if not exists expenses (
+    id uuid primary key default gen_random_uuid(),
+    vendor text not null default '',
+    category text not null default '',
+    amount numeric(10, 2) not null default 0,
+    expense_date date not null default current_date,
+    notes text not null default '',
+    receipt_photos jsonb not null default '[]'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   )`);
@@ -345,7 +396,9 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
+  await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
+  await getPool().query("alter table jobs add column if not exists lead_source text not null default ''");
   await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists completion_proof_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists completion_proof_url text not null default ''");
@@ -377,6 +430,7 @@ async function upsertJob(client, job) {
       phone,
       address,
       service_type,
+      lead_source,
       estimate,
       deposit_percent,
       status,
@@ -411,10 +465,10 @@ async function upsertJob(client, job) {
       created_at,
       updated_at
     ) values (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, nullif($11, '')::timestamptz,
-      $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
-      nullif($25, '')::timestamptz, $26, $27, $28, $29, nullif($30, '')::timestamptz,
-      $31, $32, nullif($33, '')::timestamptz, $34, $35, $36, $37, $38, $39, $40
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, nullif($12, '')::timestamptz,
+      $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
+      nullif($26, '')::timestamptz, $27, $28, $29, $30, nullif($31, '')::timestamptz,
+      $32, $33, nullif($34, '')::timestamptz, $35, $36, $37, $38, $39, $40, $41
     )
     on conflict (id) do update set
       customer_id = excluded.customer_id,
@@ -423,6 +477,7 @@ async function upsertJob(client, job) {
       phone = excluded.phone,
       address = excluded.address,
       service_type = excluded.service_type,
+      lead_source = excluded.lead_source,
       estimate = excluded.estimate,
       deposit_percent = excluded.deposit_percent,
       status = excluded.status,
@@ -463,6 +518,7 @@ async function upsertJob(client, job) {
       job.phone,
       job.address,
       job.serviceType,
+      job.leadSource || "",
       Number(job.estimate || 0),
       Number(job.depositPercent || 25),
       job.status || "Lead",
@@ -568,7 +624,8 @@ function jobFromRow(row) {
     depositPercent: Number(row.deposit_percent || 25),
     status: row.status,
     scheduledAt: row.scheduled_at ? toLocalInputValue(row.scheduled_at) : "",
-    jobDurationMinutes: Number(row.job_duration_minutes || 180),
+      jobDurationMinutes: Number(row.job_duration_minutes || 180),
+    leadSource: row.lead_source || "",
     notes: row.notes || "",
     accessNotes: row.access_notes || "",
     sensitiveAreas: row.sensitive_areas || "",
@@ -608,16 +665,18 @@ async function upsertCustomer(client, customer) {
       email,
       phone,
       address,
+      lead_source,
       notes,
       service_area_photos,
       created_at,
       updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+    ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
     on conflict (id) do update set
       customer_name = excluded.customer_name,
       email = excluded.email,
       phone = excluded.phone,
       address = excluded.address,
+      lead_source = excluded.lead_source,
       notes = excluded.notes,
       service_area_photos = excluded.service_area_photos,
       updated_at = excluded.updated_at`,
@@ -627,6 +686,7 @@ async function upsertCustomer(client, customer) {
       customer.email || "",
       customer.phone || "",
       customer.address || "",
+      customer.leadSource || "",
       customer.notes || "",
       JSON.stringify(customer.serviceAreaPhotos || []),
       customer.createdAt || new Date().toISOString(),
@@ -642,6 +702,7 @@ function customerFromRow(row) {
     email: row.email || "",
     phone: row.phone || "",
     address: row.address || "",
+    leadSource: row.lead_source || "",
     notes: row.notes || "",
     serviceAreaPhotos: Array.isArray(row.service_area_photos) ? row.service_area_photos : [],
     createdAt: row.created_at?.toISOString?.() || "",
@@ -669,6 +730,47 @@ function settingsFromRow(row) {
   };
 }
 
+async function upsertExpense(client, expense) {
+  await client.query(
+    `insert into expenses (
+      id, vendor, category, amount, expense_date, notes, receipt_photos, created_at, updated_at
+    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+    on conflict (id) do update set
+      vendor = excluded.vendor,
+      category = excluded.category,
+      amount = excluded.amount,
+      expense_date = excluded.expense_date,
+      notes = excluded.notes,
+      receipt_photos = excluded.receipt_photos,
+      updated_at = excluded.updated_at`,
+    [
+      expense.id,
+      expense.vendor || "",
+      expense.category || "",
+      Number(expense.amount || 0),
+      expense.expenseDate || new Date().toISOString().slice(0, 10),
+      expense.notes || "",
+      JSON.stringify(expense.receiptPhotos || []),
+      expense.createdAt || new Date().toISOString(),
+      expense.updatedAt || new Date().toISOString()
+    ]
+  );
+}
+
+function expenseFromRow(row) {
+  return {
+    id: row.id,
+    vendor: row.vendor || "",
+    category: row.category || "",
+    amount: Number(row.amount || 0),
+    expenseDate: row.expense_date?.toISOString?.().slice(0, 10) || row.expense_date || "",
+    notes: row.notes || "",
+    receiptPhotos: Array.isArray(row.receipt_photos) ? row.receipt_photos : [],
+    createdAt: row.created_at?.toISOString?.() || "",
+    updatedAt: row.updated_at?.toISOString?.() || ""
+  };
+}
+
 function toLocalInputValue(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -688,6 +790,8 @@ module.exports = {
   writeJobs,
   readCustomers,
   writeCustomers,
+  readExpenses,
+  writeExpenses,
   readSettings,
   writeSettings,
   readWebhookEvents,

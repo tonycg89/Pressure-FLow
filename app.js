@@ -1,8 +1,10 @@
 let statuses = [];
 let jobs = [];
 let customers = [];
+let expenses = [];
 let selectedJobId = null;
 let selectedCustomerId = null;
+let selectedExpenseId = null;
 let settings = {};
 
 const serviceCatalog = [
@@ -23,15 +25,27 @@ const currency = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2
 });
 
+const leadSources = [
+  { value: "referral", label: "Referral", color: "#1c7c54" },
+  { value: "door-hanger", label: "Door hanger", color: "#2563eb" },
+  { value: "door-to-door", label: "Door to door", color: "#b7791f" },
+  { value: "meta-ad", label: "Meta ad", color: "#b42318" },
+  { value: "nextdoor-ad", label: "Nextdoor ad", color: "#0f766e" }
+];
+
 const jobList = document.querySelector("#jobList");
 const jobDetail = document.querySelector("#jobDetail");
 const customerList = document.querySelector("#customerList");
 const customerDetail = document.querySelector("#customerDetail");
+const expenseList = document.querySelector("#expenseList");
+const expenseDetail = document.querySelector("#expenseDetail");
 const statusFilter = document.querySelector("#statusFilter");
+const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
 const newCustomerButton = document.querySelector("#newCustomerButton");
 const editCustomerButton = document.querySelector("#editCustomerButton");
+const newExpenseButton = document.querySelector("#newExpenseButton");
 const settingsButton = document.querySelector("#settingsButton");
 const templatesButton = document.querySelector("#templatesButton");
 const navItems = document.querySelectorAll("[data-view]");
@@ -40,6 +54,8 @@ const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
 const customerDialog = document.querySelector("#customerDialog");
 const customerForm = document.querySelector("#customerForm");
+const expenseDialog = document.querySelector("#expenseDialog");
+const expenseForm = document.querySelector("#expenseForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
@@ -81,12 +97,15 @@ const completionAfterPhotoPreview = document.querySelector("#completionAfterPhot
 const photoViewerDialog = document.querySelector("#photoViewerDialog");
 const photoViewerTitle = document.querySelector("#photoViewerTitle");
 const photoViewerImage = document.querySelector("#photoViewerImage");
+const receiptPhotoInput = document.querySelector("#receiptPhotoInput");
+const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
 let currentMeasurement = {};
 let currentServiceAreaPhotos = [];
 let currentJobPhotos = { before: [], after: [] };
 let currentCompletionPhotos = { before: [], after: [] };
+let currentReceiptPhotos = [];
 let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
@@ -94,17 +113,21 @@ let activeMeasurementLineItem = null;
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
   statusFilter.addEventListener("change", render);
+  dashboardTimeframe.addEventListener("change", renderDashboard);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
   newCustomerButton.addEventListener("click", openNewCustomer);
   editCustomerButton.addEventListener("click", openEditCustomer);
+  newExpenseButton.addEventListener("click", openNewExpense);
   settingsButton.addEventListener("click", openSettings);
   templatesButton.addEventListener("click", () => templatesDialog.showModal());
   jobForm.addEventListener("submit", createJob);
   customerForm.addEventListener("submit", saveCustomer);
+  expenseForm.addEventListener("submit", saveExpense);
   serviceAreaPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
   beforePhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews));
   afterPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentJobPhotos.after, renderJobPhotoPreviews));
+  receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   measureFromMapButton.addEventListener("click", openMeasurementDialog);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
@@ -126,6 +149,7 @@ async function init() {
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
   await loadSettings();
   await loadCustomers();
+  await loadExpenses();
   await loadJobs();
 }
 
@@ -196,6 +220,23 @@ async function loadCustomers() {
   } catch (error) {
     customerList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
     customerDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+async function loadExpenses() {
+  try {
+    const response = await fetch("/api/expenses");
+    if (!response.ok) {
+      throw new Error("Unable to load expenses.");
+    }
+
+    const data = await response.json();
+    expenses = data.expenses || [];
+    selectedExpenseId = selectedExpenseId ?? expenses[0]?.id ?? null;
+    renderExpenses();
+  } catch (error) {
+    expenseList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+    expenseDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -305,6 +346,7 @@ function openNewJobForCustomer(customer) {
   jobForm.elements.email.value = customer.email || "";
   jobForm.elements.phone.value = customer.phone || "";
   jobForm.elements.address.value = customer.address || "";
+  jobForm.elements.leadSource.value = customer.leadSource || "referral";
 }
 
 function openNewCustomer() {
@@ -323,6 +365,7 @@ function openEditCustomer() {
   customerForm.elements.email.value = customer.email || "";
   customerForm.elements.phone.value = customer.phone || "";
   customerForm.elements.address.value = customer.address || "";
+  customerForm.elements.leadSource.value = customer.leadSource || "referral";
   customerForm.elements.notes.value = customer.notes || "";
   currentServiceAreaPhotos = [...(customer.serviceAreaPhotos || [])];
   renderServiceAreaPhotos();
@@ -357,6 +400,39 @@ async function saveCustomer(event) {
     resetCustomerDialog();
     customerDialog.close();
     await loadCustomers();
+    renderDashboard();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function openNewExpense() {
+  expenseForm.reset();
+  currentReceiptPhotos = [];
+  receiptPhotoInput.value = "";
+  expenseForm.elements.expenseDate.value = new Date().toISOString().slice(0, 10);
+  renderReceiptPhotos();
+  expenseDialog.showModal();
+}
+
+async function saveExpense(event) {
+  if (event.submitter?.value === "cancel") {
+    return;
+  }
+
+  event.preventDefault();
+  const payload = Object.fromEntries(new FormData(expenseForm).entries());
+  payload.amount = Number(payload.amount || 0);
+  payload.receiptPhotos = currentReceiptPhotos;
+
+  try {
+    const saved = await apiRequest("/api/expenses", payload);
+    selectedExpenseId = saved.expense.id;
+    expenseForm.reset();
+    currentReceiptPhotos = [];
+    expenseDialog.close();
+    await loadExpenses();
+    renderDashboard();
   } catch (error) {
     alert(error.message);
   }
@@ -373,6 +449,7 @@ function openEditJob() {
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
   jobForm.elements.address.value = job.address || "";
+  jobForm.elements.leadSource.value = job.leadSource || "referral";
   jobForm.elements.squareContractId.value = job.squareContractId || "";
   jobForm.elements.squareContractUrl.value = job.squareContractUrl || "";
   jobForm.elements.serviceType.value = job.serviceType || "Driveway cleaning";
@@ -456,6 +533,10 @@ function fileToPhoto(file) {
 
 function renderServiceAreaPhotos() {
   renderEditablePhotoGrid(serviceAreaPhotoPreview, currentServiceAreaPhotos, () => renderServiceAreaPhotos());
+}
+
+function renderReceiptPhotos() {
+  renderEditablePhotoGrid(receiptPhotoPreview, currentReceiptPhotos, () => renderReceiptPhotos());
 }
 
 function renderJobPhotoPreviews() {
@@ -835,10 +916,94 @@ function buildStaticMapUrl(measurement) {
 }
 
 function render() {
+  renderDashboard();
   renderMetrics();
   renderJobList();
   renderJobDetail();
   renderCustomers();
+  renderExpenses();
+}
+
+function renderDashboard() {
+  if (!document.querySelector("#dashEstimatesSent")) return;
+  const scopedJobs = filterByTimeframe(jobs, "createdAt");
+  const scopedExpenses = filterByTimeframe(expenses, "expenseDate");
+  const estimatesSent = scopedJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length;
+  const estimatesAccepted = scopedJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length;
+  const revenue = scopedJobs
+    .filter((job) => job.status === "Paid" || job.squareFinalPaidAt)
+    .reduce((sum, job) => sum + Number(job.estimate || 0), 0);
+  const expenseTotal = scopedExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+  document.querySelector("#dashEstimatesSent").textContent = estimatesSent;
+  document.querySelector("#dashEstimatesAccepted").textContent = estimatesAccepted;
+  document.querySelector("#dashRevenue").textContent = currency.format(revenue);
+  document.querySelector("#dashExpenses").textContent = currency.format(expenseTotal);
+
+  const bySource = leadSources.map((source) => {
+    const sourceJobs = scopedJobs.filter((job) => (job.leadSource || "referral") === source.value);
+    return {
+      ...source,
+      jobs: sourceJobs.length,
+      estimatesSent: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length,
+      accepted: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length,
+      revenue: sourceJobs
+        .filter((job) => job.status === "Paid" || job.squareFinalPaidAt)
+        .reduce((sum, job) => sum + Number(job.estimate || 0), 0)
+    };
+  });
+  renderLeadSourceChart(bySource);
+  renderLeadSourceBreakdown(bySource);
+}
+
+function filterByTimeframe(items, dateField) {
+  const timeframe = dashboardTimeframe?.value || "30";
+  if (timeframe === "all") return items;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - Number(timeframe || 30));
+  return items.filter((item) => {
+    const date = new Date(item[dateField] || item.createdAt || 0);
+    return !Number.isNaN(date.getTime()) && date >= cutoff;
+  });
+}
+
+function renderLeadSourceChart(rows) {
+  const chart = document.querySelector("#leadSourceChart");
+  const legend = document.querySelector("#leadSourceLegend");
+  const revenueRows = rows.filter((row) => row.revenue > 0);
+  const total = revenueRows.reduce((sum, row) => sum + row.revenue, 0);
+  if (!total) {
+    chart.style.background = "#edf2f7";
+    chart.innerHTML = "<span>No revenue yet</span>";
+    legend.innerHTML = "";
+    return;
+  }
+
+  let cursor = 0;
+  const stops = revenueRows.map((row) => {
+    const start = cursor;
+    cursor += (row.revenue / total) * 100;
+    return `${row.color} ${start}% ${cursor}%`;
+  });
+  chart.style.background = `conic-gradient(${stops.join(", ")})`;
+  chart.innerHTML = "";
+  legend.innerHTML = revenueRows.map((row) => `
+    <div class="legend-row">
+      <span class="source-dot" style="background:${row.color}"></span>
+      <span>${row.label}</span>
+      <strong>${currency.format(row.revenue)}</strong>
+    </div>
+  `).join("");
+}
+
+function renderLeadSourceBreakdown(rows) {
+  document.querySelector("#leadSourceBreakdown").innerHTML = rows.map((row) => `
+    <div class="breakdown-row">
+      <span class="source-dot" style="background:${row.color}"></span>
+      <span>${row.label}<br><small>${row.jobs} leads | ${row.estimatesSent} sent | ${row.accepted} accepted</small></span>
+      <strong>${currency.format(row.revenue)}</strong>
+    </div>
+  `).join("");
 }
 
 function renderMetrics() {
@@ -883,7 +1048,7 @@ function renderJobList() {
       <div>
         <h4>${escapeHtml(job.customerName)}</h4>
         <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
-        <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit</p>
+        <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit | ${formatLeadSource(job.leadSource)}</p>
       </div>
       <span class="status-pill ${getStatusClass(job.status)}">${job.status}</span>
     `;
@@ -913,6 +1078,7 @@ function renderJobDetail() {
 
     <section class="detail-section">
       <div class="detail-row"><span>Status</span><strong>${job.status}</strong></div>
+      <div class="detail-row"><span>Lead source</span><strong>${formatLeadSource(job.leadSource)}</strong></div>
       <div class="detail-row"><span>Estimate</span><strong>${currency.format(job.estimate)}</strong></div>
       ${renderEstimateItems(job)}
       <div class="detail-row"><span>Deposit</span><strong>${currency.format(getDeposit(job))}</strong></div>
@@ -993,7 +1159,7 @@ function renderCustomers() {
       <div>
         <h4>${escapeHtml(customer.customerName)}</h4>
         <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
-        <p>${escapeHtml(customer.address || "No address")} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
+        <p>${escapeHtml(customer.address || "No address")} | ${formatLeadSource(customer.leadSource)} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
       </div>
       <span class="status-pill">${photoCount} photos</span>
     `;
@@ -1016,6 +1182,7 @@ function renderCustomerDetail() {
       <h4>${escapeHtml(customer.customerName)}</h4>
       <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
       <p>${escapeHtml(customer.address || "No address")}</p>
+      <p>${formatLeadSource(customer.leadSource)}</p>
     </section>
 
     <section class="detail-section">
@@ -1097,11 +1264,83 @@ function renderPhotoGrid(photos) {
   `;
 }
 
+function renderExpenses() {
+  if (!expenseList || !expenseDetail) return;
+  expenseList.innerHTML = "";
+  const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthTotal = expenses
+    .filter((expense) => String(expense.expenseDate || "").startsWith(monthKey))
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const receiptCount = expenses.reduce((sum, expense) => sum + (expense.receiptPhotos?.length || 0), 0);
+
+  document.querySelector("#expenseTotal").textContent = currency.format(total);
+  document.querySelector("#expenseReceiptCount").textContent = receiptCount;
+  document.querySelector("#expenseMonthTotal").textContent = currency.format(monthTotal);
+  document.querySelector("#expenseCount").textContent = expenses.length;
+
+  if (!expenses.length) {
+    expenseList.innerHTML = '<p class="empty-state">No expenses yet. Add your first receipt.</p>';
+    expenseDetail.innerHTML = '<p class="empty-state">Select an expense to see receipt photos.</p>';
+    return;
+  }
+
+  if (!expenses.some((expense) => expense.id === selectedExpenseId)) {
+    selectedExpenseId = expenses[0].id;
+  }
+
+  expenses.forEach((expense) => {
+    const card = document.createElement("button");
+    card.className = `expense-card ${expense.id === selectedExpenseId ? "selected" : ""}`;
+    card.type = "button";
+    card.addEventListener("click", () => {
+      selectedExpenseId = expense.id;
+      renderExpenses();
+    });
+    card.innerHTML = `
+      <div>
+        <h4>${escapeHtml(expense.vendor)}</h4>
+        <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
+        <p>${expense.receiptPhotos?.length || 0} receipt photo${expense.receiptPhotos?.length === 1 ? "" : "s"}</p>
+      </div>
+      <span class="status-pill">${currency.format(expense.amount || 0)}</span>
+    `;
+    expenseList.append(card);
+  });
+
+  renderExpenseDetail();
+}
+
+function renderExpenseDetail() {
+  const expense = expenses.find((item) => item.id === selectedExpenseId);
+  if (!expense) return;
+  expenseDetail.innerHTML = `
+    <section class="detail-section">
+      <h4>${escapeHtml(expense.vendor)}</h4>
+      <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
+      <div class="detail-row"><span>Amount</span><strong>${currency.format(expense.amount || 0)}</strong></div>
+    </section>
+    <section class="detail-section">
+      <h4>Receipts</h4>
+      ${renderPhotoGrid(expense.receiptPhotos || [])}
+    </section>
+    <section class="detail-section">
+      <h4>Notes</h4>
+      <p>${escapeHtml(expense.notes || "No notes.")}</p>
+    </section>
+  `;
+  attachPhotoViewerHandlers(expenseDetail);
+}
+
 function getCustomerJobPhotos(relatedJobs, type) {
   return relatedJobs.flatMap((job) => (job.jobPhotos?.[type] || []).map((photo) => ({
     ...photo,
     name: `${job.serviceType} - ${photo.name || type}`
   })));
+}
+
+function formatLeadSource(value) {
+  return leadSources.find((source) => source.value === value)?.label || "Referral";
 }
 
 function getCustomerJobs(customer) {

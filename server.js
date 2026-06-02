@@ -10,6 +10,8 @@ const {
   writeJobs,
   readCustomers,
   writeCustomers,
+  readExpenses,
+  writeExpenses,
   readSettings,
   writeSettings,
   readWebhookEvents,
@@ -154,6 +156,7 @@ function normalizeJob(input) {
     phone: String(input.phone || "").trim(),
     address: String(input.address || "").trim(),
     serviceType: String(input.serviceType || "Driveway cleaning").trim(),
+    leadSource: normalizeLeadSource(input.leadSource),
     estimate: Number(input.estimate || 0),
     lineItems: normalizeLineItems(input.lineItems),
     measurement: normalizeMeasurement(input.measurement),
@@ -205,11 +208,38 @@ function normalizeCustomer(input, existing = {}) {
     email: String(input.email || existing.email || "").trim(),
     phone: String(input.phone || existing.phone || "").trim(),
     address: String(input.address || existing.address || "").trim(),
+    leadSource: normalizeLeadSource(input.leadSource || existing.leadSource),
     notes: String(input.notes || existing.notes || "").trim(),
     serviceAreaPhotos: normalizePhotos(input.serviceAreaPhotos ?? existing.serviceAreaPhotos),
     createdAt: existing.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeExpense(input, existing = {}) {
+  return {
+    id: existing.id || input.id || crypto.randomUUID(),
+    vendor: String(input.vendor || existing.vendor || "").trim(),
+    category: String(input.category || existing.category || "").trim(),
+    amount: Number(input.amount ?? existing.amount ?? 0),
+    expenseDate: String(input.expenseDate || existing.expenseDate || new Date().toISOString().slice(0, 10)).slice(0, 10),
+    notes: String(input.notes || existing.notes || "").trim(),
+    receiptPhotos: normalizePhotos(input.receiptPhotos ?? existing.receiptPhotos),
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function validateExpense(expense) {
+  if (!expense.vendor) return "Vendor is required.";
+  if (!Number.isFinite(expense.amount) || expense.amount < 0) return "Expense amount must be 0 or greater.";
+  return "";
+}
+
+function normalizeLeadSource(value) {
+  const allowed = new Set(["referral", "door-hanger", "door-to-door", "meta-ad", "nextdoor-ad"]);
+  const normalized = String(value || "referral").trim();
+  return allowed.has(normalized) ? normalized : "referral";
 }
 
 function validateCustomer(customer) {
@@ -1255,6 +1285,11 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/expenses") {
+    sendJson(response, 200, { expenses: await readExpenses() });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/property-measurements") {
     const address = url.searchParams.get("address") || "";
     sendJson(response, 200, { measurements: await findSavedMeasurements(address) });
@@ -1361,6 +1396,22 @@ async function handleApi(request, response, url) {
     customers.unshift(customer);
     await writeCustomers(customers);
     sendJson(response, 201, { customer });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/expenses") {
+    const expense = normalizeExpense(await readRequestBody(request));
+    const validationError = validateExpense(expense);
+
+    if (validationError) {
+      sendError(response, 400, validationError);
+      return;
+    }
+
+    const expenses = await readExpenses();
+    expenses.unshift(expense);
+    await writeExpenses(expenses);
+    sendJson(response, 201, { expense });
     return;
   }
 
@@ -1706,6 +1757,7 @@ function updateJob(job, input) {
     "phone",
     "address",
     "serviceType",
+    "leadSource",
     "notes",
     "accessNotes",
     "sensitiveAreas",

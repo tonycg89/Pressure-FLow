@@ -17,7 +17,11 @@
         </div>
 
         <nav class="nav-list" aria-label="Primary">
-          <button class="nav-item active" type="button" title="Pipeline" data-view="pipeline">
+          <button class="nav-item active" type="button" title="Dashboard" data-view="dashboard">
+            <span aria-hidden="true">D</span>
+            <span>Dashboard</span>
+          </button>
+          <button class="nav-item" type="button" title="Pipeline" data-view="pipeline">
             <span aria-hidden="true">P</span>
             <span>Pipeline</span>
           </button>
@@ -29,6 +33,10 @@
             <span aria-hidden="true">T</span>
             <span>Templates</span>
           </button>
+          <button class="nav-item" type="button" title="Expenses" data-view="expenses">
+            <span aria-hidden="true">$</span>
+            <span>Expenses</span>
+          </button>
           <button id="settingsButton" class="nav-item" type="button" title="Settings">
             <span aria-hidden="true">S</span>
             <span>Settings</span>
@@ -36,7 +44,54 @@
         </nav>
       </aside>
 
-      <section class="workspace workspace-view" id="pipelineView" data-view-panel="pipeline">
+      <section class="workspace workspace-view" id="dashboardView" data-view-panel="dashboard">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Business Dashboard</p>
+            <h2>Track estimates, accepted work, revenue, expenses, and lead sources.</h2>
+          </div>
+          <select id="dashboardTimeframe" class="compact-select" aria-label="Dashboard timeframe">
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
+            <option value="all">All time</option>
+          </select>
+        </header>
+
+        <section class="metrics dashboard-metrics" aria-label="Dashboard snapshot">
+          <article><span>Estimates Sent</span><strong id="dashEstimatesSent">0</strong></article>
+          <article><span>Estimates Accepted</span><strong id="dashEstimatesAccepted">0</strong></article>
+          <article><span>Revenue</span><strong id="dashRevenue">$0</strong></article>
+          <article><span>Expenses</span><strong id="dashExpenses">$0</strong></article>
+        </section>
+
+        <section class="content-grid dashboard-grid">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Revenue Source</p>
+                <h3>Income by lead type</h3>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <div id="leadSourceChart" class="pie-chart"></div>
+              <div id="leadSourceLegend" class="chart-legend"></div>
+            </div>
+          </section>
+
+          <aside class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Lead Sources</p>
+                <h3>Pipeline breakdown</h3>
+              </div>
+            </div>
+            <div id="leadSourceBreakdown" class="job-detail"></div>
+          </aside>
+        </section>
+      </section>
+
+      <section class="workspace workspace-view" id="pipelineView" data-view-panel="pipeline" hidden>
         <header class="topbar">
           <div>
             <p class="eyebrow">Today's Work</p>
@@ -123,6 +178,44 @@
           </aside>
         </section>
       </section>
+
+      <section class="workspace workspace-view" id="expensesView" data-view-panel="expenses" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Expenses</p>
+            <h2>Store receipts and track operating costs.</h2>
+          </div>
+          <button id="newExpenseButton" class="primary-button" type="button">Add Expense</button>
+        </header>
+
+        <section class="metrics" aria-label="Expense snapshot">
+          <article><span>Total Expenses</span><strong id="expenseTotal">$0</strong></article>
+          <article><span>Receipt Files</span><strong id="expenseReceiptCount">0</strong></article>
+          <article><span>This Month</span><strong id="expenseMonthTotal">$0</strong></article>
+          <article><span>Entries</span><strong id="expenseCount">0</strong></article>
+        </section>
+
+        <section class="content-grid">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Receipts</p>
+                <h3>Expense folder</h3>
+              </div>
+            </div>
+            <div id="expenseList" class="job-list"></div>
+          </section>
+          <aside class="panel detail-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Selected Expense</p>
+                <h3>Receipt details</h3>
+              </div>
+            </div>
+            <div id="expenseDetail" class="job-detail"></div>
+          </aside>
+        </section>
+      </section>
     </main>
 
     <dialog id="jobDialog">
@@ -149,6 +242,16 @@
         <label>
           Service address
           <input name="address" required placeholder="214 Oak Ridge Dr">
+        </label>
+        <label>
+          Lead source
+          <select name="leadSource">
+            <option value="referral">Referral</option>
+            <option value="door-hanger">Door hanger</option>
+            <option value="door-to-door">Door to door</option>
+            <option value="meta-ad">Meta ad</option>
+            <option value="nextdoor-ad">Nextdoor ad</option>
+          </select>
         </label>
         <div class="field-row">
           <label>
@@ -281,6 +384,16 @@
           <input name="address" placeholder="214 Oak Ridge Dr">
         </label>
         <label>
+          Lead source
+          <select name="leadSource">
+            <option value="referral">Referral</option>
+            <option value="door-hanger">Door hanger</option>
+            <option value="door-to-door">Door to door</option>
+            <option value="meta-ad">Meta ad</option>
+            <option value="nextdoor-ad">Nextdoor ad</option>
+          </select>
+        </label>
+        <label>
           Notes
           <textarea name="notes" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
         </label>
@@ -302,6 +415,52 @@
         <menu class="dialog-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Customer</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="expenseDialog">
+      <form method="dialog" id="expenseForm">
+        <div class="dialog-header">
+          <h2>Add expense</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+        <label>
+          Vendor
+          <input name="vendor" required placeholder="Home Depot">
+        </label>
+        <label>
+          Amount
+          <input name="amount" required type="number" min="0" step="0.01" placeholder="42.50">
+        </label>
+        <label>
+          Date
+          <input name="expenseDate" type="date" required>
+        </label>
+        <label>
+          Category
+          <input name="category" placeholder="Chemicals, fuel, equipment">
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" rows="2" placeholder="Optional notes"></textarea>
+        </label>
+        <section class="photo-uploader" aria-label="Receipt photos">
+          <div class="section-header compact-header">
+            <div>
+              <p class="eyebrow">Receipts</p>
+              <h3>Receipt photos</h3>
+            </div>
+          </div>
+          <label>
+            Add receipt photos
+            <input id="receiptPhotoInput" type="file" accept="image/*" multiple>
+          </label>
+          <div id="receiptPhotoPreview" class="photo-grid"></div>
+        </section>
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Save Expense</button>
         </menu>
       </form>
     </dialog>
