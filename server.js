@@ -1440,7 +1440,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
+    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square") {
       await handleApi(request, response, url);
       return;
     }

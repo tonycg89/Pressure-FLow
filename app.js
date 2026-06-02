@@ -214,8 +214,6 @@ function openEditJob() {
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
   jobForm.elements.address.value = job.address || "";
-  jobForm.elements.squareEstimateId.value = job.squareEstimateId || "";
-  jobForm.elements.squareEstimateUrl.value = job.squareEstimateUrl || "";
   jobForm.elements.squareContractId.value = job.squareContractId || "";
   jobForm.elements.squareContractUrl.value = job.squareContractUrl || "";
   jobForm.elements.serviceType.value = job.serviceType || "Driveway cleaning";
@@ -515,7 +513,7 @@ function renderEstimateItems(job) {
 
 function getNextAction(job) {
   const actions = {
-    "Lead": { label: "Send PressureFlow Estimate", action: "send-square-estimate" },
+    "Lead": { label: "Send Estimate", action: "send-square-estimate" },
     "Estimate Sent": { label: "Mark Estimate Signed", action: "mark-estimate-signed" },
     "Estimate Signed": { label: "Send Contract", action: "send-contract" },
     "Contract Sent": { label: "Mark Contract Signed", action: "mark-contract-signed" },
