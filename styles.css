@@ -459,6 +459,12 @@ textarea {
   text-align: right;
 }
 
+.saved-area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  align-items: center;
+}
+
 .service-subarea {
   margin-left: 12px;
   padding-left: 12px;

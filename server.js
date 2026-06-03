@@ -2177,6 +2177,30 @@ async function handleApi(request, response, url) {
 
   const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
   const customerUpdateMatch = url.pathname.match(/^\/api\/customers\/([^/]+)$/);
+  const customerMeasurementDeleteMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/measurements\/([^/]+)$/);
+
+  if (request.method === "DELETE" && customerMeasurementDeleteMatch) {
+    const [, customerId, measurementId] = customerMeasurementDeleteMatch;
+    const body = await readRequestBody(request);
+    const customers = await readCustomers();
+    const customer = customers.find((item) => item.id === customerId);
+
+    if (!customer) {
+      sendError(response, 404, "Customer not found.");
+      return;
+    }
+
+    const removed = deleteCustomerMeasurementArea(customer, measurementId, body.areaKey || "");
+    if (!removed) {
+      sendError(response, 404, "Saved service area not found.");
+      return;
+    }
+
+    customer.updatedAt = new Date().toISOString();
+    await writeCustomers(customers);
+    sendJson(response, 200, { customer });
+    return;
+  }
 
   if (request.method === "PATCH" && customerUpdateMatch) {
     const [, customerId] = customerUpdateMatch;
@@ -2742,6 +2766,52 @@ function normalizeAddressKey(address) {
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function deleteCustomerMeasurementArea(customer, measurementId, areaKey) {
+  const propertyMeasurements = normalizePropertyMeasurements(customer.propertyMeasurements || []);
+  let removed = false;
+  const nextMeasurements = [];
+
+  propertyMeasurements.forEach((item) => {
+    if (item.id !== measurementId) {
+      nextMeasurements.push(item);
+      return;
+    }
+
+    const measurement = normalizeMeasurement(item.measurement);
+    const areas = Array.isArray(measurement.areas) ? measurement.areas : [];
+    if (!areaKey) {
+      removed = true;
+      return;
+    }
+
+    const remainingAreas = areas.filter((area) => JSON.stringify(area.geojson || {}) !== areaKey);
+    if (remainingAreas.length === areas.length) {
+      nextMeasurements.push(item);
+      return;
+    }
+
+    removed = true;
+    if (!remainingAreas.length) {
+      return;
+    }
+
+    const updatedMeasurement = normalizeMeasurement({
+      ...measurement,
+      areas: remainingAreas,
+      staticImageUrl: ""
+    });
+    nextMeasurements.push({
+      ...item,
+      label: remainingAreas.map((area) => area.name).filter(Boolean).join(" + ") || item.label,
+      updatedAt: new Date().toISOString(),
+      measurement: updatedMeasurement
+    });
+  });
+
+  customer.propertyMeasurements = nextMeasurements;
+  return removed;
 }
 
 function didPricingChange(job, input) {

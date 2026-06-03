@@ -2189,7 +2189,26 @@ function renderCustomerDetail() {
   });
   customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
   customerDetail.querySelector("[data-delete-customer]")?.addEventListener("click", () => deleteCustomer(customer.id));
+  customerDetail.querySelectorAll("[data-delete-measurement]").forEach((button) => {
+    button.addEventListener("click", () => deleteCustomerMeasurement(customer.id, button.dataset.deleteMeasurement, button.dataset.areaKey));
+  });
   attachPhotoViewerHandlers(customerDetail);
+}
+
+async function deleteCustomerMeasurement(customerId, measurementId, areaKey) {
+  const confirmed = confirm("Delete this saved service area measurement?");
+  if (!confirmed) return;
+
+  try {
+    const data = await apiRequest(`/api/customers/${customerId}/measurements/${encodeURIComponent(measurementId)}`, { areaKey }, "DELETE");
+    const index = customers.findIndex((item) => item.id === customerId);
+    if (index >= 0) {
+      customers[index] = data.customer;
+    }
+    renderCustomers();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function deleteCustomer(customerId) {
@@ -2258,9 +2277,10 @@ function renderCustomerMeasurements(measurements) {
   }
 
   return reusable.map((item) => `
-    <div class="detail-row">
+    <div class="detail-row saved-area-row">
       <span>${escapeHtml(item.label || "Service area")}<br><small>${escapeHtml(item.address || "")}</small></span>
       <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
+      <button class="icon-button" type="button" title="Delete service area" data-delete-measurement="${escapeHtml(item.id)}" data-area-key="${escapeHtml(item.areaKey)}">X</button>
     </div>
   `).join("");
 }
@@ -2282,6 +2302,7 @@ function expandCustomerMeasurementAreas(measurements) {
     return areas.map((area) => ({
       ...item,
       label: area.name || item.label || "Service area",
+      areaKey: JSON.stringify(area.geojson || {}),
       measurement: {
         ...measurement,
         squareFeet: Number(area.squareFeet || 0),
