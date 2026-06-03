@@ -26,6 +26,11 @@ PressureFlow is in polish mode. The app works end-to-end for the Precision Power
    - Confirm Mapbox still geocodes the full composed address.
    - Confirm dashboard revenue by city looks right.
 
+5. Browser testing fallback
+   - Next week, add a repo-level Playwright smoke test setup so PressureFlow can be browser-tested even when the Codex in-app browser connector has Windows sandbox startup issues.
+   - Cover the map measurement dialog, saved service area dropdown, checkbox polygon display/removal, and saved area delete button.
+   - Keep this deferred for now; do not add browser-test dependencies until we are ready to work on it.
+
 ## Operational Improvements
 
 - Add a second admin login for testing, without full roles yet.
