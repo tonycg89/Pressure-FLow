@@ -44,6 +44,11 @@ const expenseList = document.querySelector("#expenseList");
 const expenseDetail = document.querySelector("#expenseDetail");
 const statusFilter = document.querySelector("#statusFilter");
 const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
+const dashboardBreakdown = document.querySelector("#dashboardBreakdown");
+const dashboardChartTitle = document.querySelector("#dashboardChartTitle");
+const dashboardBreakdownEyebrow = document.querySelector("#dashboardBreakdownEyebrow");
+const dashboardBreakdownTitle = document.querySelector("#dashboardBreakdownTitle");
+const sidebarBusinessName = document.querySelector("#sidebarBusinessName");
 const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const notificationCount = document.querySelector("#notificationCount");
@@ -134,6 +139,7 @@ async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
+  dashboardBreakdown?.addEventListener("change", renderDashboard);
   notificationToggle?.addEventListener("click", toggleNotificationDropdown);
   notificationClearAll?.addEventListener("click", clearAllDashboardNotifications);
   document.addEventListener("click", closeNotificationDropdownFromOutside);
@@ -210,6 +216,9 @@ function applySettingsDefaults() {
   const depositInput = jobForm.elements.depositPercent;
   if (depositInput && settings.defaultDepositPercent) {
     depositInput.value = settings.defaultDepositPercent;
+  }
+  if (sidebarBusinessName) {
+    sidebarBusinessName.textContent = settings.businessName || "Job Command Center";
   }
 }
 
@@ -427,6 +436,51 @@ function inferTemplateMimeType(fileName) {
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 
+function buildFullAddress(data = {}) {
+  const street = String(data.streetAddress || "").trim();
+  const unit = String(data.addressUnit || "").trim();
+  const city = String(data.city || "").trim();
+  const state = String(data.state || "").trim().toUpperCase();
+  const zip = String(data.zip || "").trim();
+  const streetLine = [street, unit].filter(Boolean).join(" ");
+  const cityLine = [city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return [streetLine, cityLine].filter(Boolean).join(", ");
+}
+
+function syncAddressFields(form) {
+  if (!form?.elements?.address) return;
+  const formData = Object.fromEntries(new FormData(form).entries());
+  form.elements.address.value = buildFullAddress(formData) || form.elements.address.value || "";
+}
+
+function fillAddressFields(form, source = {}) {
+  const fallback = parseAddressFallback(source.address || "");
+  form.elements.streetAddress.value = source.streetAddress || fallback.streetAddress || "";
+  form.elements.addressUnit.value = source.addressUnit || fallback.addressUnit || "";
+  form.elements.city.value = source.city || fallback.city || "";
+  form.elements.state.value = source.state || fallback.state || "";
+  form.elements.zip.value = source.zip || fallback.zip || "";
+  if (form.elements.address) {
+    form.elements.address.value = source.address || buildFullAddress(source) || "";
+  }
+}
+
+function parseAddressFallback(address) {
+  const parts = String(address || "").split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) {
+    return { streetAddress: address };
+  }
+
+  const stateZip = parts.at(-1).match(/\b([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)\b/);
+  const cityFromLast = parts.at(-1).replace(/\b[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\b/, "").trim();
+  return {
+    streetAddress: parts[0] || "",
+    city: parts.length >= 3 ? parts.at(-2) : cityFromLast,
+    state: stateZip?.[1]?.toUpperCase() || "",
+    zip: stateZip?.[2] || ""
+  };
+}
+
 async function createJob(event) {
   if (event.submitter?.value === "cancel") {
     resetJobDialog();
@@ -434,6 +488,7 @@ async function createJob(event) {
   }
 
   event.preventDefault();
+  syncAddressFields(jobForm);
   const formData = new FormData(jobForm);
   const job = Object.fromEntries(formData.entries());
   job.lineItems = getEstimateLineItems();
@@ -473,7 +528,7 @@ function openNewJobForCustomer(customer) {
   jobForm.elements.customerName.value = customer.customerName || "";
   jobForm.elements.email.value = customer.email || "";
   jobForm.elements.phone.value = customer.phone || "";
-  jobForm.elements.address.value = customer.address || "";
+  fillAddressFields(jobForm, customer);
   jobForm.elements.leadSource.value = customer.leadSource || "referral";
 }
 
@@ -492,7 +547,7 @@ function openEditCustomer() {
   customerForm.elements.customerName.value = customer.customerName || "";
   customerForm.elements.email.value = customer.email || "";
   customerForm.elements.phone.value = customer.phone || "";
-  customerForm.elements.address.value = customer.address || "";
+  fillAddressFields(customerForm, customer);
   customerForm.elements.leadSource.value = customer.leadSource || "referral";
   customerForm.elements.notes.value = customer.notes || "";
   currentServiceAreaPhotos = [...(customer.serviceAreaPhotos || [])];
@@ -515,6 +570,7 @@ async function saveCustomer(event) {
   }
 
   event.preventDefault();
+  syncAddressFields(customerForm);
   const payload = Object.fromEntries(new FormData(customerForm).entries());
   payload.serviceAreaPhotos = currentServiceAreaPhotos;
   const editingId = customerForm.dataset.editingId;
@@ -576,7 +632,7 @@ function openEditJob() {
   jobForm.elements.customerName.value = job.customerName || "";
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
-  jobForm.elements.address.value = job.address || "";
+  fillAddressFields(jobForm, job);
   jobForm.elements.leadSource.value = job.leadSource || "referral";
   jobForm.elements.squareContractId.value = job.squareContractId || "";
   jobForm.elements.squareContractUrl.value = job.squareContractUrl || "";
@@ -848,6 +904,7 @@ function openMeasurementDialog() {
   }
 
   activeMeasurementLineItem = findPressureWashingLineItem() || addMeasuredPressureWashingRow();
+  syncAddressFields(jobForm);
   measurementAddress.value = jobForm.elements.address.value || currentMeasurement.address || "";
   measuredArea.textContent = currentMeasurement.squareFeet
     ? `${Math.round(currentMeasurement.squareFeet).toLocaleString("en-US")} SqFt`
@@ -1083,20 +1140,9 @@ function renderDashboard() {
   document.querySelector("#dashRevenue").textContent = currency.format(revenue);
   document.querySelector("#dashExpenses").textContent = currency.format(expenseTotal);
 
-  const bySource = leadSources.map((source) => {
-    const sourceJobs = scopedJobs.filter((job) => (job.leadSource || "referral") === source.value);
-    return {
-      ...source,
-      jobs: sourceJobs.length,
-      estimatesSent: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length,
-      accepted: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length,
-      revenue: sourceJobs
-        .filter((job) => job.status === "Paid" || job.squareFinalPaidAt)
-        .reduce((sum, job) => sum + Number(job.estimate || 0), 0)
-    };
-  });
-  renderLeadSourceChart(bySource);
-  renderLeadSourceBreakdown(bySource);
+  const breakdownRows = buildDashboardBreakdownRows(scopedJobs, dashboardBreakdown?.value || "lead");
+  renderDashboardChart(breakdownRows);
+  renderDashboardBreakdown(breakdownRows);
   renderDashboardNotifications(scopedJobs);
 }
 
@@ -1111,7 +1157,101 @@ function filterByTimeframe(items, dateField) {
   });
 }
 
-function renderLeadSourceChart(rows) {
+function buildDashboardBreakdownRows(scopedJobs, mode) {
+  if (dashboardChartTitle) {
+    dashboardChartTitle.textContent = {
+      lead: "Income by lead type",
+      service: "Income by service",
+      city: "Income by city"
+    }[mode] || "Income by lead type";
+  }
+  if (dashboardBreakdownEyebrow && dashboardBreakdownTitle) {
+    dashboardBreakdownEyebrow.textContent = {
+      lead: "Lead Sources",
+      service: "Services",
+      city: "Locations"
+    }[mode] || "Lead Sources";
+    dashboardBreakdownTitle.textContent = {
+      lead: "Pipeline breakdown",
+      service: "Paid service mix",
+      city: "Paid city mix"
+    }[mode] || "Pipeline breakdown";
+  }
+
+  if (mode === "service") {
+    return buildServiceRevenueRows(scopedJobs);
+  }
+
+  if (mode === "city") {
+    return buildCityRevenueRows(scopedJobs);
+  }
+
+  return leadSources.map((source) => {
+    const sourceJobs = scopedJobs.filter((job) => (job.leadSource || "referral") === source.value);
+    return {
+      ...source,
+      jobs: sourceJobs.length,
+      estimatesSent: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length,
+      accepted: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length,
+      revenue: sourceJobs
+        .filter(isRevenueJob)
+        .reduce((sum, job) => sum + Number(job.estimate || 0), 0)
+    };
+  });
+}
+
+function buildServiceRevenueRows(scopedJobs) {
+  const rows = new Map();
+  scopedJobs.filter(isRevenueJob).forEach((job) => {
+    const lineItems = job.lineItems?.length ? job.lineItems : [{ name: job.serviceType || "Service", total: Number(job.estimate || 0) }];
+    const lineSubtotal = lineItems.reduce((sum, item) => sum + Number(item.total || 0), 0) || Number(job.estimate || 0) || 1;
+    lineItems.forEach((item) => {
+      const label = item.name || "Service";
+      const current = rows.get(label) || createBreakdownRow(label, rows.size);
+      current.jobs += 1;
+      current.revenue += Number(job.estimate || 0) * (Number(item.total || 0) / lineSubtotal);
+      rows.set(label, current);
+    });
+  });
+  return [...rows.values()].map((row) => ({ ...row, revenue: roundMoney(row.revenue) }));
+}
+
+function buildCityRevenueRows(scopedJobs) {
+  const rows = new Map();
+  scopedJobs.filter(isRevenueJob).forEach((job) => {
+    const label = getAddressCity(job) || "Unknown city";
+    const current = rows.get(label) || createBreakdownRow(label, rows.size);
+    current.jobs += 1;
+    current.revenue += Number(job.estimate || 0);
+    rows.set(label, current);
+  });
+  return [...rows.values()].map((row) => ({ ...row, revenue: roundMoney(row.revenue) }));
+}
+
+function createBreakdownRow(label, index) {
+  const colors = ["#1c7c54", "#2563eb", "#b7791f", "#b42318", "#0f766e", "#6941c6", "#c11574", "#475467"];
+  return {
+    value: normalizeKey(label),
+    label,
+    color: colors[index % colors.length],
+    jobs: 0,
+    estimatesSent: 0,
+    accepted: 0,
+    revenue: 0
+  };
+}
+
+function isRevenueJob(job) {
+  return job.status === "Paid" || job.squareFinalPaidAt;
+}
+
+function getAddressCity(item) {
+  if (item.city) return item.city;
+  const parts = String(item.address || "").split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length >= 3 ? parts.at(-2) : "";
+}
+
+function renderDashboardChart(rows) {
   const chart = document.querySelector("#leadSourceChart");
   const legend = document.querySelector("#leadSourceLegend");
   const revenueRows = rows.filter((row) => row.revenue > 0);
@@ -1140,11 +1280,11 @@ function renderLeadSourceChart(rows) {
   `).join("");
 }
 
-function renderLeadSourceBreakdown(rows) {
+function renderDashboardBreakdown(rows) {
   document.querySelector("#leadSourceBreakdown").innerHTML = rows.map((row) => `
     <div class="breakdown-row">
       <span class="source-dot" style="background:${row.color}"></span>
-      <span>${row.label}<br><small>${row.jobs} leads | ${row.estimatesSent} sent | ${row.accepted} accepted</small></span>
+      <span>${row.label}<br><small>${row.jobs} job${row.jobs === 1 ? "" : "s"}${row.estimatesSent ? ` | ${row.estimatesSent} sent` : ""}${row.accepted ? ` | ${row.accepted} accepted` : ""}</small></span>
       <strong>${currency.format(row.revenue)}</strong>
     </div>
   `).join("");

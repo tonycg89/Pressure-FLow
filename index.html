@@ -13,7 +13,7 @@
       <aside class="sidebar">
         <div>
           <p class="eyebrow">PressureFlow</p>
-          <h1>Job Command Center</h1>
+          <h1 id="sidebarBusinessName">Job Command Center</h1>
         </div>
 
         <nav class="nav-list" aria-label="Primary">
@@ -107,8 +107,13 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Revenue Source</p>
-                <h3>Income by lead type</h3>
+                <h3 id="dashboardChartTitle">Income by lead type</h3>
               </div>
+              <select id="dashboardBreakdown" class="compact-select" aria-label="Dashboard revenue breakdown">
+                <option value="lead">Lead type</option>
+                <option value="service">Service</option>
+                <option value="city">City</option>
+              </select>
             </div>
             <div class="chart-wrap">
               <div id="leadSourceChart" class="pie-chart"></div>
@@ -119,8 +124,8 @@
           <aside class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Lead Sources</p>
-                <h3>Pipeline breakdown</h3>
+                <p class="eyebrow" id="dashboardBreakdownEyebrow">Lead Sources</p>
+                <h3 id="dashboardBreakdownTitle">Pipeline breakdown</h3>
               </div>
             </div>
             <div id="leadSourceBreakdown" class="job-detail"></div>
@@ -323,9 +328,30 @@
           <input name="phone" required placeholder="(555) 123-4567">
         </label>
         <label>
-          Service address
-          <input name="address" required placeholder="214 Oak Ridge Dr">
+          Street address
+          <input name="streetAddress" required placeholder="214 Oak Ridge Dr">
         </label>
+        <div class="field-row">
+          <label>
+            Apt / Suite #
+            <input name="addressUnit" placeholder="Apt 2, Suite B">
+          </label>
+          <label>
+            City
+            <input name="city" required placeholder="Riverside">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            State
+            <input name="state" required maxlength="2" placeholder="CA">
+          </label>
+          <label>
+            ZIP
+            <input name="zip" required inputmode="numeric" placeholder="92501">
+          </label>
+        </div>
+        <input name="address" type="hidden">
         <label>
           Lead source
           <select name="leadSource">
@@ -485,9 +511,30 @@
           <input name="phone" placeholder="(555) 123-4567">
         </label>
         <label>
-          Service address
-          <input name="address" placeholder="214 Oak Ridge Dr">
+          Street address
+          <input name="streetAddress" placeholder="214 Oak Ridge Dr">
         </label>
+        <div class="field-row">
+          <label>
+            Apt / Suite #
+            <input name="addressUnit" placeholder="Apt 2, Suite B">
+          </label>
+          <label>
+            City
+            <input name="city" placeholder="Riverside">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>
+            State
+            <input name="state" maxlength="2" placeholder="CA">
+          </label>
+          <label>
+            ZIP
+            <input name="zip" inputmode="numeric" placeholder="92501">
+          </label>
+        </div>
+        <input name="address" type="hidden">
         <label>
           Lead source
           <select name="leadSource">

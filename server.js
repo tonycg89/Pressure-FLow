@@ -184,13 +184,15 @@ function getNextStatus(status) {
 }
 
 function normalizeJob(input) {
+  const addressParts = normalizeAddressParts(input);
   return {
     id: crypto.randomUUID(),
     customerId: String(input.customerId || "").trim(),
     customerName: String(input.customerName || "").trim(),
     email: String(input.email || "").trim(),
     phone: String(input.phone || "").trim(),
-    address: String(input.address || "").trim(),
+    ...addressParts,
+    address: String(input.address || buildFullAddress(addressParts)).trim(),
     serviceType: String(input.serviceType || "Driveway cleaning").trim(),
     leadSource: normalizeLeadSource(input.leadSource),
     estimate: Number(input.estimate || 0),
@@ -242,12 +244,14 @@ function normalizeJob(input) {
 }
 
 function normalizeCustomer(input, existing = {}) {
+  const addressParts = normalizeAddressParts(input, existing);
   return {
     id: existing.id || input.id || crypto.randomUUID(),
     customerName: String(input.customerName || existing.customerName || "").trim(),
     email: String(input.email || existing.email || "").trim(),
     phone: String(input.phone || existing.phone || "").trim(),
-    address: String(input.address || existing.address || "").trim(),
+    ...addressParts,
+    address: String(input.address || buildFullAddress(addressParts) || existing.address || "").trim(),
     leadSource: normalizeLeadSource(input.leadSource || existing.leadSource),
     notes: String(input.notes || existing.notes || "").trim(),
     serviceAreaPhotos: normalizePhotos(input.serviceAreaPhotos ?? existing.serviceAreaPhotos),
@@ -255,6 +259,22 @@ function normalizeCustomer(input, existing = {}) {
     createdAt: existing.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeAddressParts(input = {}, existing = {}) {
+  return {
+    streetAddress: String(input.streetAddress ?? existing.streetAddress ?? "").trim(),
+    addressUnit: String(input.addressUnit ?? existing.addressUnit ?? "").trim(),
+    city: String(input.city ?? existing.city ?? "").trim(),
+    state: String(input.state ?? existing.state ?? "").trim().toUpperCase(),
+    zip: String(input.zip ?? existing.zip ?? "").trim()
+  };
+}
+
+function buildFullAddress(parts = {}) {
+  const streetLine = [parts.streetAddress, parts.addressUnit].filter(Boolean).join(" ");
+  const cityLine = [parts.city, [parts.state, parts.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return [streetLine, cityLine].filter(Boolean).join(", ");
 }
 
 function normalizePropertyMeasurements(value) {
@@ -324,6 +344,10 @@ function validateJob(job) {
   if (!job.customerName) return "Customer name is required.";
   if (!job.email) return "Email is required.";
   if (!job.phone) return "Phone is required.";
+  if (!job.streetAddress) return "Street address is required.";
+  if (!job.city) return "City is required.";
+  if (!job.state) return "State is required.";
+  if (!job.zip) return "ZIP is required.";
   if (!job.address) return "Service address is required.";
   if (!Number.isFinite(job.estimate) || job.estimate < 0) return "Estimate must be 0 or greater.";
   if (!Number.isFinite(job.discountPercent) || job.discountPercent < 0 || job.discountPercent > 100) {
@@ -342,6 +366,11 @@ function jobsToCsv(jobs) {
     "email",
     "phone",
     "address",
+    "streetAddress",
+    "addressUnit",
+    "city",
+    "state",
+    "zip",
     "serviceType",
     "estimate",
     "lineItems",
@@ -2401,6 +2430,11 @@ function updateJob(job, input) {
       job[field] = String(input[field] || "").trim();
     }
   });
+
+  if (["streetAddress", "addressUnit", "city", "state", "zip"].some((field) => Object.hasOwn(input, field))) {
+    job.state = String(job.state || "").trim().toUpperCase();
+    job.address = String(input.address || buildFullAddress(job) || job.address || "").trim();
+  }
 
   if (Object.hasOwn(input, "estimate")) {
     job.estimate = Number(input.estimate);

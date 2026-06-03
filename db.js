@@ -378,6 +378,11 @@ async function ensurePostgresSchema() {
     email text not null default '',
     phone text not null default '',
     address text not null default '',
+    street_address text not null default '',
+    address_unit text not null default '',
+    city text not null default '',
+    state text not null default '',
+    zip text not null default '',
     lead_source text not null default '',
     notes text not null default '',
     service_area_photos jsonb not null default '[]'::jsonb,
@@ -425,7 +430,17 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table customers add column if not exists street_address text not null default ''");
+  await getPool().query("alter table customers add column if not exists address_unit text not null default ''");
+  await getPool().query("alter table customers add column if not exists city text not null default ''");
+  await getPool().query("alter table customers add column if not exists state text not null default ''");
+  await getPool().query("alter table customers add column if not exists zip text not null default ''");
   await getPool().query("alter table jobs add column if not exists customer_id text not null default ''");
+  await getPool().query("alter table jobs add column if not exists street_address text not null default ''");
+  await getPool().query("alter table jobs add column if not exists address_unit text not null default ''");
+  await getPool().query("alter table jobs add column if not exists city text not null default ''");
+  await getPool().query("alter table jobs add column if not exists state text not null default ''");
+  await getPool().query("alter table jobs add column if not exists zip text not null default ''");
   await getPool().query("alter table jobs add column if not exists lead_source text not null default ''");
   await getPool().query("alter table jobs add column if not exists job_photos jsonb not null default '{}'::jsonb");
   await getPool().query("alter table jobs add column if not exists completion_proof_token text not null default ''");
@@ -607,8 +622,13 @@ async function upsertJob(client, job) {
       contract_signed_at = nullif($17, '')::timestamptz,
       contract_signed_date = $18,
       contract_signer_name = $19,
-      scheduled_event_at = nullif($20, '')::timestamptz
-    where id = $21`,
+      scheduled_event_at = nullif($20, '')::timestamptz,
+      street_address = $21,
+      address_unit = $22,
+      city = $23,
+      state = $24,
+      zip = $25
+    where id = $26`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -630,6 +650,11 @@ async function upsertJob(client, job) {
       job.contractSignedDate || "",
       job.contractSignerName || "",
       job.scheduledEventAt || "",
+      job.streetAddress || "",
+      job.addressUnit || "",
+      job.city || "",
+      job.state || "",
+      job.zip || "",
       job.id
     ]
   );
@@ -643,6 +668,11 @@ function jobFromRow(row) {
     email: row.email,
     phone: row.phone,
     address: row.address,
+    streetAddress: row.street_address || "",
+    addressUnit: row.address_unit || "",
+    city: row.city || "",
+    state: row.state || "",
+    zip: row.zip || "",
     serviceType: row.service_type,
     estimate: Number(row.estimate || 0),
     lineItems: Array.isArray(row.line_items) ? row.line_items : [],
@@ -709,18 +739,28 @@ async function upsertCustomer(client, customer) {
       email,
       phone,
       address,
+      street_address,
+      address_unit,
+      city,
+      state,
+      zip,
       lead_source,
       notes,
       service_area_photos,
       property_measurements,
       created_at,
       updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11)
+    ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $15, $16)
     on conflict (id) do update set
       customer_name = excluded.customer_name,
       email = excluded.email,
       phone = excluded.phone,
       address = excluded.address,
+      street_address = excluded.street_address,
+      address_unit = excluded.address_unit,
+      city = excluded.city,
+      state = excluded.state,
+      zip = excluded.zip,
       lead_source = excluded.lead_source,
       notes = excluded.notes,
       service_area_photos = excluded.service_area_photos,
@@ -732,6 +772,11 @@ async function upsertCustomer(client, customer) {
       customer.email || "",
       customer.phone || "",
       customer.address || "",
+      customer.streetAddress || "",
+      customer.addressUnit || "",
+      customer.city || "",
+      customer.state || "",
+      customer.zip || "",
       customer.leadSource || "",
       customer.notes || "",
       JSON.stringify(customer.serviceAreaPhotos || []),
@@ -749,6 +794,11 @@ function customerFromRow(row) {
     email: row.email || "",
     phone: row.phone || "",
     address: row.address || "",
+    streetAddress: row.street_address || "",
+    addressUnit: row.address_unit || "",
+    city: row.city || "",
+    state: row.state || "",
+    zip: row.zip || "",
     leadSource: row.lead_source || "",
     notes: row.notes || "",
     serviceAreaPhotos: Array.isArray(row.service_area_photos) ? row.service_area_photos : [],
