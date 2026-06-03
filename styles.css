@@ -1227,8 +1227,6 @@ label {
 }
 
 .saved-measurements {
-  display: grid;
-  gap: 10px;
   padding: 12px;
   border: 1px solid #b8e3dc;
   border-radius: 8px;
@@ -1239,9 +1237,16 @@ label {
   display: none;
 }
 
+.saved-measurements summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 900;
+}
+
 .saved-measurements-list {
   display: grid;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .saved-measurement-button {

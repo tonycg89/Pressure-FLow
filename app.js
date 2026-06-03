@@ -179,6 +179,9 @@ async function init() {
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
+  savedMeasurementsPanel?.addEventListener("toggle", () => {
+    savedMeasurementsPanel.dataset.userToggled = "true";
+  });
   saveMeasurementAreaButton?.addEventListener("click", saveMeasurementArea);
   clearMeasurementButton.addEventListener("click", clearMeasurementPolygon);
   useMeasurementButton.addEventListener("click", useMeasurement);
@@ -1182,6 +1185,9 @@ async function loadSavedMeasurementsForAddress(address) {
 function renderSavedMeasurements(measurements) {
   const reusable = measurements.filter((item) => item.measurement?.geojson && item.measurement?.squareFeet);
   savedMeasurementsPanel.hidden = reusable.length === 0;
+  if (reusable.length && !savedMeasurementsPanel.dataset.userToggled) {
+    savedMeasurementsPanel.open = true;
+  }
   savedMeasurementsList.innerHTML = "";
 
   reusable.forEach((item) => {
@@ -1249,11 +1255,7 @@ function addSavedMeasurement(item) {
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
   updateMeasurementTotal();
   renderMeasurementAreas();
-  initializeMeasurementMap();
-  if (currentMeasurement.center?.length) {
-    mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
-  }
-  measurementStatus.textContent = `${nextArea.name} loaded. All selected service areas are visible on the map.`;
+  measurementStatus.textContent = `${nextArea.name} added to this job.`;
   renderSavedMeasurementsFromCurrentPanel();
 }
 
@@ -1270,7 +1272,6 @@ function removeSavedMeasurement(item) {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
   renderMeasurementAreas();
-  refreshMeasurementMapDisplay();
   measurementStatus.textContent = `${item.label || "Saved area"} removed from this job.`;
   renderSavedMeasurementsFromCurrentPanel();
 }
