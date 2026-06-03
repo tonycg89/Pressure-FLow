@@ -716,8 +716,14 @@ function getLogoUrl(baseUrl = "") {
   return root ? `${root}/assets/logo.png` : "/assets/logo.png";
 }
 
-function renderLogoHtml(baseUrl = "", width = 190) {
-  return `<img src="${escapeHtml(getLogoUrl(baseUrl))}" alt="Precision Power Washing" style="display:block;max-width:${width}px;width:100%;height:auto;margin:0 0 14px">`;
+function getBusinessLogoSrc(settings = {}, baseUrl = "") {
+  return String(settings.businessLogoDataUrl || "").startsWith("data:image/")
+    ? settings.businessLogoDataUrl
+    : getLogoUrl(baseUrl);
+}
+
+function renderLogoHtml(settings = {}, baseUrl = "", width = 190) {
+  return `<img src="${escapeHtml(getBusinessLogoSrc(settings, baseUrl))}" alt="${escapeHtml(getBusinessName(settings))}" style="display:block;max-width:${width}px;width:100%;height:auto;margin:0 0 14px">`;
 }
 
 function buildEstimateMailto(job, settings = {}) {
@@ -855,8 +861,7 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
   const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(getBaseUrlFromLink(invoiceUrl))}
-      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(invoiceUrl))}
       <h2 style="margin:0 0 12px">${isDeposit ? "Deposit invoice" : "Final invoice"}</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your ${isDeposit ? "deposit" : "final"} invoice from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
@@ -912,8 +917,7 @@ function renderCompletionCertificateEmailHtml(job, settings, baseUrl) {
   const paidAmount = getFinalBalanceCents(job) / 100;
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(baseUrl, 210)}
-      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      ${renderLogoHtml(settings, baseUrl, 210)}
       <h2 style="margin:0 0 12px">Certificate of Completion</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the pressure washing work at ${escapeHtml(job.address)}.</p>
@@ -1058,8 +1062,7 @@ function renderEstimateEmailHtml(job, settings) {
   const validUntil = getEstimateValidUntil(job);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(getBaseUrlFromLink(job.estimateApprovalUrl))}
-      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
       <h2 style="margin:0 0 12px">Your pressure washing estimate is ready</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
@@ -1080,8 +1083,7 @@ function renderContractEmailHtml(job, settings) {
   const businessName = getBusinessName(settings);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(getBaseUrlFromLink(job.contractApprovalUrl))}
-      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(job.contractApprovalUrl))}
       <h2 style="margin:0 0 12px">Your service contract is ready</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Please review and sign the ${escapeHtml(businessName)} service contract for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
@@ -1131,8 +1133,8 @@ function renderEstimateApprovalPage(job, settings = {}) {
   </head>
   <body>
     <main>
-      ${renderLogoHtml("", 190)}
-      <p class="eyebrow">${escapeHtml(businessName)} Estimate</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl), 190)}
+      <p class="eyebrow">Estimate Only, not an actual Invoice.</p>
       <h1>${escapeHtml(job.serviceType)} for ${escapeHtml(job.customerName)}</h1>
       <p>${escapeHtml(job.address)}</p>
       <section>
@@ -1318,7 +1320,7 @@ function renderEstimateMessagePage(title, message) {
   </head>
   <body>
     <main>
-      ${renderLogoHtml("", 190)}
+      ${renderLogoHtml({}, "", 190)}
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(message)}</p>
     </main>
@@ -1326,10 +1328,10 @@ function renderEstimateMessagePage(title, message) {
 </html>`;
 }
 
-function renderCompletionProofPage(job) {
+function renderCompletionProofPage(job, settings = {}) {
   const before = job.jobPhotos?.before || [];
   const after = job.jobPhotos?.after || [];
-  const businessName = "Precision Power Washing";
+  const businessName = getBusinessName(settings);
   const invoiceNumber = getPressureFlowInvoiceNumber(job, "final");
   const finalBalance = getFinalBalanceCents(job) / 100;
   const deposit = getDepositCents(job) / 100;
@@ -1356,8 +1358,8 @@ function renderCompletionProofPage(job) {
   </head>
   <body>
     <main>
-      ${renderLogoHtml("", 190)}
-      <p class="eyebrow">${escapeHtml(businessName)} Completion Proof</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(job.completionProofUrl), 190)}
+      <p class="eyebrow">Completion Proof</p>
       <h1>${escapeHtml(job.serviceType)} Completed</h1>
       <div class="proof-meta">
         <span>${escapeHtml(job.customerName)}</span>
@@ -1446,8 +1448,8 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   </head>
   <body>
     <main>
-      ${renderLogoHtml("", 190)}
-      <p class="eyebrow">${escapeHtml(businessName)} Invoice</p>
+      ${renderLogoHtml(settings, getBaseUrlFromLink(job.squareDepositInvoiceUrl || job.squareFinalInvoiceUrl), 190)}
+      <p class="eyebrow">${isDeposit ? "Deposit Invoice" : "Final Invoice"}</p>
       <h1>${title}</h1>
       <p>${escapeHtml(invoiceNumber)} | ${escapeHtml(businessName)} for ${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
       <section class="invoice-total">
@@ -1532,8 +1534,8 @@ function renderContractSigningPage(job, options = {}) {
   </head>
   <body>
     <main>
-      ${renderLogoHtml("", 190)}
-      <p class="eyebrow">Precision Power Washing Contract</p>
+      ${renderLogoHtml(options.settings || {}, getBaseUrlFromLink(job.contractApprovalUrl), 190)}
+      <p class="eyebrow">Service Contract</p>
       <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
       <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
 
@@ -1837,7 +1839,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderContractSigningPage(job));
+    sendHtml(response, 200, renderContractSigningPage(job, { settings: await readSettings() }));
     return;
   }
 
@@ -1850,7 +1852,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderContractSigningPage(job, { executedOnly: true }));
+    sendHtml(response, 200, renderContractSigningPage(job, { executedOnly: true, settings: await readSettings() }));
     return;
   }
 
@@ -1877,7 +1879,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderCompletionProofPage(job));
+    sendHtml(response, 200, renderCompletionProofPage(job, await readSettings()));
     return;
   }
 
@@ -2199,6 +2201,21 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "DELETE" && customerUpdateMatch) {
+    const [, customerId] = customerUpdateMatch;
+    const customers = await readCustomers();
+    const remainingCustomers = customers.filter((item) => item.id !== customerId);
+
+    if (remainingCustomers.length === customers.length) {
+      sendError(response, 404, "Customer not found.");
+      return;
+    }
+
+    await writeCustomers(remainingCustomers);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
   if (request.method === "DELETE" && updateMatch) {
     const [, jobId] = updateMatch;
     const jobs = await readJobs();
@@ -2373,6 +2390,7 @@ function normalizeSettings(input, existing) {
     businessName: String(input.businessName || "").trim(),
     businessEmail: String(input.businessEmail || "").trim(),
     businessPhone: String(input.businessPhone || "").trim(),
+    businessLogoDataUrl: normalizeBusinessLogoDataUrl(input.businessLogoDataUrl ?? existing.businessLogoDataUrl),
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
     finalInvoiceTiming: "immediate_after_completion",
@@ -2391,6 +2409,17 @@ function normalizeSettings(input, existing) {
     paymentInstructions: String(input.paymentInstructions || "").trim(),
     customTemplates: normalizeCustomTemplates(existing.customTemplates)
   };
+}
+
+function normalizeBusinessLogoDataUrl(value) {
+  const logo = String(value || "").trim();
+  if (!logo) {
+    return "";
+  }
+  if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(logo)) {
+    return "";
+  }
+  return logo.length <= 900000 ? logo : "";
 }
 
 async function recordWebhookEvent(event) {
@@ -3020,8 +3049,7 @@ function renderScheduleConfirmationEmailHtml(job, settings, baseUrl) {
   const businessName = getBusinessName(settings);
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(baseUrl, 190)}
-      <p style="margin:0 0 6px;color:#667085;font-weight:bold">${escapeHtml(businessName)}</p>
+      ${renderLogoHtml(settings, baseUrl, 190)}
       <h2 style="margin:0 0 12px">Schedule Confirmation</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your ${escapeHtml(businessName)} service has been scheduled.</p>

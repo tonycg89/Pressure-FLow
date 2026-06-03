@@ -75,6 +75,9 @@ const expenseForm = document.querySelector("#expenseForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
+const businessLogoInput = document.querySelector("#businessLogoInput");
+const businessLogoPreview = document.querySelector("#businessLogoPreview");
+const clearBusinessLogoButton = document.querySelector("#clearBusinessLogoButton");
 const templateList = document.querySelector("#templateList");
 const templateUploadForm = document.querySelector("#templateUploadForm");
 const templateFileInput = document.querySelector("#templateFileInput");
@@ -182,6 +185,8 @@ async function init() {
     button.addEventListener("click", closeDialogFromButton);
   });
   settingsForm.addEventListener("submit", saveSettings);
+  businessLogoInput?.addEventListener("change", updateBusinessLogoFromInput);
+  clearBusinessLogoButton?.addEventListener("click", clearBusinessLogo);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   completionForm.addEventListener("submit", submitCompletionDialog);
   completionBeforePhotoInputs.forEach((input) => {
@@ -231,7 +236,7 @@ function applySettingsDefaults() {
     depositInput.value = settings.defaultDepositPercent;
   }
   if (sidebarBusinessName) {
-    sidebarBusinessName.textContent = settings.businessName || "Job Command Center";
+    sidebarBusinessName.textContent = settings.businessName || "Precision Power Washing";
   }
 }
 
@@ -362,6 +367,10 @@ function fillSettingsForm() {
   settingsForm.elements.googleClientSecret.value = "";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "http://localhost:3000/auth/google/callback";
   settingsForm.elements.mapboxPublicToken.value = settings.mapboxPublicToken || "";
+  if (businessLogoInput) {
+    businessLogoInput.value = "";
+  }
+  renderBusinessLogoPreview();
 
   const googleText = settings.hasGoogleRefreshToken ? " Google Calendar connected." : settings.hasGoogleClientSecret ? " Google secret saved. Connect Calendar next." : "";
   settingsStatus.textContent = googleText || "PressureFlow invoices will use the payment methods saved above.";
@@ -376,6 +385,7 @@ async function saveSettings(event) {
   const payload = Object.fromEntries(new FormData(settingsForm).entries());
   payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
   payload.defaultJobDurationMinutes = Number(payload.defaultJobDurationMinutes);
+  payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
 
   try {
     const data = await apiRequest("/api/settings", payload);
@@ -385,6 +395,39 @@ async function saveSettings(event) {
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
+}
+
+async function updateBusinessLogoFromInput(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    settingsStatus.textContent = "Choose a PNG, JPG, or WebP logo image.";
+    event.target.value = "";
+    return;
+  }
+  if (file.size > 650000) {
+    settingsStatus.textContent = "Choose a smaller logo image under 650 KB.";
+    event.target.value = "";
+    return;
+  }
+
+  settings.businessLogoDataUrl = await readFileAsDataUrl(file);
+  renderBusinessLogoPreview();
+}
+
+function clearBusinessLogo() {
+  settings.businessLogoDataUrl = "";
+  if (businessLogoInput) {
+    businessLogoInput.value = "";
+  }
+  renderBusinessLogoPreview();
+}
+
+function renderBusinessLogoPreview() {
+  if (!businessLogoPreview) return;
+
+  businessLogoPreview.src = settings.businessLogoDataUrl || "/assets/logo.png";
+  businessLogoPreview.hidden = false;
 }
 
 function renderTemplates() {
@@ -2020,6 +2063,7 @@ function renderCustomerDetail() {
 
     <section class="detail-section">
       <button class="action-button" type="button" data-create-job-from-customer="${escapeHtml(customer.id)}">Create Job From Customer</button>
+      <button class="action-button danger" type="button" data-delete-customer="${escapeHtml(customer.id)}">Delete Customer</button>
     </section>
   `;
 
@@ -2031,7 +2075,26 @@ function renderCustomerDetail() {
     });
   });
   customerDetail.querySelector("[data-create-job-from-customer]")?.addEventListener("click", () => openNewJobForCustomer(customer));
+  customerDetail.querySelector("[data-delete-customer]")?.addEventListener("click", () => deleteCustomer(customer.id));
   attachPhotoViewerHandlers(customerDetail);
+}
+
+async function deleteCustomer(customerId) {
+  const customer = customers.find((item) => item.id === customerId);
+  if (!customer) return;
+
+  const confirmed = confirm(`Delete ${customer.customerName}'s customer file? Existing jobs will stay in PressureFlow.`);
+  if (!confirmed) return;
+
+  try {
+    await apiRequest(`/api/customers/${customerId}`, {}, "DELETE");
+    customers = customers.filter((item) => item.id !== customerId);
+    selectedCustomerId = customers[0]?.id ?? null;
+    await loadCustomers();
+    renderDashboard();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function renderCustomerJobMilestonesText(job) {

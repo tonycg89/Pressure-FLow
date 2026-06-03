@@ -13,7 +13,7 @@
       <aside class="sidebar">
         <div>
           <p class="eyebrow">PressureFlow</p>
-          <h1 id="sidebarBusinessName">Job Command Center</h1>
+          <h1 id="sidebarBusinessName">Precision Power Washing</h1>
         </div>
 
         <nav class="nav-list" aria-label="Primary">
@@ -722,6 +722,14 @@
             Business phone
             <input name="businessPhone" placeholder="(555) 123-4567">
           </label>
+          <label class="full-field">
+            Company logo
+            <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
+          </label>
+          <div class="full-field logo-settings-row">
+            <img id="businessLogoPreview" alt="Company logo preview" hidden>
+            <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Use Default Logo</button>
+          </div>
           <label>
             Default deposit %
             <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">

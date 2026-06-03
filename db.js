@@ -18,6 +18,7 @@ const defaultSettings = {
   businessName: "",
   businessEmail: "",
   businessPhone: "",
+  businessLogoDataUrl: "",
   defaultDepositPercent: 25,
   defaultJobDurationMinutes: 180,
   finalInvoiceTiming: "immediate_after_completion",
@@ -246,6 +247,7 @@ async function readSettings() {
       cashAppPayment: rowSettings.cashAppPayment || "",
       venmoPayment: rowSettings.venmoPayment || "",
       paymentInstructions: rowSettings.paymentInstructions || "",
+      businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
       customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : []
     };
   }
@@ -262,6 +264,7 @@ async function writeSettings(settings) {
         business_name,
         business_email,
         business_phone,
+        business_logo_data_url,
         default_deposit_percent,
         default_job_duration_minutes,
         final_invoice_timing,
@@ -276,11 +279,12 @@ async function writeSettings(settings) {
         payment_instructions,
         custom_templates,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
         business_phone = excluded.business_phone,
+        business_logo_data_url = excluded.business_logo_data_url,
         default_deposit_percent = excluded.default_deposit_percent,
         default_job_duration_minutes = excluded.default_job_duration_minutes,
         final_invoice_timing = excluded.final_invoice_timing,
@@ -299,6 +303,7 @@ async function writeSettings(settings) {
         settings.businessName || "",
         settings.businessEmail || "",
         settings.businessPhone || "",
+        settings.businessLogoDataUrl || "",
         settings.defaultDepositPercent || 25,
         settings.defaultJobDurationMinutes || 180,
         settings.finalInvoiceTiming || "immediate_after_completion",
@@ -406,6 +411,7 @@ async function ensurePostgresSchema() {
     business_name text not null default '',
     business_email text not null default '',
     business_phone text not null default '',
+    business_logo_data_url text not null default '',
     default_deposit_percent numeric not null default 25,
     default_job_duration_minutes integer not null default 180,
     final_invoice_timing text not null default 'immediate_after_completion',
@@ -422,6 +428,7 @@ async function ensurePostgresSchema() {
     updated_at timestamptz not null default now()
   )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists business_logo_data_url text not null default ''");
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists zelle_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
@@ -813,6 +820,7 @@ function settingsFromRow(row) {
     businessName: row.business_name || "",
     businessEmail: row.business_email || "",
     businessPhone: row.business_phone || "",
+    businessLogoDataUrl: row.business_logo_data_url || "",
     defaultDepositPercent: Number(row.default_deposit_percent || 25),
     defaultJobDurationMinutes: Number(row.default_job_duration_minutes || 180),
     finalInvoiceTiming: row.final_invoice_timing || "immediate_after_completion",

@@ -770,6 +770,23 @@ label {
   gap: 12px;
 }
 
+.logo-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.logo-settings-row img {
+  max-width: 190px;
+  max-height: 90px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  object-fit: contain;
+}
+
 .section-header {
   display: flex;
   align-items: center;
