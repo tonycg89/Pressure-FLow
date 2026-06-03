@@ -1037,12 +1037,12 @@ function openMeasurementDialog(row) {
   updateMeasurementTotal();
   renderMeasurementAreas();
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
+  delete savedMeasurementsPanel.dataset.userToggled;
   renderSavedMeasurements([]);
   measurementDialog.showModal();
   setTimeout(() => {
     initializeMeasurementMap();
     if (measurementAddress.value) {
-      geocodeMeasurementAddress();
       loadSavedMeasurementsForAddress(measurementAddress.value);
     }
   }, 50);
@@ -1160,7 +1160,6 @@ async function geocodeMeasurementAddress() {
   initializeMeasurementMap();
   mapboxMap?.flyTo({ center, zoom: 19, essential: true });
   measurementStatus.textContent = "Draw a polygon around the surface.";
-  await loadSavedMeasurementsForAddress(currentMeasurement.address);
 }
 
 async function loadSavedMeasurementsForAddress(address) {
@@ -1184,6 +1183,9 @@ async function loadSavedMeasurementsForAddress(address) {
 
 function renderSavedMeasurements(measurements) {
   const reusable = measurements.filter((item) => item.measurement?.geojson && item.measurement?.squareFeet);
+  if (!reusable.length && savedMeasurementsList.children.length > 0) {
+    return;
+  }
   savedMeasurementsPanel.hidden = reusable.length === 0;
   if (reusable.length && !savedMeasurementsPanel.dataset.userToggled) {
     savedMeasurementsPanel.open = true;
