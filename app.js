@@ -1147,14 +1147,39 @@ function renderSavedMeasurements(measurements) {
       </span>
       <span>Use saved</span>
     `;
-    button.addEventListener("click", () => applySavedMeasurement(item.measurement));
+    button.addEventListener("click", () => applySavedMeasurement(item));
     savedMeasurementsList.append(button);
   });
 }
 
-function applySavedMeasurement(measurement) {
-  currentMeasurement = normalizeMeasurementForEditing({ ...measurement, capturedAt: new Date().toISOString() });
-  activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
+function applySavedMeasurement(item) {
+  const savedMeasurement = normalizeMeasurementForEditing({
+    ...(item.measurement || item),
+    capturedAt: new Date().toISOString()
+  });
+  const savedArea = savedMeasurement.areas[0];
+  if (!savedArea) return;
+
+  const nextArea = {
+    ...savedArea,
+    id: crypto.randomUUID(),
+    name: item.label || savedArea.name || getNextMeasurementAreaName(),
+    capturedAt: new Date().toISOString()
+  };
+  currentMeasurement = normalizeMeasurementForEditing(currentMeasurement);
+  const existingIndex = currentMeasurement.areas.findIndex((area) => JSON.stringify(area.geojson) === JSON.stringify(savedArea.geojson));
+  if (existingIndex >= 0) {
+    currentMeasurement.areas.splice(existingIndex, 1, nextArea);
+  } else {
+    currentMeasurement.areas.push(nextArea);
+  }
+  currentMeasurement = recalculateMeasurementTotals({
+    ...currentMeasurement,
+    address: savedMeasurement.address || item.address || measurementAddress.value.trim(),
+    center: savedMeasurement.center?.length ? savedMeasurement.center : currentMeasurement.center,
+    zoom: savedMeasurement.zoom || currentMeasurement.zoom || 18
+  });
+  activeMeasurementAreaId = nextArea.id;
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
   updateMeasurementTotal();
   renderMeasurementAreas();
@@ -1162,7 +1187,7 @@ function applySavedMeasurement(measurement) {
   if (currentMeasurement.center?.length) {
     mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
   }
-  measurementStatus.textContent = "Saved measurement loaded.";
+  measurementStatus.textContent = `${nextArea.name} loaded. All selected service areas are visible on the map.`;
 }
 
 function updateMeasurementFromDraw() {
@@ -1205,7 +1230,7 @@ function clearMeasurementPolygon() {
 }
 
 function saveMeasurementArea() {
-  const feature = mapboxDraw?.getAll().features?.[0];
+  const feature = getEditableMeasurementFeature();
   if (!feature) {
     alert("Draw a polygon before adding the service area.");
     return;
@@ -1238,9 +1263,9 @@ function saveMeasurementArea() {
     zoom: mapboxMap.getZoom()
   });
   activeMeasurementAreaId = "";
-  mapboxDraw?.deleteAll();
   updateMeasurementTotal();
   renderMeasurementAreas();
+  loadMeasurementAreasIntoDraw();
   measurementStatus.textContent = `${name} saved. Draw another area if needed.`;
 }
 
@@ -1283,7 +1308,7 @@ function editMeasurementArea(areaId) {
 
   activeMeasurementAreaId = area.id;
   updateMeasurementTotal();
-  loadActiveMeasurementAreaIntoDraw();
+  loadMeasurementAreasIntoDraw();
   measurementStatus.textContent = `Editing ${area.name}. Adjust the polygon, then update the area.`;
 }
 
@@ -1299,22 +1324,52 @@ function deleteMeasurementArea(areaId) {
   currentMeasurement.areas = currentMeasurement.areas.filter((area) => area.id !== areaId);
   if (activeMeasurementAreaId === areaId) {
     activeMeasurementAreaId = "";
-    mapboxDraw?.deleteAll();
   }
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
   renderMeasurementAreas();
+  loadMeasurementAreasIntoDraw();
 }
 
 function loadActiveMeasurementAreaIntoDraw() {
+  loadMeasurementAreasIntoDraw();
+}
+
+function loadMeasurementAreasIntoDraw() {
   if (!mapboxDraw) return;
 
   mapboxDraw.deleteAll();
-  const area = currentMeasurement.areas?.find((item) => item.id === activeMeasurementAreaId);
-  if (area?.geojson) {
-    mapboxDraw.add(area.geojson);
+  (currentMeasurement.areas || []).forEach((area) => {
+    mapboxDraw.add(buildDrawFeatureForArea(area));
+  });
+  if (activeMeasurementAreaId) {
+    mapboxDraw.changeMode("simple_select", { featureIds: [activeMeasurementAreaId] });
+  } else if (currentMeasurement.areas?.length) {
     mapboxDraw.changeMode("simple_select");
   }
+}
+
+function buildDrawFeatureForArea(area) {
+  return {
+    ...area.geojson,
+    id: area.id,
+    properties: {
+      ...(area.geojson?.properties || {}),
+      serviceAreaName: area.name || "Service area"
+    }
+  };
+}
+
+function getEditableMeasurementFeature() {
+  const features = mapboxDraw?.getAll().features || [];
+  if (!features.length) return null;
+
+  if (activeMeasurementAreaId) {
+    return features.find((feature) => String(feature.id) === String(activeMeasurementAreaId)) || null;
+  }
+
+  const savedIds = new Set((currentMeasurement.areas || []).map((area) => String(area.id)));
+  return features.find((feature) => !savedIds.has(String(feature.id))) || null;
 }
 
 function updateMeasurementTotal() {
@@ -1331,8 +1386,8 @@ function getNextMeasurementAreaName() {
 
 function useMeasurement() {
   updateMeasurementFromDraw();
-  const hasDraftPolygon = Boolean(mapboxDraw?.getAll().features?.[0]);
-  if (hasDraftPolygon) {
+  const editableFeature = getEditableMeasurementFeature();
+  if (editableFeature) {
     saveMeasurementArea();
   }
   if (!currentMeasurement.squareFeet) {

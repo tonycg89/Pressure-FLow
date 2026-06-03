@@ -2555,19 +2555,23 @@ async function findSavedMeasurements(address) {
   const seen = new Set();
   const customerMeasurements = (await readCustomers())
     .filter((customer) => normalizeAddressKey(customer.address) === target)
-    .flatMap((customer) => (customer.propertyMeasurements || []).map((item) => ({
-      customerId: customer.id,
-      customerName: customer.customerName,
-      address: item.address || customer.address,
-      updatedAt: item.updatedAt || customer.updatedAt || "",
-      measurement: item.measurement || item
-    })));
+    .flatMap((customer) => (customer.propertyMeasurements || []).flatMap((item) =>
+      expandSavedMeasurementAreas({
+        customerId: customer.id,
+        customerName: customer.customerName,
+        label: item.label || "",
+        address: item.address || customer.address,
+        updatedAt: item.updatedAt || customer.updatedAt || "",
+        measurement: item.measurement || item
+      })
+    ));
 
   const jobMeasurements = (await readJobs())
     .filter((job) => normalizeAddressKey(job.address) === target && job.measurement?.geojson && job.measurement?.squareFeet)
-    .map((job) => ({
+    .flatMap((job) => expandSavedMeasurementAreas({
       jobId: job.id,
       customerName: job.customerName,
+      label: `${job.serviceType || "Service"} measurement`,
       address: job.address,
       updatedAt: job.updatedAt || job.createdAt || "",
       measurement: job.measurement
@@ -2582,7 +2586,46 @@ async function findSavedMeasurements(address) {
       seen.add(key);
       return true;
     })
-    .slice(0, 5);
+    .slice(0, 24);
+}
+
+function expandSavedMeasurementAreas(item) {
+  const measurement = normalizeMeasurement(item.measurement);
+  const areas = Array.isArray(measurement.areas) && measurement.areas.length
+    ? measurement.areas
+    : measurement.geojson && measurement.squareFeet
+      ? [{
+        id: crypto.randomUUID(),
+        name: item.label || "Saved measurement",
+        squareFeet: measurement.squareFeet,
+        perimeterFeet: measurement.perimeterFeet,
+        geojson: measurement.geojson,
+        capturedAt: measurement.capturedAt
+      }]
+      : [];
+
+  return areas.map((area) => ({
+    ...item,
+    label: area.name || item.label || "Saved measurement",
+    measurement: {
+      address: measurement.address || item.address || "",
+      squareFeet: Number(area.squareFeet || 0),
+      perimeterFeet: Number(area.perimeterFeet || 0),
+      geojson: area.geojson,
+      areas: [{
+        id: String(area.id || crypto.randomUUID()),
+        name: area.name || item.label || "Saved measurement",
+        squareFeet: Number(area.squareFeet || 0),
+        perimeterFeet: Number(area.perimeterFeet || 0),
+        geojson: area.geojson,
+        capturedAt: area.capturedAt || measurement.capturedAt || new Date().toISOString()
+      }],
+      center: measurement.center || [],
+      zoom: measurement.zoom || 18,
+      staticImageUrl: measurement.staticImageUrl || "",
+      capturedAt: area.capturedAt || measurement.capturedAt || new Date().toISOString()
+    }
+  }));
 }
 
 async function syncJobPhotosToCustomerFile(job) {
