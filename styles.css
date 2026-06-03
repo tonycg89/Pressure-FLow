@@ -783,9 +783,13 @@ label {
 
 .line-item-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.3fr) minmax(82px, 0.45fr) minmax(96px, 0.55fr) minmax(86px, 0.45fr) 40px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(82px, 0.42fr) minmax(96px, 0.5fr) minmax(86px, 0.42fr) auto 40px;
   gap: 8px;
   align-items: end;
+}
+
+.line-measure[hidden] {
+  display: none;
 }
 
 .line-item-total {
@@ -1093,6 +1097,13 @@ label {
   align-items: end;
 }
 
+.map-area-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .measurement-map {
   min-height: 520px;
   overflow: hidden;
@@ -1105,6 +1116,33 @@ label {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 10px;
+}
+
+.measurement-area-list {
+  display: grid;
+  gap: 8px;
+}
+
+.measurement-area-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.measurement-area-card div {
+  display: grid;
+  gap: 2px;
+}
+
+.measurement-area-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .measurement-summary div {
@@ -1351,6 +1389,8 @@ label {
   .line-item-row,
   .estimate-summary,
   .map-address-row,
+  .map-area-row,
+  .measurement-area-card,
   .measurement-summary {
     grid-template-columns: 1fr;
   }

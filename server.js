@@ -431,15 +431,53 @@ function normalizeMeasurement(value) {
     measurement = {};
   }
 
-  if (!measurement || typeof measurement !== "object" || !measurement.geojson) {
+  if (!measurement || typeof measurement !== "object") {
     return {};
   }
 
+  const areas = Array.isArray(measurement.areas)
+    ? measurement.areas
+      .map((area, index) => ({
+        id: String(area.id || crypto.randomUUID()),
+        name: String(area.name || area.label || `Service area ${index + 1}`).trim(),
+        squareFeet: Number(area.squareFeet || 0),
+        perimeterFeet: Number(area.perimeterFeet || 0),
+        geojson: area.geojson,
+        capturedAt: String(area.capturedAt || measurement.capturedAt || new Date().toISOString())
+      }))
+      .filter((area) => area.geojson && area.squareFeet > 0)
+    : [];
+  const normalizedAreas = areas.length
+    ? areas
+    : measurement.geojson && measurement.squareFeet
+      ? [{
+        id: crypto.randomUUID(),
+        name: "Service area 1",
+        squareFeet: Number(measurement.squareFeet || 0),
+        perimeterFeet: Number(measurement.perimeterFeet || 0),
+        geojson: measurement.geojson,
+        capturedAt: String(measurement.capturedAt || new Date().toISOString())
+      }]
+      : [];
+  if (!normalizedAreas.length && !measurement.geojson) {
+    return {};
+  }
+  const squareFeet = normalizedAreas.length
+    ? normalizedAreas.reduce((sum, area) => sum + Number(area.squareFeet || 0), 0)
+    : Number(measurement.squareFeet || 0);
+  const perimeterFeet = normalizedAreas.length
+    ? normalizedAreas.reduce((sum, area) => sum + Number(area.perimeterFeet || 0), 0)
+    : Number(measurement.perimeterFeet || 0);
+  const geojson = normalizedAreas.length
+    ? { type: "FeatureCollection", features: normalizedAreas.map((area) => area.geojson).filter(Boolean) }
+    : measurement.geojson;
+
   return {
     address: String(measurement.address || "").trim(),
-    squareFeet: Number(measurement.squareFeet || 0),
-    perimeterFeet: Number(measurement.perimeterFeet || 0),
-    geojson: measurement.geojson,
+    squareFeet,
+    perimeterFeet,
+    geojson,
+    areas: normalizedAreas,
     center: Array.isArray(measurement.center) ? measurement.center.map(Number).slice(0, 2) : [],
     zoom: Number(measurement.zoom || 18),
     staticImageUrl: String(measurement.staticImageUrl || "").trim(),
@@ -1232,9 +1270,17 @@ function renderMeasurementPreview(job) {
   }
 
   const area = Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US");
+  const areaRows = Array.isArray(job.measurement.areas) && job.measurement.areas.length
+    ? `<ul>
+      ${job.measurement.areas.map((item) => `
+        <li>${escapeHtml(item.name || "Service area")}: ${Math.round(Number(item.squareFeet || 0)).toLocaleString("en-US")} SqFt</li>
+      `).join("")}
+    </ul>`
+    : "";
   return `<section>
     <h2>Measured Surface</h2>
     <p>${escapeHtml(job.measurement.address || job.address)} | ${area} SqFt</p>
+    ${areaRows}
     <div class="measurement-preview-wrap">
       <img class="measurement-preview" src="${escapeHtml(job.measurement.staticImageUrl)}" alt="Satellite measurement with traced polygon">
       <div class="measurement-badge measurement-badge-area">${area} SqFt</div>
@@ -2575,9 +2621,12 @@ async function syncJobMeasurementToCustomerFile(job) {
   const propertyMeasurements = normalizePropertyMeasurements(customer.propertyMeasurements || []);
   const measurementKey = JSON.stringify(job.measurement.geojson);
   const existing = propertyMeasurements.find((item) => JSON.stringify(item.measurement?.geojson) === measurementKey);
+  const measurementLabel = Array.isArray(job.measurement.areas) && job.measurement.areas.length
+    ? job.measurement.areas.map((area) => area.name).filter(Boolean).join(" + ")
+    : `${job.serviceType || "Service area"} measurement`;
   const savedMeasurement = {
     id: existing?.id || crypto.randomUUID(),
-    label: existing?.label || `${job.serviceType || "Service area"} measurement`,
+    label: existing?.label || measurementLabel,
     address: job.measurement.address || job.address,
     sourceJobId: job.id,
     updatedAt: new Date().toISOString(),

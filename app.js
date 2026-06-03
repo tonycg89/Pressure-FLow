@@ -66,6 +66,7 @@ const navItems = document.querySelectorAll("[data-view]");
 const viewPanels = document.querySelectorAll("[data-view-panel]");
 const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
+const jobCustomerSelect = document.querySelector("#jobCustomerSelect");
 const customerDialog = document.querySelector("#customerDialog");
 const customerForm = document.querySelector("#customerForm");
 const expenseDialog = document.querySelector("#expenseDialog");
@@ -90,15 +91,17 @@ const estimateSubtotal = document.querySelector("#estimateSubtotal");
 const estimateDiscount = document.querySelector("#estimateDiscount");
 const estimateDiscountRow = document.querySelector("#estimateDiscountRow");
 const estimateTotal = document.querySelector("#estimateTotal");
-const measureFromMapButton = document.querySelector("#measureFromMapButton");
 const measurementDialog = document.querySelector("#measurementDialog");
 const measurementAddress = document.querySelector("#measurementAddress");
+const measurementAreaName = document.querySelector("#measurementAreaName");
 const measurementMapElement = document.querySelector("#measurementMap");
 const geocodeAddressButton = document.querySelector("#geocodeAddressButton");
 const measuredArea = document.querySelector("#measuredArea");
 const measurementStatus = document.querySelector("#measurementStatus");
 const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel");
 const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
+const measurementAreaList = document.querySelector("#measurementAreaList");
+const saveMeasurementAreaButton = document.querySelector("#saveMeasurementAreaButton");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
@@ -117,6 +120,7 @@ const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
 let currentMeasurement = {};
+let activeMeasurementAreaId = "";
 let currentServiceAreaPhotos = [];
 let currentJobPhotos = { before: [], after: [] };
 let currentCompletionPhotos = { before: [], after: [] };
@@ -147,6 +151,7 @@ async function init() {
   document.addEventListener("click", closeNotificationDropdownFromOutside);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
+  jobCustomerSelect?.addEventListener("change", selectJobCustomer);
   newCustomerButton.addEventListener("click", openNewCustomer);
   editCustomerButton.addEventListener("click", openEditCustomer);
   newExpenseButton.addEventListener("click", openNewExpense);
@@ -168,8 +173,8 @@ async function init() {
   });
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
-  measureFromMapButton.addEventListener("click", openMeasurementDialog);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
+  saveMeasurementAreaButton?.addEventListener("click", saveMeasurementArea);
   clearMeasurementButton.addEventListener("click", clearMeasurementPolygon);
   useMeasurementButton.addEventListener("click", useMeasurement);
   discountSelect.addEventListener("change", updateEstimateTotals);
@@ -263,10 +268,47 @@ async function loadCustomers() {
     const data = await response.json();
     customers = data.customers || [];
     selectedCustomerId = selectedCustomerId ?? customers[0]?.id ?? null;
+    renderJobCustomerOptions();
     renderCustomers();
   } catch (error) {
     customerList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
     customerDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderJobCustomerOptions() {
+  if (!jobCustomerSelect) return;
+
+  const selectedCustomerId = jobForm.elements.customerId?.value || "";
+  jobCustomerSelect.innerHTML = `
+    <option value="">New customer / enter manually</option>
+    ${customers.map((customer) => `
+      <option value="${escapeHtml(customer.id)}" ${customer.id === selectedCustomerId ? "selected" : ""}>
+        ${escapeHtml(customer.customerName || "Unnamed customer")}${customer.address ? ` - ${escapeHtml(customer.address)}` : ""}
+      </option>
+    `).join("")}
+  `;
+}
+
+function selectJobCustomer(event) {
+  const customer = customers.find((item) => item.id === event.target.value);
+  if (!customer) {
+    jobForm.elements.customerId.value = "";
+    return;
+  }
+
+  fillJobCustomerFields(customer);
+}
+
+function fillJobCustomerFields(customer) {
+  jobForm.elements.customerId.value = customer.id || "";
+  jobForm.elements.customerName.value = customer.customerName || "";
+  jobForm.elements.email.value = customer.email || "";
+  jobForm.elements.phone.value = customer.phone || "";
+  fillAddressFields(jobForm, customer);
+  jobForm.elements.leadSource.value = customer.leadSource || "referral";
+  if (jobCustomerSelect) {
+    jobCustomerSelect.value = customer.id || "";
   }
 }
 
@@ -500,7 +542,7 @@ async function createJob(event) {
   const formData = new FormData(jobForm);
   const job = Object.fromEntries(formData.entries());
   job.lineItems = getEstimateLineItems();
-  job.measurement = currentMeasurement;
+  job.measurement = job.lineItems.some((item) => item.name === "Pressure Washing") ? currentMeasurement : {};
   job.jobPhotos = currentJobPhotos;
   job.estimate = Number(job.estimate);
   job.depositPercent = Number(job.depositPercent);
@@ -527,17 +569,13 @@ async function createJob(event) {
 function openNewJob() {
   jobForm.reset();
   resetJobDialog();
+  renderJobCustomerOptions();
   jobDialog.showModal();
 }
 
 function openNewJobForCustomer(customer) {
   openNewJob();
-  jobForm.elements.customerId.value = customer.id;
-  jobForm.elements.customerName.value = customer.customerName || "";
-  jobForm.elements.email.value = customer.email || "";
-  jobForm.elements.phone.value = customer.phone || "";
-  fillAddressFields(jobForm, customer);
-  jobForm.elements.leadSource.value = customer.leadSource || "referral";
+  fillJobCustomerFields(customer);
 }
 
 function openNewCustomer() {
@@ -661,14 +699,19 @@ function openEditJob() {
   jobForm.elements.notes.value = job.notes || "";
   jobForm.elements.accessNotes.value = job.accessNotes || "";
   jobForm.elements.sensitiveAreas.value = job.sensitiveAreas || "";
+  renderJobCustomerOptions();
   jobDialog.showModal();
 }
 
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
   jobDialogTitle.textContent = "New pressure washing job";
+  if (jobCustomerSelect) {
+    jobCustomerSelect.value = "";
+  }
   renderLineItems([{ ...defaultEstimateService, quantity: 1 }]);
   currentMeasurement = {};
+  activeMeasurementAreaId = "";
   currentJobPhotos = { before: [], after: [] };
   beforePhotoInputs.forEach((input) => {
     input.value = "";
@@ -840,6 +883,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
       <span>${escapeHtml(catalogItem.unit)}</span>
       <strong>$0</strong>
     </div>
+    <button class="secondary-small-button line-measure" type="button" title="Measure pressure washing area" hidden>Measure from Map</button>
     <button class="icon-button line-remove" type="button" title="Remove service">X</button>
   `;
 
@@ -849,20 +893,34 @@ function addLineItemRow(item = serviceCatalog[0]) {
     row.querySelector(".line-rate").value = selected.price;
     row.querySelector(".line-quantity-label").textContent = selected.unit;
     row.querySelector(".line-item-total span").textContent = selected.unit;
+    updateMeasurementButtonVisibility();
     updateEstimateTotals();
   });
   row.querySelector(".line-quantity").addEventListener("input", updateEstimateTotals);
   row.querySelector(".line-rate").addEventListener("input", updateEstimateTotals);
+  row.querySelector(".line-measure").addEventListener("click", () => openMeasurementDialog(row));
   row.querySelector(".line-remove").addEventListener("click", () => {
     row.remove();
     if (!lineItemsContainer.children.length) {
       addLineItemRow();
     }
+    updateMeasurementButtonVisibility();
     updateEstimateTotals();
   });
 
   lineItemsContainer.append(row);
+  updateMeasurementButtonVisibility();
   updateEstimateTotals();
+}
+
+function updateMeasurementButtonVisibility() {
+  lineItemsContainer.querySelectorAll(".line-item-row").forEach((row) => {
+    const isPressureWashing = row.querySelector(".line-service")?.value === "Pressure Washing";
+    const measureButton = row.querySelector(".line-measure");
+    if (measureButton) {
+      measureButton.hidden = !isPressureWashing;
+    }
+  });
 }
 
 function getEstimateLineItems() {
@@ -907,18 +965,24 @@ function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
 }
 
-function openMeasurementDialog() {
+function openMeasurementDialog(row) {
   if (!settings.mapboxPublicToken) {
     alert("Add your Mapbox public token in Settings before using map measurement.");
     return;
   }
 
-  activeMeasurementLineItem = findPressureWashingLineItem() || addMeasuredPressureWashingRow();
+  activeMeasurementLineItem = row || findPressureWashingLineItem();
+  if (!activeMeasurementLineItem) {
+    return;
+  }
+
+  currentMeasurement = normalizeMeasurementForEditing(currentMeasurement);
+  activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
   syncAddressFields(jobForm);
   measurementAddress.value = jobForm.elements.address.value || currentMeasurement.address || "";
-  measuredArea.textContent = currentMeasurement.squareFeet
-    ? `${Math.round(currentMeasurement.squareFeet).toLocaleString("en-US")} SqFt`
-    : "0 SqFt";
+  measurementAreaName.value = currentMeasurement.areas[0]?.name || getNextMeasurementAreaName();
+  updateMeasurementTotal();
+  renderMeasurementAreas();
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
   renderSavedMeasurements([]);
   measurementDialog.showModal();
@@ -929,6 +993,62 @@ function openMeasurementDialog() {
       loadSavedMeasurementsForAddress(measurementAddress.value);
     }
   }, 50);
+}
+
+function normalizeMeasurementForEditing(measurement = {}) {
+  const areas = Array.isArray(measurement.areas)
+    ? measurement.areas
+    : measurement.geojson && measurement.squareFeet
+      ? [{
+        id: crypto.randomUUID(),
+        name: "Service area 1",
+        squareFeet: Number(measurement.squareFeet || 0),
+        perimeterFeet: Number(measurement.perimeterFeet || 0),
+        geojson: measurement.geojson,
+        capturedAt: measurement.capturedAt || new Date().toISOString()
+      }]
+      : [];
+
+  const normalized = {
+    ...measurement,
+    areas: areas.map((area, index) => ({
+      id: String(area.id || crypto.randomUUID()),
+      name: String(area.name || area.label || `Service area ${index + 1}`).trim(),
+      squareFeet: Number(area.squareFeet || 0),
+      perimeterFeet: Number(area.perimeterFeet || 0),
+      geojson: area.geojson,
+      capturedAt: String(area.capturedAt || new Date().toISOString())
+    })).filter((area) => area.geojson && area.squareFeet > 0)
+  };
+
+  return recalculateMeasurementTotals(normalized);
+}
+
+function recalculateMeasurementTotals(measurement = currentMeasurement) {
+  const areas = Array.isArray(measurement.areas) ? measurement.areas : [];
+  const squareFeet = areas.reduce((sum, area) => sum + Number(area.squareFeet || 0), 0);
+  const perimeterFeet = areas.reduce((sum, area) => sum + Number(area.perimeterFeet || 0), 0);
+  const firstArea = areas[0] || {};
+  const updated = {
+    ...measurement,
+    squareFeet,
+    perimeterFeet,
+    geojson: buildMeasurementFeatureCollection(areas),
+    center: measurement.center || [],
+    zoom: Number(measurement.zoom || 18),
+    capturedAt: new Date().toISOString()
+  };
+  if (!updated.center?.length && firstArea.center?.length) {
+    updated.center = firstArea.center;
+  }
+  updated.staticImageUrl = buildStaticMapUrl(updated);
+  return updated;
+}
+
+function buildMeasurementFeatureCollection(areas) {
+  const features = (areas || []).map((area) => area.geojson).filter(Boolean);
+  if (!features.length) return null;
+  return { type: "FeatureCollection", features };
 }
 
 function initializeMeasurementMap() {
@@ -959,11 +1079,7 @@ function initializeMeasurementMap() {
     mapboxMap.resize();
   }
 
-  if (currentMeasurement.geojson && mapboxDraw) {
-    mapboxDraw.deleteAll();
-    mapboxDraw.add(currentMeasurement.geojson);
-    mapboxDraw.changeMode("simple_select");
-  }
+  loadActiveMeasurementAreaIntoDraw();
 }
 
 async function geocodeMeasurementAddress() {
@@ -1021,7 +1137,8 @@ function renderSavedMeasurements(measurements) {
     button.className = "saved-measurement-button";
     button.innerHTML = `
       <span>
-        <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
+        <strong>${escapeHtml(item.label || "Saved measurement")}</strong>
+        <small>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</small>
       </span>
       <span>Use saved</span>
     `;
@@ -1031,9 +1148,12 @@ function renderSavedMeasurements(measurements) {
 }
 
 function applySavedMeasurement(measurement) {
-  currentMeasurement = { ...measurement, capturedAt: new Date().toISOString() };
+  currentMeasurement = normalizeMeasurementForEditing({ ...measurement, capturedAt: new Date().toISOString() });
+  activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
-  measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
+  measurementAreaName.value = currentMeasurement.areas[0]?.name || getNextMeasurementAreaName();
+  updateMeasurementTotal();
+  renderMeasurementAreas();
   initializeMeasurementMap();
   if (currentMeasurement.center?.length) {
     mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
@@ -1044,9 +1164,9 @@ function applySavedMeasurement(measurement) {
 function updateMeasurementFromDraw() {
   const feature = mapboxDraw?.getAll().features?.[0];
   if (!feature) {
-    currentMeasurement = { ...currentMeasurement, geojson: null, squareFeet: 0, perimeterFeet: 0, staticImageUrl: "" };
-    measuredArea.textContent = "0 SqFt";
-    measurementStatus.textContent = "Draw a polygon around the surface.";
+    measurementStatus.textContent = currentMeasurement.areas?.length
+      ? "Draw the next service area or edit an area from the list."
+      : "Draw a polygon around the surface.";
     return;
   }
 
@@ -1056,16 +1176,11 @@ function updateMeasurementFromDraw() {
   currentMeasurement = {
     ...currentMeasurement,
     address: measurementAddress.value.trim(),
-    squareFeet,
-    perimeterFeet,
-    geojson: feature,
     center: [center.lng, center.lat],
     zoom: mapboxMap.getZoom(),
     capturedAt: new Date().toISOString()
   };
-  currentMeasurement.staticImageUrl = buildStaticMapUrl(currentMeasurement);
-  measuredArea.textContent = `${squareFeet.toLocaleString("en-US")} SqFt`;
-  measurementStatus.textContent = "Measurement ready.";
+  measurementStatus.textContent = `${squareFeet.toLocaleString("en-US")} SqFt drawn. Add or update the named area.`;
 }
 
 function calculatePerimeterFeet(feature) {
@@ -1080,17 +1195,138 @@ function calculatePerimeterFeet(feature) {
 
 function clearMeasurementPolygon() {
   mapboxDraw?.deleteAll();
+  activeMeasurementAreaId = "";
+  measurementAreaName.value = getNextMeasurementAreaName();
+  updateMeasurementTotal();
   updateMeasurementFromDraw();
+}
+
+function saveMeasurementArea() {
+  const feature = mapboxDraw?.getAll().features?.[0];
+  if (!feature) {
+    alert("Draw a polygon before adding the service area.");
+    return;
+  }
+
+  const squareFeet = Math.round(turf.area(feature) * 10.7639);
+  const perimeterFeet = calculatePerimeterFeet(feature);
+  const center = mapboxMap.getCenter();
+  const name = measurementAreaName.value.trim() || getNextMeasurementAreaName();
+  const area = {
+    id: activeMeasurementAreaId || crypto.randomUUID(),
+    name,
+    squareFeet,
+    perimeterFeet,
+    geojson: feature,
+    capturedAt: new Date().toISOString()
+  };
+  const existingIndex = currentMeasurement.areas.findIndex((item) => item.id === area.id);
+  if (existingIndex >= 0) {
+    currentMeasurement.areas.splice(existingIndex, 1, area);
+  } else {
+    currentMeasurement.areas.push(area);
+  }
+  currentMeasurement = recalculateMeasurementTotals({
+    ...currentMeasurement,
+    address: measurementAddress.value.trim(),
+    center: [center.lng, center.lat],
+    zoom: mapboxMap.getZoom()
+  });
+  activeMeasurementAreaId = "";
+  mapboxDraw?.deleteAll();
+  measurementAreaName.value = getNextMeasurementAreaName();
+  updateMeasurementTotal();
+  renderMeasurementAreas();
+  measurementStatus.textContent = `${name} saved. Draw another area if needed.`;
+}
+
+function renderMeasurementAreas() {
+  if (!measurementAreaList) return;
+
+  const areas = currentMeasurement.areas || [];
+  if (!areas.length) {
+    measurementAreaList.innerHTML = '<p class="photo-empty">No service areas added yet.</p>';
+    return;
+  }
+
+  measurementAreaList.innerHTML = areas.map((area) => `
+    <article class="measurement-area-card">
+      <div>
+        <strong>${escapeHtml(area.name)}</strong>
+        <span>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</span>
+      </div>
+      <button class="secondary-small-button" type="button" data-edit-area="${escapeHtml(area.id)}">Edit</button>
+      <button class="icon-button" type="button" title="Remove service area" data-delete-area="${escapeHtml(area.id)}">X</button>
+    </article>
+  `).join("");
+
+  measurementAreaList.querySelectorAll("[data-edit-area]").forEach((button) => {
+    button.addEventListener("click", () => editMeasurementArea(button.dataset.editArea));
+  });
+  measurementAreaList.querySelectorAll("[data-delete-area]").forEach((button) => {
+    button.addEventListener("click", () => deleteMeasurementArea(button.dataset.deleteArea));
+  });
+}
+
+function editMeasurementArea(areaId) {
+  const area = currentMeasurement.areas.find((item) => item.id === areaId);
+  if (!area) return;
+
+  activeMeasurementAreaId = area.id;
+  measurementAreaName.value = area.name || "";
+  updateMeasurementTotal();
+  loadActiveMeasurementAreaIntoDraw();
+  measurementStatus.textContent = `Editing ${area.name}. Adjust the polygon, then update the area.`;
+}
+
+function deleteMeasurementArea(areaId) {
+  currentMeasurement.areas = currentMeasurement.areas.filter((area) => area.id !== areaId);
+  if (activeMeasurementAreaId === areaId) {
+    activeMeasurementAreaId = "";
+    mapboxDraw?.deleteAll();
+    measurementAreaName.value = getNextMeasurementAreaName();
+  }
+  currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
+  updateMeasurementTotal();
+  renderMeasurementAreas();
+}
+
+function loadActiveMeasurementAreaIntoDraw() {
+  if (!mapboxDraw) return;
+
+  mapboxDraw.deleteAll();
+  const area = currentMeasurement.areas?.find((item) => item.id === activeMeasurementAreaId);
+  if (area?.geojson) {
+    mapboxDraw.add(area.geojson);
+    mapboxDraw.changeMode("simple_select");
+  }
+}
+
+function updateMeasurementTotal() {
+  currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
+  measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
+  if (saveMeasurementAreaButton) {
+    saveMeasurementAreaButton.textContent = activeMeasurementAreaId ? "Update Area" : "Add Area";
+  }
+}
+
+function getNextMeasurementAreaName() {
+  return `Service area ${(currentMeasurement.areas?.length || 0) + 1}`;
 }
 
 function useMeasurement() {
   updateMeasurementFromDraw();
+  const hasDraftPolygon = Boolean(mapboxDraw?.getAll().features?.[0]);
+  if (hasDraftPolygon) {
+    saveMeasurementArea();
+  }
   if (!currentMeasurement.squareFeet) {
-    alert("Draw a polygon before using the measurement.");
+    alert("Add at least one service area before using the measurement.");
     return;
   }
 
-  const row = activeMeasurementLineItem || findPressureWashingLineItem() || addMeasuredPressureWashingRow();
+  const row = activeMeasurementLineItem || findPressureWashingLineItem();
+  if (!row) return;
   row.querySelector(".line-quantity").value = Math.round(currentMeasurement.squareFeet);
   updateEstimateTotals();
   measurementDialog.close();
@@ -1109,10 +1345,13 @@ function addMeasuredPressureWashingRow() {
 
 function buildStaticMapUrl(measurement) {
   if (!measurement.geojson || !settings.mapboxPublicToken) return "";
+  const features = measurement.geojson.type === "FeatureCollection"
+    ? measurement.geojson.features
+    : [measurement.geojson];
   const overlay = encodeURIComponent(JSON.stringify({
     type: "FeatureCollection",
-    features: [{
-      ...measurement.geojson,
+    features: features.map((feature) => ({
+      ...feature,
       properties: {
         stroke: "#1c7c54",
         "stroke-width": 4,
@@ -1120,7 +1359,7 @@ function buildStaticMapUrl(measurement) {
         fill: "#1c7c54",
         "fill-opacity": 0.25
       }
-    }]
+    }))
   }));
   return `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/geojson(${overlay})/auto/700x420@2x?access_token=${encodeURIComponent(settings.mapboxPublicToken)}`;
 }
@@ -1981,11 +2220,21 @@ function renderMeasurementDetail(job) {
     return "";
   }
 
+  const areaRows = Array.isArray(job.measurement.areas) && job.measurement.areas.length
+    ? job.measurement.areas.map((area) => `
+      <div class="detail-row estimate-item">
+        <span>${escapeHtml(area.name || "Service area")}</span>
+        <strong>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</strong>
+      </div>
+    `).join("")
+    : "";
+
   return `
     <div class="detail-row">
       <span>Map measurement</span>
       <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
     </div>
+    ${areaRows}
   `;
 }
 

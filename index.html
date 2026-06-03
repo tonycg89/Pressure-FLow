@@ -316,6 +316,12 @@
         <input name="customerId" type="hidden">
 
         <label>
+          Pull from customer list
+          <select id="jobCustomerSelect">
+            <option value="">New customer / enter manually</option>
+          </select>
+        </label>
+        <label>
           Customer name
           <input name="customerName" required placeholder="Maria Johnson">
         </label>
@@ -390,10 +396,6 @@
               <h3>Services and rates</h3>
             </div>
             <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
-            <button id="measureFromMapButton" class="secondary-small-button" type="button" title="Measure from map">
-              <span aria-hidden="true">&#127760;</span>
-              Measure from Map
-            </button>
           </div>
           <div id="lineItems" class="line-items"></div>
           <details class="discount-panel">
@@ -891,6 +893,13 @@
           </label>
           <button id="geocodeAddressButton" class="secondary-small-button" type="button">Find Address</button>
         </div>
+        <div class="map-area-row">
+          <label>
+            Service area name
+            <input id="measurementAreaName" placeholder="Service area 1">
+          </label>
+          <button id="saveMeasurementAreaButton" class="secondary-small-button" type="button">Add Area</button>
+        </div>
         <section id="savedMeasurementsPanel" class="saved-measurements" hidden>
           <div class="section-header compact-header">
             <div>
@@ -901,8 +910,9 @@
           <div id="savedMeasurementsList" class="saved-measurements-list"></div>
         </section>
         <div id="measurementMap" class="measurement-map"></div>
+        <section id="measurementAreaList" class="measurement-area-list"></section>
         <div class="measurement-summary">
-          <div><span>Measured Area</span><strong id="measuredArea">0 SqFt</strong></div>
+          <div><span>Total Area</span><strong id="measuredArea">0 SqFt</strong></div>
           <div><span>Status</span><strong id="measurementStatus">Draw a polygon around the surface.</strong></div>
         </div>
         <menu class="dialog-actions">
