@@ -2657,51 +2657,6 @@ function expandSavedMeasurementAreas(item) {
   }));
 }
 
-async function syncJobPhotosToCustomerFile(job) {
-  const photos = [
-    ...(job.jobPhotos?.before || []).map((photo) => ({ ...photo, category: "before" })),
-    ...(job.jobPhotos?.after || []).map((photo) => ({ ...photo, category: "after" }))
-  ];
-  if (!photos.length) {
-    return;
-  }
-
-  const customers = await readCustomers();
-  let customer = customers.find((item) =>
-    item.id === job.customerId ||
-    (job.email && item.email === job.email) ||
-    (normalizeAddressKey(item.address) && normalizeAddressKey(item.address) === normalizeAddressKey(job.address))
-  );
-
-  if (!customer) {
-    customer = normalizeCustomer({
-      customerName: job.customerName,
-      email: job.email,
-      phone: job.phone,
-      address: job.address,
-      notes: `Created from completed job on ${new Date().toLocaleDateString("en-US")}.`,
-      serviceAreaPhotos: []
-    });
-    customers.unshift(customer);
-    job.customerId = customer.id;
-  }
-
-  const existingIds = new Set((customer.serviceAreaPhotos || []).map((photo) => photo.id));
-  const additions = photos
-    .filter((photo) => !existingIds.has(photo.id))
-    .map((photo) => ({
-      ...photo,
-      name: `${job.status === "Final Invoice Sent" ? "Completed" : "Job"} - ${photo.name || "Photo"}`
-    }));
-  if (!additions.length) {
-    return;
-  }
-
-  customer.serviceAreaPhotos = [...(customer.serviceAreaPhotos || []), ...additions];
-  customer.updatedAt = new Date().toISOString();
-  await writeCustomers(customers);
-}
-
 async function syncJobMeasurementToCustomerFile(job) {
   if (!job.measurement?.geojson || !job.measurement?.squareFeet) {
     return;
@@ -2952,7 +2907,6 @@ async function applyAction(job, action, input) {
     job.completionNoticeMailto = notice.mailto;
     job.squareFinalInvoiceId = invoice.invoiceId;
     job.squareFinalInvoiceUrl = invoice.publicUrl;
-    await syncJobPhotosToCustomerFile(job);
   }
 
   if (action === "send-final-invoice") {

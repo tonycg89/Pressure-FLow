@@ -131,6 +131,7 @@ let currentReceiptPhotos = [];
 let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
+let completedJobsExpanded = false;
 const beforePhotoSections = [
   "Main driveway",
   "Back patio",
@@ -1857,6 +1858,10 @@ function renderJobList() {
     if (completedJobs.length) {
       const completedSection = document.createElement("details");
       completedSection.className = "completed-jobs";
+      completedSection.open = completedJobsExpanded;
+      completedSection.addEventListener("toggle", () => {
+        completedJobsExpanded = completedSection.open;
+      });
       completedSection.innerHTML = `
         <summary>Completed jobs <span>${completedJobs.length}</span></summary>
         <div class="completed-job-list"></div>
@@ -1989,9 +1994,7 @@ function renderCustomers() {
 
   customers.forEach((customer) => {
     const relatedJobs = getCustomerJobs(customer);
-    const photoCount = (customer.serviceAreaPhotos?.length || 0) +
-      getCustomerJobPhotos(relatedJobs, "before").length +
-      getCustomerJobPhotos(relatedJobs, "after").length;
+    const photoCount = getCustomerServiceAreaPhotos(customer).length;
     const card = document.createElement("button");
     card.className = `job-card ${customer.id === selectedCustomerId ? "selected" : ""}`;
     card.type = "button";
@@ -2031,19 +2034,12 @@ function renderCustomerDetail() {
 
     <section class="detail-section">
       <h4>Service Area Photos</h4>
-      ${renderPhotoGrid(customer.serviceAreaPhotos || [])}
+      ${renderPhotoGrid(getCustomerServiceAreaPhotos(customer))}
     </section>
 
     <section class="detail-section">
       <h4>Saved Map Measurements</h4>
       ${renderCustomerMeasurements(customer.propertyMeasurements || [])}
-    </section>
-
-    <section class="detail-section">
-      <h4>Before Photos</h4>
-      ${renderPhotoGrid(getCustomerJobPhotos(relatedJobs, "before"))}
-      <h4>After Photos</h4>
-      ${renderPhotoGrid(getCustomerJobPhotos(relatedJobs, "after"))}
     </section>
 
     <section class="detail-section">
@@ -2288,6 +2284,10 @@ function getCustomerJobPhotos(relatedJobs, type) {
     ...photo,
     name: `${job.serviceType} - ${photo.name || type}`
   })));
+}
+
+function getCustomerServiceAreaPhotos(customer) {
+  return (customer.serviceAreaPhotos || []).filter((photo) => !["before", "after"].includes(photo.category));
 }
 
 function formatLeadSource(value) {
