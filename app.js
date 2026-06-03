@@ -101,12 +101,12 @@ const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel")
 const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
-const serviceAreaPhotoInput = document.querySelector("#serviceAreaPhotoInput");
+const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
 const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
 const beforePhotoInputs = document.querySelectorAll("[data-before-photo-input]");
 const beforePhotoPreviews = document.querySelectorAll("[data-before-photo-preview]");
-const completionBeforePhotoInput = document.querySelector("#completionBeforePhotoInput");
-const completionAfterPhotoInput = document.querySelector("#completionAfterPhotoInput");
+const completionBeforePhotoInputs = document.querySelectorAll("[data-completion-before-photo-input]");
+const completionAfterPhotoInputs = document.querySelectorAll("[data-completion-after-photo-input]");
 const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
 const completionAfterPhotoPreview = document.querySelector("#completionAfterPhotoPreview");
 const photoViewerDialog = document.querySelector("#photoViewerDialog");
@@ -155,7 +155,9 @@ async function init() {
   jobForm.addEventListener("submit", createJob);
   customerForm.addEventListener("submit", saveCustomer);
   expenseForm.addEventListener("submit", saveExpense);
-  serviceAreaPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
+  serviceAreaPhotoInputs.forEach((input) => {
+    input.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
+  });
   beforePhotoInputs.forEach((input) => {
     input.addEventListener("change", (event) => addPhotosFromInput(
       event,
@@ -177,8 +179,12 @@ async function init() {
   settingsForm.addEventListener("submit", saveSettings);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   completionForm.addEventListener("submit", submitCompletionDialog);
-  completionBeforePhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.before, renderCompletionPhotoPreviews));
-  completionAfterPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.after, renderCompletionPhotoPreviews));
+  completionBeforePhotoInputs.forEach((input) => {
+    input.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.before, renderCompletionPhotoPreviews));
+  });
+  completionAfterPhotoInputs.forEach((input) => {
+    input.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.after, renderCompletionPhotoPreviews));
+  });
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
     button.addEventListener("click", adjustScheduleDuration);
   });
@@ -561,7 +567,9 @@ function resetCustomerDialog() {
   customerForm.dataset.editingId = "";
   customerDialogTitle.textContent = "New customer";
   currentServiceAreaPhotos = [];
-  serviceAreaPhotoInput.value = "";
+  serviceAreaPhotoInputs.forEach((input) => {
+    input.value = "";
+  });
   renderServiceAreaPhotos();
 }
 
@@ -2198,8 +2206,12 @@ function openCompletionDialog(job) {
     before: [...(job?.jobPhotos?.before || [])],
     after: [...(job?.jobPhotos?.after || [])]
   };
-  completionBeforePhotoInput.value = "";
-  completionAfterPhotoInput.value = "";
+  completionBeforePhotoInputs.forEach((input) => {
+    input.value = "";
+  });
+  completionAfterPhotoInputs.forEach((input) => {
+    input.value = "";
+  });
   renderCompletionPhotoPreviews();
   completionDialog.showModal();
 
