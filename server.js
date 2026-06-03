@@ -2610,6 +2610,7 @@ async function findSavedMeasurements(address) {
     .filter((customer) => normalizeAddressKey(customer.address) === target)
     .flatMap((customer) => (customer.propertyMeasurements || []).flatMap((item) =>
       expandSavedMeasurementAreas({
+        id: item.id,
         customerId: customer.id,
         customerName: customer.customerName,
         label: item.label || "",

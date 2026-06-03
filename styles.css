@@ -1273,15 +1273,20 @@ label {
   accent-color: var(--green);
 }
 
-.saved-measurement-button span:first-child {
+.saved-measurement-copy {
   display: grid;
   gap: 2px;
+  flex: 1 1 auto;
   text-align: left;
 }
 
 .saved-measurement-button small {
   color: var(--muted);
   font-weight: 700;
+}
+
+.saved-measurement-delete {
+  flex: 0 0 auto;
 }
 
 .measurement-preview {

@@ -1193,19 +1193,31 @@ function renderSavedMeasurements(measurements) {
   savedMeasurementsList.innerHTML = "";
 
   reusable.forEach((item) => {
-    const label = document.createElement("label");
-    label.className = "saved-measurement-button saved-measurement-choice";
-    label.innerHTML = `
+    const row = document.createElement("div");
+    const canDelete = item.customerId && item.id;
+    const areaKey = measurementGeojsonKey(item.measurement?.geojson);
+    row.className = "saved-measurement-button saved-measurement-choice";
+    row.innerHTML = `
       <input type="checkbox" ${isSavedMeasurementSelected(item) ? "checked" : ""}>
-      <span>
+      <span class="saved-measurement-copy">
         <strong>${escapeHtml(item.label || "Saved measurement")}</strong>
         <small>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</small>
       </span>
+      ${canDelete ? `<button class="icon-button saved-measurement-delete" type="button" title="Delete saved service area" data-delete-saved-measurement="${escapeHtml(item.id)}" data-customer-id="${escapeHtml(item.customerId)}" data-area-key="${escapeHtml(areaKey)}">X</button>` : ""}
     `;
-    label.querySelector("input").addEventListener("change", (event) => {
+    row.querySelector("input").addEventListener("change", (event) => {
       toggleSavedMeasurement(item, event.target.checked);
     });
-    savedMeasurementsList.append(label);
+    row.querySelector("[data-delete-saved-measurement]")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteSavedMeasurementFromMap(
+        event.currentTarget.dataset.customerId,
+        event.currentTarget.dataset.deleteSavedMeasurement,
+        event.currentTarget.dataset.areaKey
+      );
+    });
+    savedMeasurementsList.append(row);
   });
 }
 
@@ -1257,6 +1269,7 @@ function addSavedMeasurement(item) {
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
   updateMeasurementTotal();
   renderMeasurementAreas();
+  refreshMeasurementMapDisplay();
   measurementStatus.textContent = `${nextArea.name} added to this job.`;
   renderSavedMeasurementsFromCurrentPanel();
 }
@@ -1274,8 +1287,34 @@ function removeSavedMeasurement(item) {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
   renderMeasurementAreas();
+  refreshMeasurementMapDisplay();
   measurementStatus.textContent = `${item.label || "Saved area"} removed from this job.`;
   renderSavedMeasurementsFromCurrentPanel();
+}
+
+async function deleteSavedMeasurementFromMap(customerId, measurementId, areaKey) {
+  const confirmed = confirm("Delete this saved service area measurement?");
+  if (!confirmed) return;
+
+  try {
+    const data = await apiRequest(`/api/customers/${customerId}/measurements/${encodeURIComponent(measurementId)}`, { areaKey }, "DELETE");
+    const customerIndex = customers.findIndex((item) => item.id === customerId);
+    if (customerIndex >= 0) {
+      customers[customerIndex] = data.customer;
+    }
+    currentMeasurement.areas = (currentMeasurement.areas || []).filter((area) => measurementGeojsonKey(area.geojson) !== areaKey);
+    if (activeMeasurementAreaId && !currentMeasurement.areas.some((area) => area.id === activeMeasurementAreaId)) {
+      activeMeasurementAreaId = "";
+    }
+    currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
+    updateMeasurementTotal();
+    renderMeasurementAreas();
+    refreshMeasurementMapDisplay();
+    await loadSavedMeasurementsForAddress(measurementAddress.value);
+    measurementStatus.textContent = "Saved service area deleted.";
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function renderSavedMeasurementsFromCurrentPanel() {
