@@ -22,6 +22,8 @@ const serviceCatalog = [
   { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
 
+const defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
+
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -639,7 +641,7 @@ function openEditJob() {
   jobForm.elements.serviceType.value = job.serviceType || "Driveway cleaning";
   jobForm.elements.estimate.value = job.estimate || 0;
   jobForm.elements.depositPercent.value = job.depositPercent || settings.defaultDepositPercent || 25;
-  renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...serviceCatalog[4], quantity: 1 }]);
+  renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 1 }]);
   currentMeasurement = job.measurement || {};
   currentJobPhotos = {
     before: [...(job.jobPhotos?.before || [])],
@@ -657,7 +659,7 @@ function openEditJob() {
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
   jobDialogTitle.textContent = "New pressure washing job";
-  renderLineItems([{ ...serviceCatalog[4], quantity: 1 }]);
+  renderLineItems([{ ...defaultEstimateService, quantity: 1 }]);
   currentMeasurement = {};
   currentJobPhotos = { before: [], after: [] };
   beforePhotoInputs.forEach((input) => {
@@ -798,7 +800,7 @@ function closeDialogFromButton(event) {
 
 function renderLineItems(items) {
   lineItemsContainer.innerHTML = "";
-  const normalizedItems = items.length ? items : [{ ...serviceCatalog[4], quantity: 1 }];
+  const normalizedItems = items.length ? items : [{ ...defaultEstimateService, quantity: 1 }];
   normalizedItems.forEach((item) => addLineItemRow(item));
   updateEstimateTotals();
 }

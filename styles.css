@@ -1200,6 +1200,19 @@ label {
 
   .sidebar {
     min-height: auto;
+    gap: 18px;
+  }
+
+  .sidebar h1 {
+    font-size: 24px;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nav-item {
+    justify-content: flex-start;
   }
 
   .metrics,
@@ -1220,7 +1233,27 @@ label {
 @media (max-width: 620px) {
   .workspace,
   .sidebar {
-    padding: 20px 14px;
+    padding: 18px 12px;
+  }
+
+  .sidebar {
+    border-right: 0;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nav-item {
+    min-height: 38px;
+    padding: 8px;
+  }
+
+  .nav-item span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .topbar {
@@ -1230,10 +1263,48 @@ label {
 
   .dashboard-actions {
     justify-content: space-between;
+    gap: 8px;
+  }
+
+  .notification-dropdown {
+    position: fixed;
+    top: 76px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: min(72vh, 520px);
+  }
+
+  .notification-item {
+    padding: 10px 12px;
+  }
+
+  .notification-item small {
+    word-break: break-word;
   }
 
   .topbar h2 {
     font-size: 22px;
+  }
+
+  .panel-header,
+  .section-header,
+  .dialog-header,
+  .dialog-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .section-header .secondary-small-button {
+    flex: 1 1 160px;
+  }
+
+  .metrics {
+    gap: 10px;
+  }
+
+  .metrics strong {
+    font-size: 21px;
   }
 
   .job-card,
@@ -1248,8 +1319,29 @@ label {
     grid-template-columns: 1fr;
   }
 
+  .job-card,
+  .expense-card {
+    gap: 8px;
+  }
+
+  .status-pill {
+    justify-self: start;
+    white-space: normal;
+  }
+
+  dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    margin: auto;
+    overflow: auto;
+  }
+
+  .line-item-total strong {
+    justify-content: flex-start;
+  }
+
   .measurement-map {
-    min-height: 420px;
+    min-height: 360px;
   }
 
   .full-field {
