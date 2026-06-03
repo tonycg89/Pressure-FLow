@@ -2,3 +2,4 @@
 *.log
 data/settings.local.json
 data/webhook-events.json
+pressureflow/
