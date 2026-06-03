@@ -1125,6 +1125,9 @@ function initializeMeasurementMap() {
     mapboxMap.on("draw.create", updateMeasurementFromDraw);
     mapboxMap.on("draw.update", updateMeasurementFromDraw);
     mapboxMap.on("draw.delete", updateMeasurementFromDraw);
+    mapboxMap.on("style.load", () => {
+      setTimeout(updateMeasurementOverlay, 0);
+    });
   } else {
     mapboxMap.resize();
   }
@@ -1294,7 +1297,7 @@ function measurementGeojsonKey(geojson) {
 function updateMeasurementFromDraw() {
   if (syncingMeasurementDraw) return;
 
-  const feature = mapboxDraw?.getAll().features?.[0];
+  const feature = getEditableMeasurementFeature() || mapboxDraw?.getAll().features?.[0];
   if (!feature) {
     measurementStatus.textContent = currentMeasurement.areas?.length
       ? "Draw the next service area or edit an area from the list."
@@ -1452,28 +1455,36 @@ function updateMeasurementOverlay() {
 
   const sourceData = buildMeasurementOverlayFeatureCollection();
   const applyOverlay = () => {
-    if (!mapboxMap.getSource("selected-service-areas")) {
-      mapboxMap.addSource("selected-service-areas", { type: "geojson", data: sourceData });
-      mapboxMap.addLayer({
-        id: "selected-service-areas-fill",
-        type: "fill",
-        source: "selected-service-areas",
-        paint: {
-          "fill-color": "#1c7c54",
-          "fill-opacity": 0.22
-        }
-      });
-      mapboxMap.addLayer({
-        id: "selected-service-areas-line",
-        type: "line",
-        source: "selected-service-areas",
-        paint: {
-          "line-color": "#0f5132",
-          "line-width": 3
-        }
-      });
-    } else {
-      mapboxMap.getSource("selected-service-areas").setData(sourceData);
+    try {
+      if (!mapboxMap.getSource("selected-service-areas")) {
+        mapboxMap.addSource("selected-service-areas", { type: "geojson", data: sourceData });
+      } else {
+        mapboxMap.getSource("selected-service-areas").setData(sourceData);
+      }
+      if (!mapboxMap.getLayer("selected-service-areas-fill")) {
+        mapboxMap.addLayer({
+          id: "selected-service-areas-fill",
+          type: "fill",
+          source: "selected-service-areas",
+          paint: {
+            "fill-color": "#1c7c54",
+            "fill-opacity": 0.28
+          }
+        });
+      }
+      if (!mapboxMap.getLayer("selected-service-areas-line")) {
+        mapboxMap.addLayer({
+          id: "selected-service-areas-line",
+          type: "line",
+          source: "selected-service-areas",
+          paint: {
+            "line-color": "#0f5132",
+            "line-width": 4
+          }
+        });
+      }
+    } catch {
+      mapboxMap.once("idle", updateMeasurementOverlay);
     }
   };
 
@@ -1498,12 +1509,13 @@ function loadEditableMeasurementAreaIntoDraw() {
 
   syncingMeasurementDraw = true;
   mapboxDraw.deleteAll();
-  const activeArea = (currentMeasurement.areas || []).find((area) => area.id === activeMeasurementAreaId);
-  if (activeArea?.geojson) {
-    mapboxDraw.add(buildDrawFeatureForArea(activeArea));
-  }
+  (currentMeasurement.areas || []).forEach((area) => {
+    mapboxDraw.add(buildDrawFeatureForArea(area));
+  });
   if (activeMeasurementAreaId) {
     mapboxDraw.changeMode("simple_select", { featureIds: [activeMeasurementAreaId] });
+  } else {
+    mapboxDraw.changeMode("simple_select");
   }
   setTimeout(() => {
     syncingMeasurementDraw = false;
