@@ -1250,6 +1250,18 @@ label {
   border: 1px solid var(--line);
 }
 
+.saved-measurement-choice {
+  cursor: pointer;
+}
+
+.saved-measurement-choice input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--green);
+}
+
 .saved-measurement-button span:first-child {
   display: grid;
   gap: 2px;

@@ -2685,25 +2685,55 @@ async function syncJobMeasurementToCustomerFile(job) {
   }
 
   const propertyMeasurements = normalizePropertyMeasurements(customer.propertyMeasurements || []);
-  const measurementKey = JSON.stringify(job.measurement.geojson);
-  const existing = propertyMeasurements.find((item) => JSON.stringify(item.measurement?.geojson) === measurementKey);
-  const measurementLabel = Array.isArray(job.measurement.areas) && job.measurement.areas.length
-    ? job.measurement.areas.map((area) => area.name).filter(Boolean).join(" + ")
-    : `${job.serviceType || "Service area"} measurement`;
-  const savedMeasurement = {
-    id: existing?.id || crypto.randomUUID(),
-    label: existing?.label || measurementLabel,
-    address: job.measurement.address || job.address,
-    sourceJobId: job.id,
-    updatedAt: new Date().toISOString(),
-    measurement: job.measurement
-  };
+  const savedMeasurements = buildPerAreaPropertyMeasurements(job);
+  const savedKeys = new Set(savedMeasurements.map((item) => JSON.stringify(item.measurement?.geojson)));
+  const retainedMeasurements = propertyMeasurements.filter((item) => !savedKeys.has(JSON.stringify(item.measurement?.geojson)));
 
-  customer.propertyMeasurements = existing
-    ? propertyMeasurements.map((item) => item.id === existing.id ? savedMeasurement : item)
-    : [savedMeasurement, ...propertyMeasurements].slice(0, 12);
+  customer.propertyMeasurements = [...savedMeasurements, ...retainedMeasurements].slice(0, 24);
   customer.updatedAt = new Date().toISOString();
   await writeCustomers(customers);
+}
+
+function buildPerAreaPropertyMeasurements(job) {
+  const measurement = normalizeMeasurement(job.measurement);
+  const areas = Array.isArray(measurement.areas) && measurement.areas.length
+    ? measurement.areas
+    : measurement.geojson && measurement.squareFeet
+      ? [{
+        id: crypto.randomUUID(),
+        name: `${job.serviceType || "Service area"} measurement`,
+        squareFeet: measurement.squareFeet,
+        perimeterFeet: measurement.perimeterFeet,
+        geojson: measurement.geojson,
+        capturedAt: measurement.capturedAt
+      }]
+      : [];
+
+  return areas.map((area) => ({
+    id: crypto.randomUUID(),
+    label: area.name || "Service area",
+    address: measurement.address || job.address,
+    sourceJobId: job.id,
+    updatedAt: new Date().toISOString(),
+    measurement: {
+      address: measurement.address || job.address,
+      squareFeet: Number(area.squareFeet || 0),
+      perimeterFeet: Number(area.perimeterFeet || 0),
+      geojson: area.geojson,
+      areas: [{
+        id: String(area.id || crypto.randomUUID()),
+        name: area.name || "Service area",
+        squareFeet: Number(area.squareFeet || 0),
+        perimeterFeet: Number(area.perimeterFeet || 0),
+        geojson: area.geojson,
+        capturedAt: area.capturedAt || measurement.capturedAt || new Date().toISOString()
+      }],
+      center: measurement.center || [],
+      zoom: measurement.zoom || 18,
+      staticImageUrl: "",
+      capturedAt: area.capturedAt || measurement.capturedAt || new Date().toISOString()
+    }
+  })).filter((item) => item.measurement.geojson && item.measurement.squareFeet > 0);
 }
 
 function normalizeAddressKey(address) {

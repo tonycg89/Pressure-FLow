@@ -1181,22 +1181,40 @@ function renderSavedMeasurements(measurements) {
   savedMeasurementsList.innerHTML = "";
 
   reusable.forEach((item) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "saved-measurement-button";
-    button.innerHTML = `
+    const label = document.createElement("label");
+    label.className = "saved-measurement-button saved-measurement-choice";
+    label.innerHTML = `
+      <input type="checkbox" ${isSavedMeasurementSelected(item) ? "checked" : ""}>
       <span>
         <strong>${escapeHtml(item.label || "Saved measurement")}</strong>
         <small>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</small>
       </span>
-      <span>Use saved</span>
     `;
-    button.addEventListener("click", () => applySavedMeasurement(item));
-    savedMeasurementsList.append(button);
+    label.querySelector("input").addEventListener("change", (event) => {
+      toggleSavedMeasurement(item, event.target.checked);
+    });
+    savedMeasurementsList.append(label);
   });
 }
 
-function applySavedMeasurement(item) {
+function isSavedMeasurementSelected(item) {
+  const savedMeasurement = normalizeMeasurementForEditing(item.measurement || item);
+  const savedArea = savedMeasurement.areas[0];
+  if (!savedArea?.geojson) return false;
+
+  const savedKey = measurementGeojsonKey(savedArea.geojson);
+  return (currentMeasurement.areas || []).some((area) => measurementGeojsonKey(area.geojson) === savedKey);
+}
+
+function toggleSavedMeasurement(item, shouldInclude) {
+  if (shouldInclude) {
+    addSavedMeasurement(item);
+  } else {
+    removeSavedMeasurement(item);
+  }
+}
+
+function addSavedMeasurement(item) {
   const savedMeasurement = normalizeMeasurementForEditing({
     ...(item.measurement || item),
     capturedAt: new Date().toISOString()
@@ -1232,6 +1250,44 @@ function applySavedMeasurement(item) {
     mapboxMap?.flyTo({ center: currentMeasurement.center, zoom: currentMeasurement.zoom || 19, essential: true });
   }
   measurementStatus.textContent = `${nextArea.name} loaded. All selected service areas are visible on the map.`;
+  renderSavedMeasurementsFromCurrentPanel();
+}
+
+function removeSavedMeasurement(item) {
+  const savedMeasurement = normalizeMeasurementForEditing(item.measurement || item);
+  const savedArea = savedMeasurement.areas[0];
+  if (!savedArea?.geojson) return;
+
+  const savedKey = measurementGeojsonKey(savedArea.geojson);
+  currentMeasurement.areas = (currentMeasurement.areas || []).filter((area) => measurementGeojsonKey(area.geojson) !== savedKey);
+  if (activeMeasurementAreaId && !currentMeasurement.areas.some((area) => area.id === activeMeasurementAreaId)) {
+    activeMeasurementAreaId = "";
+  }
+  currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
+  updateMeasurementTotal();
+  renderMeasurementAreas();
+  loadMeasurementAreasIntoDraw();
+  measurementStatus.textContent = `${item.label || "Saved area"} removed from this job.`;
+  renderSavedMeasurementsFromCurrentPanel();
+}
+
+function renderSavedMeasurementsFromCurrentPanel() {
+  const items = Array.from(savedMeasurementsList.querySelectorAll(".saved-measurement-choice")).map((choice) => ({
+    choice,
+    checked: choice.querySelector("input")?.checked
+  }));
+  items.forEach(({ choice }) => {
+    const input = choice.querySelector("input");
+    const label = choice.querySelector("strong")?.textContent || "";
+    const area = (currentMeasurement.areas || []).find((item) => item.name === label);
+    if (input && area) {
+      input.checked = true;
+    }
+  });
+}
+
+function measurementGeojsonKey(geojson) {
+  return JSON.stringify(geojson || {});
 }
 
 function updateMeasurementFromDraw() {
@@ -2135,7 +2191,7 @@ function formatEstimateRejectionReason(value) {
 }
 
 function renderCustomerMeasurements(measurements) {
-  const reusable = (measurements || []).filter((item) => item.measurement?.squareFeet);
+  const reusable = expandCustomerMeasurementAreas(measurements);
   if (!reusable.length) {
     return '<p>No saved map measurements yet.</p>';
   }
@@ -2146,6 +2202,34 @@ function renderCustomerMeasurements(measurements) {
       <strong>${Math.round(item.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
     </div>
   `).join("");
+}
+
+function expandCustomerMeasurementAreas(measurements) {
+  return (measurements || []).flatMap((item) => {
+    const measurement = item.measurement || {};
+    const areas = Array.isArray(measurement.areas) && measurement.areas.length
+      ? measurement.areas
+      : measurement.squareFeet && measurement.geojson
+        ? [{
+          name: item.label || "Service area",
+          squareFeet: measurement.squareFeet,
+          perimeterFeet: measurement.perimeterFeet,
+          geojson: measurement.geojson
+        }]
+        : [];
+
+    return areas.map((area) => ({
+      ...item,
+      label: area.name || item.label || "Service area",
+      measurement: {
+        ...measurement,
+        squareFeet: Number(area.squareFeet || 0),
+        perimeterFeet: Number(area.perimeterFeet || 0),
+        geojson: area.geojson,
+        areas: [area]
+      }
+    }));
+  }).filter((item) => item.measurement?.squareFeet);
 }
 
 function renderJobPhotos(job) {
