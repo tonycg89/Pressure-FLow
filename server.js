@@ -1330,6 +1330,10 @@ function renderCompletionProofPage(job) {
   const before = job.jobPhotos?.before || [];
   const after = job.jobPhotos?.after || [];
   const businessName = "Precision Power Washing";
+  const invoiceNumber = getPressureFlowInvoiceNumber(job, "final");
+  const finalBalance = getFinalBalanceCents(job) / 100;
+  const deposit = getDepositCents(job) / 100;
+  const total = Number(job.estimate || 0);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -1339,6 +1343,9 @@ function renderCompletionProofPage(job) {
     ${estimatePageStyles()}
     <style>
       .proof-meta { display: grid; gap: 6px; margin: 16px 0 22px; color: #667085; }
+      .proof-details { width: 100%; margin: 18px 0 24px; border-collapse: collapse; }
+      .proof-details th, .proof-details td { padding: 10px; border: 1px solid #d8dee8; text-align: left; vertical-align: top; }
+      .proof-details th { width: 34%; background: #f7f8fb; color: #667085; }
       .proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 24px; }
       .proof-grid figure { margin: 0; border: 1px solid #d8dee8; border-radius: 8px; overflow: hidden; background: #f7f8fb; }
       .proof-grid img { display: block; width: 100%; height: 150px; object-fit: cover; }
@@ -1357,6 +1364,18 @@ function renderCompletionProofPage(job) {
         <span>${escapeHtml(job.address)}</span>
         <span>${escapeHtml(new Date(job.completionNoticeSentAt || Date.now()).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</span>
       </div>
+      <h2>Completion and Invoice Details</h2>
+      <table class="proof-details">
+        <tbody>
+          <tr><th>Service</th><td>${escapeHtml(job.serviceType || "Pressure washing")}</td></tr>
+          <tr><th>Invoice</th><td>${escapeHtml(invoiceNumber)}</td></tr>
+          <tr><th>Estimate total</th><td>${escapeHtml(formatAlertMoney(total))}</td></tr>
+          <tr><th>Deposit</th><td>${escapeHtml(formatAlertMoney(deposit))}</td></tr>
+          <tr><th>Final balance</th><td>${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
+          <tr><th>Status</th><td>${escapeHtml(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent")}</td></tr>
+        </tbody>
+      </table>
+      ${renderCompletionServiceAreas(job)}
       <h2>Before Photos</h2>
       ${renderProofPhotoGrid(before)}
       <h2>Completed Work Photos</h2>
@@ -1367,6 +1386,22 @@ function renderCompletionProofPage(job) {
     </main>
   </body>
 </html>`;
+}
+
+function renderCompletionServiceAreas(job) {
+  if (!job.measurement?.squareFeet) {
+    return "";
+  }
+
+  const total = Math.round(Number(job.measurement.squareFeet || 0)).toLocaleString("en-US");
+  const areas = Array.isArray(job.measurement.areas) && job.measurement.areas.length
+    ? `<ul>
+      ${job.measurement.areas.map((area) => `
+        <li>${escapeHtml(area.name || "Service area")}: ${Math.round(Number(area.squareFeet || 0)).toLocaleString("en-US")} SqFt</li>
+      `).join("")}
+    </ul>`
+    : "";
+  return `<h2>Service Area</h2><p>Total serviced area: ${total} SqFt</p>${areas}`;
 }
 
 function renderProofPhotoGrid(photos) {

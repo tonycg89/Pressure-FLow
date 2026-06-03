@@ -316,10 +316,9 @@
         <input name="customerId" type="hidden">
 
         <label>
-          Pull from customer list
-          <select id="jobCustomerSelect">
-            <option value="">New customer / enter manually</option>
-          </select>
+          Customer lookup
+          <input id="jobCustomerSearch" list="jobCustomerOptions" placeholder="Start typing a customer name">
+          <datalist id="jobCustomerOptions"></datalist>
         </label>
         <label>
           Customer name
@@ -893,13 +892,6 @@
           </label>
           <button id="geocodeAddressButton" class="secondary-small-button" type="button">Find Address</button>
         </div>
-        <div class="map-area-row">
-          <label>
-            Service area name
-            <input id="measurementAreaName" placeholder="Service area 1">
-          </label>
-          <button id="saveMeasurementAreaButton" class="secondary-small-button" type="button">Add Area</button>
-        </div>
         <section id="savedMeasurementsPanel" class="saved-measurements" hidden>
           <div class="section-header compact-header">
             <div>
@@ -917,6 +909,7 @@
         </div>
         <menu class="dialog-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button id="saveMeasurementAreaButton" class="secondary-small-button" type="button">Add Drawn Area</button>
           <button id="clearMeasurementButton" type="button">Clear</button>
           <button id="useMeasurementButton" class="primary-button" type="button">Use Measurement</button>
         </menu>

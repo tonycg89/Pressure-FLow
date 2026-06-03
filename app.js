@@ -66,7 +66,8 @@ const navItems = document.querySelectorAll("[data-view]");
 const viewPanels = document.querySelectorAll("[data-view-panel]");
 const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
-const jobCustomerSelect = document.querySelector("#jobCustomerSelect");
+const jobCustomerSearch = document.querySelector("#jobCustomerSearch");
+const jobCustomerOptions = document.querySelector("#jobCustomerOptions");
 const customerDialog = document.querySelector("#customerDialog");
 const customerForm = document.querySelector("#customerForm");
 const expenseDialog = document.querySelector("#expenseDialog");
@@ -93,7 +94,6 @@ const estimateDiscountRow = document.querySelector("#estimateDiscountRow");
 const estimateTotal = document.querySelector("#estimateTotal");
 const measurementDialog = document.querySelector("#measurementDialog");
 const measurementAddress = document.querySelector("#measurementAddress");
-const measurementAreaName = document.querySelector("#measurementAreaName");
 const measurementMapElement = document.querySelector("#measurementMap");
 const geocodeAddressButton = document.querySelector("#geocodeAddressButton");
 const measuredArea = document.querySelector("#measuredArea");
@@ -151,7 +151,7 @@ async function init() {
   document.addEventListener("click", closeNotificationDropdownFromOutside);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
-  jobCustomerSelect?.addEventListener("change", selectJobCustomer);
+  jobCustomerSearch?.addEventListener("input", selectJobCustomer);
   newCustomerButton.addEventListener("click", openNewCustomer);
   editCustomerButton.addEventListener("click", openEditCustomer);
   newExpenseButton.addEventListener("click", openNewExpense);
@@ -277,27 +277,26 @@ async function loadCustomers() {
 }
 
 function renderJobCustomerOptions() {
-  if (!jobCustomerSelect) return;
+  if (!jobCustomerOptions) return;
 
-  const selectedCustomerId = jobForm.elements.customerId?.value || "";
-  jobCustomerSelect.innerHTML = `
-    <option value="">New customer / enter manually</option>
-    ${customers.map((customer) => `
-      <option value="${escapeHtml(customer.id)}" ${customer.id === selectedCustomerId ? "selected" : ""}>
-        ${escapeHtml(customer.customerName || "Unnamed customer")}${customer.address ? ` - ${escapeHtml(customer.address)}` : ""}
-      </option>
-    `).join("")}
-  `;
+  jobCustomerOptions.innerHTML = customers.map((customer) => `
+    <option value="${escapeHtml(formatCustomerSearchValue(customer))}"></option>
+  `).join("");
 }
 
 function selectJobCustomer(event) {
-  const customer = customers.find((item) => item.id === event.target.value);
+  const value = event.target.value.trim();
+  const customer = customers.find((item) => formatCustomerSearchValue(item) === value);
   if (!customer) {
     jobForm.elements.customerId.value = "";
     return;
   }
 
   fillJobCustomerFields(customer);
+}
+
+function formatCustomerSearchValue(customer) {
+  return `${customer.customerName || "Unnamed customer"}${customer.address ? ` - ${customer.address}` : ""}`;
 }
 
 function fillJobCustomerFields(customer) {
@@ -307,8 +306,8 @@ function fillJobCustomerFields(customer) {
   jobForm.elements.phone.value = customer.phone || "";
   fillAddressFields(jobForm, customer);
   jobForm.elements.leadSource.value = customer.leadSource || "referral";
-  if (jobCustomerSelect) {
-    jobCustomerSelect.value = customer.id || "";
+  if (jobCustomerSearch) {
+    jobCustomerSearch.value = formatCustomerSearchValue(customer);
   }
 }
 
@@ -680,6 +679,10 @@ function openEditJob() {
   jobForm.elements.customerName.value = job.customerName || "";
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
+  if (jobCustomerSearch) {
+    const customer = customers.find((item) => item.id === job.customerId);
+    jobCustomerSearch.value = customer ? formatCustomerSearchValue(customer) : "";
+  }
   fillAddressFields(jobForm, job);
   jobForm.elements.leadSource.value = job.leadSource || "referral";
   jobForm.elements.squareContractId.value = job.squareContractId || "";
@@ -706,8 +709,8 @@ function openEditJob() {
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
   jobDialogTitle.textContent = "New pressure washing job";
-  if (jobCustomerSelect) {
-    jobCustomerSelect.value = "";
+  if (jobCustomerSearch) {
+    jobCustomerSearch.value = "";
   }
   renderLineItems([{ ...defaultEstimateService, quantity: 1 }]);
   currentMeasurement = {};
@@ -883,7 +886,10 @@ function addLineItemRow(item = serviceCatalog[0]) {
       <span>${escapeHtml(catalogItem.unit)}</span>
       <strong>$0</strong>
     </div>
-    <button class="secondary-small-button line-measure" type="button" title="Measure pressure washing area" hidden>Measure from Map</button>
+    <button class="secondary-small-button line-measure" type="button" title="Measure pressure washing area" hidden>
+      <span aria-hidden="true">&#127760;</span>
+      Measure from Map
+    </button>
     <button class="icon-button line-remove" type="button" title="Remove service">X</button>
   `;
 
@@ -980,7 +986,6 @@ function openMeasurementDialog(row) {
   activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
   syncAddressFields(jobForm);
   measurementAddress.value = jobForm.elements.address.value || currentMeasurement.address || "";
-  measurementAreaName.value = currentMeasurement.areas[0]?.name || getNextMeasurementAreaName();
   updateMeasurementTotal();
   renderMeasurementAreas();
   measurementStatus.textContent = "Draw or edit a polygon around the surface.";
@@ -1151,7 +1156,6 @@ function applySavedMeasurement(measurement) {
   currentMeasurement = normalizeMeasurementForEditing({ ...measurement, capturedAt: new Date().toISOString() });
   activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
-  measurementAreaName.value = currentMeasurement.areas[0]?.name || getNextMeasurementAreaName();
   updateMeasurementTotal();
   renderMeasurementAreas();
   initializeMeasurementMap();
@@ -1196,7 +1200,6 @@ function calculatePerimeterFeet(feature) {
 function clearMeasurementPolygon() {
   mapboxDraw?.deleteAll();
   activeMeasurementAreaId = "";
-  measurementAreaName.value = getNextMeasurementAreaName();
   updateMeasurementTotal();
   updateMeasurementFromDraw();
 }
@@ -1211,7 +1214,9 @@ function saveMeasurementArea() {
   const squareFeet = Math.round(turf.area(feature) * 10.7639);
   const perimeterFeet = calculatePerimeterFeet(feature);
   const center = mapboxMap.getCenter();
-  const name = measurementAreaName.value.trim() || getNextMeasurementAreaName();
+  const name = activeMeasurementAreaId
+    ? currentMeasurement.areas.find((item) => item.id === activeMeasurementAreaId)?.name || getNextMeasurementAreaName()
+    : getNextMeasurementAreaName();
   const area = {
     id: activeMeasurementAreaId || crypto.randomUUID(),
     name,
@@ -1234,7 +1239,6 @@ function saveMeasurementArea() {
   });
   activeMeasurementAreaId = "";
   mapboxDraw?.deleteAll();
-  measurementAreaName.value = getNextMeasurementAreaName();
   updateMeasurementTotal();
   renderMeasurementAreas();
   measurementStatus.textContent = `${name} saved. Draw another area if needed.`;
@@ -1252,14 +1256,19 @@ function renderMeasurementAreas() {
   measurementAreaList.innerHTML = areas.map((area) => `
     <article class="measurement-area-card">
       <div>
-        <strong>${escapeHtml(area.name)}</strong>
+        <input class="measurement-area-name" value="${escapeHtml(area.name)}" aria-label="Service area name">
         <span>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</span>
       </div>
-      <button class="secondary-small-button" type="button" data-edit-area="${escapeHtml(area.id)}">Edit</button>
+      <button class="secondary-small-button" type="button" data-edit-area="${escapeHtml(area.id)}">Edit Shape</button>
       <button class="icon-button" type="button" title="Remove service area" data-delete-area="${escapeHtml(area.id)}">X</button>
     </article>
   `).join("");
 
+  measurementAreaList.querySelectorAll(".measurement-area-card").forEach((card, index) => {
+    card.querySelector(".measurement-area-name").addEventListener("input", (event) => {
+      renameMeasurementArea(areas[index].id, event.target.value);
+    });
+  });
   measurementAreaList.querySelectorAll("[data-edit-area]").forEach((button) => {
     button.addEventListener("click", () => editMeasurementArea(button.dataset.editArea));
   });
@@ -1273,10 +1282,17 @@ function editMeasurementArea(areaId) {
   if (!area) return;
 
   activeMeasurementAreaId = area.id;
-  measurementAreaName.value = area.name || "";
   updateMeasurementTotal();
   loadActiveMeasurementAreaIntoDraw();
   measurementStatus.textContent = `Editing ${area.name}. Adjust the polygon, then update the area.`;
+}
+
+function renameMeasurementArea(areaId, name) {
+  const area = currentMeasurement.areas.find((item) => item.id === areaId);
+  if (!area) return;
+
+  area.name = String(name || "").trim() || "Service area";
+  currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
 }
 
 function deleteMeasurementArea(areaId) {
@@ -1284,7 +1300,6 @@ function deleteMeasurementArea(areaId) {
   if (activeMeasurementAreaId === areaId) {
     activeMeasurementAreaId = "";
     mapboxDraw?.deleteAll();
-    measurementAreaName.value = getNextMeasurementAreaName();
   }
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
@@ -1306,7 +1321,7 @@ function updateMeasurementTotal() {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
   if (saveMeasurementAreaButton) {
-    saveMeasurementAreaButton.textContent = activeMeasurementAreaId ? "Update Area" : "Add Area";
+    saveMeasurementAreaButton.textContent = activeMeasurementAreaId ? "Update Shape" : "Add Drawn Area";
   }
 }
 
@@ -1817,7 +1832,6 @@ function renderJobDetail() {
       <div class="detail-row"><span>Final balance</span><strong>${currency.format(getFinalBalance(job))}</strong></div>
       ${renderMeasurementDetail(job)}
       <div class="detail-row"><span>Scheduled</span><strong>${escapeHtml(job.scheduledAt || "Not scheduled")}</strong></div>
-      <div class="detail-row"><span>Calendar event</span><strong>${renderCalendarValue(job.googleCalendarEventId, job.googleCalendarEventUrl)}</strong></div>
       <div class="detail-row"><span>Completion notice</span><strong>${renderCompletionNotice(job)}</strong></div>
     </section>
 
@@ -2222,7 +2236,7 @@ function renderMeasurementDetail(job) {
 
   const areaRows = Array.isArray(job.measurement.areas) && job.measurement.areas.length
     ? job.measurement.areas.map((area) => `
-      <div class="detail-row estimate-item">
+      <div class="detail-row service-subarea">
         <span>${escapeHtml(area.name || "Service area")}</span>
         <strong>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</strong>
       </div>
@@ -2231,7 +2245,7 @@ function renderMeasurementDetail(job) {
 
   return `
     <div class="detail-row">
-      <span>Map measurement</span>
+      <span>Service area</span>
       <strong>${Math.round(job.measurement.squareFeet).toLocaleString("en-US")} SqFt</strong>
     </div>
     ${areaRows}
@@ -2571,11 +2585,11 @@ function renderCalendarValue(eventId, url) {
 }
 
 function renderCompletionNotice(job) {
-  if (!job.completionNoticeMailto) {
+  if (!job.completionProofUrl) {
     return "Not sent";
   }
 
-  return `<a href="${escapeHtml(job.completionNoticeMailto)}">Open email</a>`;
+  return `<a href="${escapeHtml(job.completionProofUrl)}" target="_blank" rel="noreferrer">Completion PDF</a>`;
 }
 
 function normalizeKey(value) {
