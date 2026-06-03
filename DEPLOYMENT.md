@@ -56,14 +56,19 @@ Mapbox:
 MAPBOX_PUBLIC_TOKEN=
 ```
 
-Twilio owner text alerts:
+## Deferred Production Environment Variables
+
+Deferred Twilio owner text alerts:
 
 ```text
+ENABLE_TWILIO_ALERTS=false
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_FROM_PHONE=
 ADMIN_ALERT_PHONE=
 ```
+
+Leave `ENABLE_TWILIO_ALERTS` unset or set to `false` while SMS is deferred. Set it to `true` only after the business has a valid terms/privacy web presence and Twilio A2P approval.
 
 Optional/legacy payment integrations:
 

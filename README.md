@@ -22,7 +22,7 @@ Lead -> Estimate Sent -> Estimate Signed -> Contract Sent -> Contract Signed -> 
 - Mapbox property measurement with saved polygons and reusable square footage
 - Dashboard revenue breakdown by lead source, service, or city
 - Dashboard notification dropdown
-- Optional Twilio SMS owner alerts for major events
+- Deferred Twilio SMS owner alerts for a future scaled version
 - Uploadable document templates
 
 ## Local Run
@@ -73,6 +73,6 @@ This is a single-business app:
 - One shared customer/job database
 - One Google connection
 - One template library
-- One Twilio alert setup
+- Twilio SMS alert plumbing is present but disabled by default
 
 For multiple businesses/users, the app needs a multi-tenant database and account model before inviting outside users.

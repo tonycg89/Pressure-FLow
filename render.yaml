@@ -37,3 +37,5 @@ services:
         sync: false
       - key: GOOGLE_CALENDAR_ID
         sync: false
+      - key: ENABLE_TWILIO_ALERTS
+        value: "false"

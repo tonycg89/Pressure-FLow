@@ -59,6 +59,12 @@ Recommended restriction:
 
 ## Twilio
 
+Status:
+
+- Deferred until PressureFlow is ready to scale.
+- SMS alerts are disabled by default, even if Twilio credentials are present.
+- Re-enable only after the business has a valid public terms/privacy web presence and A2P 10DLC approval.
+
 Purpose:
 
 - Send owner/admin text alerts for major events
@@ -75,6 +81,7 @@ Events:
 Environment variables:
 
 ```text
+ENABLE_TWILIO_ALERTS=true
 TWILIO_ACCOUNT_SID
 TWILIO_AUTH_TOKEN
 TWILIO_FROM_PHONE
@@ -83,6 +90,7 @@ ADMIN_ALERT_PHONE
 
 Notes:
 
+- Leave `ENABLE_TWILIO_ALERTS` unset or set to `false` while SMS is deferred.
 - `TWILIO_FROM_PHONE` is the Twilio number texts are sent from.
 - `ADMIN_ALERT_PHONE` is the owner cell phone.
 - Use full E.164 format, for example `+19515551234`.

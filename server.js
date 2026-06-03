@@ -983,6 +983,10 @@ async function sendAdminTextAlertSafe(message) {
 }
 
 async function sendAdminTextAlert(message) {
+  if (process.env.ENABLE_TWILIO_ALERTS !== "true") {
+    return null;
+  }
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID || "";
   const authToken = process.env.TWILIO_AUTH_TOKEN || "";
   const fromPhone = process.env.TWILIO_FROM_PHONE || "";

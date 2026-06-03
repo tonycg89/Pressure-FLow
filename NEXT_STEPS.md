@@ -13,7 +13,7 @@ PressureFlow is in polish mode. The app works end-to-end for the Precision Power
 
 2. Notification polish
    - Confirm dashboard notifications clear properly.
-   - Confirm Twilio SMS alerts after A2P approval.
+   - Keep SMS alerts deferred until PressureFlow is ready to scale beyond the current single-business workflow.
    - Decide whether browser push notifications are worth adding later.
 
 3. Template workflow
@@ -54,6 +54,7 @@ Also move photos/templates/contracts/invoices to object storage such as Supabase
 ## Nice-To-Have Later
 
 - Stripe credit card checkout
+- Twilio SMS alerts after the app has a valid terms/privacy web presence and A2P campaign approval
 - Customer scheduling portal
 - Technician-only mobile workflow
 - Recurring customer/job support
