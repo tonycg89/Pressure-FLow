@@ -793,6 +793,52 @@ label {
   object-fit: contain;
 }
 
+.settings-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.settings-user-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.settings-user-grid button {
+  justify-self: start;
+}
+
+.settings-user-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.settings-user-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-user-row small {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -1470,6 +1516,7 @@ label {
   .expense-card,
   .field-row,
   .settings-grid,
+  .settings-user-grid,
   .photo-section-list,
   .line-item-row,
   .estimate-summary,

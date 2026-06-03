@@ -12,6 +12,8 @@ const {
   writeCustomers,
   readExpenses,
   writeExpenses,
+  readUsers,
+  writeUsers,
   readSettings,
   writeSettings,
   readWebhookEvents,
@@ -1767,9 +1769,10 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/auth/login") {
     const body = await readFormOrJsonBody(request);
-    if (isValidAdminLogin(body.email, body.password)) {
+    const login = await authenticateLogin(body.email, body.password);
+    if (login) {
       response.writeHead(302, {
-        "set-cookie": buildSessionCookie(),
+        "set-cookie": buildSessionCookie(login),
         location: "/"
       });
       response.end();
@@ -2035,6 +2038,22 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/users") {
+    sendJson(response, 200, { users: publicUsers(await readUsers()) });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/users") {
+    try {
+      const input = await readRequestBody(request);
+      const result = await createAppUser(input);
+      sendJson(response, 201, { user: publicUser(result.user), users: publicUsers(result.users) });
+    } catch (error) {
+      sendError(response, 400, error.message);
+    }
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/webhooks/square/events") {
     sendJson(response, 200, { events: await readWebhookEvents() });
     return;
@@ -2178,6 +2197,18 @@ async function handleApi(request, response, url) {
   const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
   const customerUpdateMatch = url.pathname.match(/^\/api\/customers\/([^/]+)$/);
   const customerMeasurementDeleteMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/measurements\/([^/]+)$/);
+  const userDeleteMatch = url.pathname.match(/^\/api\/users\/([^/]+)$/);
+
+  if (request.method === "DELETE" && userDeleteMatch) {
+    try {
+      const [, userId] = userDeleteMatch;
+      const result = await deleteAppUser(userId);
+      sendJson(response, 200, { users: publicUsers(result.users) });
+    } catch (error) {
+      sendError(response, 400, error.message);
+    }
+    return;
+  }
 
   if (request.method === "DELETE" && customerMeasurementDeleteMatch) {
     const [, customerId, measurementId] = customerMeasurementDeleteMatch;
@@ -2319,8 +2350,12 @@ async function readFormOrJsonBody(request) {
   return Object.fromEntries(new URLSearchParams(raw));
 }
 
-function isAuthEnabled() {
-  return Boolean(process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD_SHA256);
+async function isAuthEnabled() {
+  if (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD_SHA256) {
+    return true;
+  }
+
+  return (await readUsers()).some((user) => !user.disabled);
 }
 
 function isPublicPath(pathname) {
@@ -2338,28 +2373,153 @@ function isPublicPath(pathname) {
     pathname === "/favicon.ico";
 }
 
+async function authenticateLogin(email, password) {
+  const adminLogin = isValidAdminLogin(email, password);
+  if (adminLogin) {
+    return adminLogin;
+  }
+
+  const users = await readUsers();
+  const user = users.find((item) => item.email.toLowerCase() === String(email || "").trim().toLowerCase());
+  if (!user || user.disabled || !verifyPassword(password, user.passwordHash)) {
+    return null;
+  }
+
+  user.lastLoginAt = new Date().toISOString();
+  user.updatedAt = new Date().toISOString();
+  await writeUsers(users);
+  return {
+    userId: user.id,
+    email: user.email,
+    role: user.role || "tester"
+  };
+}
+
 function isValidAdminLogin(email, password) {
   const expectedEmail = process.env.ADMIN_EMAIL || "";
   if (expectedEmail && String(email || "").toLowerCase() !== expectedEmail.toLowerCase()) {
-    return false;
+    return null;
   }
 
   if (process.env.ADMIN_PASSWORD_SHA256) {
-    return safeCompare(
+    const matches = safeCompare(
       crypto.createHash("sha256").update(String(password || "")).digest("hex"),
       process.env.ADMIN_PASSWORD_SHA256
     );
+    return matches ? { userId: "env-admin", email: expectedEmail || "admin", role: "owner" } : null;
   }
 
-  return safeCompare(String(password || ""), process.env.ADMIN_PASSWORD || "");
+  const matches = safeCompare(String(password || ""), process.env.ADMIN_PASSWORD || "");
+  return matches ? { userId: "env-admin", email: expectedEmail || "admin", role: "owner" } : null;
 }
 
-function buildSessionCookie() {
+function buildSessionCookie(user = {}) {
   const expiresAt = Date.now() + SESSION_MAX_AGE_SECONDS * 1000;
-  const payload = base64UrlEncode(JSON.stringify({ expiresAt }));
+  const payload = base64UrlEncode(JSON.stringify({
+    expiresAt,
+    userId: user.userId || "",
+    email: user.email || "",
+    role: user.role || "tester"
+  }));
   const signature = signSessionPayload(payload);
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   return `${SESSION_COOKIE}=${payload}.${signature}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}${secure}`;
+}
+
+function publicUsers(users) {
+  return users.map(publicUser);
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name || "",
+    email: user.email || "",
+    role: user.role || "tester",
+    disabled: Boolean(user.disabled),
+    lastLoginAt: user.lastLoginAt || "",
+    createdAt: user.createdAt || ""
+  };
+}
+
+async function createAppUser(input) {
+  const user = normalizeAppUser(input);
+  const users = await readUsers();
+
+  if (users.some((item) => item.email.toLowerCase() === user.email.toLowerCase())) {
+    throw new Error("A user with that email already exists.");
+  }
+
+  users.push(user);
+  await writeUsers(users);
+  return { user, users };
+}
+
+async function deleteAppUser(userId) {
+  const users = await readUsers();
+  const remainingUsers = users.filter((user) => user.id !== userId);
+
+  if (remainingUsers.length === users.length) {
+    throw new Error("User not found.");
+  }
+
+  if (!process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD_SHA256 && !remainingUsers.some((user) => !user.disabled)) {
+    throw new Error("Add another active user before deleting the last login.");
+  }
+
+  await writeUsers(remainingUsers);
+  return { users: remainingUsers };
+}
+
+function normalizeAppUser(input) {
+  const name = String(input.name || "").trim();
+  const email = String(input.email || "").trim().toLowerCase();
+  const password = String(input.password || "");
+  const role = ["owner", "admin", "tester", "technician"].includes(input.role) ? input.role : "tester";
+
+  if (!name) {
+    throw new Error("Enter a user name.");
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new Error("Enter a valid user email.");
+  }
+  if (password.length < 8) {
+    throw new Error("Use a temporary password with at least 8 characters.");
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    name,
+    email,
+    passwordHash: hashPassword(password),
+    role,
+    disabled: false,
+    lastLoginAt: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function hashPassword(password) {
+  const iterations = 120000;
+  const salt = crypto.randomBytes(16).toString("base64url");
+  const hash = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256").toString("base64url");
+  return `pbkdf2-sha256$${iterations}$${salt}$${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const [scheme, iterationsText, salt, expectedHash] = String(storedHash || "").split("$");
+  if (scheme !== "pbkdf2-sha256" || !iterationsText || !salt || !expectedHash) {
+    return false;
+  }
+
+  const iterations = Number(iterationsText);
+  if (!Number.isFinite(iterations) || iterations < 10000) {
+    return false;
+  }
+
+  const actualHash = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256").toString("base64url");
+  return safeCompare(actualHash, expectedHash);
 }
 
 function hasValidSession(request) {
@@ -3710,7 +3870,7 @@ const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
 
-    if (isAuthEnabled() && !isPublicPath(url.pathname) && !hasValidSession(request)) {
+    if (await isAuthEnabled() && !isPublicPath(url.pathname) && !hasValidSession(request)) {
       if (url.pathname.startsWith("/api/")) {
         sendError(response, 401, "Authentication required.");
         return;

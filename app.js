@@ -78,6 +78,13 @@ const settingsStatus = document.querySelector("#settingsStatus");
 const businessLogoInput = document.querySelector("#businessLogoInput");
 const businessLogoPreview = document.querySelector("#businessLogoPreview");
 const clearBusinessLogoButton = document.querySelector("#clearBusinessLogoButton");
+const userNameInput = document.querySelector("#userNameInput");
+const userEmailInput = document.querySelector("#userEmailInput");
+const userRoleInput = document.querySelector("#userRoleInput");
+const userPasswordInput = document.querySelector("#userPasswordInput");
+const addUserButton = document.querySelector("#addUserButton");
+const settingsUserList = document.querySelector("#settingsUserList");
+const settingsUserStatus = document.querySelector("#settingsUserStatus");
 const templateList = document.querySelector("#templateList");
 const templateUploadForm = document.querySelector("#templateUploadForm");
 const templateFileInput = document.querySelector("#templateFileInput");
@@ -192,6 +199,7 @@ async function init() {
   settingsForm.addEventListener("submit", saveSettings);
   businessLogoInput?.addEventListener("change", updateBusinessLogoFromInput);
   clearBusinessLogoButton?.addEventListener("click", clearBusinessLogo);
+  addUserButton?.addEventListener("click", addSettingsUser);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   completionForm.addEventListener("submit", submitCompletionDialog);
   completionBeforePhotoInputs.forEach((input) => {
@@ -354,6 +362,7 @@ function renderStatusOptions() {
 
 function openSettings() {
   fillSettingsForm();
+  loadSettingsUsers();
   settingsDialog.showModal();
 }
 
@@ -400,6 +409,89 @@ async function saveSettings(event) {
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
+}
+
+async function loadSettingsUsers() {
+  if (!settingsUserList) return;
+
+  try {
+    const response = await fetch("/api/users");
+    if (!response.ok) {
+      throw new Error("Unable to load users.");
+    }
+    const data = await response.json();
+    renderSettingsUsers(data.users || []);
+    settingsUserStatus.textContent = "Team logins are for invited testers only.";
+  } catch (error) {
+    settingsUserList.innerHTML = '<p class="photo-empty">Unable to load team users.</p>';
+    settingsUserStatus.textContent = error.message;
+  }
+}
+
+function renderSettingsUsers(users) {
+  if (!settingsUserList) return;
+
+  if (!users.length) {
+    settingsUserList.innerHTML = '<p class="photo-empty">No invited users yet.</p>';
+    return;
+  }
+
+  settingsUserList.innerHTML = users.map((user) => `
+    <div class="settings-user-row">
+      <span>
+        <strong>${escapeHtml(user.name || user.email)}</strong>
+        <small>${escapeHtml(user.email)} | ${escapeHtml(formatUserRole(user.role))}${user.lastLoginAt ? ` | Last login ${escapeHtml(formatShortDate(user.lastLoginAt))}` : ""}</small>
+      </span>
+      <button class="icon-button" type="button" title="Remove user" data-delete-user="${escapeHtml(user.id)}">X</button>
+    </div>
+  `).join("");
+
+  settingsUserList.querySelectorAll("[data-delete-user]").forEach((button) => {
+    button.addEventListener("click", () => deleteSettingsUser(button.dataset.deleteUser));
+  });
+}
+
+async function addSettingsUser() {
+  const payload = {
+    name: userNameInput.value,
+    email: userEmailInput.value,
+    role: userRoleInput.value,
+    password: userPasswordInput.value
+  };
+
+  try {
+    settingsUserStatus.textContent = "Adding user...";
+    const data = await apiRequest("/api/users", payload);
+    renderSettingsUsers(data.users || []);
+    userNameInput.value = "";
+    userEmailInput.value = "";
+    userRoleInput.value = "tester";
+    userPasswordInput.value = "";
+    settingsUserStatus.textContent = "User added. Give them the email and temporary password directly.";
+  } catch (error) {
+    settingsUserStatus.textContent = error.message;
+  }
+}
+
+async function deleteSettingsUser(userId) {
+  if (!userId || !confirm("Remove this user's PressureFlow login?")) return;
+
+  try {
+    const data = await apiRequest(`/api/users/${encodeURIComponent(userId)}`, {}, "DELETE");
+    renderSettingsUsers(data.users || []);
+    settingsUserStatus.textContent = "User removed.";
+  } catch (error) {
+    settingsUserStatus.textContent = error.message;
+  }
+}
+
+function formatUserRole(role) {
+  return {
+    owner: "Owner",
+    admin: "Admin",
+    tester: "Tester",
+    technician: "Technician"
+  }[role] || "Tester";
 }
 
 async function updateBusinessLogoFromInput(event) {

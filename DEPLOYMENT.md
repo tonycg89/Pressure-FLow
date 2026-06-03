@@ -40,6 +40,8 @@ ADMIN_PASSWORD=
 DATABASE_URL=
 ```
 
+Keep `ADMIN_EMAIL` and `ADMIN_PASSWORD` set as the owner fallback login. Additional tester/admin logins can be created inside PressureFlow under **Settings > Team access**; those invited users are stored in the app database with password hashes.
+
 Google:
 
 ```text

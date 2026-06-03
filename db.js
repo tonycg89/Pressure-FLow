@@ -8,6 +8,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
 const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
 const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
 const WEBHOOK_LOG_FILE = path.join(DATA_DIR, "webhook-events.json");
 const usePostgres = Boolean(process.env.DATABASE_URL);
@@ -106,6 +107,10 @@ async function ensureDataFile() {
 
   if (!existsSync(EXPENSES_FILE)) {
     await writeJson(EXPENSES_FILE, []);
+  }
+
+  if (!existsSync(USERS_FILE)) {
+    await writeJson(USERS_FILE, []);
   }
 
   if (!existsSync(SETTINGS_FILE)) {
@@ -223,6 +228,39 @@ async function writeExpenses(expenses) {
   }
 
   await writeJson(EXPENSES_FILE, expenses);
+}
+
+async function readUsers() {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const result = await getPool().query("select * from app_users order by created_at asc");
+    return result.rows.map(userFromRow);
+  }
+
+  return readJson(USERS_FILE);
+}
+
+async function writeUsers(users) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      await client.query("delete from app_users");
+      for (const user of users) {
+        await upsertUser(client, user);
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  await writeJson(USERS_FILE, users);
 }
 
 async function readSettings() {
@@ -406,6 +444,17 @@ async function ensurePostgresSchema() {
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
   )`);
+  await getPool().query(`create table if not exists app_users (
+    id uuid primary key default gen_random_uuid(),
+    name text not null default '',
+    email text not null unique,
+    password_hash text not null default '',
+    role text not null default 'tester',
+    disabled boolean not null default false,
+    last_login_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
   await getPool().query(`create table if not exists app_settings (
     id integer primary key,
     business_name text not null default '',
@@ -472,6 +521,55 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists contract_signed_date text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_signer_name text not null default ''");
   postgresSchemaReady = true;
+}
+
+async function upsertUser(client, user) {
+  await client.query(
+    `insert into app_users (
+      id,
+      name,
+      email,
+      password_hash,
+      role,
+      disabled,
+      last_login_at,
+      created_at,
+      updated_at
+    ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    on conflict (id) do update set
+      name = excluded.name,
+      email = excluded.email,
+      password_hash = excluded.password_hash,
+      role = excluded.role,
+      disabled = excluded.disabled,
+      last_login_at = excluded.last_login_at,
+      updated_at = excluded.updated_at`,
+    [
+      user.id,
+      user.name || "",
+      user.email || "",
+      user.passwordHash || "",
+      user.role || "tester",
+      Boolean(user.disabled),
+      user.lastLoginAt || null,
+      user.createdAt || new Date().toISOString(),
+      user.updatedAt || new Date().toISOString()
+    ]
+  );
+}
+
+function userFromRow(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    email: row.email || "",
+    passwordHash: row.password_hash || "",
+    role: row.role || "tester",
+    disabled: Boolean(row.disabled),
+    lastLoginAt: row.last_login_at?.toISOString?.() || "",
+    createdAt: row.created_at?.toISOString?.() || "",
+    updatedAt: row.updated_at?.toISOString?.() || ""
+  };
 }
 
 async function upsertJob(client, job) {
@@ -899,6 +997,8 @@ module.exports = {
   writeCustomers,
   readExpenses,
   writeExpenses,
+  readUsers,
+  writeUsers,
   readSettings,
   writeSettings,
   readWebhookEvents,

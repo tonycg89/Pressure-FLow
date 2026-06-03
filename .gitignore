@@ -1,5 +1,6 @@
 .env
 *.log
 data/settings.local.json
+data/users.json
 data/webhook-events.json
 pressureflow/

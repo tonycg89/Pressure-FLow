@@ -33,7 +33,8 @@ PressureFlow is in polish mode. The app works end-to-end for the Precision Power
 
 ## Operational Improvements
 
-- Add a second admin login for testing, without full roles yet.
+- Expand invited-user access into fuller roles and permissions after the first tester logins are validated.
+- Add password reset, email verification, and public trial signup after invited-user testing is stable.
 - Add a visible audit/history area per customer/job for sent estimate, accepted estimate, sent contract, signed contract, invoices, schedule confirmation, and completion notice.
 - Add better filtering/search across customers and jobs.
 - Add invoice payment status badges and clearer completed-job archive behavior.

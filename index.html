@@ -776,6 +776,40 @@
           </label>
         </div>
 
+        <section class="settings-section" aria-label="Team access">
+          <div class="section-header">
+            <div>
+              <h3>Team access</h3>
+              <p class="form-note">Invite test users with their own login. Public signup and password recovery stay deferred until scaling.</p>
+            </div>
+          </div>
+          <div class="settings-user-grid">
+            <label>
+              Name
+              <input id="userNameInput" autocomplete="off" placeholder="Test user name">
+            </label>
+            <label>
+              Email
+              <input id="userEmailInput" type="email" autocomplete="off" placeholder="tester@example.com">
+            </label>
+            <label>
+              Role
+              <select id="userRoleInput">
+                <option value="tester">Tester</option>
+                <option value="admin">Admin</option>
+                <option value="technician">Technician</option>
+              </select>
+            </label>
+            <label>
+              Temporary password
+              <input id="userPasswordInput" type="password" autocomplete="new-password" placeholder="Minimum 8 characters">
+            </label>
+            <button id="addUserButton" class="secondary-small-button" type="button">Add User</button>
+          </div>
+          <div id="settingsUserList" class="settings-user-list"></div>
+          <p id="settingsUserStatus" class="form-note"></p>
+        </section>
+
         <p id="settingsStatus" class="form-note"></p>
 
         <section class="export-actions" aria-label="Export data">
