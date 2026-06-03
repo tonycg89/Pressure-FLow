@@ -132,6 +132,7 @@ let mapboxMap = null;
 let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
+let syncingMeasurementDraw = false;
 const beforePhotoSections = [
   "Main driveway",
   "Back patio",
@@ -1241,7 +1242,7 @@ function addSavedMeasurement(item) {
     center: savedMeasurement.center?.length ? savedMeasurement.center : currentMeasurement.center,
     zoom: savedMeasurement.zoom || currentMeasurement.zoom || 18
   });
-  activeMeasurementAreaId = nextArea.id;
+  activeMeasurementAreaId = "";
   measurementAddress.value = currentMeasurement.address || measurementAddress.value;
   updateMeasurementTotal();
   renderMeasurementAreas();
@@ -1266,7 +1267,7 @@ function removeSavedMeasurement(item) {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
   renderMeasurementAreas();
-  loadMeasurementAreasIntoDraw();
+  refreshMeasurementMapDisplay();
   measurementStatus.textContent = `${item.label || "Saved area"} removed from this job.`;
   renderSavedMeasurementsFromCurrentPanel();
 }
@@ -1291,6 +1292,8 @@ function measurementGeojsonKey(geojson) {
 }
 
 function updateMeasurementFromDraw() {
+  if (syncingMeasurementDraw) return;
+
   const feature = mapboxDraw?.getAll().features?.[0];
   if (!feature) {
     measurementStatus.textContent = currentMeasurement.areas?.length
@@ -1365,7 +1368,7 @@ function saveMeasurementArea() {
   activeMeasurementAreaId = "";
   updateMeasurementTotal();
   renderMeasurementAreas();
-  loadMeasurementAreasIntoDraw();
+  refreshMeasurementMapDisplay();
   measurementStatus.textContent = `${name} saved. Draw another area if needed.`;
 }
 
@@ -1428,25 +1431,83 @@ function deleteMeasurementArea(areaId) {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   updateMeasurementTotal();
   renderMeasurementAreas();
-  loadMeasurementAreasIntoDraw();
+  refreshMeasurementMapDisplay();
 }
 
 function loadActiveMeasurementAreaIntoDraw() {
-  loadMeasurementAreasIntoDraw();
+  refreshMeasurementMapDisplay();
 }
 
 function loadMeasurementAreasIntoDraw() {
+  refreshMeasurementMapDisplay();
+}
+
+function refreshMeasurementMapDisplay() {
+  updateMeasurementOverlay();
+  loadEditableMeasurementAreaIntoDraw();
+}
+
+function updateMeasurementOverlay() {
+  if (!mapboxMap) return;
+
+  const sourceData = buildMeasurementOverlayFeatureCollection();
+  const applyOverlay = () => {
+    if (!mapboxMap.getSource("selected-service-areas")) {
+      mapboxMap.addSource("selected-service-areas", { type: "geojson", data: sourceData });
+      mapboxMap.addLayer({
+        id: "selected-service-areas-fill",
+        type: "fill",
+        source: "selected-service-areas",
+        paint: {
+          "fill-color": "#1c7c54",
+          "fill-opacity": 0.22
+        }
+      });
+      mapboxMap.addLayer({
+        id: "selected-service-areas-line",
+        type: "line",
+        source: "selected-service-areas",
+        paint: {
+          "line-color": "#0f5132",
+          "line-width": 3
+        }
+      });
+    } else {
+      mapboxMap.getSource("selected-service-areas").setData(sourceData);
+    }
+  };
+
+  if (mapboxMap.loaded()) {
+    applyOverlay();
+  } else {
+    mapboxMap.once("load", applyOverlay);
+  }
+}
+
+function buildMeasurementOverlayFeatureCollection() {
+  return {
+    type: "FeatureCollection",
+    features: (currentMeasurement.areas || [])
+      .map((area) => area.geojson)
+      .filter(Boolean)
+  };
+}
+
+function loadEditableMeasurementAreaIntoDraw() {
   if (!mapboxDraw) return;
 
+  syncingMeasurementDraw = true;
   mapboxDraw.deleteAll();
-  (currentMeasurement.areas || []).forEach((area) => {
-    mapboxDraw.add(buildDrawFeatureForArea(area));
-  });
+  const activeArea = (currentMeasurement.areas || []).find((area) => area.id === activeMeasurementAreaId);
+  if (activeArea?.geojson) {
+    mapboxDraw.add(buildDrawFeatureForArea(activeArea));
+  }
   if (activeMeasurementAreaId) {
     mapboxDraw.changeMode("simple_select", { featureIds: [activeMeasurementAreaId] });
-  } else if (currentMeasurement.areas?.length) {
-    mapboxDraw.changeMode("simple_select");
   }
+  setTimeout(() => {
+    syncingMeasurementDraw = false;
+  }, 0);
 }
 
 function buildDrawFeatureForArea(area) {
