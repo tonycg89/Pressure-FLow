@@ -31,13 +31,14 @@ const defaultSettings = {
   googleClientSecret: "",
   googleRedirectUri: "http://localhost:3000/auth/google/callback",
   googleRefreshToken: "",
-  googleCalendarId: "tonycg89@gmail.com",
+  googleCalendarId: "",
   mapboxPublicToken: "",
   zellePayment: "",
   cashAppPayment: "",
   venmoPayment: "",
   paymentInstructions: "",
-  customTemplates: []
+  customTemplates: [],
+  customServices: []
 };
 
 const statuses = [
@@ -263,6 +264,32 @@ async function writeUsers(users) {
   await writeJson(USERS_FILE, users);
 }
 
+async function readUserSettings(userId) {
+  if (!userId || userId === "env-admin") {
+    return readSettings();
+  }
+
+  const users = await readUsers();
+  const user = users.find((item) => item.id === userId);
+  return { ...defaultSettings, ...(user?.settings || {}) };
+}
+
+async function writeUserSettings(userId, settings) {
+  if (!userId || userId === "env-admin") {
+    return writeSettings(settings);
+  }
+
+  const users = await readUsers();
+  const user = users.find((item) => item.id === userId);
+  if (!user) {
+    throw new Error("User account not found.");
+  }
+
+  user.settings = settings;
+  user.updatedAt = new Date().toISOString();
+  await writeUsers(users);
+}
+
 async function readSettings() {
   if (usePostgres) {
     await ensurePostgresSchema();
@@ -286,7 +313,8 @@ async function readSettings() {
       venmoPayment: rowSettings.venmoPayment || "",
       paymentInstructions: rowSettings.paymentInstructions || "",
       businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
-      customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : []
+      customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : [],
+      customServices: Array.isArray(rowSettings.customServices) ? rowSettings.customServices : []
     };
   }
 
@@ -316,8 +344,9 @@ async function writeSettings(settings) {
         venmo_payment,
         payment_instructions,
         custom_templates,
+        custom_services,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -336,6 +365,7 @@ async function writeSettings(settings) {
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
         custom_templates = excluded.custom_templates,
+        custom_services = excluded.custom_services,
         updated_at = now()`,
       [
         settings.businessName || "",
@@ -354,7 +384,8 @@ async function writeSettings(settings) {
         settings.cashAppPayment || "",
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
-        JSON.stringify(settings.customTemplates || [])
+        JSON.stringify(settings.customTemplates || []),
+        JSON.stringify(settings.customServices || [])
       ]
     );
     return;
@@ -451,6 +482,7 @@ async function ensurePostgresSchema() {
     password_hash text not null default '',
     role text not null default 'tester',
     disabled boolean not null default false,
+    settings jsonb not null default '{}'::jsonb,
     last_login_at timestamptz,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
@@ -474,6 +506,7 @@ async function ensurePostgresSchema() {
     venmo_payment text not null default '',
     payment_instructions text not null default '',
     custom_templates jsonb not null default '[]'::jsonb,
+    custom_services jsonb not null default '[]'::jsonb,
     updated_at timestamptz not null default now()
   )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
@@ -484,6 +517,8 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
   await getPool().query("alter table customers add column if not exists street_address text not null default ''");
@@ -532,16 +567,18 @@ async function upsertUser(client, user) {
       password_hash,
       role,
       disabled,
+      settings,
       last_login_at,
       created_at,
       updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
     on conflict (id) do update set
       name = excluded.name,
       email = excluded.email,
       password_hash = excluded.password_hash,
       role = excluded.role,
       disabled = excluded.disabled,
+      settings = excluded.settings,
       last_login_at = excluded.last_login_at,
       updated_at = excluded.updated_at`,
     [
@@ -551,6 +588,7 @@ async function upsertUser(client, user) {
       user.passwordHash || "",
       user.role || "tester",
       Boolean(user.disabled),
+      JSON.stringify(user.settings || {}),
       user.lastLoginAt || null,
       user.createdAt || new Date().toISOString(),
       user.updatedAt || new Date().toISOString()
@@ -566,6 +604,7 @@ function userFromRow(row) {
     passwordHash: row.password_hash || "",
     role: row.role || "tester",
     disabled: Boolean(row.disabled),
+    settings: row.settings && typeof row.settings === "object" ? row.settings : {},
     lastLoginAt: row.last_login_at?.toISOString?.() || "",
     createdAt: row.created_at?.toISOString?.() || "",
     updatedAt: row.updated_at?.toISOString?.() || ""
@@ -931,7 +970,8 @@ function settingsFromRow(row) {
     cashAppPayment: row.cash_app_payment || "",
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
-    customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : []
+    customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
+    customServices: Array.isArray(row.custom_services) ? row.custom_services : []
   };
 }
 
@@ -999,6 +1039,8 @@ module.exports = {
   writeExpenses,
   readUsers,
   writeUsers,
+  readUserSettings,
+  writeUserSettings,
   readSettings,
   writeSettings,
   readWebhookEvents,

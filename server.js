@@ -2,6 +2,7 @@ const http = require("node:http");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { AsyncLocalStorage } = require("node:async_hooks");
 const {
   defaultSettings,
   statuses,
@@ -14,8 +15,10 @@ const {
   writeExpenses,
   readUsers,
   writeUsers,
-  readSettings,
-  writeSettings,
+  readSettings: readGlobalSettings,
+  writeSettings: writeGlobalSettings,
+  readUserSettings,
+  writeUserSettings,
   readWebhookEvents,
   writeWebhookEvents
 } = require("./db");
@@ -26,6 +29,15 @@ const SQUARE_VERSION = "2026-05-20";
 const SESSION_COOKIE = "pressureflow_session";
 const serviceAgreementTemplate = require("./templates/pressure-washing-service-agreement.json");
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+const requestContext = new AsyncLocalStorage();
+
+function readSettings() {
+  return readUserSettings(requestContext.getStore()?.session?.userId || "");
+}
+
+function writeSettings(settings) {
+  return writeUserSettings(requestContext.getStore()?.session?.userId || "", settings);
+}
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -2038,12 +2050,29 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/session") {
+    sendJson(response, 200, {
+      user: publicSessionUser(requestContext.getStore()?.session) || (requestContext.getStore()?.authDisabled
+        ? { id: "local-owner", email: "", role: "owner", isOwner: true }
+        : null)
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/users") {
+    if (!isOwnerSession()) {
+      sendError(response, 403, "Owner access required.");
+      return;
+    }
     sendJson(response, 200, { users: publicUsers(await readUsers()) });
     return;
   }
 
   if (request.method === "POST" && url.pathname === "/api/users") {
+    if (!isOwnerSession()) {
+      sendError(response, 403, "Owner access required.");
+      return;
+    }
     try {
       const input = await readRequestBody(request);
       const result = await createAppUser(input);
@@ -2200,6 +2229,10 @@ async function handleApi(request, response, url) {
   const userDeleteMatch = url.pathname.match(/^\/api\/users\/([^/]+)$/);
 
   if (request.method === "DELETE" && userDeleteMatch) {
+    if (!isOwnerSession()) {
+      sendError(response, 403, "Owner access required.");
+      return;
+    }
     try {
       const [, userId] = userDeleteMatch;
       const result = await deleteAppUser(userId);
@@ -2442,6 +2475,21 @@ function publicUser(user) {
   };
 }
 
+function publicSessionUser(session) {
+  if (!session?.userId) return null;
+  return {
+    id: session.userId,
+    email: session.email || "",
+    role: session.role || "tester",
+    isOwner: session.role === "owner"
+  };
+}
+
+function isOwnerSession() {
+  const context = requestContext.getStore();
+  return context?.authDisabled || context?.session?.role === "owner";
+}
+
 async function createAppUser(input) {
   const user = normalizeAppUser(input);
   const users = await readUsers();
@@ -2494,6 +2542,7 @@ function normalizeAppUser(input) {
     passwordHash: hashPassword(password),
     role,
     disabled: false,
+    settings: {},
     lastLoginAt: "",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -2522,21 +2571,25 @@ function verifyPassword(password, storedHash) {
   return safeCompare(actualHash, expectedHash);
 }
 
-function hasValidSession(request) {
+function getValidSession(request) {
   const cookie = parseCookies(request.headers.cookie || "")[SESSION_COOKIE];
-  if (!cookie) return false;
+  if (!cookie) return null;
 
   const [payload, signature] = cookie.split(".");
   if (!payload || !signature || !safeCompare(signature, signSessionPayload(payload))) {
-    return false;
+    return null;
   }
 
   try {
     const session = JSON.parse(base64UrlDecode(payload));
-    return Number(session.expiresAt) > Date.now();
+    return Number(session.expiresAt) > Date.now() ? session : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function hasValidSession(request) {
+  return Boolean(getValidSession(request));
 }
 
 function signSessionPayload(payload) {
@@ -2584,15 +2637,29 @@ function normalizeSettings(input, existing) {
     squareWebhookSignatureKey: existing.squareWebhookSignatureKey || "",
     googleClientId: String(input.googleClientId || "").trim(),
     googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
-    googleRedirectUri: "http://localhost:3000/auth/google/callback",
+    googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || existing.googleRedirectUri || "http://localhost:3000/auth/google/callback",
     googleCalendarId: String(input.googleCalendarId || "").trim(),
     mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
     zellePayment: String(input.zellePayment || "").trim(),
     cashAppPayment: String(input.cashAppPayment || "").trim(),
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
-    customTemplates: normalizeCustomTemplates(existing.customTemplates)
+    customTemplates: normalizeCustomTemplates(existing.customTemplates),
+    customServices: normalizeCustomServices(input.customServices ?? existing.customServices)
   };
+}
+
+function normalizeCustomServices(value) {
+  const allowedUnits = new Set(["Qty", "SqFt", "Hours", "LFN", "Each"]);
+  return (Array.isArray(value) ? value : [])
+    .map((service) => ({
+      id: String(service.id || crypto.randomUUID()),
+      name: String(service.name || "").trim().slice(0, 100),
+      unit: allowedUnits.has(service.unit) ? service.unit : "Qty",
+      price: Math.max(Number(service.price || 0), 0)
+    }))
+    .filter((service) => service.name)
+    .slice(0, 100);
 }
 
 function normalizeBusinessLogoDataUrl(value) {
@@ -3869,8 +3936,10 @@ async function serveStatic(response, url) {
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
+    const session = getValidSession(request);
+    const authEnabled = await isAuthEnabled();
 
-    if (await isAuthEnabled() && !isPublicPath(url.pathname) && !hasValidSession(request)) {
+    if (authEnabled && !isPublicPath(url.pathname) && !session) {
       if (url.pathname.startsWith("/api/")) {
         sendError(response, 401, "Authentication required.");
         return;
@@ -3881,12 +3950,14 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
-      await handleApi(request, response, url);
-      return;
-    }
+    await requestContext.run({ session, authDisabled: !authEnabled }, async () => {
+      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
+        await handleApi(request, response, url);
+        return;
+      }
 
-    await serveStatic(response, url);
+      await serveStatic(response, url);
+    });
   } catch (error) {
     sendError(response, 500, error.message || "Unexpected server error.");
   }

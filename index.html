@@ -394,7 +394,10 @@
               <p class="eyebrow">Estimate</p>
               <h3>Services and rates</h3>
             </div>
-            <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
+            <div class="section-header-actions">
+              <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
+              <button id="customServiceButton" class="secondary-small-button" type="button">Custom Service</button>
+            </div>
           </div>
           <div id="lineItems" class="line-items"></div>
           <details class="discount-panel">
@@ -776,7 +779,7 @@
           </label>
         </div>
 
-        <section class="settings-section" aria-label="Team access">
+        <section id="teamAccessSection" class="settings-section" aria-label="Team access">
           <div class="section-header">
             <div>
               <h3>Team access</h3>
@@ -821,6 +824,44 @@
           <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="customServiceDialog">
+      <form method="dialog" id="customServiceForm">
+        <div class="dialog-header">
+          <h2>Add custom service</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+        <label>
+          Service name
+          <input name="name" required placeholder="Window cleaning">
+        </label>
+        <div class="field-row">
+          <label>
+            Unit
+            <select name="unit">
+              <option value="QTY">QTY</option>
+              <option value="SqFt">SqFt</option>
+              <option value="Hours">Hours</option>
+              <option value="LFN">LFN</option>
+              <option value="Each">Each</option>
+            </select>
+          </label>
+          <label>
+            Rate
+            <input name="price" required type="number" min="0" step="0.01" value="0">
+          </label>
+        </div>
+        <label class="checkbox-field">
+          <input name="saveForFuture" type="checkbox">
+          Save service for future jobs
+        </label>
+        <p id="customServiceStatus" class="form-note"></p>
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Add Service</button>
         </menu>
       </form>
     </dialog>

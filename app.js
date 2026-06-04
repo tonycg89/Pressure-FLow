@@ -6,9 +6,10 @@ let selectedJobId = null;
 let selectedCustomerId = null;
 let selectedExpenseId = null;
 let settings = {};
+let currentUser = null;
 let dismissedNotificationIds = new Set(loadDismissedNotificationIds());
 
-const serviceCatalog = [
+const builtInServiceCatalog = [
   { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
   { name: "Holiday Light Installation", unit: "LNF", price: 5 },
   { name: "House Washing", unit: "SqFt", price: 0.25 },
@@ -22,7 +23,8 @@ const serviceCatalog = [
   { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
 
-const defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
+let serviceCatalog = [...builtInServiceCatalog];
+let defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -96,6 +98,11 @@ const scheduleForm = document.querySelector("#scheduleForm");
 const completionDialog = document.querySelector("#completionDialog");
 const completionForm = document.querySelector("#completionForm");
 const addLineItemButton = document.querySelector("#addLineItemButton");
+const customServiceButton = document.querySelector("#customServiceButton");
+const customServiceDialog = document.querySelector("#customServiceDialog");
+const customServiceForm = document.querySelector("#customServiceForm");
+const customServiceStatus = document.querySelector("#customServiceStatus");
+const teamAccessSection = document.querySelector("#teamAccessSection");
 const lineItemsContainer = document.querySelector("#lineItems");
 const discountSelect = document.querySelector("#discountSelect");
 const estimateSubtotal = document.querySelector("#estimateSubtotal");
@@ -185,6 +192,8 @@ async function init() {
   });
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
+  customServiceButton?.addEventListener("click", openCustomServiceDialog);
+  customServiceForm?.addEventListener("submit", addCustomService);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
   savedMeasurementsPanel?.addEventListener("toggle", () => {
     savedMeasurementsPanel.dataset.userToggled = "true";
@@ -213,10 +222,22 @@ async function init() {
   });
   scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
+  await loadSession();
   await loadSettings();
   await loadCustomers();
   await loadExpenses();
   await loadJobs();
+}
+
+async function loadSession() {
+  try {
+    const response = await fetch("/api/session");
+    if (!response.ok) return;
+    const data = await response.json();
+    currentUser = data.user;
+  } catch {
+    currentUser = null;
+  }
 }
 
 function switchView(event) {
@@ -236,6 +257,7 @@ async function loadSettings() {
 
     const data = await response.json();
     settings = data.settings;
+    syncServiceCatalog();
     applySettingsDefaults();
     renderTemplates();
   } catch (error) {
@@ -251,6 +273,13 @@ function applySettingsDefaults() {
   if (sidebarBusinessName) {
     sidebarBusinessName.textContent = settings.businessName || "Precision Power Washing";
   }
+}
+
+function syncServiceCatalog() {
+  const customServices = Array.isArray(settings.customServices) ? settings.customServices : [];
+  serviceCatalog = [...builtInServiceCatalog, ...customServices]
+    .filter((service, index, all) => all.findIndex((item) => item.name.toLowerCase() === String(service.name || "").toLowerCase()) === index);
+  defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
 }
 
 async function loadJobs() {
@@ -362,7 +391,12 @@ function renderStatusOptions() {
 
 function openSettings() {
   fillSettingsForm();
-  loadSettingsUsers();
+  if (teamAccessSection) {
+    teamAccessSection.hidden = !currentUser?.isOwner;
+  }
+  if (currentUser?.isOwner) {
+    loadSettingsUsers();
+  }
   settingsDialog.showModal();
 }
 
@@ -1000,14 +1034,24 @@ function renderLineItems(items) {
 }
 
 function addLineItemRow(item = serviceCatalog[0]) {
-  const catalogItem = serviceCatalog.find((service) => service.name === item.name) || serviceCatalog[0];
+  const catalogItem = serviceCatalog.find((service) => service.name === item.name) || {
+    name: item.name || "Custom service",
+    unit: item.unit || "QTY",
+    price: Number(item.price || 0)
+  };
+  if (!serviceCatalog.some((service) => service.name === catalogItem.name)) {
+    serviceCatalog.push(catalogItem);
+  }
+  const rowCatalog = serviceCatalog.some((service) => service.name === catalogItem.name)
+    ? serviceCatalog
+    : [...serviceCatalog, catalogItem];
   const row = document.createElement("div");
   row.className = "line-item-row";
   row.innerHTML = `
     <label>
       Service
       <select class="line-service">
-        ${serviceCatalog.map((service) => `
+        ${rowCatalog.map((service) => `
           <option value="${escapeHtml(service.name)}" ${service.name === catalogItem.name ? "selected" : ""}>
             ${escapeHtml(service.name)}
           </option>
@@ -1057,6 +1101,58 @@ function addLineItemRow(item = serviceCatalog[0]) {
   lineItemsContainer.append(row);
   updateMeasurementButtonVisibility();
   updateEstimateTotals();
+}
+
+function openCustomServiceDialog() {
+  customServiceForm.reset();
+  customServiceForm.elements.price.value = "0";
+  customServiceStatus.textContent = "";
+  customServiceDialog.showModal();
+}
+
+async function addCustomService(event) {
+  if (event.submitter?.value === "cancel") return;
+  event.preventDefault();
+
+  const formData = new FormData(customServiceForm);
+  const service = {
+    id: crypto.randomUUID(),
+    name: String(formData.get("name") || "").trim(),
+    unit: String(formData.get("unit") || "QTY"),
+    price: Math.max(Number(formData.get("price") || 0), 0)
+  };
+  if (!service.name) {
+    customServiceStatus.textContent = "Enter a service name.";
+    return;
+  }
+
+  const existingIndex = serviceCatalog.findIndex((item) => item.name.toLowerCase() === service.name.toLowerCase());
+  if (existingIndex >= 0) {
+    serviceCatalog[existingIndex] = service;
+  } else {
+    serviceCatalog.push(service);
+  }
+  addLineItemRow({ ...service, quantity: 1 });
+
+  if (formData.get("saveForFuture") === "on") {
+    const customServices = [...(settings.customServices || [])];
+    const savedIndex = customServices.findIndex((item) => item.name.toLowerCase() === service.name.toLowerCase());
+    if (savedIndex >= 0) {
+      customServices[savedIndex] = service;
+    } else {
+      customServices.push(service);
+    }
+    try {
+      const data = await apiRequest("/api/settings", { ...settings, customServices });
+      settings = data.settings;
+      syncServiceCatalog();
+    } catch (error) {
+      customServiceStatus.textContent = `Service added to this job, but could not be saved: ${error.message}`;
+      return;
+    }
+  }
+
+  customServiceDialog.close();
 }
 
 function updateMeasurementButtonVisibility() {

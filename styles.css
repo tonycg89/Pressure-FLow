@@ -802,6 +802,30 @@ label {
   background: #fbfcfe;
 }
 
+.settings-section[hidden] {
+  display: none;
+}
+
+.section-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.checkbox-field {
+  display: flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
 .settings-user-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
