@@ -15,6 +15,22 @@
   --shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
 }
 
+[hidden] {
+  display: none !important;
+}
+
+/* Keep semantic labels available without visual clutter in compact controls. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1070,6 +1086,41 @@ label {
   gap: 12px;
 }
 
+.before-photo-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.before-photo-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.before-photo-row-main {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.before-photo-row label,
+.new-before-area label {
+  margin: 0;
+}
+
+.new-before-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
 .photo-section {
   display: grid;
   gap: 8px;
@@ -1568,6 +1619,8 @@ label {
   .settings-grid,
   .settings-user-grid,
   .photo-section-list,
+  .before-photo-row-main,
+  .new-before-area,
   .line-item-row,
   .estimate-summary,
   .map-address-row,

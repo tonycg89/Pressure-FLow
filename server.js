@@ -2148,6 +2148,9 @@ async function handleApi(request, response, url) {
     const existing = await readSettings();
     const input = await readRequestBody(request);
     const settings = normalizeSettings(input, existing);
+    if (!isOwnerSession()) {
+      settings.mapboxPublicToken = "";
+    }
     await writeSettings(settings);
     sendJson(response, 200, { settings: publicSettings(settings) });
     return;

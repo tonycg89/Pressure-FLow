@@ -377,10 +377,10 @@
             <option value="nextdoor-ad">Nextdoor ad</option>
           </select>
         </label>
-        <div class="field-with-action">
+        <div class="field-with-action service-type-picker">
           <label>
-            Service type
-            <select name="serviceType"></select>
+            <span class="sr-only">Service type</span>
+            <select name="serviceType" aria-label="Service type"></select>
           </label>
           <button id="addServiceTypeButton" class="secondary-small-button" type="button">Add Service Type</button>
         </div>
@@ -442,21 +442,8 @@
             </div>
           </div>
           <div class="before-photo-picker">
-            <div class="field-with-action">
-              <label>
-                Photo section
-                <select id="beforePhotoSectionSelect"></select>
-              </label>
-              <button id="addBeforePhotoSectionButton" class="secondary-small-button" type="button">Add Section</button>
-            </div>
-            <div class="photo-actions">
-              <label class="photo-action-button primary">Upload
-                <input id="beforePhotoUploadInput" type="file" accept="image/*" multiple>
-              </label>
-              <label class="photo-action-button">Take Picture
-                <input id="beforePhotoCameraInput" type="file" accept="image/*" capture="environment">
-              </label>
-            </div>
+            <div id="beforePhotoRows" class="before-photo-rows"></div>
+            <button id="addBeforePhotoButton" class="secondary-small-button" type="button">Add Another Photo</button>
             <div id="beforePhotoPreview" class="before-photo-preview"></div>
           </div>
         </section>

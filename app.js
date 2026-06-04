@@ -135,10 +135,8 @@ const clearMeasurementButton = document.querySelector("#clearMeasurementButton")
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
 const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
-const beforePhotoSectionSelect = document.querySelector("#beforePhotoSectionSelect");
-const addBeforePhotoSectionButton = document.querySelector("#addBeforePhotoSectionButton");
-const beforePhotoUploadInput = document.querySelector("#beforePhotoUploadInput");
-const beforePhotoCameraInput = document.querySelector("#beforePhotoCameraInput");
+const beforePhotoRows = document.querySelector("#beforePhotoRows");
+const addBeforePhotoButton = document.querySelector("#addBeforePhotoButton");
 const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
 const completionBeforePhotoInputs = document.querySelectorAll("[data-completion-before-photo-input]");
 const completionAfterPhotoInputs = document.querySelectorAll("[data-completion-after-photo-input]");
@@ -162,6 +160,7 @@ let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
+let beforePhotoRowCounter = 0;
 let beforePhotoSections = [
   "Main driveway",
   "Back patio",
@@ -197,14 +196,12 @@ async function init() {
   serviceAreaPhotoInputs.forEach((input) => {
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
   });
-  beforePhotoUploadInput?.addEventListener("change", addBeforePhotosFromPicker);
-  beforePhotoCameraInput?.addEventListener("change", addBeforePhotosFromPicker);
+  addBeforePhotoButton?.addEventListener("click", () => addBeforePhotoRow());
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   customServiceButton?.addEventListener("click", openCustomServiceDialog);
   customServiceForm?.addEventListener("submit", addCustomService);
   addServiceTypeButton?.addEventListener("click", addServiceType);
-  addBeforePhotoSectionButton?.addEventListener("click", addBeforePhotoSection);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
   savedMeasurementsPanel?.addEventListener("toggle", () => {
     savedMeasurementsPanel.dataset.userToggled = "true";
@@ -249,6 +246,7 @@ async function loadSession() {
   } catch {
     currentUser = null;
   }
+  applyAccountVisibility();
 }
 
 function switchView(event) {
@@ -308,12 +306,24 @@ function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?
   select.value = serviceTypes.includes(currentValue) ? currentValue : serviceTypes[0] || "";
 }
 
-function renderBeforePhotoSectionOptions(selectedValue = beforePhotoSectionSelect?.value || "") {
-  if (!beforePhotoSectionSelect) return;
+function renderBeforePhotoSectionOptions(selectedValue = "") {
+  if (!beforePhotoRows) return;
 
-  const currentValue = selectedValue || beforePhotoSections[0] || "";
-  beforePhotoSectionSelect.innerHTML = beforePhotoSections.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  beforePhotoSectionSelect.value = beforePhotoSections.includes(currentValue) ? currentValue : beforePhotoSections[0] || "";
+  beforePhotoRows.querySelectorAll("[data-before-photo-section-select]").forEach((select) => {
+    const currentValue = select.value && select.value !== "__new_area__"
+      ? select.value
+      : selectedValue || beforePhotoSections[0] || "";
+    select.innerHTML = getBeforePhotoAreaOptions(currentValue);
+    select.value = beforePhotoSections.includes(currentValue) ? currentValue : beforePhotoSections[0] || "";
+  });
+}
+
+function getBeforePhotoAreaOptions(selectedValue = "") {
+  const options = beforePhotoSections.map((name) => `
+    <option value="${escapeHtml(name)}"${name === selectedValue ? " selected" : ""}>${escapeHtml(name)}</option>
+  `);
+  options.push('<option value="__new_area__">Add new Area</option>');
+  return options.join("");
 }
 
 async function loadJobs() {
@@ -425,19 +435,20 @@ function renderStatusOptions() {
 
 function openSettings() {
   fillSettingsForm();
-  if (teamAccessSection) {
-    teamAccessSection.hidden = !currentUser?.isOwner;
-  }
-  if (mapboxTokenField) {
-    mapboxTokenField.hidden = !currentUser?.isOwner;
-  }
-  if (backupExportLink) {
-    backupExportLink.hidden = !currentUser?.isOwner;
-  }
+  applyAccountVisibility();
   if (currentUser?.isOwner) {
     loadSettingsUsers();
   }
   settingsDialog.showModal();
+}
+
+function applyAccountVisibility() {
+  const isOwner = Boolean(currentUser?.isOwner);
+  [teamAccessSection, mapboxTokenField, backupExportLink].forEach((element) => {
+    if (!element) return;
+    element.hidden = !isOwner;
+    element.style.display = isOwner ? "" : "none";
+  });
 }
 
 function fillSettingsForm() {
@@ -455,7 +466,7 @@ function fillSettingsForm() {
   settingsForm.elements.googleClientSecret.value = "";
   settingsForm.elements.googleClientSecret.placeholder = settings.hasGoogleClientSecret ? "Leave blank to keep saved secret" : "Enter Google client secret";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "";
-  settingsForm.elements.mapboxPublicToken.value = settings.mapboxPublicToken || "";
+  settingsForm.elements.mapboxPublicToken.value = currentUser?.isOwner ? settings.mapboxPublicToken || "" : "";
   if (businessLogoInput) {
     businessLogoInput.value = "";
   }
@@ -475,6 +486,9 @@ async function saveSettings(event) {
   payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
   payload.defaultJobDurationMinutes = Number(payload.defaultJobDurationMinutes);
   payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
+  if (!currentUser?.isOwner) {
+    delete payload.mapboxPublicToken;
+  }
 
   try {
     const data = await apiRequest("/api/settings", payload);
@@ -909,6 +923,7 @@ function openEditJob() {
     before: [...(job.jobPhotos?.before || [])],
     after: [...(job.jobPhotos?.after || [])]
   };
+  resetBeforePhotoRows();
   renderJobPhotoPreviews();
   discountSelect.value = String(job.discountPercent || 0);
   updateEstimateTotals();
@@ -929,9 +944,8 @@ function resetJobDialog() {
   currentMeasurement = {};
   activeMeasurementAreaId = "";
   currentJobPhotos = { before: [], after: [] };
-  if (beforePhotoUploadInput) beforePhotoUploadInput.value = "";
-  if (beforePhotoCameraInput) beforePhotoCameraInput.value = "";
   renderServiceTypeOptions("Driveway cleaning");
+  resetBeforePhotoRows();
   renderBeforePhotoSectionOptions();
   renderJobPhotoPreviews();
   discountSelect.value = "0";
@@ -1034,12 +1048,6 @@ function renderJobPhotoPreviews() {
   });
 }
 
-async function addBeforePhotosFromPicker(event) {
-  const section = beforePhotoSectionSelect?.value || "Before";
-  await addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews, { section });
-  renderBeforePhotoSectionOptions(section);
-}
-
 async function addServiceType() {
   const name = prompt("New service type name");
   const cleanName = String(name || "").trim();
@@ -1059,9 +1067,87 @@ async function addServiceType() {
   renderServiceTypeOptions(cleanName);
 }
 
-async function addBeforePhotoSection() {
-  const name = prompt("New before-photo section");
-  const cleanName = String(name || "").trim();
+function resetBeforePhotoRows() {
+  if (!beforePhotoRows) return;
+  beforePhotoRows.innerHTML = "";
+  beforePhotoRowCounter = 0;
+  addBeforePhotoRow(beforePhotoSections[0] || "");
+}
+
+function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
+  if (!beforePhotoRows) return;
+
+  beforePhotoRowCounter += 1;
+  const rowId = `before-photo-row-${beforePhotoRowCounter}`;
+  const row = document.createElement("div");
+  row.className = "before-photo-row";
+  row.dataset.beforePhotoRow = rowId;
+  row.innerHTML = `
+    <div class="before-photo-row-main">
+      <label>
+        Service area
+        <select data-before-photo-section-select aria-label="Service area">
+          ${getBeforePhotoAreaOptions(selectedArea)}
+        </select>
+      </label>
+      <div class="photo-actions">
+        <label class="photo-action-button primary">Upload
+          <input data-before-photo-upload type="file" accept="image/*" multiple>
+        </label>
+        <label class="photo-action-button">Take Picture
+          <input data-before-photo-camera type="file" accept="image/*" capture="environment">
+        </label>
+      </div>
+    </div>
+    <div class="new-before-area" data-new-before-area hidden>
+      <label>
+        New service area
+        <input data-new-before-area-name autocomplete="off" placeholder="Bathroom">
+      </label>
+      <button class="secondary-small-button" type="button" data-save-before-area>Add new Area</button>
+    </div>
+  `;
+
+  const select = row.querySelector("[data-before-photo-section-select]");
+  const uploadInput = row.querySelector("[data-before-photo-upload]");
+  const cameraInput = row.querySelector("[data-before-photo-camera]");
+  select.value = beforePhotoSections.includes(selectedArea) ? selectedArea : beforePhotoSections[0] || "";
+  select.addEventListener("change", () => handleBeforePhotoAreaChange(row));
+  uploadInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
+  cameraInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
+  row.querySelector("[data-save-before-area]").addEventListener("click", () => saveBeforePhotoArea(row));
+  beforePhotoRows.append(row);
+}
+
+function handleBeforePhotoAreaChange(row) {
+  const select = row.querySelector("[data-before-photo-section-select]");
+  const newAreaPanel = row.querySelector("[data-new-before-area]");
+  const input = row.querySelector("[data-new-before-area-name]");
+  const isAdding = select.value === "__new_area__";
+  newAreaPanel.hidden = !isAdding;
+  if (isAdding) {
+    input.value = "";
+    input.focus();
+  }
+}
+
+async function addBeforePhotosFromRow(event, row) {
+  const select = row.querySelector("[data-before-photo-section-select]");
+  if (select.value === "__new_area__") {
+    event.target.value = "";
+    handleBeforePhotoAreaChange(row);
+    return;
+  }
+
+  const section = select.value || "Before";
+  await addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews, { section });
+  addBeforePhotoRow(section);
+}
+
+async function saveBeforePhotoArea(row) {
+  const input = row.querySelector("[data-new-before-area-name]");
+  const select = row.querySelector("[data-before-photo-section-select]");
+  const cleanName = String(input.value || "").trim();
   if (!cleanName) return;
 
   if (!beforePhotoSections.some((item) => item.toLowerCase() === cleanName.toLowerCase())) {
@@ -1075,7 +1161,10 @@ async function addBeforePhotoSection() {
       return;
     }
   }
+
+  row.querySelector("[data-new-before-area]").hidden = true;
   renderBeforePhotoSectionOptions(cleanName);
+  select.value = cleanName;
 }
 
 function renderCompletionPhotoPreviews() {
