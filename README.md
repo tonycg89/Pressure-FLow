@@ -2,7 +2,7 @@
 
 PressureFlow is a pressure washing business dashboard for managing customers, estimates, contracts, scheduling, job photos, invoices, completion notices, and owner notifications.
 
-The app currently serves Precision Power Washing as a single-business tool. It is not multi-tenant SaaS yet.
+The app currently supports an owner workspace plus isolated invited-user trial workspaces. It is not a complete self-service multi-tenant SaaS yet.
 
 ## Current Workflow
 
@@ -53,7 +53,7 @@ http://localhost:3000
 - `styles.css` - dashboard styling and mobile layout
 - `db.js` - local JSON and Supabase/Postgres persistence
 - `templates/pressure-washing-service-agreement.json` - service agreement clause data
-- `assets/logo.png` - Precision Power Washing logo
+- Company logos are uploaded per account from Settings
 - `DEPLOYMENT.md` - Render/Supabase deployment notes
 - `NEXT_STEPS.md` - current upgrade backlog
 - `docs/integrations.md` - Google, Mapbox, Twilio, Square/Stripe notes
@@ -66,13 +66,11 @@ Supabase/Postgres is used when `DATABASE_URL` is set. Local JSON files are used 
 
 ## Current Architecture
 
-This is a single-business app:
+This is an early account-isolated app:
 
-- One admin login
-- One shared business profile
-- One shared customer/job database
-- One Google connection
-- One template library
+- Owner-managed invited-user logins
+- Separate business settings, jobs, customers, expenses, photos, documents, saved services, and Google connections per account
+- Company logos uploaded per account
 - Twilio SMS alert plumbing is present but disabled by default
 
-For multiple businesses/users, the app needs a multi-tenant database and account model before inviting outside users.
+Before public signup, PressureFlow still needs password recovery, email verification, starter service packs, stronger roles, and production tenant administration.

@@ -25,11 +25,11 @@ const defaultSettings = {
   finalInvoiceTiming: "immediate_after_completion",
   squareEnvironment: "sandbox",
   squareAccessToken: "",
-  squareLocationId: "LMAS5W0GDF117",
+  squareLocationId: "",
   squareWebhookSignatureKey: "",
   googleClientId: "",
   googleClientSecret: "",
-  googleRedirectUri: "http://localhost:3000/auth/google/callback",
+  googleRedirectUri: "",
   googleRefreshToken: "",
   googleCalendarId: "",
   mapboxPublicToken: "",
@@ -448,6 +448,7 @@ async function ensurePostgresSchema() {
   if (postgresSchemaReady) return;
   await getPool().query(`create table if not exists customers (
     id uuid primary key default gen_random_uuid(),
+    account_id text not null default 'owner',
     customer_name text not null,
     email text not null default '',
     phone text not null default '',
@@ -466,6 +467,7 @@ async function ensurePostgresSchema() {
   )`);
   await getPool().query(`create table if not exists expenses (
     id uuid primary key default gen_random_uuid(),
+    account_id text not null default 'owner',
     vendor text not null default '',
     category text not null default '',
     amount numeric(10, 2) not null default 0,
@@ -519,6 +521,9 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
+  await getPool().query("alter table customers add column if not exists account_id text not null default 'owner'");
+  await getPool().query("alter table expenses add column if not exists account_id text not null default 'owner'");
+  await getPool().query("alter table jobs add column if not exists account_id text not null default 'owner'");
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
   await getPool().query("alter table customers add column if not exists street_address text not null default ''");
@@ -771,8 +776,9 @@ async function upsertJob(client, job) {
       address_unit = $22,
       city = $23,
       state = $24,
-      zip = $25
-    where id = $26`,
+      zip = $25,
+      account_id = $26
+    where id = $27`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -799,6 +805,7 @@ async function upsertJob(client, job) {
       job.city || "",
       job.state || "",
       job.zip || "",
+      job.accountId || "owner",
       job.id
     ]
   );
@@ -807,6 +814,7 @@ async function upsertJob(client, job) {
 function jobFromRow(row) {
   return {
     id: row.id,
+    accountId: row.account_id || "owner",
     customerId: row.customer_id || "",
     customerName: row.customer_name,
     email: row.email,
@@ -929,11 +937,13 @@ async function upsertCustomer(client, customer) {
       customer.updatedAt || new Date().toISOString()
     ]
   );
+  await client.query("update customers set account_id = $1 where id = $2", [customer.accountId || "owner", customer.id]);
 }
 
 function customerFromRow(row) {
   return {
     id: row.id,
+    accountId: row.account_id || "owner",
     customerName: row.customer_name || "",
     email: row.email || "",
     phone: row.phone || "",
@@ -1000,11 +1010,13 @@ async function upsertExpense(client, expense) {
       expense.updatedAt || new Date().toISOString()
     ]
   );
+  await client.query("update expenses set account_id = $1 where id = $2", [expense.accountId || "owner", expense.id]);
 }
 
 function expenseFromRow(row) {
   return {
     id: row.id,
+    accountId: row.account_id || "owner",
     vendor: row.vendor || "",
     category: row.category || "",
     amount: Number(row.amount || 0),

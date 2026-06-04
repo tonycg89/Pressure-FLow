@@ -36,7 +36,7 @@ PressureFlow is in polish mode. The app works end-to-end for the Precision Power
 - Expand invited-user access into fuller roles and permissions after the first tester logins are validated.
 - Add password reset, email verification, and public trial signup after invited-user testing is stable.
 - Add selectable starter job/service packs during account creation so new users choose a focused starting catalog instead of receiving every available preset.
-- Complete per-account isolation for jobs, customers, expenses, photos, and documents before inviting outside businesses; settings and saved custom services are already account-scoped.
+- Audit account isolation during tester use, especially public estimate/contract/invoice links and third-party integrations.
 - Add a visible audit/history area per customer/job for sent estimate, accepted estimate, sent contract, signed contract, invoices, schedule confirmation, and completion notice.
 - Add better filtering/search across customers and jobs.
 - Add invoice payment status badges and clearer completed-job archive behavior.

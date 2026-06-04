@@ -3,6 +3,7 @@
 
 create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
+  account_id text not null default 'owner',
   customer_id text not null default '',
   customer_name text not null,
   email text not null,
@@ -66,6 +67,7 @@ create table if not exists jobs (
 
 create table if not exists customers (
   id uuid primary key default gen_random_uuid(),
+  account_id text not null default 'owner',
   customer_name text not null,
   email text not null default '',
   phone text not null default '',
@@ -80,12 +82,26 @@ create table if not exists customers (
 
 create table if not exists expenses (
   id uuid primary key default gen_random_uuid(),
+  account_id text not null default 'owner',
   vendor text not null default '',
   category text not null default '',
   amount numeric(10, 2) not null default 0,
   expense_date date not null default current_date,
   notes text not null default '',
   receipt_photos jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists app_users (
+  id uuid primary key default gen_random_uuid(),
+  name text not null default '',
+  email text not null unique,
+  password_hash text not null default '',
+  role text not null default 'tester',
+  disabled boolean not null default false,
+  settings jsonb not null default '{}'::jsonb,
+  last_login_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

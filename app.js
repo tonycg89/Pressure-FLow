@@ -271,7 +271,7 @@ function applySettingsDefaults() {
     depositInput.value = settings.defaultDepositPercent;
   }
   if (sidebarBusinessName) {
-    sidebarBusinessName.textContent = settings.businessName || "Precision Power Washing";
+    sidebarBusinessName.textContent = settings.businessName || "Your Company";
   }
 }
 
@@ -413,7 +413,7 @@ function fillSettingsForm() {
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
   settingsForm.elements.googleClientSecret.value = "";
-  settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "http://localhost:3000/auth/google/callback";
+  settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "";
   settingsForm.elements.mapboxPublicToken.value = settings.mapboxPublicToken || "";
   if (businessLogoInput) {
     businessLogoInput.value = "";
@@ -557,8 +557,8 @@ function clearBusinessLogo() {
 function renderBusinessLogoPreview() {
   if (!businessLogoPreview) return;
 
-  businessLogoPreview.src = settings.businessLogoDataUrl || "/assets/logo.png";
-  businessLogoPreview.hidden = false;
+  businessLogoPreview.src = settings.businessLogoDataUrl || "";
+  businessLogoPreview.hidden = !settings.businessLogoDataUrl;
 }
 
 function renderTemplates() {

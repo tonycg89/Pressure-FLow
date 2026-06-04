@@ -7,12 +7,12 @@ const {
   defaultSettings,
   statuses,
   ensureDataFile,
-  readJobs,
-  writeJobs,
-  readCustomers,
-  writeCustomers,
-  readExpenses,
-  writeExpenses,
+  readJobs: readAllJobs,
+  writeJobs: writeAllJobs,
+  readCustomers: readAllCustomers,
+  writeCustomers: writeAllCustomers,
+  readExpenses: readAllExpenses,
+  writeExpenses: writeAllExpenses,
   readUsers,
   writeUsers,
   readSettings: readGlobalSettings,
@@ -37,6 +37,64 @@ function readSettings() {
 
 function writeSettings(settings) {
   return writeUserSettings(requestContext.getStore()?.session?.userId || "", settings);
+}
+
+function readSettingsForJob(job) {
+  return readUserSettings(itemWorkspaceId(job) === "owner" ? "env-admin" : itemWorkspaceId(job));
+}
+
+function getWorkspaceId() {
+  const context = requestContext.getStore();
+  if (context?.authDisabled || context?.session?.userId === "env-admin") {
+    return "owner";
+  }
+  return context?.session?.userId || "";
+}
+
+function itemWorkspaceId(item) {
+  return item.accountId || "owner";
+}
+
+async function readWorkspaceItems(readAll) {
+  const items = await readAll();
+  const workspaceId = getWorkspaceId();
+  return workspaceId ? items.filter((item) => itemWorkspaceId(item) === workspaceId) : items;
+}
+
+async function writeWorkspaceItems(readAll, writeAll, items) {
+  const workspaceId = getWorkspaceId();
+  if (!workspaceId) {
+    return writeAll(items);
+  }
+
+  const allItems = await readAll();
+  const otherWorkspaceItems = allItems.filter((item) => itemWorkspaceId(item) !== workspaceId);
+  const scopedItems = items.map((item) => ({ ...item, accountId: workspaceId }));
+  return writeAll([...scopedItems, ...otherWorkspaceItems]);
+}
+
+function readJobs() {
+  return readWorkspaceItems(readAllJobs);
+}
+
+function writeJobs(items) {
+  return writeWorkspaceItems(readAllJobs, writeAllJobs, items);
+}
+
+function readCustomers() {
+  return readWorkspaceItems(readAllCustomers);
+}
+
+function writeCustomers(items) {
+  return writeWorkspaceItems(readAllCustomers, writeAllCustomers, items);
+}
+
+function readExpenses() {
+  return readWorkspaceItems(readAllExpenses);
+}
+
+function writeExpenses(items) {
+  return writeWorkspaceItems(readAllExpenses, writeAllExpenses, items);
 }
 
 const contentTypes = {
@@ -550,7 +608,7 @@ async function approvePublicEstimate(jobId, token) {
     return null;
   }
 
-  const settings = await readSettings();
+  const settings = await readSettingsForJob(job);
   job.status = "Contract Sent";
   job.estimateApprovedAt = new Date().toISOString();
   job.estimateRejectedAt = "";
@@ -646,7 +704,7 @@ async function signPublicContract(jobId, token, signerName, signedDate) {
     return null;
   }
 
-  const settings = await readSettings();
+  const settings = await readSettingsForJob(job);
   job.status = "Contract Signed";
   job.contractSignerName = String(signerName || "").trim();
   job.contractSignedAt = new Date().toISOString();
@@ -714,7 +772,7 @@ function getBaseUrlFromLink(link) {
 }
 
 function getBusinessName(settings = {}) {
-  return settings.businessName || "Precision Power Washing";
+  return settings.businessName || "Your Company";
 }
 
 function formatAlertMoney(amount) {
@@ -725,19 +783,12 @@ function formatAlertCustomer(job) {
   return `${job.customerName || "Customer"} - ${job.address || "No address"}`;
 }
 
-function getLogoUrl(baseUrl = "") {
-  const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
-  return root ? `${root}/assets/logo.png` : "/assets/logo.png";
-}
-
-function getBusinessLogoSrc(settings = {}, baseUrl = "") {
-  return String(settings.businessLogoDataUrl || "").startsWith("data:image/")
-    ? settings.businessLogoDataUrl
-    : getLogoUrl(baseUrl);
-}
-
 function renderLogoHtml(settings = {}, baseUrl = "", width = 190) {
-  return `<img src="${escapeHtml(getBusinessLogoSrc(settings, baseUrl))}" alt="${escapeHtml(getBusinessName(settings))}" style="display:block;max-width:${width}px;width:100%;height:auto;margin:0 0 14px">`;
+  const logo = String(settings.businessLogoDataUrl || "");
+  if (!logo.startsWith("data:image/")) {
+    return "";
+  }
+  return `<img src="${escapeHtml(logo)}" alt="${escapeHtml(getBusinessName(settings))}" style="display:block;max-width:${width}px;width:100%;height:auto;margin:0 0 14px">`;
 }
 
 function buildEstimateMailto(job, settings = {}) {
@@ -1207,7 +1258,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
 }
 
 function renderEstimateApprovalWordTemplate(settings) {
-  const businessName = settings.businessName || "Precision Power Washing";
+  const businessName = settings.businessName || "Your Company";
   return `<!doctype html>
 <html>
   <head>
@@ -1631,7 +1682,7 @@ function renderContractTerms(job, options = {}) {
 
 function renderContractProjectDetails(job, depositAmount) {
   const details = [
-    ["Business", "Precision Power Washing"],
+    ["Business", "Your Company"],
     ["Client", job.customerName],
     ["Service Address", job.address],
     ["Approved Estimate", "PressureFlow estimate approved online"],
@@ -1813,7 +1864,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateApprovalPage(job, await readSettings()));
+    sendHtml(response, 200, renderEstimateApprovalPage(job, await readSettingsForJob(job)));
     return;
   }
 
@@ -1841,7 +1892,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Estimate declined", "Thank you for letting us know. Precision Power Washing has recorded your response and may follow up if needed."));
+    sendHtml(response, 200, renderEstimateMessagePage("Estimate declined", "Thank you for letting us know. The business has recorded your response and may follow up if needed."));
     return;
   }
 
@@ -1854,7 +1905,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderContractSigningPage(job, { settings: await readSettings() }));
+    sendHtml(response, 200, renderContractSigningPage(job, { settings: await readSettingsForJob(job) }));
     return;
   }
 
@@ -1867,7 +1918,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderContractSigningPage(job, { executedOnly: true, settings: await readSettings() }));
+    sendHtml(response, 200, renderContractSigningPage(job, { executedOnly: true, settings: await readSettingsForJob(job) }));
     return;
   }
 
@@ -1894,7 +1945,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderCompletionProofPage(job, await readSettings()));
+    sendHtml(response, 200, renderCompletionProofPage(job, await readSettingsForJob(job)));
     return;
   }
 
@@ -1908,7 +1959,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderPressureFlowInvoicePage(job, await readSettings(), invoiceType));
+    sendHtml(response, 200, renderPressureFlowInvoicePage(job, await readSettingsForJob(job), invoiceType));
     return;
   }
 
@@ -2638,7 +2689,7 @@ function normalizeSettings(input, existing) {
     squareWebhookSignatureKey: existing.squareWebhookSignatureKey || "",
     googleClientId: String(input.googleClientId || "").trim(),
     googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
-    googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || existing.googleRedirectUri || "http://localhost:3000/auth/google/callback",
+    googleRedirectUri: String(input.googleRedirectUri || "").trim() || existing.googleRedirectUri,
     googleCalendarId: String(input.googleCalendarId || "").trim(),
     mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
     zellePayment: String(input.zellePayment || "").trim(),
@@ -2750,7 +2801,7 @@ async function handleSquareWebhook(event) {
     job.status = "Paid";
     job.squareFinalInvoiceStatus = invoice.status || "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
-    await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+    await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
     await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 
@@ -3117,7 +3168,7 @@ async function cancelStoredInvoiceIfPossible(job, invoiceType) {
   }
 
   try {
-    const settings = await readSettings();
+    const settings = await readSettingsForJob(job);
     const invoice = await getSquareInvoice(settings, invoiceId);
     if (!isSquareInvoicePaid(invoice) && invoice.status !== "CANCELED") {
       await cancelSquareInvoice(settings, invoice.id, invoice.version);
@@ -3516,7 +3567,7 @@ async function handleStripeWebhook(event) {
     job.status = "Paid";
     job.squareFinalInvoiceStatus = "PAID";
     job.squareFinalPaidAt = new Date().toISOString();
-    await sendCompletionCertificateEmailSafe(job, await readSettings(), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
+    await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
     await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
   }
 
