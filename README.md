@@ -70,6 +70,8 @@ This is an early account-isolated app:
 
 - Owner-managed invited-user logins
 - Separate business settings, jobs, customers, expenses, photos, documents, saved services, and Google connections per account
+- Per-account onboarding service selection with saved default service rates
+- Per-account Square, Stripe, and QuickBooks credential settings for future connected payments/accounting
 - Company logos uploaded per account
 - Twilio SMS alert plumbing is present but disabled by default
 

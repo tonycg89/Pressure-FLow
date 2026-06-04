@@ -592,6 +592,18 @@
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
+        <section class="settings-section onboarding-settings" aria-label="Onboarding services">
+          <div class="section-header">
+            <div>
+              <h3>Onboarding services</h3>
+              <p class="form-note">Choose the services this account offers, then set the default rates for new jobs.</p>
+            </div>
+            <button id="saveOnboardingServicesButton" class="secondary-small-button" type="button">Save Services</button>
+          </div>
+          <div id="onboardingServiceList" class="onboarding-service-list"></div>
+          <p id="onboardingStatus" class="form-note"></p>
+        </section>
+
         <div class="settings-grid">
           <label>
             Business name
@@ -641,15 +653,15 @@
             Google calendar ID
             <input name="googleCalendarId" placeholder="Your Google Calendar ID">
           </label>
-          <label class="full-field">
+          <label id="googleClientIdField" class="full-field">
             Google client ID
             <input name="googleClientId" autocomplete="off" placeholder="Google OAuth client ID">
           </label>
-          <label class="full-field">
+          <label id="googleClientSecretField" class="full-field">
             Google client secret
             <input name="googleClientSecret" type="password" autocomplete="off" placeholder="Enter Google client secret">
           </label>
-          <label class="full-field">
+          <label id="googleRedirectUriField" class="full-field">
             Google redirect URI
             <input name="googleRedirectUri" placeholder="Your PressureFlow Google OAuth callback URL">
           </label>
@@ -658,6 +670,74 @@
             <input name="mapboxPublicToken" autocomplete="off" placeholder="Required for map measurements">
           </label>
         </div>
+
+        <section class="settings-section" aria-label="Payment and accounting integrations">
+          <div class="section-header">
+            <div>
+              <h3>Payment and accounting</h3>
+              <p class="form-note">Each account can save its own processor and bookkeeping credentials. Blank secret fields keep the saved value.</p>
+            </div>
+          </div>
+          <div class="integration-grid">
+            <section class="integration-panel">
+              <h4>Square</h4>
+              <label>
+                Environment
+                <select name="squareEnvironment">
+                  <option value="sandbox">Sandbox</option>
+                  <option value="production">Production</option>
+                </select>
+              </label>
+              <label>
+                Location ID
+                <input name="squareLocationId" autocomplete="off" placeholder="Square location ID">
+              </label>
+              <label>
+                Access token
+                <input name="squareAccessToken" type="password" autocomplete="off" placeholder="Enter Square access token">
+              </label>
+              <label>
+                Webhook signature key
+                <input name="squareWebhookSignatureKey" type="password" autocomplete="off" placeholder="Enter Square webhook key">
+              </label>
+              <p id="squareIntegrationStatus" class="form-note"></p>
+            </section>
+
+            <section class="integration-panel">
+              <h4>Stripe</h4>
+              <label>
+                Secret key
+                <input name="stripeSecretKey" type="password" autocomplete="off" placeholder="Enter Stripe secret key">
+              </label>
+              <label>
+                Webhook secret
+                <input name="stripeWebhookSecret" type="password" autocomplete="off" placeholder="Enter Stripe webhook secret">
+              </label>
+              <p id="stripeIntegrationStatus" class="form-note"></p>
+            </section>
+
+            <section class="integration-panel">
+              <h4>QuickBooks</h4>
+              <label>
+                Company ID
+                <input name="quickBooksCompanyId" autocomplete="off" placeholder="QuickBooks realm/company ID">
+              </label>
+              <label>
+                Client ID
+                <input name="quickBooksClientId" autocomplete="off" placeholder="QuickBooks app client ID">
+              </label>
+              <label>
+                Client secret
+                <input name="quickBooksClientSecret" type="password" autocomplete="off" placeholder="Enter QuickBooks client secret">
+              </label>
+              <label>
+                Redirect URI
+                <input name="quickBooksRedirectUri" autocomplete="off" placeholder="QuickBooks OAuth redirect URI">
+              </label>
+              <p id="quickBooksIntegrationStatus" class="form-note"></p>
+            </section>
+          </div>
+        </section>
 
         <section id="teamAccessSection" class="settings-section" aria-label="Team access">
           <div class="section-header">

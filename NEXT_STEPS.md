@@ -35,7 +35,7 @@ PressureFlow is in polish mode. The app works end-to-end for the Precision Power
 
 - Expand invited-user access into fuller roles and permissions after the first tester logins are validated.
 - Add password reset, email verification, and public trial signup after invited-user testing is stable.
-- Add selectable starter job/service packs during account creation so new users choose a focused starting catalog instead of receiving every available preset.
+- Expand onboarding into first-login account setup with service defaults, integration prompts, and progress tracking.
 - Audit account isolation during tester use, especially public estimate/contract/invoice links and third-party integrations.
 - Add a visible audit/history area per customer/job for sent estimate, accepted estimate, sent contract, signed contract, invoices, schedule confirmation, and completion notice.
 - Add better filtering/search across customers and jobs.
@@ -61,7 +61,7 @@ Also move photos/templates/contracts/invoices to object storage such as Supabase
 
 ## Nice-To-Have Later
 
-- Stripe credit card checkout
+- Complete Square/Stripe/QuickBooks OAuth-style account connection flows and webhook routing per account
 - Twilio SMS alerts after the app has a valid terms/privacy web presence and A2P campaign approval
 - Customer scheduling portal
 - Technician-only mobile workflow

@@ -23,6 +23,39 @@ const builtInServiceCatalog = [
   { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
 
+const onboardingServiceLibrary = [
+  { name: "Pressure Washing", unit: "SqFt", price: 0.2 },
+  { name: "Driveway Cleaning", unit: "SqFt", price: 0.22 },
+  { name: "Sidewalk Cleaning", unit: "SqFt", price: 0.18 },
+  { name: "Patio Cleaning", unit: "SqFt", price: 0.25 },
+  { name: "Pool Deck Cleaning", unit: "SqFt", price: 0.28 },
+  { name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
+  { name: "Paver Sealing", unit: "SqFt", price: 1.35 },
+  { name: "House Washing", unit: "SqFt", price: 0.25 },
+  { name: "Soft Washing", unit: "SqFt", price: 0.28 },
+  { name: "Roof Wash", unit: "SqFt", price: 0.4 },
+  { name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
+  { name: "Gutter Cleaning", unit: "LNF", price: 1 },
+  { name: "Gutter Brightening", unit: "LNF", price: 1.5 },
+  { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
+  { name: "Deck Cleaning", unit: "SqFt", price: 0.35 },
+  { name: "Deck Staining", unit: "SqFt", price: 2.25 },
+  { name: "Concrete Sealing", unit: "SqFt", price: 0.85 },
+  { name: "Oil Stain Cleanup", unit: "Qty", price: 75 },
+  { name: "Rust Removal", unit: "Qty", price: 85 },
+  { name: "Graffiti Removal", unit: "SqFt", price: 1.75 },
+  { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
+  { name: "Window Cleaning", unit: "Each", price: 8 },
+  { name: "Trash Can Cleaning", unit: "Qty", price: 15 },
+  { name: "Fleet Washing", unit: "Each", price: 45 },
+  { name: "Heavy Equipment Washing", unit: "Each", price: 125 },
+  { name: "Commercial Exterior Cleaning", unit: "SqFt", price: 0.18 },
+  { name: "Restaurant Pad Cleaning", unit: "SqFt", price: 0.35 },
+  { name: "Dumpster Pad Cleaning", unit: "Each", price: 95 },
+  { name: "Holiday Light Installation", unit: "LNF", price: 5 },
+  { name: "Christmas Light Removal", unit: "LNF", price: 1.5 }
+];
+
 const builtInServiceTypes = [
   "Driveway cleaning",
   "House wash",
@@ -86,9 +119,18 @@ const expenseForm = document.querySelector("#expenseForm");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
+const onboardingServiceList = document.querySelector("#onboardingServiceList");
+const saveOnboardingServicesButton = document.querySelector("#saveOnboardingServicesButton");
+const onboardingStatus = document.querySelector("#onboardingStatus");
+const squareIntegrationStatus = document.querySelector("#squareIntegrationStatus");
+const stripeIntegrationStatus = document.querySelector("#stripeIntegrationStatus");
+const quickBooksIntegrationStatus = document.querySelector("#quickBooksIntegrationStatus");
 const businessLogoInput = document.querySelector("#businessLogoInput");
 const businessLogoPreview = document.querySelector("#businessLogoPreview");
 const clearBusinessLogoButton = document.querySelector("#clearBusinessLogoButton");
+const googleClientIdField = document.querySelector("#googleClientIdField");
+const googleClientSecretField = document.querySelector("#googleClientSecretField");
+const googleRedirectUriField = document.querySelector("#googleRedirectUriField");
 const mapboxTokenField = document.querySelector("#mapboxTokenField");
 const backupExportLink = document.querySelector("#backupExportLink");
 const userNameInput = document.querySelector("#userNameInput");
@@ -201,6 +243,7 @@ async function init() {
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   customServiceButton?.addEventListener("click", openCustomServiceDialog);
   customServiceForm?.addEventListener("submit", addCustomService);
+  saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
   addServiceTypeButton?.addEventListener("click", addServiceType);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
   savedMeasurementsPanel?.addEventListener("toggle", () => {
@@ -286,8 +329,8 @@ function applySettingsDefaults() {
 
 function syncServiceCatalog() {
   const customServices = Array.isArray(settings.customServices) ? settings.customServices : [];
-  serviceCatalog = [...builtInServiceCatalog, ...customServices]
-    .filter((service, index, all) => all.findIndex((item) => item.name.toLowerCase() === String(service.name || "").toLowerCase()) === index);
+  serviceCatalog = [...new Map([...builtInServiceCatalog, ...customServices]
+    .map((service) => [String(service.name || "").toLowerCase(), service])).values()];
   defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
   serviceTypes = [...builtInServiceTypes, ...(settings.customServiceTypes || [])]
     .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
@@ -295,6 +338,7 @@ function syncServiceCatalog() {
     .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
   renderServiceTypeOptions();
   renderBeforePhotoSectionOptions();
+  renderOnboardingServices();
 }
 
 function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?.value || "") {
@@ -324,6 +368,90 @@ function getBeforePhotoAreaOptions(selectedValue = "") {
   `);
   options.push('<option value="__new_area__">Add new Area</option>');
   return options.join("");
+}
+
+function renderOnboardingServices() {
+  if (!onboardingServiceList) return;
+
+  const savedServices = Array.isArray(settings.customServices) ? settings.customServices : [];
+  const savedByName = new Map(savedServices.map((service) => [String(service.name || "").toLowerCase(), service]));
+  onboardingServiceList.innerHTML = onboardingServiceLibrary.map((service) => {
+    const saved = savedByName.get(service.name.toLowerCase());
+    const checked = Boolean(saved);
+    const rate = Number(saved?.price ?? service.price ?? 0);
+    const unit = saved?.unit || service.unit;
+    return `
+      <div class="onboarding-service-row${checked ? " selected" : ""}" data-onboarding-service="${escapeHtml(service.name)}">
+        <label class="checkbox-field">
+          <input type="checkbox" data-onboarding-service-toggle ${checked ? "checked" : ""}>
+          <span>${escapeHtml(service.name)}</span>
+        </label>
+        <span class="service-unit">${escapeHtml(unit)}</span>
+        <label>
+          Rate
+          <input data-onboarding-service-rate type="number" min="0" step="0.01" value="${rate}" ${checked ? "" : "disabled"}>
+        </label>
+      </div>
+    `;
+  }).join("");
+
+  onboardingServiceList.querySelectorAll("[data-onboarding-service-toggle]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const row = checkbox.closest("[data-onboarding-service]");
+      row.classList.toggle("selected", checkbox.checked);
+      row.querySelector("[data-onboarding-service-rate]").disabled = !checkbox.checked;
+    });
+  });
+
+  if (onboardingStatus) {
+    const selectedCount = savedServices.filter((service) => service.source === "onboarding").length;
+    onboardingStatus.textContent = settings.onboardingCompleted
+      ? `${selectedCount || savedServices.length} default services saved for this account.`
+      : "Select services and save rates to finish account setup.";
+  }
+}
+
+async function saveOnboardingServices() {
+  if (!onboardingServiceList) return;
+
+  const selectedServices = Array.from(onboardingServiceList.querySelectorAll("[data-onboarding-service]"))
+    .filter((row) => row.querySelector("[data-onboarding-service-toggle]").checked)
+    .map((row) => {
+      const libraryService = onboardingServiceLibrary.find((service) => service.name === row.dataset.onboardingService);
+      return {
+        id: `onboarding-${slugifyServiceName(libraryService.name)}`,
+        source: "onboarding",
+        name: libraryService.name,
+        unit: libraryService.unit,
+        price: Number(row.querySelector("[data-onboarding-service-rate]").value || libraryService.price || 0)
+      };
+    });
+
+  if (!selectedServices.length) {
+    onboardingStatus.textContent = "Choose at least one service.";
+    return;
+  }
+
+  const preservedServices = (settings.customServices || []).filter((service) => service.source !== "onboarding");
+  const customServices = [...preservedServices, ...selectedServices];
+
+  try {
+    onboardingStatus.textContent = "Saving service defaults...";
+    const data = await apiRequest("/api/settings", { ...settings, customServices, onboardingCompleted: true });
+    settings = data.settings;
+    syncServiceCatalog();
+    renderLineItems(getEstimateLineItems().length ? getEstimateLineItems() : [{ ...defaultEstimateService, quantity: 1 }]);
+    onboardingStatus.textContent = `${selectedServices.length} default services saved for this account.`;
+  } catch (error) {
+    onboardingStatus.textContent = error.message;
+  }
+}
+
+function slugifyServiceName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || crypto.randomUUID();
 }
 
 async function loadJobs() {
@@ -444,7 +572,7 @@ function openSettings() {
 
 function applyAccountVisibility() {
   const isOwner = Boolean(currentUser?.isOwner);
-  [teamAccessSection, mapboxTokenField, backupExportLink].forEach((element) => {
+  [teamAccessSection, mapboxTokenField, backupExportLink, googleClientIdField, googleClientSecretField, googleRedirectUriField].forEach((element) => {
     if (!element) return;
     element.hidden = !isOwner;
     element.style.display = isOwner ? "" : "none";
@@ -467,6 +595,22 @@ function fillSettingsForm() {
   settingsForm.elements.googleClientSecret.placeholder = settings.hasGoogleClientSecret ? "Leave blank to keep saved secret" : "Enter Google client secret";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "";
   settingsForm.elements.mapboxPublicToken.value = currentUser?.isOwner ? settings.mapboxPublicToken || "" : "";
+  settingsForm.elements.squareEnvironment.value = settings.squareEnvironment || "sandbox";
+  settingsForm.elements.squareLocationId.value = settings.squareLocationId || "";
+  settingsForm.elements.squareAccessToken.value = "";
+  settingsForm.elements.squareAccessToken.placeholder = settings.hasSquareAccessToken ? "Leave blank to keep saved token" : "Enter Square access token";
+  settingsForm.elements.squareWebhookSignatureKey.value = "";
+  settingsForm.elements.squareWebhookSignatureKey.placeholder = settings.hasSquareWebhookSignatureKey ? "Leave blank to keep saved webhook key" : "Enter Square webhook key";
+  settingsForm.elements.stripeSecretKey.value = "";
+  settingsForm.elements.stripeSecretKey.placeholder = settings.hasStripeSecretKey ? "Leave blank to keep saved Stripe key" : "Enter Stripe secret key";
+  settingsForm.elements.stripeWebhookSecret.value = "";
+  settingsForm.elements.stripeWebhookSecret.placeholder = settings.hasStripeWebhookSecret ? "Leave blank to keep saved webhook secret" : "Enter Stripe webhook secret";
+  settingsForm.elements.quickBooksCompanyId.value = settings.quickBooksCompanyId || "";
+  settingsForm.elements.quickBooksClientId.value = settings.quickBooksClientId || "";
+  settingsForm.elements.quickBooksClientSecret.value = "";
+  settingsForm.elements.quickBooksClientSecret.placeholder = settings.hasQuickBooksClientSecret ? "Leave blank to keep saved secret" : "Enter QuickBooks client secret";
+  settingsForm.elements.quickBooksRedirectUri.value = settings.quickBooksRedirectUri || "";
+  renderIntegrationStatuses();
   if (businessLogoInput) {
     businessLogoInput.value = "";
   }
@@ -474,6 +618,24 @@ function fillSettingsForm() {
 
   const googleText = settings.hasGoogleRefreshToken ? " Google Calendar connected." : settings.hasGoogleClientSecret ? " Google secret saved. Connect Calendar next." : "";
   settingsStatus.textContent = googleText || "PressureFlow invoices will use the payment methods saved above.";
+}
+
+function renderIntegrationStatuses() {
+  if (squareIntegrationStatus) {
+    squareIntegrationStatus.textContent = settings.hasSquareAccessToken
+      ? `Square token saved${settings.squareLocationId ? ` for ${settings.squareLocationId}` : ""}.`
+      : "Square is not connected yet.";
+  }
+  if (stripeIntegrationStatus) {
+    stripeIntegrationStatus.textContent = settings.hasStripeSecretKey
+      ? "Stripe secret key saved for this account."
+      : "Stripe is not connected yet.";
+  }
+  if (quickBooksIntegrationStatus) {
+    quickBooksIntegrationStatus.textContent = settings.quickBooksCompanyId || settings.hasQuickBooksClientSecret
+      ? "QuickBooks profile saved for this account."
+      : "QuickBooks is not connected yet.";
+  }
 }
 
 async function saveSettings(event) {
@@ -488,6 +650,9 @@ async function saveSettings(event) {
   payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
   if (!currentUser?.isOwner) {
     delete payload.mapboxPublicToken;
+    delete payload.googleClientId;
+    delete payload.googleClientSecret;
+    delete payload.googleRedirectUri;
   }
 
   try {

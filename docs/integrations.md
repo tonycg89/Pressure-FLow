@@ -9,15 +9,18 @@ Purpose:
 - Create calendar events when a job is scheduled
 - Send estimate, contract, invoice, schedule confirmation, and completion emails
 
-Environment variables:
+Platform environment variables:
 
 ```text
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI
-GOOGLE_REFRESH_TOKEN
-GOOGLE_CALENDAR_ID
 ```
+
+Per-account settings:
+
+- Google calendar ID
+- Google refresh token from the account's Connect Google Calendar flow
 
 Production redirect URI:
 
@@ -78,7 +81,7 @@ Events:
 - Deposit paid
 - Final invoice paid
 
-Environment variables:
+Platform environment variable:
 
 ```text
 ENABLE_TWILIO_ALERTS=true
@@ -111,9 +114,9 @@ Credit card payments are not the current priority.
 
 ## Square
 
-Square was used earlier for sandbox invoice testing and can remain as optional/legacy plumbing.
+Square can now be saved per account from Settings.
 
-Environment variables:
+Optional platform fallback variables:
 
 ```text
 SQUARE_ENV
@@ -122,25 +125,41 @@ SQUARE_LOCATION_ID
 SQUARE_WEBHOOK_SIGNATURE_KEY
 ```
 
-Current recommendation:
+Per-account settings:
 
-- Keep Square optional for now.
-- Use PressureFlow invoices while the workflow is being polished.
+- Square environment
+- Square location ID
+- Square access token
+- Square webhook signature key
 
 ## Stripe
 
-Stripe checkout/webhook foundation may exist in the code, but credit card processing is intentionally postponed.
+Stripe checkout can use each account's saved Stripe secret key. The webhook secret can be saved per account for readiness, while the current shared webhook endpoint still supports the Render fallback secret.
 
-Environment variables:
+Optional platform fallback variables:
 
 ```text
 STRIPE_SECRET_KEY
 STRIPE_WEBHOOK_SECRET
 ```
 
-Current recommendation:
+Per-account settings:
 
-- Revisit Stripe after the core workflow and mobile experience are polished.
+- Stripe secret key
+- Stripe webhook secret
+
+## QuickBooks
+
+QuickBooks profile fields are stored per account so each tester can prepare their own accounting connection without Render changes.
+
+Per-account settings:
+
+- QuickBooks company/realm ID
+- QuickBooks client ID
+- QuickBooks client secret
+- QuickBooks redirect URI
+
+OAuth token exchange and invoice/customer sync are still the next integration step.
 
 ## Supabase
 

@@ -48,9 +48,9 @@ Google:
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=https://pressure-flow.onrender.com/auth/google/callback
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_CALENDAR_ID=
 ```
+
+Each account saves its own calendar ID and connected Google refresh token from Settings.
 
 Mapbox:
 
@@ -72,7 +72,7 @@ ADMIN_ALERT_PHONE=
 
 Leave `ENABLE_TWILIO_ALERTS` unset or set to `false` while SMS is deferred. Set it to `true` only after the business has a valid terms/privacy web presence and Twilio A2P approval.
 
-Optional/legacy payment integrations:
+Optional platform fallback payment variables:
 
 ```text
 SQUARE_ENV=sandbox
@@ -82,6 +82,8 @@ SQUARE_WEBHOOK_SIGNATURE_KEY=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 ```
+
+For tester/customer accounts, enter Square, Stripe, and QuickBooks credentials inside PressureFlow Settings instead of adding them to Render.
 
 ## Google Console Requirements
 

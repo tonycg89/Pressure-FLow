@@ -841,6 +841,73 @@ label {
   display: none;
 }
 
+.onboarding-settings {
+  margin-bottom: 16px;
+}
+
+.onboarding-service-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.onboarding-service-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 92px;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.onboarding-service-row.selected {
+  border-color: #9bc8b5;
+  background: #f2f7f5;
+}
+
+.onboarding-service-row .checkbox-field {
+  align-self: center;
+  margin: 0;
+}
+
+.onboarding-service-row label:not(.checkbox-field) {
+  margin: 0;
+}
+
+.service-unit {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.integration-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.integration-panel h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.integration-panel label {
+  margin: 0;
+}
+
 .section-header-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1618,6 +1685,9 @@ label {
   .field-with-action,
   .settings-grid,
   .settings-user-grid,
+  .onboarding-service-list,
+  .onboarding-service-row,
+  .integration-grid,
   .photo-section-list,
   .before-photo-row-main,
   .new-before-area,

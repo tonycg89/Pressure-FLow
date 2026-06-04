@@ -161,23 +161,37 @@ const loginPage = `<!doctype html>
   </body>
 </html>`;
 
-function publicSettings(settings) {
+function publicSettings(settings, options = {}) {
   const {
     squareAccessToken,
     squareWebhookSignatureKey,
+    stripeSecretKey,
+    stripeWebhookSecret,
+    quickBooksClientSecret,
+    quickBooksRefreshToken,
     googleClientSecret,
     googleRefreshToken,
     customTemplates,
     ...publicValues
   } = settings;
-  return {
+  const values = {
     ...publicValues,
     customTemplates: getTemplateMetadata(customTemplates || []),
     hasSquareAccessToken: Boolean(squareAccessToken),
     hasSquareWebhookSignatureKey: Boolean(squareWebhookSignatureKey),
+    hasStripeSecretKey: Boolean(stripeSecretKey),
+    hasStripeWebhookSecret: Boolean(stripeWebhookSecret),
+    hasQuickBooksClientSecret: Boolean(quickBooksClientSecret),
+    hasQuickBooksRefreshToken: Boolean(quickBooksRefreshToken),
     hasGoogleClientSecret: Boolean(googleClientSecret),
     hasGoogleRefreshToken: Boolean(googleRefreshToken)
   };
+  if (options.hidePlatformCredentials) {
+    values.googleClientId = "";
+    values.googleRedirectUri = "";
+    values.hasGoogleClientSecret = false;
+  }
+  return values;
 }
 
 async function readRequestBody(request) {
@@ -1536,7 +1550,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
       <h2>Payment Options</h2>
       ${renderPaymentMethods(settings)}
       ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
-      ${renderCardPaymentForm(job, invoiceType)}
+      ${renderCardPaymentForm(job, settings, invoiceType)}
       ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
       ${!isDeposit ? `<h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}<h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}` : ""}
       <button type="button" onclick="window.print()">Print or Save as PDF</button>
@@ -1545,8 +1559,8 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
 </html>`;
 }
 
-function renderCardPaymentForm(job, invoiceType) {
-  if (!process.env.STRIPE_SECRET_KEY) {
+function renderCardPaymentForm(job, settings, invoiceType) {
+  if (!settings.stripeSecretKey) {
     return "";
   }
 
@@ -2102,7 +2116,7 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/settings") {
-    sendJson(response, 200, { settings: publicSettings(await readSettings()) });
+    sendJson(response, 200, { settings: publicSettings(await readSettings(), { hidePlatformCredentials: !isOwnerSession() }) });
     return;
   }
 
@@ -2152,7 +2166,7 @@ async function handleApi(request, response, url) {
       settings.mapboxPublicToken = "";
     }
     await writeSettings(settings);
-    sendJson(response, 200, { settings: publicSettings(settings) });
+    sendJson(response, 200, { settings: publicSettings(settings, { hidePlatformCredentials: !isOwnerSession() }) });
     return;
   }
 
@@ -2276,7 +2290,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const checkout = await createStripeCheckoutSession(job, invoiceType, getAppBaseUrl(request));
+    const checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
     response.writeHead(303, { location: checkout.url });
     response.end();
     return;
@@ -2691,19 +2705,27 @@ function normalizeSettings(input, existing) {
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
     finalInvoiceTiming: "immediate_after_completion",
-    squareEnvironment: existing.squareEnvironment || "sandbox",
-    squareAccessToken: existing.squareAccessToken || "",
-    squareLocationId: existing.squareLocationId || "",
-    squareWebhookSignatureKey: existing.squareWebhookSignatureKey || "",
-    googleClientId: String(input.googleClientId || "").trim(),
+    squareEnvironment: ["sandbox", "production"].includes(input.squareEnvironment) ? input.squareEnvironment : existing.squareEnvironment || "sandbox",
+    squareAccessToken: String(input.squareAccessToken || "").trim() || existing.squareAccessToken || "",
+    squareLocationId: String(input.squareLocationId || "").trim() || existing.squareLocationId || "",
+    squareWebhookSignatureKey: String(input.squareWebhookSignatureKey || "").trim() || existing.squareWebhookSignatureKey || "",
+    stripeSecretKey: String(input.stripeSecretKey || "").trim() || existing.stripeSecretKey || "",
+    stripeWebhookSecret: String(input.stripeWebhookSecret || "").trim() || existing.stripeWebhookSecret || "",
+    quickBooksCompanyId: String(input.quickBooksCompanyId || "").trim() || existing.quickBooksCompanyId || "",
+    quickBooksClientId: String(input.quickBooksClientId || "").trim() || existing.quickBooksClientId || "",
+    quickBooksClientSecret: String(input.quickBooksClientSecret || "").trim() || existing.quickBooksClientSecret || "",
+    quickBooksRedirectUri: String(input.quickBooksRedirectUri || "").trim() || existing.quickBooksRedirectUri || "",
+    quickBooksRefreshToken: String(input.quickBooksRefreshToken || "").trim() || existing.quickBooksRefreshToken || "",
+    googleClientId: Object.hasOwn(input, "googleClientId") ? String(input.googleClientId || "").trim() : existing.googleClientId || "",
     googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
-    googleRedirectUri: String(input.googleRedirectUri || "").trim() || existing.googleRedirectUri,
+    googleRedirectUri: Object.hasOwn(input, "googleRedirectUri") ? String(input.googleRedirectUri || "").trim() || existing.googleRedirectUri : existing.googleRedirectUri,
     googleCalendarId: String(input.googleCalendarId || "").trim(),
     mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
     zellePayment: String(input.zellePayment || "").trim(),
     cashAppPayment: String(input.cashAppPayment || "").trim(),
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
+    onboardingCompleted: Boolean(input.onboardingCompleted ?? existing.onboardingCompleted),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
     customServices: normalizeCustomServices(input.customServices ?? existing.customServices),
     customServiceTypes: normalizeStringList(input.customServiceTypes ?? existing.customServiceTypes),
@@ -2712,10 +2734,11 @@ function normalizeSettings(input, existing) {
 }
 
 function normalizeCustomServices(value) {
-  const allowedUnits = new Set(["Qty", "SqFt", "Hours", "LFN", "Each"]);
+  const allowedUnits = new Set(["Qty", "QTY", "SqFt", "Hours", "LFN", "LNF", "Each"]);
   return (Array.isArray(value) ? value : [])
     .map((service) => ({
       id: String(service.id || crypto.randomUUID()),
+      source: service.source === "onboarding" ? "onboarding" : "custom",
       name: String(service.name || "").trim().slice(0, 100),
       unit: allowedUnits.has(service.unit) ? service.unit : "Qty",
       price: Math.max(Number(service.price || 0), 0)
@@ -3494,10 +3517,10 @@ async function createSquareInvoice(job, settings, invoiceType) {
   };
 }
 
-async function createStripeCheckoutSession(job, invoiceType, baseUrl) {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) {
+  const secretKey = settings.stripeSecretKey || process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    throw new Error("Stripe is not configured yet. Add STRIPE_SECRET_KEY in Render.");
+    throw new Error("Stripe is not configured yet. Add the Stripe secret key in Settings.");
   }
 
   const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
@@ -3510,7 +3533,7 @@ async function createStripeCheckoutSession(job, invoiceType, baseUrl) {
   const params = new URLSearchParams({
     mode: "payment",
     "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][product_data][name]": `${getBusinessName()} ${invoiceType === "deposit" ? "deposit" : "final balance"}`,
+    "line_items[0][price_data][product_data][name]": `${getBusinessName(settings)} ${invoiceType === "deposit" ? "deposit" : "final balance"}`,
     "line_items[0][price_data][product_data][description]": `${job.serviceType} at ${job.address}`,
     "line_items[0][price_data][unit_amount]": String(amount),
     "line_items[0][quantity]": "1",

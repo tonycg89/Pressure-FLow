@@ -27,6 +27,13 @@ const defaultSettings = {
   squareAccessToken: "",
   squareLocationId: "",
   squareWebhookSignatureKey: "",
+  stripeSecretKey: "",
+  stripeWebhookSecret: "",
+  quickBooksCompanyId: "",
+  quickBooksClientId: "",
+  quickBooksClientSecret: "",
+  quickBooksRedirectUri: "",
+  quickBooksRefreshToken: "",
   googleClientId: "",
   googleClientSecret: "",
   googleRedirectUri: "",
@@ -37,6 +44,7 @@ const defaultSettings = {
   cashAppPayment: "",
   venmoPayment: "",
   paymentInstructions: "",
+  onboardingCompleted: false,
   customTemplates: [],
   customServices: [],
   customServiceTypes: [],
@@ -275,7 +283,10 @@ async function readUserSettings(userId) {
   const users = await readUsers();
   const user = users.find((item) => item.id === userId);
   const settings = { ...defaultSettings, ...(user?.settings || {}) };
-  ["googleClientId", "googleClientSecret", "googleRedirectUri", "googleRefreshToken", "googleCalendarId"].forEach((key) => {
+  settings.googleClientId = settings.googleClientId || ownerSettings.googleClientId || "";
+  settings.googleClientSecret = settings.googleClientSecret || ownerSettings.googleClientSecret || "";
+  settings.googleRedirectUri = settings.googleRedirectUri || ownerSettings.googleRedirectUri || "";
+  ["googleRefreshToken", "googleCalendarId"].forEach((key) => {
     if (settings[key] && settings[key] === ownerSettings[key]) {
       settings[key] = "";
     }
@@ -320,6 +331,13 @@ function applyRuntimeSettings(settings = {}) {
     squareAccessToken: process.env.SQUARE_ACCESS_TOKEN || rowSettings.squareAccessToken || "",
     squareLocationId: process.env.SQUARE_LOCATION_ID || rowSettings.squareLocationId || defaultSettings.squareLocationId,
     squareWebhookSignatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || rowSettings.squareWebhookSignatureKey || "",
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY || rowSettings.stripeSecretKey || "",
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || rowSettings.stripeWebhookSecret || "",
+    quickBooksCompanyId: rowSettings.quickBooksCompanyId || "",
+    quickBooksClientId: rowSettings.quickBooksClientId || "",
+    quickBooksClientSecret: rowSettings.quickBooksClientSecret || "",
+    quickBooksRedirectUri: rowSettings.quickBooksRedirectUri || "",
+    quickBooksRefreshToken: rowSettings.quickBooksRefreshToken || "",
     googleClientId: process.env.GOOGLE_CLIENT_ID || rowSettings.googleClientId || "",
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || rowSettings.googleClientSecret || "",
     googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
@@ -330,6 +348,7 @@ function applyRuntimeSettings(settings = {}) {
     cashAppPayment: rowSettings.cashAppPayment || "",
     venmoPayment: rowSettings.venmoPayment || "",
     paymentInstructions: rowSettings.paymentInstructions || "",
+    onboardingCompleted: Boolean(rowSettings.onboardingCompleted),
     businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
     customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : [],
     customServices: Array.isArray(rowSettings.customServices) ? rowSettings.customServices : [],
@@ -352,7 +371,16 @@ async function writeSettings(settings) {
         default_job_duration_minutes,
         final_invoice_timing,
         square_environment,
+        square_access_token,
         square_location_id,
+        square_webhook_signature_key,
+        stripe_secret_key,
+        stripe_webhook_secret,
+        quickbooks_company_id,
+        quickbooks_client_id,
+        quickbooks_client_secret,
+        quickbooks_redirect_uri,
+        quickbooks_refresh_token,
         google_refresh_token,
         google_calendar_id,
         mapbox_public_token,
@@ -360,12 +388,13 @@ async function writeSettings(settings) {
         cash_app_payment,
         venmo_payment,
         payment_instructions,
+        onboarding_completed,
         custom_templates,
         custom_services,
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19::jsonb, $20::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24::jsonb, $25::jsonb, $26::jsonb, $27::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -375,7 +404,16 @@ async function writeSettings(settings) {
         default_job_duration_minutes = excluded.default_job_duration_minutes,
         final_invoice_timing = excluded.final_invoice_timing,
         square_environment = excluded.square_environment,
+        square_access_token = excluded.square_access_token,
         square_location_id = excluded.square_location_id,
+        square_webhook_signature_key = excluded.square_webhook_signature_key,
+        stripe_secret_key = excluded.stripe_secret_key,
+        stripe_webhook_secret = excluded.stripe_webhook_secret,
+        quickbooks_company_id = excluded.quickbooks_company_id,
+        quickbooks_client_id = excluded.quickbooks_client_id,
+        quickbooks_client_secret = excluded.quickbooks_client_secret,
+        quickbooks_redirect_uri = excluded.quickbooks_redirect_uri,
+        quickbooks_refresh_token = excluded.quickbooks_refresh_token,
         google_refresh_token = excluded.google_refresh_token,
         google_calendar_id = excluded.google_calendar_id,
         mapbox_public_token = excluded.mapbox_public_token,
@@ -383,6 +421,7 @@ async function writeSettings(settings) {
         cash_app_payment = excluded.cash_app_payment,
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
+        onboarding_completed = excluded.onboarding_completed,
         custom_templates = excluded.custom_templates,
         custom_services = excluded.custom_services,
         custom_service_types = excluded.custom_service_types,
@@ -397,7 +436,16 @@ async function writeSettings(settings) {
         settings.defaultJobDurationMinutes || 180,
         settings.finalInvoiceTiming || "immediate_after_completion",
         settings.squareEnvironment || "sandbox",
+        settings.squareAccessToken || "",
         settings.squareLocationId || "",
+        settings.squareWebhookSignatureKey || "",
+        settings.stripeSecretKey || "",
+        settings.stripeWebhookSecret || "",
+        settings.quickBooksCompanyId || "",
+        settings.quickBooksClientId || "",
+        settings.quickBooksClientSecret || "",
+        settings.quickBooksRedirectUri || "",
+        settings.quickBooksRefreshToken || "",
         settings.googleRefreshToken || "",
         settings.googleCalendarId || "",
         settings.mapboxPublicToken || "",
@@ -405,6 +453,7 @@ async function writeSettings(settings) {
         settings.cashAppPayment || "",
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
+        Boolean(settings.onboardingCompleted),
         JSON.stringify(settings.customTemplates || []),
         JSON.stringify(settings.customServices || []),
         JSON.stringify(settings.customServiceTypes || []),
@@ -522,7 +571,16 @@ async function ensurePostgresSchema() {
     default_job_duration_minutes integer not null default 180,
     final_invoice_timing text not null default 'immediate_after_completion',
     square_environment text not null default 'sandbox',
+    square_access_token text not null default '',
     square_location_id text not null default '',
+    square_webhook_signature_key text not null default '',
+    stripe_secret_key text not null default '',
+    stripe_webhook_secret text not null default '',
+    quickbooks_company_id text not null default '',
+    quickbooks_client_id text not null default '',
+    quickbooks_client_secret text not null default '',
+    quickbooks_redirect_uri text not null default '',
+    quickbooks_refresh_token text not null default '',
     google_refresh_token text not null default '',
     google_calendar_id text not null default '',
     mapbox_public_token text not null default '',
@@ -530,6 +588,7 @@ async function ensurePostgresSchema() {
     cash_app_payment text not null default '',
     venmo_payment text not null default '',
     payment_instructions text not null default '',
+    onboarding_completed boolean not null default false,
     custom_templates jsonb not null default '[]'::jsonb,
     custom_services jsonb not null default '[]'::jsonb,
     custom_service_types jsonb not null default '[]'::jsonb,
@@ -538,11 +597,21 @@ async function ensurePostgresSchema() {
   )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists business_logo_data_url text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists square_access_token text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists square_webhook_signature_key text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists stripe_secret_key text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists stripe_webhook_secret text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists quickbooks_company_id text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists quickbooks_client_id text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists quickbooks_client_secret text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists quickbooks_redirect_uri text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists quickbooks_refresh_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists mapbox_public_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists zelle_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists onboarding_completed boolean not null default false");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_service_types jsonb not null default '[]'::jsonb");
@@ -999,7 +1068,16 @@ function settingsFromRow(row) {
     defaultJobDurationMinutes: Number(row.default_job_duration_minutes || 180),
     finalInvoiceTiming: row.final_invoice_timing || "immediate_after_completion",
     squareEnvironment: row.square_environment || "sandbox",
+    squareAccessToken: row.square_access_token || "",
     squareLocationId: row.square_location_id || "",
+    squareWebhookSignatureKey: row.square_webhook_signature_key || "",
+    stripeSecretKey: row.stripe_secret_key || "",
+    stripeWebhookSecret: row.stripe_webhook_secret || "",
+    quickBooksCompanyId: row.quickbooks_company_id || "",
+    quickBooksClientId: row.quickbooks_client_id || "",
+    quickBooksClientSecret: row.quickbooks_client_secret || "",
+    quickBooksRedirectUri: row.quickbooks_redirect_uri || "",
+    quickBooksRefreshToken: row.quickbooks_refresh_token || "",
     googleRefreshToken: row.google_refresh_token || "",
     googleCalendarId: row.google_calendar_id || "",
     mapboxPublicToken: row.mapbox_public_token || "",
@@ -1007,6 +1085,7 @@ function settingsFromRow(row) {
     cashAppPayment: row.cash_app_payment || "",
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
+    onboardingCompleted: Boolean(row.onboarding_completed),
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
     customServices: Array.isArray(row.custom_services) ? row.custom_services : [],
     customServiceTypes: Array.isArray(row.custom_service_types) ? row.custom_service_types : [],
