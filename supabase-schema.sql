@@ -111,6 +111,7 @@ create table if not exists app_settings (
   business_name text not null default '',
   business_email text not null default '',
   business_phone text not null default '',
+  business_logo_data_url text not null default '',
   default_deposit_percent numeric(5, 2) not null default 25,
   default_job_duration_minutes integer not null default 180,
   final_invoice_timing text not null default 'immediate_after_completion',
@@ -123,6 +124,10 @@ create table if not exists app_settings (
   cash_app_payment text not null default '',
   venmo_payment text not null default '',
   payment_instructions text not null default '',
+  custom_templates jsonb not null default '[]'::jsonb,
+  custom_services jsonb not null default '[]'::jsonb,
+  custom_service_types jsonb not null default '[]'::jsonb,
+  custom_photo_sections jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id = 1)

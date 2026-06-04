@@ -300,7 +300,7 @@ function normalizeJob(input) {
     squareFinalInvoiceId: "",
     squareFinalInvoiceUrl: "",
     squareContractId: "",
-    squareContractUrl: String(input.squareContractUrl || "").trim(),
+    squareContractUrl: "",
     contractApprovalToken: "",
     contractApprovalUrl: "",
     contractMailto: "",
@@ -1995,6 +1995,11 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/export/backup.json") {
+    if (!isOwnerSession()) {
+      sendError(response, 403, "Owner access required.");
+      return;
+    }
+
     const backup = {
       exportedAt: new Date().toISOString(),
       app: "PressureFlow",
@@ -2697,7 +2702,9 @@ function normalizeSettings(input, existing) {
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
-    customServices: normalizeCustomServices(input.customServices ?? existing.customServices)
+    customServices: normalizeCustomServices(input.customServices ?? existing.customServices),
+    customServiceTypes: normalizeStringList(input.customServiceTypes ?? existing.customServiceTypes),
+    customPhotoSections: normalizeStringList(input.customPhotoSections ?? existing.customPhotoSections)
   };
 }
 
@@ -2711,6 +2718,13 @@ function normalizeCustomServices(value) {
       price: Math.max(Number(service.price || 0), 0)
     }))
     .filter((service) => service.name)
+    .slice(0, 100);
+}
+
+function normalizeStringList(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean))]
     .slice(0, 100);
 }
 

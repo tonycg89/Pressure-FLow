@@ -38,7 +38,9 @@ const defaultSettings = {
   venmoPayment: "",
   paymentInstructions: "",
   customTemplates: [],
-  customServices: []
+  customServices: [],
+  customServiceTypes: [],
+  customPhotoSections: []
 };
 
 const statuses = [
@@ -269,9 +271,17 @@ async function readUserSettings(userId) {
     return readSettings();
   }
 
+  const ownerSettings = await readSettings();
   const users = await readUsers();
   const user = users.find((item) => item.id === userId);
-  return { ...defaultSettings, ...(user?.settings || {}) };
+  const settings = { ...defaultSettings, ...(user?.settings || {}) };
+  ["googleClientId", "googleClientSecret", "googleRedirectUri", "googleRefreshToken", "googleCalendarId"].forEach((key) => {
+    if (settings[key] && settings[key] === ownerSettings[key]) {
+      settings[key] = "";
+    }
+  });
+  settings.mapboxPublicToken = ownerSettings.mapboxPublicToken || settings.mapboxPublicToken || "";
+  return settings;
 }
 
 async function writeUserSettings(userId, settings) {
@@ -295,30 +305,37 @@ async function readSettings() {
     await ensurePostgresSchema();
     const result = await getPool().query("select * from app_settings where id = 1");
     const rowSettings = result.rows[0] ? settingsFromRow(result.rows[0]) : defaultSettings;
-    return {
-      ...defaultSettings,
-      ...rowSettings,
-      squareEnvironment: process.env.SQUARE_ENV || rowSettings.squareEnvironment || defaultSettings.squareEnvironment,
-      squareAccessToken: process.env.SQUARE_ACCESS_TOKEN || "",
-      squareLocationId: process.env.SQUARE_LOCATION_ID || rowSettings.squareLocationId || defaultSettings.squareLocationId,
-      squareWebhookSignatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || "",
-      googleClientId: process.env.GOOGLE_CLIENT_ID || rowSettings.googleClientId || "",
-      googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
-      googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || rowSettings.googleRefreshToken || "",
-      googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId,
-      mapboxPublicToken: process.env.MAPBOX_PUBLIC_TOKEN || rowSettings.mapboxPublicToken || "",
-      zellePayment: rowSettings.zellePayment || "",
-      cashAppPayment: rowSettings.cashAppPayment || "",
-      venmoPayment: rowSettings.venmoPayment || "",
-      paymentInstructions: rowSettings.paymentInstructions || "",
-      businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
-      customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : [],
-      customServices: Array.isArray(rowSettings.customServices) ? rowSettings.customServices : []
-    };
+    return applyRuntimeSettings(rowSettings);
   }
 
-  return { ...defaultSettings, ...(await readJson(SETTINGS_FILE)) };
+  return applyRuntimeSettings(await readJson(SETTINGS_FILE));
+}
+
+function applyRuntimeSettings(settings = {}) {
+  const rowSettings = { ...defaultSettings, ...settings };
+  return {
+    ...defaultSettings,
+    ...rowSettings,
+    squareEnvironment: process.env.SQUARE_ENV || rowSettings.squareEnvironment || defaultSettings.squareEnvironment,
+    squareAccessToken: process.env.SQUARE_ACCESS_TOKEN || rowSettings.squareAccessToken || "",
+    squareLocationId: process.env.SQUARE_LOCATION_ID || rowSettings.squareLocationId || defaultSettings.squareLocationId,
+    squareWebhookSignatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || rowSettings.squareWebhookSignatureKey || "",
+    googleClientId: process.env.GOOGLE_CLIENT_ID || rowSettings.googleClientId || "",
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || rowSettings.googleClientSecret || "",
+    googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || rowSettings.googleRedirectUri || defaultSettings.googleRedirectUri,
+    googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN || rowSettings.googleRefreshToken || "",
+    googleCalendarId: process.env.GOOGLE_CALENDAR_ID || rowSettings.googleCalendarId || defaultSettings.googleCalendarId,
+    mapboxPublicToken: process.env.MAPBOX_PUBLIC_TOKEN || rowSettings.mapboxPublicToken || "",
+    zellePayment: rowSettings.zellePayment || "",
+    cashAppPayment: rowSettings.cashAppPayment || "",
+    venmoPayment: rowSettings.venmoPayment || "",
+    paymentInstructions: rowSettings.paymentInstructions || "",
+    businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
+    customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : [],
+    customServices: Array.isArray(rowSettings.customServices) ? rowSettings.customServices : [],
+    customServiceTypes: Array.isArray(rowSettings.customServiceTypes) ? rowSettings.customServiceTypes : [],
+    customPhotoSections: Array.isArray(rowSettings.customPhotoSections) ? rowSettings.customPhotoSections : []
+  };
 }
 
 async function writeSettings(settings) {
@@ -345,8 +362,10 @@ async function writeSettings(settings) {
         payment_instructions,
         custom_templates,
         custom_services,
+        custom_service_types,
+        custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb, $18::jsonb, $19::jsonb, $20::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -366,6 +385,8 @@ async function writeSettings(settings) {
         payment_instructions = excluded.payment_instructions,
         custom_templates = excluded.custom_templates,
         custom_services = excluded.custom_services,
+        custom_service_types = excluded.custom_service_types,
+        custom_photo_sections = excluded.custom_photo_sections,
         updated_at = now()`,
       [
         settings.businessName || "",
@@ -385,7 +406,9 @@ async function writeSettings(settings) {
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
         JSON.stringify(settings.customTemplates || []),
-        JSON.stringify(settings.customServices || [])
+        JSON.stringify(settings.customServices || []),
+        JSON.stringify(settings.customServiceTypes || []),
+        JSON.stringify(settings.customPhotoSections || [])
       ]
     );
     return;
@@ -509,6 +532,8 @@ async function ensurePostgresSchema() {
     payment_instructions text not null default '',
     custom_templates jsonb not null default '[]'::jsonb,
     custom_services jsonb not null default '[]'::jsonb,
+    custom_service_types jsonb not null default '[]'::jsonb,
+    custom_photo_sections jsonb not null default '[]'::jsonb,
     updated_at timestamptz not null default now()
   )`);
   await getPool().query("alter table app_settings add column if not exists google_refresh_token text not null default ''");
@@ -520,6 +545,8 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_settings add column if not exists custom_service_types jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_settings add column if not exists custom_photo_sections jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
   await getPool().query("alter table customers add column if not exists account_id text not null default 'owner'");
   await getPool().query("alter table expenses add column if not exists account_id text not null default 'owner'");
@@ -981,7 +1008,9 @@ function settingsFromRow(row) {
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
-    customServices: Array.isArray(row.custom_services) ? row.custom_services : []
+    customServices: Array.isArray(row.custom_services) ? row.custom_services : [],
+    customServiceTypes: Array.isArray(row.custom_service_types) ? row.custom_service_types : [],
+    customPhotoSections: Array.isArray(row.custom_photo_sections) ? row.custom_photo_sections : []
   };
 }
 

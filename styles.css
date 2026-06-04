@@ -782,6 +782,13 @@ label {
   gap: 12px;
 }
 
+.field-with-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1055,6 +1062,12 @@ label {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.before-photo-picker,
+.before-photo-preview {
+  display: grid;
+  gap: 12px;
 }
 
 .photo-section {
@@ -1551,6 +1564,7 @@ label {
   .job-card,
   .expense-card,
   .field-row,
+  .field-with-action,
   .settings-grid,
   .settings-user-grid,
   .photo-section-list,

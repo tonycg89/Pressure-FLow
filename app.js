@@ -23,8 +23,17 @@ const builtInServiceCatalog = [
   { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
 ];
 
+const builtInServiceTypes = [
+  "Driveway cleaning",
+  "House wash",
+  "Roof wash",
+  "Commercial exterior",
+  "Bundle"
+];
+
 let serviceCatalog = [...builtInServiceCatalog];
 let defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
+let serviceTypes = [...builtInServiceTypes];
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -80,6 +89,8 @@ const settingsStatus = document.querySelector("#settingsStatus");
 const businessLogoInput = document.querySelector("#businessLogoInput");
 const businessLogoPreview = document.querySelector("#businessLogoPreview");
 const clearBusinessLogoButton = document.querySelector("#clearBusinessLogoButton");
+const mapboxTokenField = document.querySelector("#mapboxTokenField");
+const backupExportLink = document.querySelector("#backupExportLink");
 const userNameInput = document.querySelector("#userNameInput");
 const userEmailInput = document.querySelector("#userEmailInput");
 const userRoleInput = document.querySelector("#userRoleInput");
@@ -93,6 +104,7 @@ const templateFileInput = document.querySelector("#templateFileInput");
 const templateUploadStatus = document.querySelector("#templateUploadStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
+const addServiceTypeButton = document.querySelector("#addServiceTypeButton");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
 const completionDialog = document.querySelector("#completionDialog");
@@ -123,8 +135,11 @@ const clearMeasurementButton = document.querySelector("#clearMeasurementButton")
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
 const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
-const beforePhotoInputs = document.querySelectorAll("[data-before-photo-input]");
-const beforePhotoPreviews = document.querySelectorAll("[data-before-photo-preview]");
+const beforePhotoSectionSelect = document.querySelector("#beforePhotoSectionSelect");
+const addBeforePhotoSectionButton = document.querySelector("#addBeforePhotoSectionButton");
+const beforePhotoUploadInput = document.querySelector("#beforePhotoUploadInput");
+const beforePhotoCameraInput = document.querySelector("#beforePhotoCameraInput");
+const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
 const completionBeforePhotoInputs = document.querySelectorAll("[data-completion-before-photo-input]");
 const completionAfterPhotoInputs = document.querySelectorAll("[data-completion-after-photo-input]");
 const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
@@ -147,7 +162,7 @@ let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
-const beforePhotoSections = [
+let beforePhotoSections = [
   "Main driveway",
   "Back patio",
   "Fence",
@@ -182,18 +197,14 @@ async function init() {
   serviceAreaPhotoInputs.forEach((input) => {
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
   });
-  beforePhotoInputs.forEach((input) => {
-    input.addEventListener("change", (event) => addPhotosFromInput(
-      event,
-      currentJobPhotos.before,
-      renderJobPhotoPreviews,
-      { section: input.dataset.sectionLabel || "Before" }
-    ));
-  });
+  beforePhotoUploadInput?.addEventListener("change", addBeforePhotosFromPicker);
+  beforePhotoCameraInput?.addEventListener("change", addBeforePhotosFromPicker);
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   customServiceButton?.addEventListener("click", openCustomServiceDialog);
   customServiceForm?.addEventListener("submit", addCustomService);
+  addServiceTypeButton?.addEventListener("click", addServiceType);
+  addBeforePhotoSectionButton?.addEventListener("click", addBeforePhotoSection);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
   savedMeasurementsPanel?.addEventListener("toggle", () => {
     savedMeasurementsPanel.dataset.userToggled = "true";
@@ -280,6 +291,29 @@ function syncServiceCatalog() {
   serviceCatalog = [...builtInServiceCatalog, ...customServices]
     .filter((service, index, all) => all.findIndex((item) => item.name.toLowerCase() === String(service.name || "").toLowerCase()) === index);
   defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
+  serviceTypes = [...builtInServiceTypes, ...(settings.customServiceTypes || [])]
+    .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
+  beforePhotoSections = [...beforePhotoSections, ...(settings.customPhotoSections || [])]
+    .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
+  renderServiceTypeOptions();
+  renderBeforePhotoSectionOptions();
+}
+
+function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?.value || "") {
+  const select = jobForm?.elements.serviceType;
+  if (!select) return;
+
+  const currentValue = selectedValue || select.value || serviceTypes[0] || "";
+  select.innerHTML = serviceTypes.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  select.value = serviceTypes.includes(currentValue) ? currentValue : serviceTypes[0] || "";
+}
+
+function renderBeforePhotoSectionOptions(selectedValue = beforePhotoSectionSelect?.value || "") {
+  if (!beforePhotoSectionSelect) return;
+
+  const currentValue = selectedValue || beforePhotoSections[0] || "";
+  beforePhotoSectionSelect.innerHTML = beforePhotoSections.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  beforePhotoSectionSelect.value = beforePhotoSections.includes(currentValue) ? currentValue : beforePhotoSections[0] || "";
 }
 
 async function loadJobs() {
@@ -394,6 +428,12 @@ function openSettings() {
   if (teamAccessSection) {
     teamAccessSection.hidden = !currentUser?.isOwner;
   }
+  if (mapboxTokenField) {
+    mapboxTokenField.hidden = !currentUser?.isOwner;
+  }
+  if (backupExportLink) {
+    backupExportLink.hidden = !currentUser?.isOwner;
+  }
   if (currentUser?.isOwner) {
     loadSettingsUsers();
   }
@@ -413,6 +453,7 @@ function fillSettingsForm() {
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
   settingsForm.elements.googleClientSecret.value = "";
+  settingsForm.elements.googleClientSecret.placeholder = settings.hasGoogleClientSecret ? "Leave blank to keep saved secret" : "Enter Google client secret";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "";
   settingsForm.elements.mapboxPublicToken.value = settings.mapboxPublicToken || "";
   if (businessLogoInput) {
@@ -859,9 +900,7 @@ function openEditJob() {
   }
   fillAddressFields(jobForm, job);
   jobForm.elements.leadSource.value = job.leadSource || "referral";
-  jobForm.elements.squareContractId.value = job.squareContractId || "";
-  jobForm.elements.squareContractUrl.value = job.squareContractUrl || "";
-  jobForm.elements.serviceType.value = job.serviceType || "Driveway cleaning";
+  renderServiceTypeOptions(job.serviceType || "Driveway cleaning");
   jobForm.elements.estimate.value = job.estimate || 0;
   jobForm.elements.depositPercent.value = job.depositPercent || settings.defaultDepositPercent || 25;
   renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 1 }]);
@@ -890,9 +929,10 @@ function resetJobDialog() {
   currentMeasurement = {};
   activeMeasurementAreaId = "";
   currentJobPhotos = { before: [], after: [] };
-  beforePhotoInputs.forEach((input) => {
-    input.value = "";
-  });
+  if (beforePhotoUploadInput) beforePhotoUploadInput.value = "";
+  if (beforePhotoCameraInput) beforePhotoCameraInput.value = "";
+  renderServiceTypeOptions("Driveway cleaning");
+  renderBeforePhotoSectionOptions();
   renderJobPhotoPreviews();
   discountSelect.value = "0";
   updateEstimateTotals();
@@ -957,16 +997,85 @@ function renderReceiptPhotos() {
 }
 
 function renderJobPhotoPreviews() {
-  beforePhotoPreviews.forEach((preview) => {
-    const section = preview.dataset.beforePhotoPreview;
-    const photos = (currentJobPhotos.before || []).filter((photo) => (photo.section || "Main driveway") === section);
-    renderEditablePhotoGrid(preview, photos, () => renderJobPhotoPreviews(), (photo) => {
-      const index = currentJobPhotos.before.findIndex((item) => item.id === photo.id);
+  if (!beforePhotoPreview) return;
+
+  const photos = currentJobPhotos.before || [];
+  if (!photos.length) {
+    beforePhotoPreview.innerHTML = '<p class="photo-empty">No before photos yet.</p>';
+    return;
+  }
+
+  const sections = [...new Set(photos.map((photo) => photo.section || "Before"))];
+  beforePhotoPreview.innerHTML = sections.map((section) => {
+    const sectionPhotos = photos.filter((photo) => (photo.section || "Before") === section);
+    return `
+      <div class="saved-photo-section">
+        <p class="photo-label">${escapeHtml(section)}</p>
+        <div class="photo-grid" data-before-photo-group="${escapeHtml(section)}">
+          ${sectionPhotos.map((photo) => `
+            <figure>
+              <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
+              <button class="photo-remove" type="button" title="Remove photo" data-remove-before-photo="${escapeHtml(photo.id)}">X</button>
+            </figure>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  beforePhotoPreview.querySelectorAll("[data-remove-before-photo]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = currentJobPhotos.before.findIndex((photo) => photo.id === button.dataset.removeBeforePhoto);
       if (index >= 0) {
         currentJobPhotos.before.splice(index, 1);
       }
+      renderJobPhotoPreviews();
     });
   });
+}
+
+async function addBeforePhotosFromPicker(event) {
+  const section = beforePhotoSectionSelect?.value || "Before";
+  await addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews, { section });
+  renderBeforePhotoSectionOptions(section);
+}
+
+async function addServiceType() {
+  const name = prompt("New service type name");
+  const cleanName = String(name || "").trim();
+  if (!cleanName) return;
+
+  if (!serviceTypes.some((item) => item.toLowerCase() === cleanName.toLowerCase())) {
+    const customServiceTypes = [...(settings.customServiceTypes || []), cleanName];
+    try {
+      const data = await apiRequest("/api/settings", { ...settings, customServiceTypes });
+      settings = data.settings;
+      syncServiceCatalog();
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+  }
+  renderServiceTypeOptions(cleanName);
+}
+
+async function addBeforePhotoSection() {
+  const name = prompt("New before-photo section");
+  const cleanName = String(name || "").trim();
+  if (!cleanName) return;
+
+  if (!beforePhotoSections.some((item) => item.toLowerCase() === cleanName.toLowerCase())) {
+    const customPhotoSections = [...(settings.customPhotoSections || []), cleanName];
+    try {
+      const data = await apiRequest("/api/settings", { ...settings, customPhotoSections });
+      settings = data.settings;
+      syncServiceCatalog();
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+  }
+  renderBeforePhotoSectionOptions(cleanName);
 }
 
 function renderCompletionPhotoPreviews() {

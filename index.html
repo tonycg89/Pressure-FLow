@@ -377,26 +377,13 @@
             <option value="nextdoor-ad">Nextdoor ad</option>
           </select>
         </label>
-        <div class="field-row">
+        <div class="field-with-action">
           <label>
-            Contract ID
-            <input name="squareContractId" placeholder="Optional">
+            Service type
+            <select name="serviceType"></select>
           </label>
-          <label>
-            Contract link
-            <input name="squareContractUrl" type="url" placeholder="Optional">
-          </label>
+          <button id="addServiceTypeButton" class="secondary-small-button" type="button">Add Service Type</button>
         </div>
-        <label>
-          Service type
-          <select name="serviceType">
-            <option>Driveway cleaning</option>
-            <option>House wash</option>
-            <option>Roof wash</option>
-            <option>Commercial exterior</option>
-            <option>Bundle</option>
-          </select>
-        </label>
 
         <section class="estimate-builder" aria-label="Estimate builder">
           <div class="section-header">
@@ -454,127 +441,23 @@
               <h3>Property areas</h3>
             </div>
           </div>
-          <div class="photo-section-list">
-            <div class="photo-section" data-before-section="main-driveway">
-              <p class="photo-label">Main driveway</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Main driveway">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Main driveway">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Main driveway"></div>
+          <div class="before-photo-picker">
+            <div class="field-with-action">
+              <label>
+                Photo section
+                <select id="beforePhotoSectionSelect"></select>
+              </label>
+              <button id="addBeforePhotoSectionButton" class="secondary-small-button" type="button">Add Section</button>
             </div>
-            <div class="photo-section" data-before-section="back-patio">
-              <p class="photo-label">Back patio</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Back patio">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Back patio">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Back patio"></div>
+            <div class="photo-actions">
+              <label class="photo-action-button primary">Upload
+                <input id="beforePhotoUploadInput" type="file" accept="image/*" multiple>
+              </label>
+              <label class="photo-action-button">Take Picture
+                <input id="beforePhotoCameraInput" type="file" accept="image/*" capture="environment">
+              </label>
             </div>
-            <div class="photo-section" data-before-section="fence">
-              <p class="photo-label">Fence</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Fence">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Fence">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Fence"></div>
-            </div>
-            <div class="photo-section" data-before-section="house-1">
-              <p class="photo-label">House #1</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="House #1">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="House #1">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="House #1"></div>
-            </div>
-            <div class="photo-section" data-before-section="house-2">
-              <p class="photo-label">House #2</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="House #2">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="House #2">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="House #2"></div>
-            </div>
-            <div class="photo-section" data-before-section="house-3">
-              <p class="photo-label">House #3</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="House #3">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="House #3">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="House #3"></div>
-            </div>
-            <div class="photo-section" data-before-section="house-4">
-              <p class="photo-label">House #4</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="House #4">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="House #4">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="House #4"></div>
-            </div>
-            <div class="photo-section" data-before-section="roof">
-              <p class="photo-label">Roof</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Roof">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Roof">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Roof"></div>
-            </div>
-            <div class="photo-section" data-before-section="gutters">
-              <p class="photo-label">Gutters</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Gutters">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Gutters">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Gutters"></div>
-            </div>
-            <div class="photo-section" data-before-section="trash-cans">
-              <p class="photo-label">Trash cans</p>
-              <div class="photo-actions">
-                <label class="photo-action-button primary">Upload
-                  <input type="file" accept="image/*" multiple data-before-photo-input data-section-label="Trash cans">
-                </label>
-                <label class="photo-action-button">Take Picture
-                  <input type="file" accept="image/*" capture="environment" data-before-photo-input data-section-label="Trash cans">
-                </label>
-              </div>
-              <div class="photo-grid" data-before-photo-preview="Trash cans"></div>
-            </div>
+            <div id="beforePhotoPreview" class="before-photo-preview"></div>
           </div>
         </section>
 
@@ -769,7 +652,7 @@
           </label>
           <label class="full-field">
             Google calendar ID
-            <input name="googleCalendarId" placeholder="tonycg89@gmail.com">
+            <input name="googleCalendarId" placeholder="Your Google Calendar ID">
           </label>
           <label class="full-field">
             Google client ID
@@ -777,13 +660,13 @@
           </label>
           <label class="full-field">
             Google client secret
-            <input name="googleClientSecret" type="password" autocomplete="off" placeholder="Leave blank to keep saved secret">
+            <input name="googleClientSecret" type="password" autocomplete="off" placeholder="Enter Google client secret">
           </label>
           <label class="full-field">
             Google redirect URI
             <input name="googleRedirectUri" placeholder="Your PressureFlow Google OAuth callback URL">
           </label>
-          <label class="full-field">
+          <label id="mapboxTokenField" class="full-field">
             Mapbox public token
             <input name="mapboxPublicToken" autocomplete="off" placeholder="Required for map measurements">
           </label>
@@ -825,9 +708,9 @@
 
         <p id="settingsStatus" class="form-note"></p>
 
-        <section class="export-actions" aria-label="Export data">
+        <section id="exportActions" class="export-actions" aria-label="Export data">
           <a class="secondary-link-button" href="/api/export/jobs.csv">Export Jobs CSV</a>
-          <a class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
+          <a id="backupExportLink" class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
         </section>
 
         <menu class="dialog-actions">
