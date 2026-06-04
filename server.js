@@ -2394,6 +2394,7 @@ async function isAuthEnabled() {
 function isPublicPath(pathname) {
   return pathname === "/login" ||
     pathname === "/auth/login" ||
+    pathname === "/auth/logout" ||
     pathname === "/health" ||
     pathname === "/webhooks/square" ||
     pathname.startsWith("/estimate/") ||

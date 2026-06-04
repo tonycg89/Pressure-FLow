@@ -83,6 +83,18 @@ button {
   gap: 8px;
 }
 
+.logout-form {
+  margin-top: auto;
+}
+
+.logout-button {
+  color: #fee4e2;
+}
+
+.logout-button:hover {
+  background: rgba(254, 228, 226, 0.12);
+}
+
 .nav-item,
 .primary-button,
 .icon-button,
