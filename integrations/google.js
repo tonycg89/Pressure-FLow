@@ -1,0 +1,109 @@
+const { buildMimeEmailBase64Url } = require("./email");
+
+function buildGoogleAuthUrl(settings) {
+  requireGoogleSettings(settings, false);
+  const params = new URLSearchParams({
+    client_id: settings.googleClientId,
+    redirect_uri: settings.googleRedirectUri,
+    response_type: "code",
+    scope: "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send",
+    access_type: "offline",
+    prompt: "consent"
+  });
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+async function exchangeGoogleCode(settings, code) {
+  requireGoogleSettings(settings, false);
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: settings.googleClientId,
+      client_secret: settings.googleClientSecret,
+      redirect_uri: settings.googleRedirectUri,
+      grant_type: "authorization_code"
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || "Google token exchange failed.");
+  }
+
+  return data;
+}
+
+async function getGoogleAccessToken(settings) {
+  requireGoogleSettings(settings, true);
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: settings.googleClientId,
+      client_secret: settings.googleClientSecret,
+      refresh_token: settings.googleRefreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error_description || data.error || "Google access token refresh failed.");
+  }
+
+  return data.access_token;
+}
+
+async function sendGmailEmail(settings, message) {
+  const accessToken = await getGoogleAccessToken(settings);
+  const raw = buildMimeEmailBase64Url({
+    from: settings.businessEmail || settings.googleCalendarId || "me",
+    to: message.to,
+    subject: message.subject,
+    textBody: message.textBody,
+    htmlBody: message.htmlBody,
+    attachments: message.attachments || []
+  });
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ raw })
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const messageText = data.error?.message || data.error_description || "Google email send failed.";
+    throw new Error(`${messageText} Reconnect Google Calendar from Settings so PressureFlow can send estimate emails.`);
+  }
+
+  return data;
+}
+
+function requireGoogleSettings(settings, requireRefreshToken) {
+  if (!settings.googleClientId) {
+    throw new Error("Google client ID is missing. Open Settings and save your Google client ID.");
+  }
+  if (!settings.googleClientSecret) {
+    throw new Error("Google client secret is missing. Open Settings and save your Google client secret.");
+  }
+  if (!settings.googleRedirectUri) {
+    throw new Error("Google redirect URI is missing.");
+  }
+  if (requireRefreshToken && !settings.googleRefreshToken) {
+    throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+  }
+}
+
+module.exports = {
+  buildGoogleAuthUrl,
+  exchangeGoogleCode,
+  getGoogleAccessToken,
+  sendGmailEmail
+};
