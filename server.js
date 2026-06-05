@@ -31,6 +31,9 @@ const SQUARE_VERSION = "2026-05-20";
 const SESSION_COOKIE = "pressureflow_session";
 const serviceAgreementTemplate = require("./templates/pressure-washing-service-agreement.json");
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 8;
+const loginAttempts = new Map();
 const requestContext = new AsyncLocalStorage();
 
 function readSettings() {
@@ -2117,8 +2120,16 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/auth/login") {
     const body = await readFormOrJsonBody(request);
+    const rateLimitKey = getLoginRateLimitKey(request, body.email);
+
+    if (isLoginRateLimited(rateLimitKey)) {
+      sendHtml(response, 429, loginPage.replace("%ERROR%", "Too many login attempts. Please try again in a few minutes."));
+      return;
+    }
+
     const login = await authenticateLogin(body.email, body.password);
     if (login) {
+      clearLoginAttempts(rateLimitKey);
       response.writeHead(302, {
         "set-cookie": buildSessionCookie(login),
         location: "/"
@@ -2127,6 +2138,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
+    recordFailedLoginAttempt(rateLimitKey);
     sendHtml(response, 401, loginPage.replace("%ERROR%", "Invalid email or password."));
     return;
   }
@@ -2850,6 +2862,38 @@ function publicSessionUser(session) {
 function isOwnerSession() {
   const context = requestContext.getStore();
   return context?.authDisabled || context?.session?.role === "owner";
+}
+
+function getLoginRateLimitKey(request, email) {
+  const forwardedFor = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwardedFor || request.socket.remoteAddress || "unknown";
+  return `${ip}|${String(email || "").trim().toLowerCase()}`;
+}
+
+function getLoginRateLimitRecord(key) {
+  const now = Date.now();
+  const record = loginAttempts.get(key);
+
+  if (!record || record.resetAt <= now) {
+    const nextRecord = { count: 0, resetAt: now + LOGIN_RATE_LIMIT_WINDOW_MS };
+    loginAttempts.set(key, nextRecord);
+    return nextRecord;
+  }
+
+  return record;
+}
+
+function isLoginRateLimited(key) {
+  return getLoginRateLimitRecord(key).count >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS;
+}
+
+function recordFailedLoginAttempt(key) {
+  const record = getLoginRateLimitRecord(key);
+  record.count += 1;
+}
+
+function clearLoginAttempts(key) {
+  loginAttempts.delete(key);
 }
 
 async function createAppUser(input) {
