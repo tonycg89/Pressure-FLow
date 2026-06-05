@@ -1036,7 +1036,8 @@ async function sendGoogleEmail(settings, message) {
     to: message.to,
     subject: message.subject,
     textBody: message.textBody,
-    htmlBody: message.htmlBody
+    htmlBody: message.htmlBody,
+    attachments: message.attachments || []
   });
 
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
@@ -1105,31 +1106,72 @@ async function sendAdminTextAlert(message) {
   return data;
 }
 
-function buildMimeEmail({ from, to, subject, textBody, htmlBody }) {
-  const boundary = `pressureflow-${crypto.randomBytes(12).toString("hex")}`;
-  const mime = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${encodeMimeHeader(subject)}`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+function buildMimeEmail({ from, to, subject, textBody, htmlBody, attachments = [] }) {
+  const alternativeBoundary = `pressureflow-alt-${crypto.randomBytes(12).toString("hex")}`;
+  const mixedBoundary = `pressureflow-mixed-${crypto.randomBytes(12).toString("hex")}`;
+  const alternativeParts = [
+    `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
     "",
-    `--${boundary}`,
+    `--${alternativeBoundary}`,
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: 7bit",
     "",
     textBody,
     "",
-    `--${boundary}`,
+    `--${alternativeBoundary}`,
     "Content-Type: text/html; charset=UTF-8",
     "Content-Transfer-Encoding: 7bit",
     "",
     htmlBody,
     "",
-    `--${boundary}--`
+    `--${alternativeBoundary}--`
+  ];
+
+  const headers = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${encodeMimeHeader(subject)}`,
+    "MIME-Version: 1.0"
+  ];
+
+  if (!attachments.length) {
+    return Buffer.from([
+      ...headers,
+      ...alternativeParts
+    ].join("\r\n")).toString("base64url");
+  }
+
+  const mime = [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+    "",
+    `--${mixedBoundary}`,
+    ...alternativeParts,
+    "",
+    ...attachments.flatMap((attachment) => buildMimeAttachmentPart(mixedBoundary, attachment)),
+    `--${mixedBoundary}--`
   ].join("\r\n");
 
   return Buffer.from(mime).toString("base64url");
+}
+
+function buildMimeAttachmentPart(boundary, attachment) {
+  const fileName = sanitizeAttachmentFileName(attachment.fileName || "attachment.txt");
+  const content = String(attachment.content || "");
+  const contentType = attachment.contentType || "text/plain; charset=UTF-8";
+  return [
+    `--${boundary}`,
+    `Content-Type: ${contentType}; name="${fileName}"`,
+    "Content-Transfer-Encoding: base64",
+    `Content-Disposition: attachment; filename="${fileName}"`,
+    "",
+    Buffer.from(content, "utf8").toString("base64").replace(/.{1,76}/g, "$&\r\n").trim(),
+    ""
+  ];
+}
+
+function sanitizeAttachmentFileName(fileName) {
+  return String(fileName || "attachment.txt").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "attachment.txt";
 }
 
 function encodeMimeHeader(value) {
@@ -3415,8 +3457,86 @@ async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
     to: job.email,
     subject,
     textBody,
-    htmlBody: renderScheduleConfirmationEmailHtml(job, settings, baseUrl)
+    htmlBody: renderScheduleConfirmationEmailHtml(job, settings, baseUrl),
+    attachments: [buildScheduleInviteAttachment(job, settings)]
   });
+}
+
+function buildScheduleInviteAttachment(job, settings) {
+  return {
+    fileName: `pressureflow-${slugifyAttachmentName(job.customerName || job.serviceType || "service")}.ics`,
+    contentType: 'text/calendar; charset=UTF-8; method=PUBLISH',
+    content: buildScheduleInviteIcs(job, settings)
+  };
+}
+
+function buildScheduleInviteIcs(job, settings) {
+  const businessName = getBusinessName(settings);
+  const startValue = job.scheduledAt?.slice(0, 16) || "";
+  const endValue = startValue ? addMinutesToLocalDateTime(startValue, Number(job.jobDurationMinutes || 180)) : "";
+  const nowStamp = formatIcsUtcDate(new Date());
+  const startStamp = formatIcsPacificDateTime(startValue);
+  const endStamp = formatIcsPacificDateTime(endValue);
+  const description = [
+    `${businessName} service appointment.`,
+    `Service: ${job.serviceType}`,
+    `Address: ${job.address}`,
+    "",
+    "Day-of-service instructions:",
+    ...getDayOfServiceInstructions().map((item) => `- ${item}`)
+  ].join("\\n");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//PressureFlow//Schedule Confirmation//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${escapeIcsText(job.id || crypto.randomUUID())}@pressureflow`,
+    `DTSTAMP:${nowStamp}`,
+    `DTSTART:${startStamp}`,
+    `DTEND:${endStamp}`,
+    `SUMMARY:${escapeIcsText(`${businessName} - ${job.serviceType}`)}`,
+    `LOCATION:${escapeIcsText(job.address)}`,
+    `DESCRIPTION:${escapeIcsText(description)}`,
+    `ORGANIZER;CN=${escapeIcsText(businessName)}:MAILTO:${sanitizeIcsEmail(settings.businessEmail || settings.googleCalendarId || "")}`,
+    job.email ? `ATTENDEE;CN=${escapeIcsText(job.customerName || "Customer")};ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION:MAILTO:${sanitizeIcsEmail(job.email)}` : "",
+    "END:VEVENT",
+    "END:VCALENDAR"
+  ].filter(Boolean).join("\r\n");
+}
+
+function formatIcsPacificDateTime(value) {
+  if (!value) {
+    return formatIcsUtcDate(new Date());
+  }
+
+  return formatIcsUtcDate(new Date(withPacificOffset(value)));
+}
+
+function formatIcsUtcDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function escapeIcsText(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
+}
+
+function sanitizeIcsEmail(value) {
+  return String(value || "no-reply@pressureflow.local").replace(/[\r\n<>]/g, "").trim() || "no-reply@pressureflow.local";
+}
+
+function slugifyAttachmentName(value) {
+  return String(value || "service")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60) || "service";
 }
 
 function renderScheduleConfirmationEmailHtml(job, settings, baseUrl) {

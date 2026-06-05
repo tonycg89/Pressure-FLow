@@ -8,6 +8,7 @@ Purpose:
 
 - Create calendar events when a job is scheduled
 - Send estimate, contract, invoice, schedule confirmation, and completion emails
+- Attach universal `.ics` calendar invites to schedule confirmations for Apple Calendar, Outlook, Google Calendar, and mobile calendar apps
 
 Platform environment variables:
 
@@ -36,6 +37,8 @@ Required APIs:
 Notes:
 
 - The connected Google account is the account that sends customer emails.
+- Customers do not need Gmail. They can receive PressureFlow emails in Apple Mail, Outlook, Yahoo, business email, or any normal inbox.
+- Schedule confirmation emails include an `.ics` attachment so iPhone/Apple Calendar users can add the appointment to their calendar.
 - If Gmail API was newly enabled, wait several minutes and reconnect Google from Settings.
 - If the Google app is in testing mode, the sending account must be listed as a test user.
 
