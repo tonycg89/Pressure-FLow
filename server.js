@@ -15,6 +15,8 @@ const {
   writeCustomers: writeAllCustomers,
   readExpenses: readAllExpenses,
   writeExpenses: writeAllExpenses,
+  readAccounts,
+  writeAccounts,
   readUsers,
   writeUsers,
   readSettings: readGlobalSettings,
@@ -66,7 +68,7 @@ function getWorkspaceId() {
   if (context?.authDisabled || context?.session?.userId === "env-admin") {
     return "owner";
   }
-  return context?.session?.userId || "";
+  return context?.session?.accountId || context?.session?.userId || "";
 }
 
 function itemWorkspaceId(item) {
@@ -2825,6 +2827,7 @@ async function authenticateLogin(email, password) {
   await writeUsers(users);
   return {
     userId: user.id,
+    accountId: user.accountId || user.id,
     email: user.email,
     role: user.role || "tester"
   };
@@ -2841,11 +2844,11 @@ function isValidAdminLogin(email, password) {
       crypto.createHash("sha256").update(String(password || "")).digest("hex"),
       process.env.ADMIN_PASSWORD_SHA256
     );
-    return matches ? { userId: "env-admin", email: expectedEmail || "admin", role: "owner" } : null;
+    return matches ? { userId: "env-admin", accountId: "owner", email: expectedEmail || "admin", role: "owner" } : null;
   }
 
   const matches = safeCompare(String(password || ""), process.env.ADMIN_PASSWORD || "");
-  return matches ? { userId: "env-admin", email: expectedEmail || "admin", role: "owner" } : null;
+  return matches ? { userId: "env-admin", accountId: "owner", email: expectedEmail || "admin", role: "owner" } : null;
 }
 
 function buildSessionCookie(user = {}) {
@@ -2853,6 +2856,7 @@ function buildSessionCookie(user = {}) {
   const payload = base64UrlEncode(JSON.stringify({
     expiresAt,
     userId: user.userId || "",
+    accountId: user.accountId || user.userId || "",
     email: user.email || "",
     role: user.role || "tester"
   }));
@@ -2868,6 +2872,7 @@ function publicUsers(users) {
 function publicUser(user) {
   return {
     id: user.id,
+    accountId: user.accountId || user.id,
     name: user.name || "",
     email: user.email || "",
     role: user.role || "tester",
@@ -2881,6 +2886,7 @@ function publicSessionUser(session) {
   if (!session?.userId) return null;
   return {
     id: session.userId,
+    accountId: session.accountId || session.userId,
     email: session.email || "",
     role: session.role || "tester",
     isOwner: session.role === "owner"
@@ -2934,7 +2940,26 @@ async function createAppUser(input) {
 
   users.push(user);
   await writeUsers(users);
+  await ensureAccountForUser(user);
   return { user, users };
+}
+
+async function ensureAccountForUser(user) {
+  const accountId = user.accountId || user.id;
+  const accounts = await readAccounts();
+  if (accounts.some((account) => account.id === accountId)) {
+    return;
+  }
+
+  accounts.push({
+    id: accountId,
+    name: user.name || user.email || "Tester Account",
+    plan: user.role === "owner" ? "owner" : "tester",
+    status: user.disabled ? "disabled" : "active",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+  await writeAccounts(accounts);
 }
 
 async function deleteAppUser(userId) {
@@ -2954,10 +2979,12 @@ async function deleteAppUser(userId) {
 }
 
 function normalizeAppUser(input) {
+  const id = crypto.randomUUID();
   const name = String(input.name || "").trim();
   const email = String(input.email || "").trim().toLowerCase();
   const password = String(input.password || "");
   const role = ["owner", "admin", "tester", "technician"].includes(input.role) ? input.role : "tester";
+  const accountId = String(input.accountId || id).trim();
 
   if (!name) {
     throw new Error("Enter a user name.");
@@ -2970,7 +2997,8 @@ function normalizeAppUser(input) {
   }
 
   return {
-    id: crypto.randomUUID(),
+    id,
+    accountId,
     name,
     email,
     passwordHash: hashPassword(password),

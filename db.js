@@ -9,6 +9,7 @@ const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
 const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
 const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
 const WEBHOOK_LOG_FILE = path.join(DATA_DIR, "webhook-events.json");
 const usePostgres = Boolean(process.env.DATABASE_URL);
@@ -72,6 +73,15 @@ const statuses = [
   "Paid"
 ];
 
+const ownerAccount = {
+  id: "owner",
+  name: "Owner Account",
+  plan: "owner",
+  status: "active",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
 function seedJobs() {
   return [
     {
@@ -131,6 +141,10 @@ async function ensureDataFile() {
     await writeJson(USERS_FILE, []);
   }
 
+  if (!existsSync(ACCOUNTS_FILE)) {
+    await writeJson(ACCOUNTS_FILE, [ownerAccount]);
+  }
+
   if (!existsSync(SETTINGS_FILE)) {
     await writeJson(SETTINGS_FILE, defaultSettings);
   }
@@ -151,13 +165,14 @@ async function writeJson(file, value) {
 
 async function syncPostgresItems(client, tableName, items, upsertItem, options = {}) {
   const ids = items.map((item) => item.id);
+  const idType = options.idType || "uuid";
   if (options.accountId) {
     await client.query(
-      `delete from ${tableName} where account_id = $1 and not (id = any($2::uuid[]))`,
+      `delete from ${tableName} where account_id = $1 and not (id = any($2::${idType}[]))`,
       [options.accountId, ids]
     );
   } else {
-    await client.query(`delete from ${tableName} where not (id = any($1::uuid[]))`, [ids]);
+    await client.query(`delete from ${tableName} where not (id = any($1::${idType}[]))`, [ids]);
   }
 
   for (const item of items) {
@@ -289,6 +304,36 @@ async function writeUsers(users) {
   }
 
   await writeJson(USERS_FILE, users);
+}
+
+async function readAccounts() {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const result = await getPool().query("select * from accounts order by created_at asc");
+    return result.rows.map(accountFromRow);
+  }
+
+  return readJson(ACCOUNTS_FILE);
+}
+
+async function writeAccounts(accounts) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      await syncPostgresItems(client, "accounts", accounts, upsertAccount, { idType: "text" });
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  await writeJson(ACCOUNTS_FILE, accounts);
 }
 
 async function readUserSettings(userId) {
@@ -563,6 +608,27 @@ function getPool() {
 
 async function ensurePostgresSchema() {
   if (postgresSchemaReady) return;
+  await getPool().query(`create table if not exists accounts (
+    id text primary key,
+    name text not null default '',
+    plan text not null default 'tester',
+    status text not null default 'active',
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await getPool().query(
+    `insert into accounts (id, name, plan, status, created_at, updated_at)
+    values ($1, $2, $3, $4, $5, $6)
+    on conflict (id) do nothing`,
+    [
+      ownerAccount.id,
+      ownerAccount.name,
+      ownerAccount.plan,
+      ownerAccount.status,
+      ownerAccount.createdAt,
+      ownerAccount.updatedAt
+    ]
+  );
   await getPool().query(`create table if not exists customers (
     id uuid primary key default gen_random_uuid(),
     account_id text not null default 'owner',
@@ -596,6 +662,7 @@ async function ensurePostgresSchema() {
   )`);
   await getPool().query(`create table if not exists app_users (
     id uuid primary key default gen_random_uuid(),
+    account_id text not null default '',
     name text not null default '',
     email text not null unique,
     password_hash text not null default '',
@@ -675,6 +742,8 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_service_types jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_photo_sections jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_users add column if not exists account_id text not null default ''");
+  await getPool().query("update app_users set account_id = id::text where account_id = ''");
   await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
   await getPool().query("alter table customers add column if not exists account_id text not null default 'owner'");
   await getPool().query("alter table expenses add column if not exists account_id text not null default 'owner'");
@@ -725,6 +794,7 @@ async function upsertUser(client, user) {
   await client.query(
     `insert into app_users (
       id,
+      account_id,
       name,
       email,
       password_hash,
@@ -734,8 +804,9 @@ async function upsertUser(client, user) {
       last_login_at,
       created_at,
       updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
+    ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11)
     on conflict (id) do update set
+      account_id = excluded.account_id,
       name = excluded.name,
       email = excluded.email,
       password_hash = excluded.password_hash,
@@ -746,6 +817,7 @@ async function upsertUser(client, user) {
       updated_at = excluded.updated_at`,
     [
       user.id,
+      user.accountId || user.id,
       user.name || "",
       user.email || "",
       user.passwordHash || "",
@@ -759,9 +831,60 @@ async function upsertUser(client, user) {
   );
 }
 
+async function upsertAccount(client, account) {
+  const normalized = normalizeAccount(account);
+  await client.query(
+    `insert into accounts (
+      id,
+      name,
+      plan,
+      status,
+      created_at,
+      updated_at
+    ) values ($1, $2, $3, $4, $5, $6)
+    on conflict (id) do update set
+      name = excluded.name,
+      plan = excluded.plan,
+      status = excluded.status,
+      updated_at = excluded.updated_at`,
+    [
+      normalized.id,
+      normalized.name,
+      normalized.plan,
+      normalized.status,
+      normalized.createdAt,
+      normalized.updatedAt
+    ]
+  );
+}
+
+function normalizeAccount(account = {}) {
+  const id = String(account.id || "").trim();
+  return {
+    id,
+    name: String(account.name || id || "Account").trim(),
+    plan: String(account.plan || "tester").trim(),
+    status: ["active", "disabled"].includes(account.status) ? account.status : "active",
+    createdAt: account.createdAt || new Date().toISOString(),
+    updatedAt: account.updatedAt || new Date().toISOString()
+  };
+}
+
+function accountFromRow(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    plan: row.plan || "tester",
+    status: row.status || "active",
+    createdAt: row.created_at?.toISOString?.() || "",
+    updatedAt: row.updated_at?.toISOString?.() || ""
+  };
+}
+
 function userFromRow(row) {
   return {
     id: row.id,
+    accountId: row.account_id || row.id,
     name: row.name || "",
     email: row.email || "",
     passwordHash: row.password_hash || "",
@@ -1226,6 +1349,8 @@ module.exports = {
   writeCustomers,
   readExpenses,
   writeExpenses,
+  readAccounts,
+  writeAccounts,
   readUsers,
   writeUsers,
   readUserSettings,

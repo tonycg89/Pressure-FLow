@@ -1,6 +1,15 @@
 -- PressureFlow production schema draft for Supabase Postgres.
 -- Run this in Supabase SQL Editor when we are ready to migrate off local JSON.
 
+create table if not exists accounts (
+  id text primary key,
+  name text not null default '',
+  plan text not null default 'tester',
+  status text not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists jobs (
   id uuid primary key default gen_random_uuid(),
   account_id text not null default 'owner',
@@ -95,6 +104,7 @@ create table if not exists expenses (
 
 create table if not exists app_users (
   id uuid primary key default gen_random_uuid(),
+  account_id text not null default '',
   name text not null default '',
   email text not null unique,
   password_hash text not null default '',
