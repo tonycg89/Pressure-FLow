@@ -27,6 +27,13 @@ const defaultSettings = {
   squareAccessToken: "",
   squareLocationId: "",
   squareWebhookSignatureKey: "",
+  emailSendProvider: "google",
+  smtpHost: "",
+  smtpPort: 587,
+  smtpSecurity: "starttls",
+  smtpUsername: "",
+  smtpPassword: "",
+  smtpFromEmail: "",
   stripeSecretKey: "",
   stripeWebhookSecret: "",
   quickBooksCompanyId: "",
@@ -331,6 +338,13 @@ function applyRuntimeSettings(settings = {}) {
     squareAccessToken: process.env.SQUARE_ACCESS_TOKEN || rowSettings.squareAccessToken || "",
     squareLocationId: process.env.SQUARE_LOCATION_ID || rowSettings.squareLocationId || defaultSettings.squareLocationId,
     squareWebhookSignatureKey: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || rowSettings.squareWebhookSignatureKey || "",
+    emailSendProvider: ["google", "smtp"].includes(rowSettings.emailSendProvider) ? rowSettings.emailSendProvider : "google",
+    smtpHost: rowSettings.smtpHost || "",
+    smtpPort: Number(rowSettings.smtpPort || 587),
+    smtpSecurity: ["ssl", "starttls", "none"].includes(rowSettings.smtpSecurity) ? rowSettings.smtpSecurity : "starttls",
+    smtpUsername: rowSettings.smtpUsername || "",
+    smtpPassword: rowSettings.smtpPassword || "",
+    smtpFromEmail: rowSettings.smtpFromEmail || "",
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || rowSettings.stripeSecretKey || "",
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || rowSettings.stripeWebhookSecret || "",
     quickBooksCompanyId: rowSettings.quickBooksCompanyId || "",
@@ -374,6 +388,13 @@ async function writeSettings(settings) {
         square_access_token,
         square_location_id,
         square_webhook_signature_key,
+        email_send_provider,
+        smtp_host,
+        smtp_port,
+        smtp_security,
+        smtp_username,
+        smtp_password,
+        smtp_from_email,
         stripe_secret_key,
         stripe_webhook_secret,
         quickbooks_company_id,
@@ -394,7 +415,7 @@ async function writeSettings(settings) {
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24::jsonb, $25::jsonb, $26::jsonb, $27::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31::jsonb, $32::jsonb, $33::jsonb, $34::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -407,6 +428,13 @@ async function writeSettings(settings) {
         square_access_token = excluded.square_access_token,
         square_location_id = excluded.square_location_id,
         square_webhook_signature_key = excluded.square_webhook_signature_key,
+        email_send_provider = excluded.email_send_provider,
+        smtp_host = excluded.smtp_host,
+        smtp_port = excluded.smtp_port,
+        smtp_security = excluded.smtp_security,
+        smtp_username = excluded.smtp_username,
+        smtp_password = excluded.smtp_password,
+        smtp_from_email = excluded.smtp_from_email,
         stripe_secret_key = excluded.stripe_secret_key,
         stripe_webhook_secret = excluded.stripe_webhook_secret,
         quickbooks_company_id = excluded.quickbooks_company_id,
@@ -439,6 +467,13 @@ async function writeSettings(settings) {
         settings.squareAccessToken || "",
         settings.squareLocationId || "",
         settings.squareWebhookSignatureKey || "",
+        settings.emailSendProvider || "google",
+        settings.smtpHost || "",
+        Number(settings.smtpPort || 587),
+        settings.smtpSecurity || "starttls",
+        settings.smtpUsername || "",
+        settings.smtpPassword || "",
+        settings.smtpFromEmail || "",
         settings.stripeSecretKey || "",
         settings.stripeWebhookSecret || "",
         settings.quickBooksCompanyId || "",
@@ -574,6 +609,13 @@ async function ensurePostgresSchema() {
     square_access_token text not null default '',
     square_location_id text not null default '',
     square_webhook_signature_key text not null default '',
+    email_send_provider text not null default 'google',
+    smtp_host text not null default '',
+    smtp_port integer not null default 587,
+    smtp_security text not null default 'starttls',
+    smtp_username text not null default '',
+    smtp_password text not null default '',
+    smtp_from_email text not null default '',
     stripe_secret_key text not null default '',
     stripe_webhook_secret text not null default '',
     quickbooks_company_id text not null default '',
@@ -599,6 +641,13 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists business_logo_data_url text not null default ''");
   await getPool().query("alter table app_settings add column if not exists square_access_token text not null default ''");
   await getPool().query("alter table app_settings add column if not exists square_webhook_signature_key text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists email_send_provider text not null default 'google'");
+  await getPool().query("alter table app_settings add column if not exists smtp_host text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists smtp_port integer not null default 587");
+  await getPool().query("alter table app_settings add column if not exists smtp_security text not null default 'starttls'");
+  await getPool().query("alter table app_settings add column if not exists smtp_username text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists smtp_password text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists smtp_from_email text not null default ''");
   await getPool().query("alter table app_settings add column if not exists stripe_secret_key text not null default ''");
   await getPool().query("alter table app_settings add column if not exists stripe_webhook_secret text not null default ''");
   await getPool().query("alter table app_settings add column if not exists quickbooks_company_id text not null default ''");
@@ -1071,6 +1120,13 @@ function settingsFromRow(row) {
     squareAccessToken: row.square_access_token || "",
     squareLocationId: row.square_location_id || "",
     squareWebhookSignatureKey: row.square_webhook_signature_key || "",
+    emailSendProvider: row.email_send_provider || "google",
+    smtpHost: row.smtp_host || "",
+    smtpPort: Number(row.smtp_port || 587),
+    smtpSecurity: row.smtp_security || "starttls",
+    smtpUsername: row.smtp_username || "",
+    smtpPassword: row.smtp_password || "",
+    smtpFromEmail: row.smtp_from_email || "",
     stripeSecretKey: row.stripe_secret_key || "",
     stripeWebhookSecret: row.stripe_webhook_secret || "",
     quickBooksCompanyId: row.quickbooks_company_id || "",

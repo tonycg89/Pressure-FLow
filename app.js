@@ -141,6 +141,7 @@ const settingsStatus = document.querySelector("#settingsStatus");
 const onboardingServiceList = document.querySelector("#onboardingServiceList");
 const saveOnboardingServicesButton = document.querySelector("#saveOnboardingServicesButton");
 const onboardingStatus = document.querySelector("#onboardingStatus");
+const emailIntegrationStatus = document.querySelector("#emailIntegrationStatus");
 const squareIntegrationStatus = document.querySelector("#squareIntegrationStatus");
 const stripeIntegrationStatus = document.querySelector("#stripeIntegrationStatus");
 const quickBooksIntegrationStatus = document.querySelector("#quickBooksIntegrationStatus");
@@ -643,6 +644,14 @@ function fillSettingsForm() {
   settingsForm.elements.googleClientSecret.placeholder = settings.hasGoogleClientSecret ? "Leave blank to keep saved secret" : "Enter Google client secret";
   settingsForm.elements.googleRedirectUri.value = settings.googleRedirectUri || "";
   settingsForm.elements.mapboxPublicToken.value = currentUser?.isOwner ? settings.mapboxPublicToken || "" : "";
+  settingsForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
+  settingsForm.elements.smtpHost.value = settings.smtpHost || "";
+  settingsForm.elements.smtpPort.value = settings.smtpPort || 587;
+  settingsForm.elements.smtpSecurity.value = settings.smtpSecurity || "starttls";
+  settingsForm.elements.smtpUsername.value = settings.smtpUsername || "";
+  settingsForm.elements.smtpPassword.value = "";
+  settingsForm.elements.smtpPassword.placeholder = settings.hasSmtpPassword ? "Leave blank to keep saved SMTP password" : "Enter SMTP/app password";
+  settingsForm.elements.smtpFromEmail.value = settings.smtpFromEmail || "";
   settingsForm.elements.squareEnvironment.value = settings.squareEnvironment || "sandbox";
   settingsForm.elements.squareLocationId.value = settings.squareLocationId || "";
   settingsForm.elements.squareAccessToken.value = "";
@@ -669,6 +678,15 @@ function fillSettingsForm() {
 }
 
 function renderIntegrationStatuses() {
+  if (emailIntegrationStatus) {
+    emailIntegrationStatus.textContent = settings.emailSendProvider === "smtp"
+      ? settings.hasSmtpPassword
+        ? "SMTP sending is saved for this account."
+        : "SMTP selected. Save an SMTP/app password before sending email."
+      : settings.hasGoogleRefreshToken
+        ? "Google/Gmail sending is connected."
+        : "Google/Gmail selected. Connect Google Calendar to send automated emails.";
+  }
   if (squareIntegrationStatus) {
     squareIntegrationStatus.textContent = settings.hasSquareAccessToken
       ? `Square token saved${settings.squareLocationId ? ` for ${settings.squareLocationId}` : ""}.`

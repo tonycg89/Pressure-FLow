@@ -686,6 +686,46 @@
           </div>
           <div class="integration-grid">
             <section class="integration-panel">
+              <h4>Sending Email</h4>
+              <label>
+                Provider
+                <select name="emailSendProvider">
+                  <option value="google">Google / Gmail</option>
+                  <option value="smtp">SMTP email</option>
+                </select>
+              </label>
+              <label>
+                SMTP host
+                <input name="smtpHost" autocomplete="off" placeholder="smtp.mail.me.com">
+              </label>
+              <label>
+                SMTP port
+                <input name="smtpPort" type="number" min="1" max="65535" value="587">
+              </label>
+              <label>
+                Security
+                <select name="smtpSecurity">
+                  <option value="starttls">STARTTLS</option>
+                  <option value="ssl">SSL/TLS</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+              <label>
+                SMTP username
+                <input name="smtpUsername" autocomplete="off" placeholder="you@example.com">
+              </label>
+              <label>
+                SMTP password
+                <input name="smtpPassword" type="password" autocomplete="off" placeholder="Enter SMTP/app password">
+              </label>
+              <label>
+                From email
+                <input name="smtpFromEmail" type="email" autocomplete="off" placeholder="you@example.com">
+              </label>
+              <p id="emailIntegrationStatus" class="form-note"></p>
+            </section>
+
+            <section class="integration-panel">
               <h4>Square</h4>
               <label>
                 Environment

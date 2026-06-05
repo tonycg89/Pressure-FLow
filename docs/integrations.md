@@ -42,6 +42,28 @@ Notes:
 - If Gmail API was newly enabled, wait several minutes and reconnect Google from Settings.
 - If the Google app is in testing mode, the sending account must be listed as a test user.
 
+## SMTP Email
+
+Purpose:
+
+- Let accounts send automated estimates, contracts, invoices, schedule confirmations, and completion emails without Gmail.
+
+Per-account settings:
+
+- Email sending provider: Google/Gmail or SMTP
+- SMTP host
+- SMTP port
+- Security mode: STARTTLS, SSL/TLS, or none
+- SMTP username
+- SMTP/app password
+- From email
+
+Notes:
+
+- SMTP is the fastest broad support path for iCloud Mail, Outlook/Hotmail, Yahoo, and many domain email providers.
+- Some providers require app-specific passwords instead of the normal account password.
+- Customers still do not need a specific email provider; they can receive PressureFlow emails in any normal inbox.
+
 ## Mapbox
 
 Purpose:
