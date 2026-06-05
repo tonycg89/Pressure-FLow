@@ -2581,9 +2581,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && url.pathname === "/webhooks/square") {
-    const settings = await readSettings();
     const rawBody = await readRawRequestBody(request);
-    if (!verifySquareWebhookSignature(request, rawBody, settings)) {
+    if (!(await verifySquareWebhookSignature(request, rawBody))) {
       await recordWebhookEvent({ provider: "square", status: "rejected", reason: "invalid signature" });
       sendError(response, 401, "Invalid Square webhook signature.");
       return;
@@ -2604,7 +2603,7 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/webhooks/stripe") {
     const rawBody = await readRawRequestBody(request);
-    if (!verifyStripeWebhookSignature(request, rawBody)) {
+    if (!(await verifyStripeWebhookSignature(request, rawBody))) {
       sendError(response, 401, "Invalid Stripe webhook signature.");
       return;
     }
@@ -3245,7 +3244,8 @@ async function recordWebhookEvent(event) {
   await writeWebhookEvents(events);
 }
 
-function verifySquareWebhookSignature(request, rawBody, settings) {
+async function verifySquareWebhookSignature(request, rawBody) {
+  const settings = await getSquareWebhookSettings(rawBody);
   if (!settings.squareWebhookSignatureKey) {
     return true;
   }
@@ -3260,6 +3260,39 @@ function verifySquareWebhookSignature(request, rawBody, settings) {
   hmac.update(`${notificationUrl}${rawBody}`);
   const expected = hmac.digest("base64");
   return safeCompare(signature, expected);
+}
+
+async function getSquareWebhookSettings(rawBody) {
+  const invoiceId = getSquareWebhookInvoiceId(rawBody);
+  if (invoiceId) {
+    const job = await findJobBySquareInvoiceId(invoiceId);
+    if (job) {
+      return readSettingsForJob(job);
+    }
+  }
+
+  return readSettings();
+}
+
+function getSquareWebhookInvoiceId(rawBody) {
+  try {
+    const event = JSON.parse(rawBody || "{}");
+    return String(extractSquareInvoice(event)?.id || "");
+  } catch {
+    return "";
+  }
+}
+
+async function findJobBySquareInvoiceId(invoiceId, options = {}) {
+  if (!invoiceId) {
+    return null;
+  }
+
+  const jobs = options.jobs || await readAllJobs();
+  return jobs.find((item) =>
+    item.squareDepositInvoiceId === invoiceId ||
+    item.squareFinalInvoiceId === invoiceId
+  ) || null;
 }
 
 function getWebhookNotificationUrl(request) {
@@ -3285,10 +3318,7 @@ async function handleSquareWebhook(event) {
   }
 
   const jobs = await readJobs();
-  const job = jobs.find((item) =>
-    item.squareDepositInvoiceId === invoice.id ||
-    item.squareFinalInvoiceId === invoice.id
-  );
+  const job = await findJobBySquareInvoiceId(invoice.id, { jobs });
 
   if (!job) {
     return { action: "ignored", reason: "invoice not matched", invoiceId: invoice.id };
@@ -4090,6 +4120,7 @@ async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) 
     success_url: `${invoiceUrl}&card=paid`,
     cancel_url: invoiceUrl,
     "metadata[jobId]": job.id,
+    "metadata[accountId]": itemWorkspaceId(job),
     "metadata[invoiceType]": invoiceType,
     "metadata[invoiceId]": invoiceToken
   });
@@ -4110,8 +4141,8 @@ async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) 
   return data;
 }
 
-function verifyStripeWebhookSignature(request, rawBody) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+async function verifyStripeWebhookSignature(request, rawBody) {
+  const secret = await getStripeWebhookSecret(rawBody);
   if (!secret) {
     return true;
   }
@@ -4129,6 +4160,37 @@ function verifyStripeWebhookSignature(request, rawBody) {
   return expected.some((candidate) => safeCompare(candidate, digest));
 }
 
+async function getStripeWebhookSecret(rawBody) {
+  const metadata = getStripeWebhookMetadata(rawBody);
+  if (metadata.jobId) {
+    const jobs = metadata.accountId
+      ? await readAllJobs({ accountId: metadata.accountId })
+      : await readAllJobs();
+    const job = jobs.find((item) => item.id === metadata.jobId);
+    if (job) {
+      const settings = await readSettingsForJob(job);
+      if (settings.stripeWebhookSecret) {
+        return settings.stripeWebhookSecret;
+      }
+    }
+  }
+
+  return process.env.STRIPE_WEBHOOK_SECRET || "";
+}
+
+function getStripeWebhookMetadata(rawBody) {
+  try {
+    const event = JSON.parse(rawBody || "{}");
+    const metadata = event.data?.object?.metadata || {};
+    return {
+      jobId: String(metadata.jobId || ""),
+      accountId: String(metadata.accountId || "")
+    };
+  } catch {
+    return { jobId: "", accountId: "" };
+  }
+}
+
 async function handleStripeWebhook(event) {
   if (event.type !== "checkout.session.completed") {
     return { action: "ignored", type: event.type || "" };
@@ -4140,8 +4202,11 @@ async function handleStripeWebhook(event) {
   }
 
   const jobId = session.metadata?.jobId || "";
+  const accountId = String(session.metadata?.accountId || "");
   const invoiceType = session.metadata?.invoiceType === "deposit" ? "deposit" : "final";
-  const jobs = await readJobs();
+  const jobs = accountId && process.env.DATABASE_URL
+    ? await readAllJobs({ accountId })
+    : await readJobs();
   const job = jobs.find((item) => item.id === jobId);
   if (!job) {
     return { action: "ignored", reason: "job not found", jobId };
@@ -4161,7 +4226,11 @@ async function handleStripeWebhook(event) {
   }
 
   job.updatedAt = new Date().toISOString();
-  await writeJobs(jobs);
+  if (accountId && process.env.DATABASE_URL) {
+    await writeAllJobs(jobs, { accountId });
+  } else {
+    await writeJobs(jobs);
+  }
   return { action: "job_updated", jobId: job.id, invoiceType, status: job.status };
 }
 
