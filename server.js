@@ -38,7 +38,7 @@ const {
   squareRequest,
   verifySquareSignature
 } = require("./integrations/square");
-const { parseStripeWebhookMetadata, verifyStripeSignature } = require("./integrations/stripe");
+const { createStripeCheckoutSessionRequest, parseStripeWebhookMetadata, verifyStripeSignature } = require("./integrations/stripe");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -3804,48 +3804,17 @@ async function createSquareInvoice(job, settings, invoiceType) {
 }
 
 async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) {
-  const secretKey = settings.stripeSecretKey || process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("Stripe is not configured yet. Add the Stripe secret key in Settings.");
-  }
-
   const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
-  if (amount <= 0) {
-    throw new Error("Payment amount must be greater than $0.");
-  }
-
   const invoiceToken = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
   const invoiceUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceToken);
-  const params = new URLSearchParams({
-    mode: "payment",
-    "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][product_data][name]": `${getBusinessName(settings)} ${invoiceType === "deposit" ? "deposit" : "final balance"}`,
-    "line_items[0][price_data][product_data][description]": `${job.serviceType} at ${job.address}`,
-    "line_items[0][price_data][unit_amount]": String(amount),
-    "line_items[0][quantity]": "1",
-    customer_email: job.email,
-    success_url: `${invoiceUrl}&card=paid`,
-    cancel_url: invoiceUrl,
-    "metadata[jobId]": job.id,
-    "metadata[accountId]": itemWorkspaceId(job),
-    "metadata[invoiceType]": invoiceType,
-    "metadata[invoiceId]": invoiceToken
+  return createStripeCheckoutSessionRequest({
+    settings,
+    job,
+    invoiceType,
+    amount,
+    invoiceUrl,
+    accountId: itemWorkspaceId(job)
   });
-
-  const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: params
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Unable to create Stripe Checkout session.");
-  }
-
-  return data;
 }
 
 async function verifyStripeWebhookSignature(request, rawBody) {
