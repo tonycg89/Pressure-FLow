@@ -25,7 +25,7 @@ const {
   writeWebhookEvents
 } = require("./db");
 const { createInlineFileRecord, publicFileRecord } = require("./storage");
-const { buildGoogleAuthUrl, exchangeGoogleCode, getGoogleAccessToken, sendGmailEmail } = require("./integrations/google");
+const { buildGoogleAuthUrl, createGoogleCalendarEventRequest, exchangeGoogleCode, sendGmailEmail } = require("./integrations/google");
 const { sendSmtpEmail } = require("./integrations/smtp");
 const {
   extractSquareInvoice,
@@ -3888,55 +3888,39 @@ async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMin
     throw new Error("Schedule date/time is required.");
   }
 
-  const accessToken = await getGoogleAccessToken(settings);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(scheduledAt))) {
     throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
   }
 
   const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
   const endDateTime = withPacificOffset(addMinutesToLocalDateTime(scheduledAt.slice(0, 16), durationMinutes));
-  const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
-  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
+  return createGoogleCalendarEventRequest(settings, {
+    summary: `${job.serviceType} - ${job.customerName}`,
+    location: job.address,
+    description: [
+      `Customer: ${job.customerName}`,
+      `Phone: ${job.phone}`,
+      `Email: ${job.email}`,
+      `Service: ${job.serviceType}`,
+      `Estimate: $${Number(job.estimate || 0).toFixed(2)}`,
+      `Deposit: $${(getDepositCents(job) / 100).toFixed(2)}`,
+      "",
+      `Notes: ${job.notes || "None"}`,
+      `Access notes: ${job.accessNotes || "None"}`,
+      `Sensitive areas: ${job.sensitiveAreas || "None"}`
+    ].join("\n"),
+    start: {
+      dateTime: startDateTime,
+      timeZone: "America/Los_Angeles"
     },
-    body: JSON.stringify({
-      summary: `${job.serviceType} - ${job.customerName}`,
-      location: job.address,
-      description: [
-        `Customer: ${job.customerName}`,
-        `Phone: ${job.phone}`,
-        `Email: ${job.email}`,
-        `Service: ${job.serviceType}`,
-        `Estimate: $${Number(job.estimate || 0).toFixed(2)}`,
-        `Deposit: $${(getDepositCents(job) / 100).toFixed(2)}`,
-        "",
-        `Notes: ${job.notes || "None"}`,
-        `Access notes: ${job.accessNotes || "None"}`,
-        `Sensitive areas: ${job.sensitiveAreas || "None"}`
-      ].join("\n"),
-      start: {
-        dateTime: startDateTime,
-        timeZone: "America/Los_Angeles"
-      },
-      end: {
-        dateTime: endDateTime,
-        timeZone: "America/Los_Angeles"
-      },
-      reminders: {
-        useDefault: true
-      }
-    })
+    end: {
+      dateTime: endDateTime,
+      timeZone: "America/Los_Angeles"
+    },
+    reminders: {
+      useDefault: true
+    }
   });
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`);
-  }
-
-  return data;
 }
 
 function addMinutesToLocalDateTime(value, minutes) {

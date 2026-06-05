@@ -86,6 +86,26 @@ async function sendGmailEmail(settings, message) {
   return data;
 }
 
+async function createGoogleCalendarEventRequest(settings, event) {
+  const accessToken = await getGoogleAccessToken(settings);
+  const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
+  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(event)
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`);
+  }
+
+  return data;
+}
+
 function requireGoogleSettings(settings, requireRefreshToken) {
   if (!settings.googleClientId) {
     throw new Error("Google client ID is missing. Open Settings and save your Google client ID.");
@@ -103,6 +123,7 @@ function requireGoogleSettings(settings, requireRefreshToken) {
 
 module.exports = {
   buildGoogleAuthUrl,
+  createGoogleCalendarEventRequest,
   exchangeGoogleCode,
   getGoogleAccessToken,
   sendGmailEmail
