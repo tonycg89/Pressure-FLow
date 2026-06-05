@@ -42,6 +42,8 @@ DATABASE_URL=
 
 Keep `ADMIN_EMAIL` and `ADMIN_PASSWORD` set as the owner fallback login. Additional tester/admin logins can be created inside PressureFlow under **Settings > Team access**; those invited users are stored in the app database with password hashes.
 
+When `NODE_ENV=production`, PressureFlow will not start unless `SESSION_SECRET` is set and authentication is available through `ADMIN_PASSWORD`, `ADMIN_PASSWORD_SHA256`, or at least one active app user. This prevents accidentally deploying the app with login disabled.
+
 Google:
 
 ```text

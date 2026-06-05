@@ -2735,6 +2735,23 @@ async function isAuthEnabled() {
   return (await readUsers()).some((user) => !user.disabled);
 }
 
+async function validateStartupSecurity() {
+  if (process.env.NODE_ENV !== "production" || process.env.ALLOW_AUTH_DISABLED === "true") {
+    if (!(await isAuthEnabled())) {
+      console.warn("PressureFlow authentication is disabled. Set ADMIN_PASSWORD or create an active user before deploying.");
+    }
+    return;
+  }
+
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is required when NODE_ENV=production.");
+  }
+
+  if (!(await isAuthEnabled())) {
+    throw new Error("Authentication is disabled. Set ADMIN_PASSWORD, ADMIN_PASSWORD_SHA256, or create an active user before starting production.");
+  }
+}
+
 function isPublicPath(pathname) {
   return pathname === "/login" ||
     pathname === "/auth/login" ||
@@ -4437,6 +4454,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 ensureDataFile()
+  .then(validateStartupSecurity)
   .then(() => {
     server.listen(PORT, () => {
       console.log(`PressureFlow running at http://localhost:${PORT}`);
