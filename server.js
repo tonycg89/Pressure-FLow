@@ -110,6 +110,13 @@ const contentTypes = {
   ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 };
 
+const staticFileAllowlist = new Set([
+  "index.html",
+  "styles.css",
+  "app.js",
+  "favicon.ico"
+]);
+
 const loginPage = `<!doctype html>
 <html lang="en">
   <head>
@@ -4353,13 +4360,38 @@ function getFinalBalanceCents(job) {
   return Math.max(Math.round(Number(job.estimate || 0) * 100) - getDepositCents(job), 0);
 }
 
-async function serveStatic(response, url) {
-  const requestedPath = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
-  const safePath = path.normalize(requestedPath).replace(/^(\.\.[/\\])+/, "");
-  const filePath = path.join(ROOT, safePath);
+function getStaticFilePath(pathname) {
+  let requestedPath;
 
-  if (!filePath.startsWith(ROOT)) {
-    sendError(response, 403, "Forbidden.");
+  try {
+    requestedPath = pathname === "/" ? "index.html" : decodeURIComponent(pathname).replace(/^\/+/, "");
+  } catch {
+    return null;
+  }
+
+  const normalizedPath = path.normalize(requestedPath);
+  const isAllowedRootFile = staticFileAllowlist.has(normalizedPath);
+  const isAllowedAsset = normalizedPath.startsWith(`assets${path.sep}`) && !normalizedPath.includes(`..${path.sep}`);
+
+  if (!isAllowedRootFile && !isAllowedAsset) {
+    return null;
+  }
+
+  const filePath = path.resolve(ROOT, normalizedPath);
+  const rootPath = path.resolve(ROOT);
+
+  if (filePath !== rootPath && !filePath.startsWith(`${rootPath}${path.sep}`)) {
+    return null;
+  }
+
+  return filePath;
+}
+
+async function serveStatic(response, url) {
+  const filePath = getStaticFilePath(url.pathname);
+
+  if (!filePath) {
+    sendError(response, 404, "File not found.");
     return;
   }
 
