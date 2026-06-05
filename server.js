@@ -27,6 +27,8 @@ const {
   writeWebhookEvents
 } = require("./db");
 const { createInlineFileRecord, publicFileRecord } = require("./storage");
+const { extractSquareInvoice, parseSquareWebhookInvoiceId, verifySquareSignature } = require("./integrations/square");
+const { parseStripeWebhookMetadata, verifyStripeSignature } = require("./integrations/stripe");
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -3332,24 +3334,11 @@ async function recordWebhookEvent(event) {
 
 async function verifySquareWebhookSignature(request, rawBody) {
   const settings = await getSquareWebhookSettings(rawBody);
-  if (!settings.squareWebhookSignatureKey) {
-    return true;
-  }
-
-  const signature = request.headers["x-square-hmacsha256-signature"];
-  if (!signature) {
-    return false;
-  }
-
-  const notificationUrl = getWebhookNotificationUrl(request);
-  const hmac = crypto.createHmac("sha256", settings.squareWebhookSignatureKey);
-  hmac.update(`${notificationUrl}${rawBody}`);
-  const expected = hmac.digest("base64");
-  return safeCompare(signature, expected);
+  return verifySquareSignature(request, rawBody, settings.squareWebhookSignatureKey, safeCompare);
 }
 
 async function getSquareWebhookSettings(rawBody) {
-  const invoiceId = getSquareWebhookInvoiceId(rawBody);
+  const invoiceId = parseSquareWebhookInvoiceId(rawBody);
   if (invoiceId) {
     const job = await findJobBySquareInvoiceId(invoiceId);
     if (job) {
@@ -3358,15 +3347,6 @@ async function getSquareWebhookSettings(rawBody) {
   }
 
   return readSettings();
-}
-
-function getSquareWebhookInvoiceId(rawBody) {
-  try {
-    const event = JSON.parse(rawBody || "{}");
-    return String(extractSquareInvoice(event)?.id || "");
-  } catch {
-    return "";
-  }
 }
 
 async function findJobBySquareInvoiceId(invoiceId, options = {}) {
@@ -3379,12 +3359,6 @@ async function findJobBySquareInvoiceId(invoiceId, options = {}) {
     item.squareDepositInvoiceId === invoiceId ||
     item.squareFinalInvoiceId === invoiceId
   ) || null;
-}
-
-function getWebhookNotificationUrl(request) {
-  const proto = request.headers["x-forwarded-proto"] || "http";
-  const host = request.headers["x-forwarded-host"] || request.headers.host;
-  return `${proto}://${host}/webhooks/square`;
 }
 
 function safeCompare(a, b) {
@@ -3435,10 +3409,6 @@ async function handleSquareWebhook(event) {
   job.updatedAt = new Date().toISOString();
   await writeJobs(jobs);
   return { action: "job_updated", jobId: job.id, invoiceId: invoice.id, status: job.status };
-}
-
-function extractSquareInvoice(event) {
-  return event.data?.object?.invoice || event.data?.object || null;
 }
 
 function setInvoiceStatus(job, invoice) {
@@ -4229,25 +4199,11 @@ async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) 
 
 async function verifyStripeWebhookSignature(request, rawBody) {
   const secret = await getStripeWebhookSecret(rawBody);
-  if (!secret) {
-    return true;
-  }
-
-  const signature = request.headers["stripe-signature"] || "";
-  const timestamp = String(signature).split(",").find((part) => part.startsWith("t="))?.slice(2);
-  const expected = String(signature).split(",").filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
-  if (!timestamp || !expected.length) {
-    return false;
-  }
-
-  const hmac = crypto.createHmac("sha256", secret);
-  hmac.update(`${timestamp}.${rawBody}`);
-  const digest = hmac.digest("hex");
-  return expected.some((candidate) => safeCompare(candidate, digest));
+  return verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
 }
 
 async function getStripeWebhookSecret(rawBody) {
-  const metadata = getStripeWebhookMetadata(rawBody);
+  const metadata = parseStripeWebhookMetadata(rawBody);
   if (metadata.jobId) {
     const jobs = metadata.accountId
       ? await readAllJobs({ accountId: metadata.accountId })
@@ -4262,19 +4218,6 @@ async function getStripeWebhookSecret(rawBody) {
   }
 
   return process.env.STRIPE_WEBHOOK_SECRET || "";
-}
-
-function getStripeWebhookMetadata(rawBody) {
-  try {
-    const event = JSON.parse(rawBody || "{}");
-    const metadata = event.data?.object?.metadata || {};
-    return {
-      jobId: String(metadata.jobId || ""),
-      accountId: String(metadata.accountId || "")
-    };
-  } catch {
-    return { jobId: "", accountId: "" };
-  }
 }
 
 async function handleStripeWebhook(event) {
