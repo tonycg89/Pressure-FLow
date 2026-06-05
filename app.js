@@ -7,6 +7,7 @@ let selectedCustomerId = null;
 let selectedExpenseId = null;
 let settings = {};
 let currentUser = null;
+let csrfToken = "";
 let dismissedNotificationIds = new Set(loadDismissedNotificationIds());
 
 const builtInServiceCatalog = [
@@ -306,8 +307,10 @@ async function loadSession() {
     if (!response.ok) return;
     const data = await response.json();
     currentUser = data.user;
+    csrfToken = data.csrfToken || "";
   } catch {
     currentUser = null;
+    csrfToken = "";
   }
   applyAccountVisibility();
 }
@@ -3308,9 +3311,14 @@ async function deleteJob(jobId) {
 }
 
 async function apiRequest(url, payload, method = "POST") {
+  const headers = { "content-type": "application/json" };
+  if (csrfToken) {
+    headers["x-csrf-token"] = csrfToken;
+  }
+
   const response = await fetch(url, {
     method,
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify(payload)
   });
   const data = await response.json();

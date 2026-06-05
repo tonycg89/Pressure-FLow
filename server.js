@@ -29,6 +29,7 @@ const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const SQUARE_VERSION = "2026-05-20";
 const SESSION_COOKIE = "pressureflow_session";
+const CSRF_HEADER = "x-csrf-token";
 const serviceAgreementTemplate = require("./templates/pressure-washing-service-agreement.json");
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
@@ -2113,6 +2114,11 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (requiresCsrfToken(request, url) && !hasValidCsrfToken(request)) {
+    sendError(response, 403, "Security token expired. Refresh the page and try again.");
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/login") {
     sendHtml(response, 200, loginPage.replace("%ERROR%", ""));
     return;
@@ -2407,7 +2413,8 @@ async function handleApi(request, response, url) {
     sendJson(response, 200, {
       user: publicSessionUser(requestContext.getStore()?.session) || (requestContext.getStore()?.authDisabled
         ? { id: "local-owner", email: "", role: "owner", isOwner: true }
-        : null)
+        : null),
+      csrfToken: buildCsrfToken(request)
     });
     return;
   }
@@ -2996,6 +3003,40 @@ function getValidSession(request) {
 
 function hasValidSession(request) {
   return Boolean(getValidSession(request));
+}
+
+function requiresCsrfToken(request, url) {
+  if (!["POST", "PATCH", "DELETE"].includes(request.method)) {
+    return false;
+  }
+
+  return !isCsrfExemptPath(url.pathname);
+}
+
+function isCsrfExemptPath(pathname) {
+  return pathname === "/auth/login" ||
+    pathname === "/auth/logout" ||
+    pathname.startsWith("/api/public/") ||
+    pathname === "/webhooks/square" ||
+    pathname === "/webhooks/stripe";
+}
+
+function buildCsrfToken(request) {
+  const cookie = parseCookies(request.headers.cookie || "")[SESSION_COOKIE] || "";
+  const [payload, signature] = cookie.split(".");
+  const sessionKey = payload && signature && safeCompare(signature, signSessionPayload(payload))
+    ? payload
+    : "local-auth-disabled";
+
+  return crypto
+    .createHmac("sha256", process.env.SESSION_SECRET || "local-development-session-secret")
+    .update(`csrf:${sessionKey}`)
+    .digest("base64url");
+}
+
+function hasValidCsrfToken(request) {
+  const token = String(request.headers[CSRF_HEADER] || "");
+  return Boolean(token) && safeCompare(token, buildCsrfToken(request));
 }
 
 function signSessionPayload(payload) {
