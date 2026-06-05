@@ -841,14 +841,92 @@ label {
   display: none;
 }
 
-.onboarding-settings {
-  margin-bottom: 16px;
+.onboarding-service-list {
+  display: grid;
+  gap: 10px;
 }
 
-.onboarding-service-list {
+.onboarding-settings {
+  margin: 16px 0;
+}
+
+.onboarding-settings > summary,
+.service-category > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.onboarding-settings > summary::-webkit-details-marker,
+.service-category > summary::-webkit-details-marker {
+  display: none;
+}
+
+.onboarding-settings > summary span,
+.service-category > summary span {
+  display: grid;
+  gap: 2px;
+}
+
+.onboarding-settings > summary strong,
+.service-category > summary span {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.onboarding-settings > summary small,
+.service-category > summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboarding-settings > summary::after,
+.service-category > summary::after {
+  content: "+";
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.onboarding-settings[open] > summary::after,
+.service-category[open] > summary::after {
+  content: "-";
+}
+
+.onboarding-settings[open] > .section-header {
+  margin-top: 12px;
+}
+
+.service-category {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.service-category[open] {
+  background: #fbfcfe;
+}
+
+.service-category-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
 }
 
 .onboarding-service-row {
@@ -1686,6 +1764,7 @@ label {
   .settings-grid,
   .settings-user-grid,
   .onboarding-service-list,
+  .service-category-list,
   .onboarding-service-row,
   .integration-grid,
   .photo-section-list,

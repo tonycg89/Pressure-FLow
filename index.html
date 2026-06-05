@@ -592,18 +592,6 @@
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <section class="settings-section onboarding-settings" aria-label="Onboarding services">
-          <div class="section-header">
-            <div>
-              <h3>Onboarding services</h3>
-              <p class="form-note">Choose the services this account offers, then set the default rates for new jobs.</p>
-            </div>
-            <button id="saveOnboardingServicesButton" class="secondary-small-button" type="button">Save Services</button>
-          </div>
-          <div id="onboardingServiceList" class="onboarding-service-list"></div>
-          <p id="onboardingStatus" class="form-note"></p>
-        </section>
-
         <div class="settings-grid">
           <label>
             Business name
@@ -670,6 +658,24 @@
             <input name="mapboxPublicToken" autocomplete="off" placeholder="Required for map measurements">
           </label>
         </div>
+
+        <details class="settings-section onboarding-settings" aria-label="Saved services">
+          <summary>
+            <span>
+              <strong>Saved services</strong>
+              <small>Choose services and set account default rates</small>
+            </span>
+          </summary>
+          <div class="section-header">
+            <div>
+              <h3>Service catalog</h3>
+              <p class="form-note">Selected services appear in new jobs with the saved default rates for this account.</p>
+            </div>
+            <button id="saveOnboardingServicesButton" class="secondary-small-button" type="button">Save Services</button>
+          </div>
+          <div id="onboardingServiceList" class="onboarding-service-list"></div>
+          <p id="onboardingStatus" class="form-note"></p>
+        </details>
 
         <section class="settings-section" aria-label="Payment and accounting integrations">
           <div class="section-header">
