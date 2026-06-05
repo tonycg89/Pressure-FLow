@@ -37,6 +37,18 @@ const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 8;
 const loginAttempts = new Map();
 const requestContext = new AsyncLocalStorage();
 
+const privateSettingKeys = new Set([
+  "squareAccessToken",
+  "squareWebhookSignatureKey",
+  "smtpPassword",
+  "stripeSecretKey",
+  "stripeWebhookSecret",
+  "quickBooksClientSecret",
+  "quickBooksRefreshToken",
+  "googleClientSecret",
+  "googleRefreshToken"
+]);
+
 function readSettings() {
   return readUserSettings(requestContext.getStore()?.session?.userId || "");
 }
@@ -175,31 +187,19 @@ const loginPage = `<!doctype html>
 </html>`;
 
 function publicSettings(settings, options = {}) {
-  const {
-    squareAccessToken,
-    squareWebhookSignatureKey,
-    smtpPassword,
-    stripeSecretKey,
-    stripeWebhookSecret,
-    quickBooksClientSecret,
-    quickBooksRefreshToken,
-    googleClientSecret,
-    googleRefreshToken,
-    customTemplates,
-    ...publicValues
-  } = settings;
+  const publicValues = omitPrivateSettings(settings);
   const values = {
     ...publicValues,
-    customTemplates: getTemplateMetadata(customTemplates || []),
-    hasSquareAccessToken: Boolean(squareAccessToken),
-    hasSquareWebhookSignatureKey: Boolean(squareWebhookSignatureKey),
-    hasSmtpPassword: Boolean(smtpPassword),
-    hasStripeSecretKey: Boolean(stripeSecretKey),
-    hasStripeWebhookSecret: Boolean(stripeWebhookSecret),
-    hasQuickBooksClientSecret: Boolean(quickBooksClientSecret),
-    hasQuickBooksRefreshToken: Boolean(quickBooksRefreshToken),
-    hasGoogleClientSecret: Boolean(googleClientSecret),
-    hasGoogleRefreshToken: Boolean(googleRefreshToken)
+    customTemplates: getTemplateMetadata(settings.customTemplates || []),
+    hasSquareAccessToken: Boolean(settings.squareAccessToken),
+    hasSquareWebhookSignatureKey: Boolean(settings.squareWebhookSignatureKey),
+    hasSmtpPassword: Boolean(settings.smtpPassword),
+    hasStripeSecretKey: Boolean(settings.stripeSecretKey),
+    hasStripeWebhookSecret: Boolean(settings.stripeWebhookSecret),
+    hasQuickBooksClientSecret: Boolean(settings.quickBooksClientSecret),
+    hasQuickBooksRefreshToken: Boolean(settings.quickBooksRefreshToken),
+    hasGoogleClientSecret: Boolean(settings.googleClientSecret),
+    hasGoogleRefreshToken: Boolean(settings.googleRefreshToken)
   };
   if (options.hidePlatformCredentials) {
     values.googleClientId = "";
@@ -207,6 +207,12 @@ function publicSettings(settings, options = {}) {
     values.hasGoogleClientSecret = false;
   }
   return values;
+}
+
+function omitPrivateSettings(settings = {}) {
+  return Object.fromEntries(
+    Object.entries(settings).filter(([key]) => !privateSettingKeys.has(key))
+  );
 }
 
 async function readRequestBody(request) {
@@ -2444,6 +2450,10 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/webhooks/square/events") {
+    if (!isOwnerSession()) {
+      sendError(response, 403, "Owner access required.");
+      return;
+    }
     sendJson(response, 200, { events: await readWebhookEvents() });
     return;
   }
@@ -2454,6 +2464,9 @@ async function handleApi(request, response, url) {
     const settings = normalizeSettings(input, existing);
     if (!isOwnerSession()) {
       settings.mapboxPublicToken = "";
+      settings.googleClientId = "";
+      settings.googleClientSecret = "";
+      settings.googleRedirectUri = "";
     }
     await writeSettings(settings);
     sendJson(response, 200, { settings: publicSettings(settings, { hidePlatformCredentials: !isOwnerSession() }) });
@@ -3079,25 +3092,25 @@ function normalizeSettings(input, existing) {
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
     finalInvoiceTiming: "immediate_after_completion",
     squareEnvironment: ["sandbox", "production"].includes(input.squareEnvironment) ? input.squareEnvironment : existing.squareEnvironment || "sandbox",
-    squareAccessToken: String(input.squareAccessToken || "").trim() || existing.squareAccessToken || "",
+    squareAccessToken: normalizePrivateSetting(input, existing, "squareAccessToken"),
     squareLocationId: String(input.squareLocationId || "").trim() || existing.squareLocationId || "",
-    squareWebhookSignatureKey: String(input.squareWebhookSignatureKey || "").trim() || existing.squareWebhookSignatureKey || "",
+    squareWebhookSignatureKey: normalizePrivateSetting(input, existing, "squareWebhookSignatureKey"),
     emailSendProvider: ["google", "smtp"].includes(input.emailSendProvider) ? input.emailSendProvider : existing.emailSendProvider || "google",
     smtpHost: String(input.smtpHost || "").trim(),
     smtpPort: normalizeNumber(input.smtpPort, existing.smtpPort || 587, 1, 65535),
     smtpSecurity: ["ssl", "starttls", "none"].includes(input.smtpSecurity) ? input.smtpSecurity : existing.smtpSecurity || "starttls",
     smtpUsername: String(input.smtpUsername || "").trim(),
-    smtpPassword: String(input.smtpPassword || "").trim() || existing.smtpPassword || "",
+    smtpPassword: normalizePrivateSetting(input, existing, "smtpPassword"),
     smtpFromEmail: String(input.smtpFromEmail || "").trim(),
-    stripeSecretKey: String(input.stripeSecretKey || "").trim() || existing.stripeSecretKey || "",
-    stripeWebhookSecret: String(input.stripeWebhookSecret || "").trim() || existing.stripeWebhookSecret || "",
+    stripeSecretKey: normalizePrivateSetting(input, existing, "stripeSecretKey"),
+    stripeWebhookSecret: normalizePrivateSetting(input, existing, "stripeWebhookSecret"),
     quickBooksCompanyId: String(input.quickBooksCompanyId || "").trim() || existing.quickBooksCompanyId || "",
     quickBooksClientId: String(input.quickBooksClientId || "").trim() || existing.quickBooksClientId || "",
-    quickBooksClientSecret: String(input.quickBooksClientSecret || "").trim() || existing.quickBooksClientSecret || "",
+    quickBooksClientSecret: normalizePrivateSetting(input, existing, "quickBooksClientSecret"),
     quickBooksRedirectUri: String(input.quickBooksRedirectUri || "").trim() || existing.quickBooksRedirectUri || "",
-    quickBooksRefreshToken: String(input.quickBooksRefreshToken || "").trim() || existing.quickBooksRefreshToken || "",
+    quickBooksRefreshToken: normalizePrivateSetting(input, existing, "quickBooksRefreshToken"),
     googleClientId: Object.hasOwn(input, "googleClientId") ? String(input.googleClientId || "").trim() : existing.googleClientId || "",
-    googleClientSecret: String(input.googleClientSecret || "").trim() || existing.googleClientSecret,
+    googleClientSecret: normalizePrivateSetting(input, existing, "googleClientSecret"),
     googleRedirectUri: Object.hasOwn(input, "googleRedirectUri") ? String(input.googleRedirectUri || "").trim() || existing.googleRedirectUri : existing.googleRedirectUri,
     googleCalendarId: String(input.googleCalendarId || "").trim(),
     mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
@@ -3111,6 +3124,15 @@ function normalizeSettings(input, existing) {
     customServiceTypes: normalizeStringList(input.customServiceTypes ?? existing.customServiceTypes),
     customPhotoSections: normalizeStringList(input.customPhotoSections ?? existing.customPhotoSections)
   };
+}
+
+function normalizePrivateSetting(input, existing, key) {
+  if (!privateSettingKeys.has(key)) {
+    return "";
+  }
+
+  const submittedValue = Object.hasOwn(input, key) ? String(input[key] || "").trim() : "";
+  return submittedValue || existing[key] || "";
 }
 
 function normalizeCustomServices(value) {
