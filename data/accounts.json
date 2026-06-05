@@ -4,7 +4,15 @@
     "name": "Owner Account",
     "plan": "owner",
     "status": "active",
-    "createdAt": "2026-06-05T03:59:19.149Z",
-    "updatedAt": "2026-06-05T03:59:19.150Z"
+    "createdAt": "2026-06-05T00:00:00.000Z",
+    "updatedAt": "2026-06-05T00:00:00.000Z"
+  },
+  {
+    "id": "729fa042-f702-4ab9-ad05-88b8e6d30179",
+    "name": "Existing Tester",
+    "plan": "tester",
+    "status": "active",
+    "createdAt": "2026-06-05T00:00:00.000Z",
+    "updatedAt": "2026-06-05T00:00:00.000Z"
   }
 ]

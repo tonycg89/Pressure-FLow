@@ -59,6 +59,21 @@ function writeSettings(settings) {
   return writeUserSettings(requestContext.getStore()?.session?.userId || "", settings);
 }
 
+async function readCurrentAccount() {
+  const accountId = getWorkspaceId();
+  if (!accountId) {
+    return null;
+  }
+
+  const accounts = await readAccounts();
+  return accounts.find((account) => account.id === accountId) || {
+    id: accountId,
+    name: accountId === "owner" ? "Owner Account" : "Account",
+    plan: accountId === "owner" ? "owner" : "tester",
+    status: "active"
+  };
+}
+
 function readSettingsForJob(job) {
   return readUserSettings(itemWorkspaceId(job) === "owner" ? "env-admin" : itemWorkspaceId(job));
 }
@@ -2421,15 +2436,20 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/settings") {
-    sendJson(response, 200, { settings: publicSettings(await readSettings(), { hidePlatformCredentials: !isOwnerSession() }) });
+    sendJson(response, 200, {
+      settings: publicSettings(await readSettings(), { hidePlatformCredentials: !isOwnerSession() }),
+      account: publicAccount(await readCurrentAccount())
+    });
     return;
   }
 
   if (request.method === "GET" && url.pathname === "/api/session") {
+    const account = await readCurrentAccount();
     sendJson(response, 200, {
       user: publicSessionUser(requestContext.getStore()?.session) || (requestContext.getStore()?.authDisabled
-        ? { id: "local-owner", email: "", role: "owner", isOwner: true }
+        ? { id: "local-owner", accountId: "owner", email: "", role: "owner", isOwner: true }
         : null),
+      account: publicAccount(account),
       csrfToken: buildCsrfToken(request)
     });
     return;
@@ -2479,7 +2499,10 @@ async function handleApi(request, response, url) {
       settings.googleRedirectUri = "";
     }
     await writeSettings(settings);
-    sendJson(response, 200, { settings: publicSettings(settings, { hidePlatformCredentials: !isOwnerSession() }) });
+    sendJson(response, 200, {
+      settings: publicSettings(settings, { hidePlatformCredentials: !isOwnerSession() }),
+      account: publicAccount(await readCurrentAccount())
+    });
     return;
   }
 
@@ -2879,6 +2902,16 @@ function publicUser(user) {
     disabled: Boolean(user.disabled),
     lastLoginAt: user.lastLoginAt || "",
     createdAt: user.createdAt || ""
+  };
+}
+
+function publicAccount(account) {
+  if (!account?.id) return null;
+  return {
+    id: account.id,
+    name: account.name || "",
+    plan: account.plan || "tester",
+    status: account.status || "active"
   };
 }
 

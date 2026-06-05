@@ -152,11 +152,53 @@ async function ensureDataFile() {
   if (!existsSync(WEBHOOK_LOG_FILE)) {
     await writeJson(WEBHOOK_LOG_FILE, []);
   }
+
+  await reconcileLocalAccounts();
 }
 
 async function readJson(file) {
   await ensureDataFile();
   return JSON.parse(await readFile(file, "utf8"));
+}
+
+async function readJsonDirect(file, fallback) {
+  try {
+    return JSON.parse(await readFile(file, "utf8"));
+  } catch {
+    return fallback;
+  }
+}
+
+async function reconcileLocalAccounts() {
+  const users = asArray(await readJsonDirect(USERS_FILE, []));
+  const accounts = asArray(await readJsonDirect(ACCOUNTS_FILE, [ownerAccount]));
+  const accountMap = new Map(accounts.map((account) => [account.id, normalizeAccount(account)]));
+
+  accountMap.set(ownerAccount.id, normalizeAccount({ ...ownerAccount, ...(accountMap.get(ownerAccount.id) || {}) }));
+
+  users.forEach((user) => {
+    const accountId = user.accountId || user.id;
+    if (!accountId || accountMap.has(accountId)) {
+      return;
+    }
+
+    accountMap.set(accountId, normalizeAccount({
+      id: accountId,
+      name: user.name || user.email || "Tester Account",
+      plan: user.role === "owner" ? "owner" : "tester",
+      status: user.disabled ? "disabled" : "active",
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }));
+  });
+
+  if (accountMap.size !== accounts.length) {
+    await writeJson(ACCOUNTS_FILE, [...accountMap.values()]);
+  }
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 async function writeJson(file, value) {
@@ -744,6 +786,19 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists custom_photo_sections jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_users add column if not exists account_id text not null default ''");
   await getPool().query("update app_users set account_id = id::text where account_id = ''");
+  await getPool().query(`
+    insert into accounts (id, name, plan, status, created_at, updated_at)
+    select distinct on (account_id)
+      account_id,
+      coalesce(nullif(name, ''), nullif(email, ''), account_id),
+      case when role = 'owner' then 'owner' else 'tester' end,
+      case when disabled then 'disabled' else 'active' end,
+      created_at,
+      updated_at
+    from app_users
+    where account_id <> ''
+    on conflict (id) do nothing
+  `);
   await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
   await getPool().query("alter table customers add column if not exists account_id text not null default 'owner'");
   await getPool().query("alter table expenses add column if not exists account_id text not null default 'owner'");
