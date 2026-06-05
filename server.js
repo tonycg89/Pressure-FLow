@@ -26,6 +26,7 @@ const {
   readWebhookEvents,
   writeWebhookEvents
 } = require("./db");
+const { createInlineFileRecord, publicFileRecord } = require("./storage");
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -296,7 +297,10 @@ function sendError(response, statusCode, message) {
 }
 
 function getTemplateMetadata(templates = []) {
-  return templates.map(({ dataUrl, ...template }) => template);
+  return templates.map(({ dataUrl, file, ...template }) => ({
+    ...template,
+    file: publicFileRecord(file)
+  }));
 }
 
 function normalizeCustomTemplates(value) {
@@ -309,9 +313,25 @@ function normalizeCustomTemplates(value) {
       fileName: String(template.fileName || "template.docx").trim(),
       mimeType: normalizeTemplateMimeType(template.mimeType, template.fileName),
       dataUrl: String(template.dataUrl || "").trim(),
-      uploadedAt: String(template.uploadedAt || new Date().toISOString())
+      uploadedAt: String(template.uploadedAt || new Date().toISOString()),
+      file: template.file || null
     }))
     .filter((template) => template.name && isAllowedTemplateDataUrl(template.dataUrl, MAX_TEMPLATE_DATA_URL_BYTES))
+    .map((template) => ({
+      ...template,
+      file: createInlineFileRecord({
+        ...template.file,
+        id: template.file?.id || template.id,
+        accountId: template.file?.accountId || "owner",
+        ownerType: "settings",
+        ownerId: "customTemplates",
+        purpose: "custom-template",
+        name: template.fileName,
+        mimeType: template.mimeType,
+        dataUrl: template.dataUrl,
+        createdAt: template.uploadedAt
+      })
+    }))
     .slice(0, MAX_CUSTOM_TEMPLATES);
 }
 
@@ -671,15 +691,36 @@ function normalizePhotos(value) {
   }
 
   return photos
-    .map((photo) => ({
-      id: String(photo.id || crypto.randomUUID()),
-      name: String(photo.name || "Photo").trim(),
-      section: String(photo.section || "").trim(),
-      dataUrl: String(photo.dataUrl || "").trim(),
-      capturedAt: String(photo.capturedAt || new Date().toISOString())
-    }))
+    .map((photo) => normalizePhoto(photo))
     .filter((photo) => isAllowedImageDataUrl(photo.dataUrl, MAX_PHOTO_DATA_URL_BYTES))
     .slice(0, MAX_PHOTOS_PER_COLLECTION);
+}
+
+function normalizePhoto(photo = {}) {
+  const normalized = {
+    id: String(photo.id || crypto.randomUUID()),
+    name: String(photo.name || "Photo").trim(),
+    section: String(photo.section || "").trim(),
+    dataUrl: String(photo.dataUrl || "").trim(),
+    capturedAt: String(photo.capturedAt || new Date().toISOString())
+  };
+  normalized.file = createInlineFileRecord({
+    ...photo.file,
+    id: photo.file?.id || normalized.id,
+    accountId: photo.file?.accountId || "owner",
+    ownerType: photo.file?.ownerType || "inline-photo",
+    ownerId: photo.file?.ownerId || "",
+    purpose: photo.file?.purpose || normalized.section || "photo",
+    name: normalized.name,
+    mimeType: getDataUrlMimeType(normalized.dataUrl),
+    dataUrl: normalized.dataUrl,
+    createdAt: normalized.capturedAt
+  });
+  return normalized;
+}
+
+function getDataUrlMimeType(dataUrl) {
+  return String(dataUrl || "").match(/^data:([^;,]+)[;,]/i)?.[1] || "";
 }
 
 async function findPublicEstimate(jobId, token) {
@@ -2449,6 +2490,18 @@ async function handleApi(request, response, url) {
       sendError(response, 400, "Only .doc and .docx templates are supported.");
       return;
     }
+
+    template.file = createInlineFileRecord({
+      ...template.file,
+      accountId: getWorkspaceId() || "owner",
+      ownerType: "settings",
+      ownerId: "customTemplates",
+      purpose: "custom-template",
+      name: template.fileName,
+      mimeType: template.mimeType,
+      dataUrl: template.dataUrl,
+      createdAt: template.uploadedAt
+    });
 
     settings.customTemplates = [template, ...templates].slice(0, MAX_CUSTOM_TEMPLATES);
     await writeSettings(settings);
