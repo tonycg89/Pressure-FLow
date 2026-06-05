@@ -165,10 +165,12 @@ async function syncPostgresItems(client, tableName, items, upsertItem, options =
   }
 }
 
-async function readJobs() {
+async function readJobs(options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
-    const result = await getPool().query("select * from jobs order by created_at desc");
+    const result = options.accountId
+      ? await getPool().query("select * from jobs where account_id = $1 order by created_at desc", [options.accountId])
+      : await getPool().query("select * from jobs order by created_at desc");
     return result.rows.map(jobFromRow);
   }
 
@@ -195,10 +197,12 @@ async function writeJobs(jobs, options = {}) {
   await writeJson(JOBS_FILE, jobs);
 }
 
-async function readCustomers() {
+async function readCustomers(options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
-    const result = await getPool().query("select * from customers order by updated_at desc");
+    const result = options.accountId
+      ? await getPool().query("select * from customers where account_id = $1 order by updated_at desc", [options.accountId])
+      : await getPool().query("select * from customers order by updated_at desc");
     return result.rows.map(customerFromRow);
   }
 
@@ -225,10 +229,12 @@ async function writeCustomers(customers, options = {}) {
   await writeJson(CUSTOMERS_FILE, customers);
 }
 
-async function readExpenses() {
+async function readExpenses(options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
-    const result = await getPool().query("select * from expenses order by expense_date desc, created_at desc");
+    const result = options.accountId
+      ? await getPool().query("select * from expenses where account_id = $1 order by expense_date desc, created_at desc", [options.accountId])
+      : await getPool().query("select * from expenses order by expense_date desc, created_at desc");
     return result.rows.map(expenseFromRow);
   }
 

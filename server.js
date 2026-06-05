@@ -74,8 +74,12 @@ function itemWorkspaceId(item) {
 }
 
 async function readWorkspaceItems(readAll) {
-  const items = await readAll();
   const workspaceId = getWorkspaceId();
+  if (process.env.DATABASE_URL && workspaceId) {
+    return readAll({ accountId: workspaceId });
+  }
+
+  const items = await readAll();
   return workspaceId ? items.filter((item) => itemWorkspaceId(item) === workspaceId) : items;
 }
 
