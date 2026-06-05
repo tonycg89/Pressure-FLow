@@ -36,6 +36,11 @@ const serviceAgreementTemplate = require("./templates/pressure-washing-service-a
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 8;
+const MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024;
+const MAX_PHOTOS_PER_COLLECTION = 40;
+const MAX_PHOTO_DATA_URL_BYTES = 1_500_000;
+const MAX_CUSTOM_TEMPLATES = 25;
+const MAX_TEMPLATE_DATA_URL_BYTES = 7_000_000;
 const loginAttempts = new Map();
 const requestContext = new AsyncLocalStorage();
 
@@ -241,24 +246,39 @@ function omitPrivateSettings(settings = {}) {
 }
 
 async function readRequestBody(request) {
-  const chunks = [];
-  for await (const chunk of request) {
-    chunks.push(chunk);
-  }
-
-  if (chunks.length === 0) {
+  const raw = await readRawRequestBody(request);
+  if (!raw) {
     return {};
   }
 
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return parseJsonRequestText(raw);
 }
 
-async function readRawRequestBody(request) {
+async function readRawRequestBody(request, maxBytes = MAX_REQUEST_BODY_BYTES) {
   const chunks = [];
+  let totalBytes = 0;
   for await (const chunk of request) {
+    totalBytes += chunk.length;
+    if (totalBytes > maxBytes) {
+      throw httpError(413, "Request body is too large.");
+    }
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function httpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function parseJsonRequestText(raw) {
+  try {
+    return JSON.parse(raw || "{}");
+  } catch {
+    throw httpError(400, "Invalid JSON request body.");
+  }
 }
 
 function sendJson(response, statusCode, payload) {
@@ -291,7 +311,8 @@ function normalizeCustomTemplates(value) {
       dataUrl: String(template.dataUrl || "").trim(),
       uploadedAt: String(template.uploadedAt || new Date().toISOString())
     }))
-    .filter((template) => template.dataUrl.startsWith("data:") && template.name);
+    .filter((template) => template.name && isAllowedTemplateDataUrl(template.dataUrl, MAX_TEMPLATE_DATA_URL_BYTES))
+    .slice(0, MAX_CUSTOM_TEMPLATES);
 }
 
 function normalizeTemplateMimeType(mimeType, fileName = "") {
@@ -304,6 +325,12 @@ function normalizeTemplateMimeType(mimeType, fileName = "") {
 
 function sanitizeDownloadFileName(fileName) {
   return String(fileName || "template.docx").replace(/[^a-zA-Z0-9._ -]/g, "_").slice(0, 120) || "template.docx";
+}
+
+function isAllowedTemplateDataUrl(value, maxBytes) {
+  const dataUrl = String(value || "").trim();
+  return /^data:(application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document);base64,/i.test(dataUrl) &&
+    Buffer.byteLength(dataUrl, "utf8") <= maxBytes;
 }
 
 function getNextStatus(status) {
@@ -643,13 +670,16 @@ function normalizePhotos(value) {
     photos = [];
   }
 
-  return photos.map((photo) => ({
-    id: String(photo.id || crypto.randomUUID()),
-    name: String(photo.name || "Photo").trim(),
-    section: String(photo.section || "").trim(),
-    dataUrl: String(photo.dataUrl || "").trim(),
-    capturedAt: String(photo.capturedAt || new Date().toISOString())
-  })).filter((photo) => photo.dataUrl.startsWith("data:image/"));
+  return photos
+    .map((photo) => ({
+      id: String(photo.id || crypto.randomUUID()),
+      name: String(photo.name || "Photo").trim(),
+      section: String(photo.section || "").trim(),
+      dataUrl: String(photo.dataUrl || "").trim(),
+      capturedAt: String(photo.capturedAt || new Date().toISOString())
+    }))
+    .filter((photo) => isAllowedImageDataUrl(photo.dataUrl, MAX_PHOTO_DATA_URL_BYTES))
+    .slice(0, MAX_PHOTOS_PER_COLLECTION);
 }
 
 async function findPublicEstimate(jobId, token) {
@@ -2395,6 +2425,11 @@ async function handleApi(request, response, url) {
     const input = await readRequestBody(request);
     const settings = await readSettings();
     const templates = normalizeCustomTemplates(settings.customTemplates);
+    if (Buffer.byteLength(String(input.dataUrl || ""), "utf8") > MAX_TEMPLATE_DATA_URL_BYTES) {
+      sendError(response, 400, "Template is too large. Please upload a smaller Word document.");
+      return;
+    }
+
     const template = normalizeCustomTemplates([{
       id: crypto.randomUUID(),
       name: input.name,
@@ -2415,12 +2450,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    if (Buffer.byteLength(template.dataUrl, "utf8") > 7_000_000) {
-      sendError(response, 400, "Template is too large. Please upload a smaller Word document.");
-      return;
-    }
-
-    settings.customTemplates = [template, ...templates].slice(0, 25);
+    settings.customTemplates = [template, ...templates].slice(0, MAX_CUSTOM_TEMPLATES);
     await writeSettings(settings);
     sendJson(response, 200, { templates: getTemplateMetadata(settings.customTemplates) });
     return;
@@ -2588,7 +2618,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const event = JSON.parse(rawBody || "{}");
+    const event = parseJsonRequestText(rawBody);
     const result = await handleSquareWebhook(event);
     await recordWebhookEvent({
       provider: "square",
@@ -2608,7 +2638,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const event = JSON.parse(rawBody || "{}");
+    const event = parseJsonRequestText(rawBody);
     const result = await handleStripeWebhook(event);
     sendJson(response, 200, { ok: true, result });
     return;
@@ -2785,7 +2815,7 @@ async function readFormOrJsonBody(request) {
   const contentType = request.headers["content-type"] || "";
 
   if (contentType.includes("application/json")) {
-    return JSON.parse(raw || "{}");
+    return parseJsonRequestText(raw);
   }
 
   return Object.fromEntries(new URLSearchParams(raw));
@@ -3229,10 +3259,13 @@ function normalizeBusinessLogoDataUrl(value) {
   if (!logo) {
     return "";
   }
-  if (!/^data:image\/(png|jpe?g|webp);base64,/i.test(logo)) {
-    return "";
-  }
-  return logo.length <= 900000 ? logo : "";
+  return isAllowedImageDataUrl(logo, 900000) ? logo : "";
+}
+
+function isAllowedImageDataUrl(value, maxBytes) {
+  const dataUrl = String(value || "").trim();
+  return /^data:image\/(png|jpe?g|webp);base64,/i.test(dataUrl) &&
+    Buffer.byteLength(dataUrl, "utf8") <= maxBytes;
 }
 
 async function recordWebhookEvent(event) {
@@ -4694,7 +4727,7 @@ const server = http.createServer(async (request, response) => {
       await serveStatic(response, url);
     });
   } catch (error) {
-    sendError(response, 500, error.message || "Unexpected server error.");
+    sendError(response, error.statusCode || 500, error.message || "Unexpected server error.");
   }
 });
 

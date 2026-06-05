@@ -671,6 +671,21 @@ async function ensurePostgresSchema() {
       ownerAccount.updatedAt
     ]
   );
+  await getPool().query(`create table if not exists file_assets (
+    id uuid primary key default gen_random_uuid(),
+    account_id text not null default 'owner',
+    provider text not null default 'inline',
+    owner_type text not null default '',
+    owner_id text not null default '',
+    purpose text not null default '',
+    name text not null default '',
+    mime_type text not null default '',
+    byte_length integer not null default 0,
+    content_hash text not null default '',
+    storage_key text not null default '',
+    data_url text not null default '',
+    created_at timestamptz not null default now()
+  )`);
   await getPool().query(`create table if not exists customers (
     id uuid primary key default gen_random_uuid(),
     account_id text not null default 'owner',
@@ -842,6 +857,8 @@ async function ensurePostgresSchema() {
   await getPool().query("create index if not exists idx_jobs_account_created_at on jobs(account_id, created_at desc)");
   await getPool().query("create index if not exists idx_customers_account_updated_at on customers(account_id, updated_at desc)");
   await getPool().query("create index if not exists idx_expenses_account_expense_date on expenses(account_id, expense_date desc, created_at desc)");
+  await getPool().query("create index if not exists idx_file_assets_account_owner on file_assets(account_id, owner_type, owner_id)");
+  await getPool().query("create index if not exists idx_file_assets_content_hash on file_assets(content_hash)");
   postgresSchemaReady = true;
 }
 
