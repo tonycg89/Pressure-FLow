@@ -170,9 +170,12 @@ create table if not exists webhook_events (
 create index if not exists idx_jobs_status on jobs(status);
 create index if not exists idx_jobs_customer_id on jobs(customer_id);
 create index if not exists idx_jobs_lead_source on jobs(lead_source);
+create index if not exists idx_jobs_account_created_at on jobs(account_id, created_at desc);
 create index if not exists idx_jobs_deposit_invoice on jobs(square_deposit_invoice_id);
 create index if not exists idx_jobs_final_invoice on jobs(square_final_invoice_id);
 create index if not exists idx_customers_updated_at on customers(updated_at desc);
 create index if not exists idx_customers_lead_source on customers(lead_source);
+create index if not exists idx_customers_account_updated_at on customers(account_id, updated_at desc);
 create index if not exists idx_expenses_expense_date on expenses(expense_date desc);
+create index if not exists idx_expenses_account_expense_date on expenses(account_id, expense_date desc, created_at desc);
 create index if not exists idx_webhook_events_received_at on webhook_events(received_at desc);

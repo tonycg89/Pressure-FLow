@@ -85,9 +85,13 @@ async function writeWorkspaceItems(readAll, writeAll, items) {
     return writeAll(items);
   }
 
+  const scopedItems = items.map((item) => ({ ...item, accountId: workspaceId }));
+  if (process.env.DATABASE_URL) {
+    return writeAll(scopedItems, { accountId: workspaceId });
+  }
+
   const allItems = await readAll();
   const otherWorkspaceItems = allItems.filter((item) => itemWorkspaceId(item) !== workspaceId);
-  const scopedItems = items.map((item) => ({ ...item, accountId: workspaceId }));
   return writeAll([...scopedItems, ...otherWorkspaceItems]);
 }
 

@@ -149,6 +149,22 @@ async function writeJson(file, value) {
   await writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+async function syncPostgresItems(client, tableName, items, upsertItem, options = {}) {
+  const ids = items.map((item) => item.id);
+  if (options.accountId) {
+    await client.query(
+      `delete from ${tableName} where account_id = $1 and not (id = any($2::uuid[]))`,
+      [options.accountId, ids]
+    );
+  } else {
+    await client.query(`delete from ${tableName} where not (id = any($1::uuid[]))`, [ids]);
+  }
+
+  for (const item of items) {
+    await upsertItem(client, item);
+  }
+}
+
 async function readJobs() {
   if (usePostgres) {
     await ensurePostgresSchema();
@@ -159,16 +175,13 @@ async function readJobs() {
   return readJson(JOBS_FILE);
 }
 
-async function writeJobs(jobs) {
+async function writeJobs(jobs, options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
     const client = await getPool().connect();
     try {
       await client.query("begin");
-      await client.query("delete from jobs");
-      for (const job of jobs) {
-        await upsertJob(client, job);
-      }
+      await syncPostgresItems(client, "jobs", jobs, upsertJob, options);
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");
@@ -192,16 +205,13 @@ async function readCustomers() {
   return readJson(CUSTOMERS_FILE);
 }
 
-async function writeCustomers(customers) {
+async function writeCustomers(customers, options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
     const client = await getPool().connect();
     try {
       await client.query("begin");
-      await client.query("delete from customers");
-      for (const customer of customers) {
-        await upsertCustomer(client, customer);
-      }
+      await syncPostgresItems(client, "customers", customers, upsertCustomer, options);
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");
@@ -225,16 +235,13 @@ async function readExpenses() {
   return readJson(EXPENSES_FILE);
 }
 
-async function writeExpenses(expenses) {
+async function writeExpenses(expenses, options = {}) {
   if (usePostgres) {
     await ensurePostgresSchema();
     const client = await getPool().connect();
     try {
       await client.query("begin");
-      await client.query("delete from expenses");
-      for (const expense of expenses) {
-        await upsertExpense(client, expense);
-      }
+      await syncPostgresItems(client, "expenses", expenses, upsertExpense, options);
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");
@@ -264,10 +271,7 @@ async function writeUsers(users) {
     const client = await getPool().connect();
     try {
       await client.query("begin");
-      await client.query("delete from app_users");
-      for (const user of users) {
-        await upsertUser(client, user);
-      }
+      await syncPostgresItems(client, "app_users", users, upsertUser);
       await client.query("commit");
     } catch (error) {
       await client.query("rollback");
@@ -705,6 +709,9 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists contract_signed_at timestamptz");
   await getPool().query("alter table jobs add column if not exists contract_signed_date text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_signer_name text not null default ''");
+  await getPool().query("create index if not exists idx_jobs_account_created_at on jobs(account_id, created_at desc)");
+  await getPool().query("create index if not exists idx_customers_account_updated_at on customers(account_id, updated_at desc)");
+  await getPool().query("create index if not exists idx_expenses_account_expense_date on expenses(account_id, expense_date desc, created_at desc)");
   postgresSchemaReady = true;
 }
 
