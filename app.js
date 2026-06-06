@@ -88,11 +88,16 @@ let serviceCatalog = [...builtInServiceCatalog];
 let defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
 let serviceTypes = [...builtInServiceTypes];
 
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2
-});
+const {
+  buildFullAddress,
+  currency,
+  escapeHtml,
+  getDeposit,
+  getFinalBalance,
+  getPressureFlowInvoiceNumber,
+  normalizeKey,
+  roundMoney
+} = window.PressureFlowUtils;
 
 const leadSources = [
   { value: "referral", label: "Referral", color: "#1c7c54" },
@@ -948,17 +953,6 @@ function inferTemplateMimeType(fileName) {
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 
-function buildFullAddress(data = {}) {
-  const street = String(data.streetAddress || "").trim();
-  const unit = String(data.addressUnit || "").trim();
-  const city = String(data.city || "").trim();
-  const state = String(data.state || "").trim().toUpperCase();
-  const zip = String(data.zip || "").trim();
-  const streetLine = [street, unit].filter(Boolean).join(" ");
-  const cityLine = [city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  return [streetLine, cityLine].filter(Boolean).join(", ");
-}
-
 function syncAddressFields(form) {
   if (!form?.elements?.address) return;
   const formData = Object.fromEntries(new FormData(form).entries());
@@ -1633,10 +1627,6 @@ function updateEstimateTotals() {
   if (lineItems.length) {
     jobForm.elements.estimate.value = total.toFixed(2);
   }
-}
-
-function roundMoney(value) {
-  return Math.round(Number(value || 0) * 100) / 100;
 }
 
 function openMeasurementDialog(row) {
@@ -3346,14 +3336,6 @@ function buildReminderMessage(job) {
   return `Follow-up queued for ${job.customerName} about ${job.status.toLowerCase()}.`;
 }
 
-function getDeposit(job) {
-  return Math.round(job.estimate * (job.depositPercent / 100));
-}
-
-function getFinalBalance(job) {
-  return Math.max(job.estimate - getDeposit(job), 0);
-}
-
 function getDefaultScheduleValue() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
@@ -3507,21 +3489,6 @@ function getExecutedContractUrl(job) {
   return source;
 }
 
-function getPressureFlowInvoiceNumber(job, invoiceType) {
-  const prefix = invoiceType === "deposit" ? "PPW-D" : "PPW-F";
-  return `${prefix}-${compactHash(`${job.id}-${invoiceType}`).slice(0, 6).toUpperCase()}`;
-}
-
-function compactHash(value) {
-  let hash = 0x811c9dc5;
-  const text = String(value || "");
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16).padStart(8, "0");
-}
-
 function renderLinkedValue(id, url) {
   if (!id && !url) {
     return "Not set";
@@ -3553,23 +3520,6 @@ function renderCompletionNotice(job) {
   }
 
   return `<a href="${escapeHtml(job.completionProofUrl)}" target="_blank" rel="noreferrer">Completion PDF</a>`;
-}
-
-function normalizeKey(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 init();
