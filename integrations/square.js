@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const { getDepositCents, getFinalBalanceCents } = require("../billing");
 
 const SQUARE_VERSION = "2026-05-20";
 
@@ -70,6 +71,147 @@ async function squareRequest(settings, endpoint, payload, method = "POST") {
   return data;
 }
 
+async function createSquareInvoice(job, settings, invoiceType) {
+  requireSquareSettings(settings);
+
+  const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
+  if (amount <= 0) {
+    throw new Error("Invoice amount must be greater than $0.");
+  }
+
+  const customerId = job.squareCustomerId || await createSquareCustomer(job, settings);
+  const order = await createSquareOrder(job, settings, customerId, invoiceType, amount);
+  const invoice = await createSquareDraftInvoice(job, settings, customerId, order.id, invoiceType);
+  const published = await publishSquareInvoice(settings, invoice.id, invoice.version);
+
+  return {
+    customerId,
+    orderId: order.id,
+    invoiceId: published.id || invoice.id,
+    publicUrl: published.public_url || invoice.public_url || ""
+  };
+}
+
+async function createSquareCustomer(job, settings) {
+  const { givenName, familyName } = splitCustomerName(job.customerName);
+  const phoneNumber = normalizePhoneForSquare(job.phone);
+  const customer = await squareRequest(settings, "/v2/customers", {
+    idempotency_key: shortSquareKey("customer", job.id),
+    given_name: givenName,
+    family_name: familyName,
+    company_name: familyName ? undefined : job.customerName,
+    email_address: job.email,
+    phone_number: phoneNumber,
+    reference_id: job.id,
+    note: `PressureFlow customer for ${job.address}`
+  });
+
+  return customer.customer.id;
+}
+
+async function createSquareOrder(job, settings, customerId, invoiceType, amount) {
+  const title = invoiceType === "deposit" ? "Pressure washing deposit" : "Pressure washing final balance";
+  const note = invoiceType === "deposit"
+    ? `Deposit for ${job.serviceType} at ${job.address}`
+    : `Final balance for ${job.serviceType} at ${job.address}`;
+  const result = await squareRequest(settings, "/v2/orders", {
+    idempotency_key: shortSquareKey(`order-${invoiceType}`, job.id),
+    order: {
+      location_id: settings.squareLocationId,
+      customer_id: customerId,
+      reference_id: shortSquareReference(job.id, invoiceType),
+      line_items: [
+        {
+          name: title,
+          note,
+          quantity: "1",
+          base_price_money: {
+            amount,
+            currency: "USD"
+          }
+        }
+      ]
+    }
+  });
+
+  return result.order;
+}
+
+async function createSquareDraftInvoice(job, settings, customerId, orderId, invoiceType) {
+  const today = new Date().toISOString().slice(0, 10);
+  const title = invoiceType === "deposit" ? "Deposit Invoice" : "Final Invoice";
+  const description = invoiceType === "deposit"
+    ? `Deposit required before scheduling ${job.serviceType} at ${job.address}.`
+    : `Final balance due for completed ${job.serviceType} at ${job.address}.${job.completionProofUrl ? ` Completion photos: ${job.completionProofUrl}` : ""}`;
+  const result = await squareRequest(settings, "/v2/invoices", {
+    idempotency_key: shortSquareKey(`invoice-${invoiceType}`, job.id),
+    invoice: {
+      location_id: settings.squareLocationId,
+      order_id: orderId,
+      primary_recipient: {
+        customer_id: customerId
+      },
+      payment_requests: [
+        {
+          request_type: "BALANCE",
+          due_date: today,
+          tipping_enabled: false
+        }
+      ],
+      accepted_payment_methods: {
+        card: true,
+        square_gift_card: false,
+        bank_account: false,
+        buy_now_pay_later: false,
+        cash_app_pay: false
+      },
+      delivery_method: "EMAIL",
+      title,
+      description,
+      sale_or_service_date: today,
+      store_payment_method_enabled: false
+    }
+  });
+
+  return result.invoice;
+}
+
+async function publishSquareInvoice(settings, invoiceId, version) {
+  const result = await squareRequest(settings, `/v2/invoices/${encodeURIComponent(invoiceId)}/publish`, {
+    version,
+    idempotency_key: shortSquareKey("publish", invoiceId)
+  });
+
+  return result.invoice;
+}
+
+async function getSquareInvoice(settings, invoiceId) {
+  requireSquareSettings(settings);
+  if (!invoiceId) {
+    throw new Error("No Square invoice ID is stored for this job yet.");
+  }
+
+  const result = await squareRequest(
+    settings,
+    `/v2/invoices/${encodeURIComponent(invoiceId)}`,
+    undefined,
+    "GET"
+  );
+  return result.invoice;
+}
+
+async function cancelSquareInvoice(settings, invoiceId, version) {
+  requireSquareSettings(settings);
+  if (!invoiceId || version === undefined || version === null) {
+    throw new Error("Square invoice ID and version are required to cancel an invoice.");
+  }
+
+  const result = await squareRequest(settings, `/v2/invoices/${encodeURIComponent(invoiceId)}/cancel`, {
+    version
+  });
+  return result.invoice;
+}
+
 function stripUndefined(value) {
   if (Array.isArray(value)) {
     return value.map(stripUndefined);
@@ -123,7 +265,10 @@ function compactHash(value) {
 }
 
 module.exports = {
+  cancelSquareInvoice,
+  createSquareInvoice,
   extractSquareInvoice,
+  getSquareInvoice,
   normalizePhoneForSquare,
   parseSquareWebhookInvoiceId,
   requireSquareSettings,
