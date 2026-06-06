@@ -33,7 +33,6 @@ const {
   validateExpense,
   validateJob
 } = require("./records");
-const { getBaseUrlFromLink } = require("./rendering");
 const {
   renderCompletionProofPage,
   renderContractSigningPage,
@@ -50,13 +49,7 @@ const {
   normalizeSettings,
   publicSettings
 } = require("./settings");
-const {
-  buildScheduleInviteAttachment,
-  formatScheduledWindow,
-  getDayOfServiceInstructions
-} = require("./scheduling");
-const { buildGoogleAuthUrl, createGoogleCalendarEvent, exchangeGoogleCode, sendGmailEmail } = require("./integrations/google");
-const { sendSmtpEmail } = require("./integrations/smtp");
+const { buildGoogleAuthUrl, createGoogleCalendarEvent, exchangeGoogleCode } = require("./integrations/google");
 const {
   cancelSquareInvoice,
   createSquareInvoice,
@@ -66,13 +59,6 @@ const {
 const { verifyStripeSignature } = require("./integrations/stripe");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 const {
-  buildCompletionCertificateEmailMessage,
-  buildContractEmailMessage,
-  buildEstimateEmailMessage,
-  buildPressureFlowInvoiceEmailMessage,
-  buildScheduleConfirmationEmailMessage
-} = require("./email-content");
-const {
   createPublicWorkflowHandlers
 } = require("./public-workflows");
 const { createWebhookHandlers, isSquareInvoicePaid } = require("./webhooks");
@@ -81,6 +67,7 @@ const { didPricingChange, resetJobForPricingChange, updateJob } = require("./job
 const { createJobActionHandler } = require("./job-actions");
 const { createWorkspaceAccess } = require("./workspace");
 const { createPaymentHandlers } = require("./payment-workflows");
+const { createEmailDelivery } = require("./email-delivery");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -157,6 +144,14 @@ const {
 });
 
 const {
+  sendCompletionCertificateEmailSafe,
+  sendContractEmail,
+  sendEstimateEmail,
+  sendPressureFlowInvoiceEmail,
+  sendScheduleConfirmationEmail
+} = createEmailDelivery();
+
+const {
   cancelStoredInvoiceIfPossible,
   createPressureFlowInvoice,
   createStripeCheckoutSession
@@ -226,29 +221,6 @@ const { applyAction } = createJobActionHandler({
   sendScheduleConfirmationEmail
 });
 
-async function sendEstimateEmail(job, settings) {
-  await sendGoogleEmail(settings, buildEstimateEmailMessage(job, settings));
-}
-
-async function sendContractEmail(job, settings) {
-  await sendGoogleEmail(settings, buildContractEmailMessage(job, settings));
-}
-
-async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceUrl) {
-  await sendGoogleEmail(settings, buildPressureFlowInvoiceEmailMessage(job, settings, invoiceType, invoiceUrl));
-}
-
-async function sendCompletionCertificateEmail(job, settings, baseUrl) {
-  await sendGoogleEmail(settings, buildCompletionCertificateEmailMessage(job, settings, baseUrl));
-}
-
-async function sendGoogleEmail(settings, message) {
-  if (settings.emailSendProvider === "smtp") {
-    return sendSmtpEmail(settings, message);
-  }
-
-  return sendGmailEmail(settings, message);
-}
 function dateStamp() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -919,27 +891,6 @@ function safeCompare(a, b) {
   }
 
   return crypto.timingSafeEqual(left, right);
-}
-
-async function sendCompletionCertificateEmailSafe(job, settings, baseUrl) {
-  try {
-    await sendCompletionCertificateEmail(job, settings, baseUrl || getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
-  } catch (error) {
-    console.warn(`Unable to send completion certificate for job ${job.id}: ${error.message}`);
-  }
-}
-
-async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
-  const scheduleText = formatScheduledWindow(job);
-  const instructions = getDayOfServiceInstructions();
-  await sendGoogleEmail(settings, buildScheduleConfirmationEmailMessage(
-    job,
-    settings,
-    baseUrl,
-    buildScheduleInviteAttachment(job, settings),
-    scheduleText,
-    instructions
-  ));
 }
 
 async function verifyStripeWebhookSignature(request, rawBody) {
