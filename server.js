@@ -76,12 +76,10 @@ const { sendSmtpEmail } = require("./integrations/smtp");
 const {
   cancelSquareInvoice,
   createSquareInvoice,
-  extractSquareInvoice,
   getSquareInvoice,
-  parseSquareWebhookInvoiceId,
   verifySquareSignature
 } = require("./integrations/square");
-const { createStripeCheckoutSessionRequest, parseStripeWebhookMetadata, verifyStripeSignature } = require("./integrations/stripe");
+const { createStripeCheckoutSessionRequest, verifyStripeSignature } = require("./integrations/stripe");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 const {
   buildCompletionCertificateEmailMessage,
@@ -100,6 +98,7 @@ const {
   buildInvoiceUrl,
   createPublicWorkflowHandlers
 } = require("./public-workflows");
+const { createWebhookHandlers, isSquareInvoicePaid } = require("./webhooks");
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -365,6 +364,25 @@ const {
   sendAdminTextAlertSafe,
   sendContractEmail,
   writeJobs
+});
+
+const {
+  getSquareWebhookSettings,
+  getStripeWebhookSecret,
+  handleSquareWebhook,
+  handleStripeWebhook,
+  recordWebhookEvent
+} = createWebhookHandlers({
+  readAllJobs,
+  readJobs,
+  readSettings,
+  readSettingsForJob,
+  readWebhookEvents,
+  sendAdminTextAlertSafe,
+  sendCompletionCertificateEmailSafe,
+  writeAllJobs,
+  writeJobs,
+  writeWebhookEvents
 });
 
 async function sendEstimateEmail(job, settings) {
@@ -1078,42 +1096,9 @@ async function readFormOrJsonBody(request) {
   return Object.fromEntries(new URLSearchParams(raw));
 }
 
-async function recordWebhookEvent(event) {
-  const events = await readWebhookEvents();
-  events.push({
-    ...event,
-    receivedAt: new Date().toISOString()
-  });
-  await writeWebhookEvents(events);
-}
-
 async function verifySquareWebhookSignature(request, rawBody) {
   const settings = await getSquareWebhookSettings(rawBody);
   return verifySquareSignature(request, rawBody, settings.squareWebhookSignatureKey, safeCompare);
-}
-
-async function getSquareWebhookSettings(rawBody) {
-  const invoiceId = parseSquareWebhookInvoiceId(rawBody);
-  if (invoiceId) {
-    const job = await findJobBySquareInvoiceId(invoiceId);
-    if (job) {
-      return readSettingsForJob(job);
-    }
-  }
-
-  return readSettings();
-}
-
-async function findJobBySquareInvoiceId(invoiceId, options = {}) {
-  if (!invoiceId) {
-    return null;
-  }
-
-  const jobs = options.jobs || await readAllJobs();
-  return jobs.find((item) =>
-    item.squareDepositInvoiceId === invoiceId ||
-    item.squareFinalInvoiceId === invoiceId
-  ) || null;
 }
 
 function safeCompare(a, b) {
@@ -1124,56 +1109,6 @@ function safeCompare(a, b) {
   }
 
   return crypto.timingSafeEqual(left, right);
-}
-
-async function handleSquareWebhook(event) {
-  const invoice = extractSquareInvoice(event);
-  if (!invoice?.id) {
-    return { action: "ignored", reason: "no invoice id found" };
-  }
-
-  const jobs = await readJobs();
-  const job = await findJobBySquareInvoiceId(invoice.id, { jobs });
-
-  if (!job) {
-    return { action: "ignored", reason: "invoice not matched", invoiceId: invoice.id };
-  }
-
-  const paid = isSquareInvoicePaid(invoice);
-  if (!paid) {
-    setInvoiceStatus(job, invoice);
-    await writeJobs(jobs);
-    return { action: "status_recorded", invoiceId: invoice.id, status: invoice.status || "" };
-  }
-
-  if (job.squareDepositInvoiceId === invoice.id) {
-    job.status = "Deposit Paid";
-    job.squareDepositInvoiceStatus = invoice.status || "PAID";
-    job.squareDepositPaidAt = new Date().toISOString();
-    await sendAdminTextAlertSafe(`PressureFlow: Square deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
-  }
-
-  if (job.squareFinalInvoiceId === invoice.id) {
-    job.status = "Paid";
-    job.squareFinalInvoiceStatus = invoice.status || "PAID";
-    job.squareFinalPaidAt = new Date().toISOString();
-    await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
-    await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
-  }
-
-  job.updatedAt = new Date().toISOString();
-  await writeJobs(jobs);
-  return { action: "job_updated", jobId: job.id, invoiceId: invoice.id, status: job.status };
-}
-
-function setInvoiceStatus(job, invoice) {
-  if (job.squareDepositInvoiceId === invoice.id) {
-    job.squareDepositInvoiceStatus = invoice.status || "";
-  }
-  if (job.squareFinalInvoiceId === invoice.id) {
-    job.squareFinalInvoiceStatus = invoice.status || "";
-  }
-  job.updatedAt = new Date().toISOString();
 }
 
 function updateJob(job, input) {
@@ -1706,80 +1641,6 @@ async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) 
 async function verifyStripeWebhookSignature(request, rawBody) {
   const secret = await getStripeWebhookSecret(rawBody);
   return verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
-}
-
-async function getStripeWebhookSecret(rawBody) {
-  const metadata = parseStripeWebhookMetadata(rawBody);
-  if (metadata.jobId) {
-    const jobs = metadata.accountId
-      ? await readAllJobs({ accountId: metadata.accountId })
-      : await readAllJobs();
-    const job = jobs.find((item) => item.id === metadata.jobId);
-    if (job) {
-      const settings = await readSettingsForJob(job);
-      if (settings.stripeWebhookSecret) {
-        return settings.stripeWebhookSecret;
-      }
-    }
-  }
-
-  return process.env.STRIPE_WEBHOOK_SECRET || "";
-}
-
-async function handleStripeWebhook(event) {
-  if (event.type !== "checkout.session.completed") {
-    return { action: "ignored", type: event.type || "" };
-  }
-
-  const session = event.data?.object || {};
-  if (session.payment_status && session.payment_status !== "paid") {
-    return { action: "ignored", reason: "checkout not paid" };
-  }
-
-  const jobId = session.metadata?.jobId || "";
-  const accountId = String(session.metadata?.accountId || "");
-  const invoiceType = session.metadata?.invoiceType === "deposit" ? "deposit" : "final";
-  const jobs = accountId && process.env.DATABASE_URL
-    ? await readAllJobs({ accountId })
-    : await readJobs();
-  const job = jobs.find((item) => item.id === jobId);
-  if (!job) {
-    return { action: "ignored", reason: "job not found", jobId };
-  }
-
-  if (invoiceType === "deposit") {
-    job.status = "Deposit Paid";
-    job.squareDepositInvoiceStatus = "PAID";
-    job.squareDepositPaidAt = new Date().toISOString();
-    await sendAdminTextAlertSafe(`PressureFlow: Card deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
-  } else {
-    job.status = "Paid";
-    job.squareFinalInvoiceStatus = "PAID";
-    job.squareFinalPaidAt = new Date().toISOString();
-    await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
-    await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
-  }
-
-  job.updatedAt = new Date().toISOString();
-  if (accountId && process.env.DATABASE_URL) {
-    await writeAllJobs(jobs, { accountId });
-  } else {
-    await writeJobs(jobs);
-  }
-  return { action: "job_updated", jobId: job.id, invoiceType, status: job.status };
-}
-
-function isSquareInvoicePaid(invoice) {
-  if (invoice.status === "PAID") {
-    return true;
-  }
-
-  const requests = invoice.payment_requests || [];
-  return requests.length > 0 && requests.every((request) => {
-    const total = request.computed_amount_money?.amount || 0;
-    const completed = request.total_completed_amount_money?.amount || 0;
-    return total > 0 && completed >= total;
-  });
 }
 
 function getStaticFilePath(pathname) {
