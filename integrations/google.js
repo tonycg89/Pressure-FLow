@@ -1,4 +1,6 @@
 const { buildMimeEmailBase64Url } = require("./email");
+const { getDepositCents } = require("../billing");
+const { addMinutesToLocalDateTime, withPacificOffset } = require("../scheduling");
 
 function buildGoogleAuthUrl(settings) {
   requireGoogleSettings(settings, false);
@@ -106,6 +108,46 @@ async function createGoogleCalendarEventRequest(settings, event) {
   return data;
 }
 
+async function createGoogleCalendarEvent(settings, job, scheduledAt, durationMinutes) {
+  if (!scheduledAt) {
+    throw new Error("Schedule date/time is required.");
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(scheduledAt))) {
+    throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
+  }
+
+  const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
+  const endDateTime = withPacificOffset(addMinutesToLocalDateTime(scheduledAt.slice(0, 16), durationMinutes));
+  return createGoogleCalendarEventRequest(settings, {
+    summary: `${job.serviceType} - ${job.customerName}`,
+    location: job.address,
+    description: [
+      `Customer: ${job.customerName}`,
+      `Phone: ${job.phone}`,
+      `Email: ${job.email}`,
+      `Service: ${job.serviceType}`,
+      `Estimate: $${Number(job.estimate || 0).toFixed(2)}`,
+      `Deposit: $${(getDepositCents(job) / 100).toFixed(2)}`,
+      "",
+      `Notes: ${job.notes || "None"}`,
+      `Access notes: ${job.accessNotes || "None"}`,
+      `Sensitive areas: ${job.sensitiveAreas || "None"}`
+    ].join("\n"),
+    start: {
+      dateTime: startDateTime,
+      timeZone: "America/Los_Angeles"
+    },
+    end: {
+      dateTime: endDateTime,
+      timeZone: "America/Los_Angeles"
+    },
+    reminders: {
+      useDefault: true
+    }
+  });
+}
+
 function requireGoogleSettings(settings, requireRefreshToken) {
   if (!settings.googleClientId) {
     throw new Error("Google client ID is missing. Open Settings and save your Google client ID.");
@@ -123,6 +165,7 @@ function requireGoogleSettings(settings, requireRefreshToken) {
 
 module.exports = {
   buildGoogleAuthUrl,
+  createGoogleCalendarEvent,
   createGoogleCalendarEventRequest,
   exchangeGoogleCode,
   getGoogleAccessToken,

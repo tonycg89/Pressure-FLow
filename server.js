@@ -67,13 +67,11 @@ const {
   publicSettings
 } = require("./settings");
 const {
-  addMinutesToLocalDateTime,
   buildScheduleInviteAttachment,
   formatScheduledWindow,
-  getDayOfServiceInstructions,
-  withPacificOffset
+  getDayOfServiceInstructions
 } = require("./scheduling");
-const { buildGoogleAuthUrl, createGoogleCalendarEventRequest, exchangeGoogleCode, sendGmailEmail } = require("./integrations/google");
+const { buildGoogleAuthUrl, createGoogleCalendarEvent, exchangeGoogleCode, sendGmailEmail } = require("./integrations/google");
 const { sendSmtpEmail } = require("./integrations/smtp");
 const {
   cancelSquareInvoice,
@@ -1685,7 +1683,7 @@ async function applyAction(job, action, input) {
       30,
       720
     );
-    const calendarEvent = await createGoogleCalendarEvent(job, settings, scheduledAt, duration);
+    const calendarEvent = await createGoogleCalendarEvent(settings, job, scheduledAt, duration);
     job.status = "Scheduled";
     job.scheduledAt = scheduledAt;
     job.scheduledEventAt = new Date().toISOString();
@@ -1899,46 +1897,6 @@ async function handleStripeWebhook(event) {
     await writeJobs(jobs);
   }
   return { action: "job_updated", jobId: job.id, invoiceType, status: job.status };
-}
-
-async function createGoogleCalendarEvent(job, settings, scheduledAt, durationMinutes) {
-  if (!scheduledAt) {
-    throw new Error("Schedule date/time is required.");
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(scheduledAt))) {
-    throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
-  }
-
-  const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
-  const endDateTime = withPacificOffset(addMinutesToLocalDateTime(scheduledAt.slice(0, 16), durationMinutes));
-  return createGoogleCalendarEventRequest(settings, {
-    summary: `${job.serviceType} - ${job.customerName}`,
-    location: job.address,
-    description: [
-      `Customer: ${job.customerName}`,
-      `Phone: ${job.phone}`,
-      `Email: ${job.email}`,
-      `Service: ${job.serviceType}`,
-      `Estimate: $${Number(job.estimate || 0).toFixed(2)}`,
-      `Deposit: $${(getDepositCents(job) / 100).toFixed(2)}`,
-      "",
-      `Notes: ${job.notes || "None"}`,
-      `Access notes: ${job.accessNotes || "None"}`,
-      `Sensitive areas: ${job.sensitiveAreas || "None"}`
-    ].join("\n"),
-    start: {
-      dateTime: startDateTime,
-      timeZone: "America/Los_Angeles"
-    },
-    end: {
-      dateTime: endDateTime,
-      timeZone: "America/Los_Angeles"
-    },
-    reminders: {
-      useDefault: true
-    }
-  });
 }
 
 function isSquareInvoicePaid(invoice) {
