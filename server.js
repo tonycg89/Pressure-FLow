@@ -22,10 +22,6 @@ const {
   writeWebhookEvents
 } = require("./db");
 const { CSRF_HEADER, SESSION_COOKIE, createAuthHelpers } = require("./auth");
-const {
-  getDepositCents,
-  getFinalBalanceCents
-} = require("./billing");
 const { createInlineFileRecord } = require("./storage");
 const {
   jobsToCsv,
@@ -67,7 +63,7 @@ const {
   getSquareInvoice,
   verifySquareSignature
 } = require("./integrations/square");
-const { createStripeCheckoutSessionRequest, verifyStripeSignature } = require("./integrations/stripe");
+const { verifyStripeSignature } = require("./integrations/stripe");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 const {
   buildCompletionCertificateEmailMessage,
@@ -77,7 +73,6 @@ const {
   buildScheduleConfirmationEmailMessage
 } = require("./email-content");
 const {
-  buildInvoiceUrl,
   createPublicWorkflowHandlers
 } = require("./public-workflows");
 const { createWebhookHandlers, isSquareInvoicePaid } = require("./webhooks");
@@ -85,6 +80,7 @@ const { createMeasurementHandlers, deleteCustomerMeasurementArea } = require("./
 const { didPricingChange, resetJobForPricingChange, updateJob } = require("./job-updates");
 const { createJobActionHandler } = require("./job-actions");
 const { createWorkspaceAccess } = require("./workspace");
+const { createPaymentHandlers } = require("./payment-workflows");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -161,6 +157,19 @@ const {
 });
 
 const {
+  cancelStoredInvoiceIfPossible,
+  createPressureFlowInvoice,
+  createStripeCheckoutSession
+} = createPaymentHandlers({
+  cancelSquareInvoice,
+  getSquareInvoice,
+  isSquareInvoicePaid,
+  itemWorkspaceId,
+  readSettingsForJob,
+  sendPressureFlowInvoiceEmail
+});
+
+const {
   approvePublicEstimate,
   findPublicCompletionProof,
   findPublicContract,
@@ -223,16 +232,6 @@ async function sendEstimateEmail(job, settings) {
 
 async function sendContractEmail(job, settings) {
   await sendGoogleEmail(settings, buildContractEmailMessage(job, settings));
-}
-
-async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl) {
-  const invoiceId = invoiceType === "deposit"
-    ? job.squareDepositInvoiceId || `pf-deposit-${crypto.randomBytes(16).toString("hex")}`
-    : job.squareFinalInvoiceId || `pf-final-${crypto.randomBytes(16).toString("hex")}`;
-  const publicUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceId);
-
-  await sendPressureFlowInvoiceEmail(job, settings, invoiceType, publicUrl);
-  return { invoiceId, publicUrl };
 }
 
 async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceUrl) {
@@ -922,24 +921,6 @@ function safeCompare(a, b) {
   return crypto.timingSafeEqual(left, right);
 }
 
-async function cancelStoredInvoiceIfPossible(job, invoiceType) {
-  const invoiceId = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
-  const status = invoiceType === "deposit" ? job.squareDepositInvoiceStatus : job.squareFinalInvoiceStatus;
-  if (!invoiceId || status === "PAID") {
-    return;
-  }
-
-  try {
-    const settings = await readSettingsForJob(job);
-    const invoice = await getSquareInvoice(settings, invoiceId);
-    if (!isSquareInvoicePaid(invoice) && invoice.status !== "CANCELED") {
-      await cancelSquareInvoice(settings, invoice.id, invoice.version);
-    }
-  } catch (error) {
-    console.warn(`Unable to cancel ${invoiceType} invoice ${invoiceId}: ${error.message}`);
-  }
-}
-
 async function sendCompletionCertificateEmailSafe(job, settings, baseUrl) {
   try {
     await sendCompletionCertificateEmail(job, settings, baseUrl || getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
@@ -959,20 +940,6 @@ async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
     scheduleText,
     instructions
   ));
-}
-
-async function createStripeCheckoutSession(job, settings, invoiceType, baseUrl) {
-  const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
-  const invoiceToken = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
-  const invoiceUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceToken);
-  return createStripeCheckoutSessionRequest({
-    settings,
-    job,
-    invoiceType,
-    amount,
-    invoiceUrl,
-    accountId: itemWorkspaceId(job)
-  });
 }
 
 async function verifyStripeWebhookSignature(request, rawBody) {
