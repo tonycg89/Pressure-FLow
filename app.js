@@ -10,79 +10,12 @@ let currentUser = null;
 let csrfToken = "";
 let dismissedNotificationIds = new Set(loadDismissedNotificationIds());
 
-const builtInServiceCatalog = [
-  { name: "Fence Cleaning", unit: "LNF", price: 2.5 },
-  { name: "Holiday Light Installation", unit: "LNF", price: 5 },
-  { name: "House Washing", unit: "SqFt", price: 0.25 },
-  { name: "Oil Stain Cleanup", unit: "Qty", price: 75 },
-  { name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
-  { name: "Pressure Washing", unit: "SqFt", price: 0.2 },
-  { name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
-  { name: "Roof Wash", unit: "SqFt", price: 0.4 },
-  { name: "Gutter Cleaning", unit: "LNF", price: 1 },
-  { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
-  { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
-];
-
-const onboardingServiceLibrary = [
-  { category: "Pressure Washing", name: "Pressure Washing", unit: "SqFt", price: 0.2 },
-  { category: "Pressure Washing", name: "Driveway Cleaning", unit: "SqFt", price: 0.22 },
-  { category: "Pressure Washing", name: "Sidewalk Cleaning", unit: "SqFt", price: 0.18 },
-  { category: "Pressure Washing", name: "Patio Cleaning", unit: "SqFt", price: 0.25 },
-  { category: "Pressure Washing", name: "Pool Deck Cleaning", unit: "SqFt", price: 0.28 },
-  { category: "Pressure Washing", name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
-  { category: "Pressure Washing", name: "House Washing", unit: "SqFt", price: 0.25 },
-  { category: "Pressure Washing", name: "Soft Washing", unit: "SqFt", price: 0.28 },
-  { category: "Pressure Washing", name: "Roof Wash", unit: "SqFt", price: 0.4 },
-  { category: "Pressure Washing", name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
-  { category: "Pressure Washing", name: "Gutter Cleaning", unit: "LNF", price: 1 },
-  { category: "Pressure Washing", name: "Gutter Brightening", unit: "LNF", price: 1.5 },
-  { category: "Pressure Washing", name: "Oil Stain Cleanup", unit: "Qty", price: 75 },
-  { category: "Pressure Washing", name: "Rust Removal", unit: "Qty", price: 85 },
-  { category: "Pressure Washing", name: "Graffiti Removal", unit: "SqFt", price: 1.75 },
-  { category: "Pressure Washing", name: "Commercial Exterior Cleaning", unit: "SqFt", price: 0.18 },
-  { category: "Pressure Washing", name: "Restaurant Pad Cleaning", unit: "SqFt", price: 0.35 },
-  { category: "Landscaping", name: "Lawn Mowing", unit: "SqFt", price: 0.04 },
-  { category: "Landscaping", name: "Edging", unit: "LNF", price: 0.75 },
-  { category: "Landscaping", name: "Hedge Trimming", unit: "Hours", price: 65 },
-  { category: "Landscaping", name: "Mulch Installation", unit: "SqFt", price: 1.2 },
-  { category: "Landscaping", name: "Weed Removal", unit: "Hours", price: 55 },
-  { category: "Landscaping", name: "Leaf Cleanup", unit: "Hours", price: 60 },
-  { category: "Landscaping", name: "Sprinkler Repair", unit: "Each", price: 95 },
-  { category: "Handyman", name: "General Handyman Labor", unit: "Hours", price: 75 },
-  { category: "Handyman", name: "Drywall Patch", unit: "Each", price: 125 },
-  { category: "Handyman", name: "Fixture Replacement", unit: "Each", price: 85 },
-  { category: "Handyman", name: "Door Repair", unit: "Each", price: 120 },
-  { category: "Handyman", name: "Furniture Assembly", unit: "Hours", price: 65 },
-  { category: "Handyman", name: "Fence Repair", unit: "LNF", price: 18 },
-  { category: "Construction", name: "Paver Sealing", unit: "SqFt", price: 1.35 },
-  { category: "Construction", name: "Fence Cleaning", unit: "LNF", price: 2.5 },
-  { category: "Construction", name: "Deck Cleaning", unit: "SqFt", price: 0.35 },
-  { category: "Construction", name: "Deck Staining", unit: "SqFt", price: 2.25 },
-  { category: "Construction", name: "Concrete Sealing", unit: "SqFt", price: 0.85 },
-  { category: "Construction", name: "Concrete Demo", unit: "SqFt", price: 4.5 },
-  { category: "Construction", name: "Small Concrete Pour", unit: "SqFt", price: 12 },
-  { category: "Construction", name: "Framing Repair", unit: "Hours", price: 95 },
-  { category: "Misc", name: "Junk Haul Away", unit: "Each", price: 175 },
-  { category: "Misc", name: "Trash Can Cleaning", unit: "Qty", price: 15 },
-  { category: "Misc", name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
-  { category: "Misc", name: "Window Cleaning", unit: "Each", price: 8 },
-  { category: "Misc", name: "Fleet Washing", unit: "Each", price: 45 },
-  { category: "Misc", name: "Heavy Equipment Washing", unit: "Each", price: 125 },
-  { category: "Misc", name: "Dumpster Pad Cleaning", unit: "Each", price: 95 },
-  { category: "Misc", name: "Holiday Light Installation", unit: "LNF", price: 5 },
-  { category: "Misc", name: "Christmas Light Removal", unit: "LNF", price: 1.5 }
-];
-
-const onboardingServiceCategories = ["Pressure Washing", "Landscaping", "Handyman", "Construction", "Misc"];
-
-const builtInServiceTypes = [
-  "Driveway cleaning",
-  "House wash",
-  "Roof wash",
-  "Commercial exterior",
-  "Bundle"
-];
+const {
+  builtInServiceCatalog,
+  builtInServiceTypes,
+  onboardingServiceCategories,
+  onboardingServiceLibrary
+} = window.PressureFlowServiceCatalog;
 
 let serviceCatalog = [...builtInServiceCatalog];
 let defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
@@ -99,13 +32,13 @@ const {
   roundMoney
 } = window.PressureFlowUtils;
 
-const leadSources = [
-  { value: "referral", label: "Referral", color: "#1c7c54" },
-  { value: "door-hanger", label: "Door hanger", color: "#2563eb" },
-  { value: "door-to-door", label: "Door to door", color: "#b7791f" },
-  { value: "meta-ad", label: "Meta ad", color: "#b42318" },
-  { value: "nextdoor-ad", label: "Nextdoor ad", color: "#0f766e" }
-];
+const {
+  builtInTemplates,
+  dashboardBreakdownColors,
+  defaultBeforePhotoSections,
+  estimateRejectionLabels,
+  leadSources
+} = window.PressureFlowUiConfig;
 
 const jobList = document.querySelector("#jobList");
 const jobDetail = document.querySelector("#jobDetail");
@@ -229,18 +162,7 @@ let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
 let beforePhotoRowCounter = 0;
-let beforePhotoSections = [
-  "Main driveway",
-  "Back patio",
-  "Fence",
-  "House #1",
-  "House #2",
-  "House #3",
-  "House #4",
-  "Roof",
-  "Gutters",
-  "Trash cans"
-];
+let beforePhotoSections = [...defaultBeforePhotoSections];
 
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
@@ -858,24 +780,6 @@ function renderBusinessLogoPreview() {
 function renderTemplates() {
   if (!templateList) return;
 
-  const builtInTemplates = [
-    {
-      id: "service-agreement",
-      type: "Contract",
-      name: "Pressure Washing Service Agreement",
-      description: "Used when you click Send Contract. Customer reviews and signs this agreement online.",
-      url: "/api/templates/service-agreement.docx",
-      removable: false
-    },
-    {
-      id: "estimate-approval",
-      type: "Estimate",
-      name: "PressureFlow Estimate Approval",
-      description: "Used when you click Send Estimate. Customer reviews itemized services and approves online.",
-      url: "/api/templates/estimate-approval.doc",
-      removable: false
-    }
-  ];
   const uploadedTemplates = (settings.customTemplates || []).map((template) => ({
     ...template,
     type: "Uploaded",
@@ -2373,11 +2277,10 @@ function buildCityRevenueRows(scopedJobs) {
 }
 
 function createBreakdownRow(label, index) {
-  const colors = ["#1c7c54", "#2563eb", "#b7791f", "#b42318", "#0f766e", "#6941c6", "#c11574", "#475467"];
   return {
     value: normalizeKey(label),
     label,
-    color: colors[index % colors.length],
+    color: dashboardBreakdownColors[index % dashboardBreakdownColors.length],
     jobs: 0,
     estimatesSent: 0,
     accepted: 0,
@@ -2923,15 +2826,7 @@ function formatShortDate(value) {
 }
 
 function formatEstimateRejectionReason(value) {
-  const labels = {
-    "price-too-high": "Price too high",
-    "timing-not-right": "Timing not right",
-    "went-with-another-company": "Went with another company",
-    "scope-changed": "Scope changed",
-    "just-researching": "Just researching",
-    other: "Other"
-  };
-  return labels[value] || "No reason provided";
+  return estimateRejectionLabels[value] || "No reason provided";
 }
 
 function renderCustomerMeasurements(measurements) {
