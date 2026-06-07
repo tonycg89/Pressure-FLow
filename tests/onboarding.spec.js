@@ -34,6 +34,9 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
   await expect(page.locator("#onboardingForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
   await expect(page.locator("#onboardingForm [name='serviceIndustry']")).toHaveValue("Landscaping");
+  await expect(page.locator("#onboardingForm [name='zellePayment']")).toHaveCount(0);
+  await expect(page.locator("#onboardingForm [name='venmoPayment']")).toHaveCount(0);
+  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
 });
 
@@ -103,8 +106,15 @@ async function loginAndCompleteOnboarding(page) {
   await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Landscaping");
   await page.locator("#onboardingForm [name='businessEmail']").fill("owner@johnson.test");
   await page.locator("#onboardingForm [name='businessPhone']").fill("(555) 222-3333");
+  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
+  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");
+  await expect(page.locator("#onboardingDepositPercentField")).toBeHidden();
+  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("true");
+  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
   await page.locator("#onboardingForm [name='defaultDepositPercent']").fill("30");
   await page.locator("#onboardingForm [name='emailSendProvider']").selectOption("smtp");
+  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
+  await page.locator("#onboardingWizardServiceList details.service-category").first().getByRole("button", { name: "Select All" }).click();
   await checkOnboardingService(page, "Lawn Mowing");
   await checkOnboardingService(page, "Hedge Trimming");
   await page.getByRole("button", { name: "Save Setup" }).click();

@@ -626,10 +626,6 @@
               <input name="businessPhone" placeholder="(555) 123-4567">
             </label>
             <label>
-              Default deposit %
-              <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">
-            </label>
-            <label>
               Email provider
               <select name="emailSendProvider">
                 <option value="google">Google / Gmail</option>
@@ -637,12 +633,15 @@
               </select>
             </label>
             <label>
-              Zelle
-              <input name="zellePayment" placeholder="Email or phone for Zelle">
+              Require deposits
+              <select name="defaultDepositEnabled">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
             </label>
-            <label>
-              Venmo
-              <input name="venmoPayment" placeholder="@YourVenmo">
+            <label id="onboardingDepositPercentField">
+              Default deposit %
+              <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">
             </label>
           </div>
         </section>

@@ -213,6 +213,7 @@ function testSettingsVisibilityAndValidation() {
   const ownerSettings = normalizeSettings({
     businessEmail: "bad email",
     serviceIndustry: "Landscaping",
+    defaultDepositEnabled: false,
     smtpFromEmail: "sender@example.com",
     googleRedirectUri: "javascript:alert(1)",
     quickBooksRedirectUri: "https://quickbooks.example/callback",
@@ -227,6 +228,7 @@ function testSettingsVisibilityAndValidation() {
 
   assert.equal(ownerSettings.businessEmail, "");
   assert.equal(ownerSettings.serviceIndustry, "Landscaping");
+  assert.equal(ownerSettings.defaultDepositEnabled, false);
   assert.equal(ownerSettings.smtpFromEmail, "sender@example.com");
   assert.equal(ownerSettings.googleRedirectUri, undefined);
   assert.equal(ownerSettings.quickBooksRedirectUri, "https://quickbooks.example/callback");

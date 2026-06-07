@@ -146,6 +146,7 @@ const onboardingForm = document.querySelector("#onboardingForm");
 const onboardingWizardServiceList = document.querySelector("#onboardingWizardServiceList");
 const onboardingWizardStatus = document.querySelector("#onboardingWizardStatus");
 const skipOnboardingButton = document.querySelector("#skipOnboardingButton");
+const onboardingDepositPercentField = document.querySelector("#onboardingDepositPercentField");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
@@ -267,6 +268,7 @@ async function init() {
   onboardingForm?.addEventListener("submit", saveOnboardingSetup);
   skipOnboardingButton?.addEventListener("click", finishOnboardingLater);
   onboardingForm?.elements.serviceIndustry?.addEventListener("change", () => renderOnboardingWizardServices());
+  onboardingForm?.elements.defaultDepositEnabled?.addEventListener("change", syncOnboardingDepositVisibility);
   restartOnboardingButton?.addEventListener("click", openOnboardingWizardFromSettings);
   saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
   addServiceTypeButton?.addEventListener("click", addServiceType);
@@ -359,13 +361,17 @@ function maybeOpenOnboarding() {
 
 function applySettingsDefaults() {
   const depositInput = jobForm.elements.depositPercent;
-  if (depositInput && settings.defaultDepositPercent) {
-    depositInput.value = settings.defaultDepositPercent;
+  if (depositInput) {
+    depositInput.value = getDefaultDepositPercent();
   }
   if (sidebarBusinessName) {
     sidebarBusinessName.textContent = settings.businessName || "PressureFlow";
     sidebarBusinessName.classList.remove("loading-name");
   }
+}
+
+function getDefaultDepositPercent() {
+  return settings.defaultDepositEnabled === false ? 0 : settings.defaultDepositPercent || 25;
 }
 
 function syncServiceCatalog() {
@@ -427,7 +433,13 @@ function renderOnboardingWizardServices() {
 function renderServicePicker(container, preferredCategory = "") {
   const savedServices = Array.isArray(settings.customServices) ? settings.customServices : [];
   const savedByName = new Map(savedServices.map((service) => [String(service.name || "").toLowerCase(), service]));
-  container.innerHTML = onboardingServiceCategories.map((category) => {
+  const orderedCategories = preferredCategory
+    ? [
+        preferredCategory,
+        ...onboardingServiceCategories.filter((category) => category !== preferredCategory)
+      ]
+    : onboardingServiceCategories;
+  container.innerHTML = orderedCategories.map((category) => {
     const services = onboardingServiceLibrary.filter((service) => service.category === category);
     const selectedCount = services.filter((service) => savedByName.has(service.name.toLowerCase())).length;
     const shouldOpen = selectedCount || category === preferredCategory;
@@ -437,6 +449,7 @@ function renderServicePicker(container, preferredCategory = "") {
           <span>${escapeHtml(category)}</span>
           <small>${selectedCount}/${services.length} saved</small>
         </summary>
+        <button class="secondary-small-button service-category-select-all" type="button" data-select-category="${escapeHtml(category)}">Select All</button>
         <div class="service-category-list">
           ${services.map((service) => renderOnboardingServiceRow(service, savedByName)).join("")}
         </div>
@@ -454,6 +467,24 @@ function renderServicePicker(container, preferredCategory = "") {
   });
 
   container.querySelectorAll(".service-category").forEach(updateServiceCategoryCount);
+  container.querySelectorAll("[data-select-category]").forEach((button) => {
+    button.addEventListener("click", () => selectAllServicesInCategory(button.closest(".service-category")));
+  });
+}
+
+function selectAllServicesInCategory(categoryElement) {
+  if (!categoryElement) return;
+
+  categoryElement.querySelectorAll("[data-onboarding-service]").forEach((row) => {
+    const checkbox = row.querySelector("[data-onboarding-service-toggle]");
+    const rate = row.querySelector("[data-onboarding-service-rate]");
+    checkbox.checked = true;
+    row.classList.add("selected");
+    if (rate) {
+      rate.disabled = false;
+    }
+  });
+  updateServiceCategoryCount(categoryElement);
 }
 
 function updateOnboardingStatus() {
@@ -679,13 +710,21 @@ function fillOnboardingForm() {
   onboardingForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
   onboardingForm.elements.businessEmail.value = settings.businessEmail || "";
   onboardingForm.elements.businessPhone.value = settings.businessPhone || "";
+  onboardingForm.elements.defaultDepositEnabled.value = settings.defaultDepositEnabled === false ? "false" : "true";
   onboardingForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
   onboardingForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
-  onboardingForm.elements.zellePayment.value = settings.zellePayment || "";
-  onboardingForm.elements.venmoPayment.value = settings.venmoPayment || "";
+  syncOnboardingDepositVisibility();
   if (onboardingWizardStatus) {
     onboardingWizardStatus.textContent = "Choose an industry, pick services, and save your setup.";
   }
+}
+
+function syncOnboardingDepositVisibility() {
+  if (!onboardingForm || !onboardingDepositPercentField) return;
+
+  const enabled = onboardingForm.elements.defaultDepositEnabled.value !== "false";
+  onboardingDepositPercentField.hidden = !enabled;
+  onboardingForm.elements.defaultDepositPercent.disabled = !enabled;
 }
 
 async function saveOnboardingSetup(event) {
@@ -696,7 +735,11 @@ async function saveOnboardingSetup(event) {
     ...settings,
     ...Object.fromEntries(new FormData(onboardingForm).entries())
   };
+  payload.defaultDepositEnabled = payload.defaultDepositEnabled !== "false";
   payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
+  if (!payload.defaultDepositEnabled) {
+    payload.defaultDepositPercent = 0;
+  }
   payload.defaultJobDurationMinutes = Number(settings.defaultJobDurationMinutes || 180);
   payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
 
@@ -1228,7 +1271,7 @@ function openEditJob() {
   jobForm.elements.leadSource.value = job.leadSource || "referral";
   renderServiceTypeOptions(job.serviceType || "Driveway cleaning");
   jobForm.elements.estimate.value = job.estimate || 0;
-  jobForm.elements.depositPercent.value = job.depositPercent || settings.defaultDepositPercent || 25;
+  jobForm.elements.depositPercent.value = job.depositPercent ?? getDefaultDepositPercent();
   renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 1 }]);
   currentMeasurement = job.measurement || {};
   currentJobPhotos = {
@@ -1261,6 +1304,7 @@ function resetJobDialog() {
   renderBeforePhotoSectionOptions();
   renderJobPhotoPreviews();
   discountSelect.value = "0";
+  jobForm.elements.depositPercent.value = getDefaultDepositPercent();
   updateEstimateTotals();
 }
 

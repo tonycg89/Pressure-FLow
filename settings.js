@@ -109,6 +109,7 @@ function normalizeSettings(input, existing) {
     businessPhone: String(input.businessPhone || "").trim(),
     serviceIndustry: normalizeServiceIndustry(input.serviceIndustry ?? existing.serviceIndustry),
     businessLogoDataUrl: normalizeBusinessLogoDataUrl(input.businessLogoDataUrl ?? existing.businessLogoDataUrl),
+    defaultDepositEnabled: Boolean(input.defaultDepositEnabled ?? existing.defaultDepositEnabled ?? true),
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
     finalInvoiceTiming: "immediate_after_completion",
