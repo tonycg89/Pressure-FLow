@@ -68,6 +68,7 @@ const { createPaymentHandlers } = require("./payment-workflows");
 const { createEmailDelivery } = require("./email-delivery");
 const { createExportTemplateRoutes } = require("./export-template-routes");
 const { createSettingsUserRoutes } = require("./settings-user-routes");
+const { createRecordRoutes } = require("./record-routes");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -271,6 +272,32 @@ const { handleSettingsUserRoutes } = createSettingsUserRoutes({
   writeSettings
 });
 
+const { handleRecordRoutes } = createRecordRoutes({
+  cancelStoredInvoiceIfPossible,
+  deleteCustomerMeasurementArea,
+  didPricingChange,
+  findSavedMeasurements,
+  normalizeCustomer,
+  normalizeExpense,
+  normalizeJob,
+  readCustomers,
+  readExpenses,
+  readJobs,
+  readRequestBody,
+  resetJobForPricingChange,
+  sendError,
+  sendJson,
+  statuses,
+  syncJobMeasurementToCustomerFile,
+  updateJob,
+  validateCustomer,
+  validateExpense,
+  validateJob,
+  writeCustomers,
+  writeExpenses,
+  writeJobs
+});
+
 function dateStamp() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -433,27 +460,6 @@ async function handleApi(request, response, url) {
     return;
   }
 
-  if (request.method === "GET" && url.pathname === "/api/jobs") {
-    sendJson(response, 200, { jobs: await readJobs(), statuses });
-    return;
-  }
-
-  if (request.method === "GET" && url.pathname === "/api/customers") {
-    sendJson(response, 200, { customers: await readCustomers() });
-    return;
-  }
-
-  if (request.method === "GET" && url.pathname === "/api/expenses") {
-    sendJson(response, 200, { expenses: await readExpenses() });
-    return;
-  }
-
-  if (request.method === "GET" && url.pathname === "/api/property-measurements") {
-    const address = url.searchParams.get("address") || "";
-    sendJson(response, 200, { measurements: await findSavedMeasurements(address) });
-    return;
-  }
-
   if (await handleExportTemplateRoutes(request, response, url)) {
     return;
   }
@@ -462,52 +468,7 @@ async function handleApi(request, response, url) {
     return;
   }
 
-  if (request.method === "POST" && url.pathname === "/api/jobs") {
-    const job = normalizeJob(await readRequestBody(request));
-    const validationError = validateJob(job);
-
-    if (validationError) {
-      sendError(response, 400, validationError);
-      return;
-    }
-
-    const jobs = await readJobs();
-    jobs.unshift(job);
-    await syncJobMeasurementToCustomerFile(job);
-    await writeJobs(jobs);
-    sendJson(response, 201, { job });
-    return;
-  }
-
-  if (request.method === "POST" && url.pathname === "/api/customers") {
-    const customer = normalizeCustomer(await readRequestBody(request));
-    const validationError = validateCustomer(customer);
-
-    if (validationError) {
-      sendError(response, 400, validationError);
-      return;
-    }
-
-    const customers = await readCustomers();
-    customers.unshift(customer);
-    await writeCustomers(customers);
-    sendJson(response, 201, { customer });
-    return;
-  }
-
-  if (request.method === "POST" && url.pathname === "/api/expenses") {
-    const expense = normalizeExpense(await readRequestBody(request));
-    const validationError = validateExpense(expense);
-
-    if (validationError) {
-      sendError(response, 400, validationError);
-      return;
-    }
-
-    const expenses = await readExpenses();
-    expenses.unshift(expense);
-    await writeExpenses(expenses);
-    sendJson(response, 201, { expense });
+  if (await handleRecordRoutes(request, response, url)) {
     return;
   }
 
@@ -559,116 +520,6 @@ async function handleApi(request, response, url) {
     const checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
     response.writeHead(303, { location: checkout.url });
     response.end();
-    return;
-  }
-
-  const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
-  const customerUpdateMatch = url.pathname.match(/^\/api\/customers\/([^/]+)$/);
-  const customerMeasurementDeleteMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/measurements\/([^/]+)$/);
-
-  if (request.method === "DELETE" && customerMeasurementDeleteMatch) {
-    const [, customerId, measurementId] = customerMeasurementDeleteMatch;
-    const body = await readRequestBody(request);
-    const customers = await readCustomers();
-    const customer = customers.find((item) => item.id === customerId);
-
-    if (!customer) {
-      sendError(response, 404, "Customer not found.");
-      return;
-    }
-
-    const removed = deleteCustomerMeasurementArea(customer, measurementId, body.areaKey || "");
-    if (!removed) {
-      sendError(response, 404, "Saved service area not found.");
-      return;
-    }
-
-    customer.updatedAt = new Date().toISOString();
-    await writeCustomers(customers);
-    sendJson(response, 200, { customer });
-    return;
-  }
-
-  if (request.method === "PATCH" && customerUpdateMatch) {
-    const [, customerId] = customerUpdateMatch;
-    const customers = await readCustomers();
-    const customer = customers.find((item) => item.id === customerId);
-
-    if (!customer) {
-      sendError(response, 404, "Customer not found.");
-      return;
-    }
-
-    const updatedCustomer = normalizeCustomer(await readRequestBody(request), customer);
-    const validationError = validateCustomer(updatedCustomer);
-    if (validationError) {
-      sendError(response, 400, validationError);
-      return;
-    }
-
-    Object.assign(customer, updatedCustomer);
-    await writeCustomers(customers);
-    sendJson(response, 200, { customer });
-    return;
-  }
-
-  if (request.method === "DELETE" && customerUpdateMatch) {
-    const [, customerId] = customerUpdateMatch;
-    const customers = await readCustomers();
-    const remainingCustomers = customers.filter((item) => item.id !== customerId);
-
-    if (remainingCustomers.length === customers.length) {
-      sendError(response, 404, "Customer not found.");
-      return;
-    }
-
-    await writeCustomers(remainingCustomers);
-    sendJson(response, 200, { ok: true });
-    return;
-  }
-
-  if (request.method === "DELETE" && updateMatch) {
-    const [, jobId] = updateMatch;
-    const jobs = await readJobs();
-    const remainingJobs = jobs.filter((item) => item.id !== jobId);
-
-    if (remainingJobs.length === jobs.length) {
-      sendError(response, 404, "Job not found.");
-      return;
-    }
-
-    await writeJobs(remainingJobs);
-    sendJson(response, 200, { ok: true });
-    return;
-  }
-
-  if (request.method === "PATCH" && updateMatch) {
-    const [, jobId] = updateMatch;
-    const jobs = await readJobs();
-    const job = jobs.find((item) => item.id === jobId);
-
-    if (!job) {
-      sendError(response, 404, "Job not found.");
-      return;
-    }
-
-    const input = await readRequestBody(request);
-    const pricingChanged = didPricingChange(job, input);
-    updateJob(job, input);
-    const validationError = validateJob(job);
-    if (validationError) {
-      sendError(response, 400, validationError);
-      return;
-    }
-
-    if (pricingChanged) {
-      await resetJobForPricingChange(job, cancelStoredInvoiceIfPossible);
-    }
-
-    await syncJobMeasurementToCustomerFile(job);
-    job.updatedAt = new Date().toISOString();
-    await writeJobs(jobs);
-    sendJson(response, 200, { job });
     return;
   }
 
