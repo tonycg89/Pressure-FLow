@@ -151,6 +151,7 @@ const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
 const onboardingServiceList = document.querySelector("#onboardingServiceList");
 const saveOnboardingServicesButton = document.querySelector("#saveOnboardingServicesButton");
+const restartOnboardingButton = document.querySelector("#restartOnboardingButton");
 const onboardingStatus = document.querySelector("#onboardingStatus");
 const emailIntegrationStatus = document.querySelector("#emailIntegrationStatus");
 const squareIntegrationStatus = document.querySelector("#squareIntegrationStatus");
@@ -266,6 +267,7 @@ async function init() {
   onboardingForm?.addEventListener("submit", saveOnboardingSetup);
   skipOnboardingButton?.addEventListener("click", finishOnboardingLater);
   onboardingForm?.elements.serviceIndustry?.addEventListener("change", () => renderOnboardingWizardServices());
+  restartOnboardingButton?.addEventListener("click", openOnboardingWizardFromSettings);
   saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
   addServiceTypeButton?.addEventListener("click", addServiceType);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
@@ -657,6 +659,17 @@ function openSettings() {
     loadSettingsUsers();
   }
   settingsDialog.showModal();
+}
+
+function openOnboardingWizardFromSettings() {
+  if (!onboardingDialog) return;
+
+  if (settingsDialog?.open) {
+    settingsDialog.close();
+  }
+  fillOnboardingForm();
+  renderOnboardingWizardServices();
+  onboardingDialog.showModal();
 }
 
 function fillOnboardingForm() {

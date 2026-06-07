@@ -29,6 +29,12 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await page.locator("#settingsDialog details.onboarding-settings").click();
   await expect(page.locator("#onboardingServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
   await expect(page.locator("#onboardingServiceList [data-onboarding-service='Hedge Trimming'] input[type='checkbox']")).toBeChecked();
+
+  await page.getByRole("button", { name: "Open Setup Wizard" }).click();
+  await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
+  await expect(page.locator("#onboardingForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
+  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).toHaveValue("Landscaping");
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
 });
 
 test("tester creates customer and job, sends estimate, and opens public estimate link", async ({ page, context }) => {
