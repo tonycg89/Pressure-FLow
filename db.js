@@ -379,13 +379,13 @@ async function writeAccounts(accounts) {
 }
 
 async function readUserSettings(userId) {
-  if (!userId || userId === "env-admin") {
+  if (!userId || userId === "env-admin" || userId === "owner") {
     return readSettings();
   }
 
   const ownerSettings = await readSettings();
   const users = await readUsers();
-  const user = users.find((item) => item.id === userId);
+  const user = findUserForSettings(users, userId);
   const settings = { ...defaultSettings, ...(user?.settings || {}) };
   settings.googleClientId = settings.googleClientId || ownerSettings.googleClientId || "";
   settings.googleClientSecret = settings.googleClientSecret || ownerSettings.googleClientSecret || "";
@@ -400,12 +400,12 @@ async function readUserSettings(userId) {
 }
 
 async function writeUserSettings(userId, settings) {
-  if (!userId || userId === "env-admin") {
+  if (!userId || userId === "env-admin" || userId === "owner") {
     return writeSettings(settings);
   }
 
   const users = await readUsers();
-  const user = users.find((item) => item.id === userId);
+  const user = findUserForSettings(users, userId);
   if (!user) {
     throw new Error("User account not found.");
   }
@@ -413,6 +413,11 @@ async function writeUserSettings(userId, settings) {
   user.settings = settings;
   user.updatedAt = new Date().toISOString();
   await writeUsers(users);
+}
+
+function findUserForSettings(users, accountOrUserId) {
+  return users.find((item) => item.id === accountOrUserId) ||
+    users.find((item) => (item.accountId || item.id) === accountOrUserId);
 }
 
 async function readSettings() {

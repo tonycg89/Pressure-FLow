@@ -11,11 +11,11 @@ function createWorkspaceAccess({
   writeUserSettings
 }) {
   function readSettings() {
-    return readUserSettings(getContextStore()?.session?.userId || "");
+    return readUserSettings(getWorkspaceId());
   }
 
   function writeSettings(settings) {
-    return writeUserSettings(getContextStore()?.session?.userId || "", settings);
+    return writeUserSettings(getWorkspaceId(), settings);
   }
 
   async function readCurrentAccount() {

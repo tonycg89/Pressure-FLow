@@ -34,7 +34,9 @@ function publicSettings(settings, options = {}) {
   if (options.hidePlatformCredentials) {
     values.googleClientId = "";
     values.googleRedirectUri = "";
+    values.mapboxPublicToken = "";
     values.hasGoogleClientSecret = false;
+    values.hasMapboxPublicToken = Boolean(settings.mapboxPublicToken);
   }
   return values;
 }
@@ -103,7 +105,7 @@ function normalizeSettings(input, existing) {
   return {
     ...existing,
     businessName: String(input.businessName || "").trim(),
-    businessEmail: String(input.businessEmail || "").trim(),
+    businessEmail: normalizeEmail(input.businessEmail),
     businessPhone: String(input.businessPhone || "").trim(),
     businessLogoDataUrl: normalizeBusinessLogoDataUrl(input.businessLogoDataUrl ?? existing.businessLogoDataUrl),
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
@@ -117,20 +119,20 @@ function normalizeSettings(input, existing) {
     smtpHost: String(input.smtpHost || "").trim(),
     smtpPort: normalizeNumber(input.smtpPort, existing.smtpPort || 587, 1, 65535),
     smtpSecurity: ["ssl", "starttls", "none"].includes(input.smtpSecurity) ? input.smtpSecurity : existing.smtpSecurity || "starttls",
-    smtpUsername: String(input.smtpUsername || "").trim(),
+    smtpUsername: String(input.smtpUsername || "").trim().slice(0, 254),
     smtpPassword: normalizePrivateSetting(input, existing, "smtpPassword"),
-    smtpFromEmail: String(input.smtpFromEmail || "").trim(),
+    smtpFromEmail: normalizeEmail(input.smtpFromEmail),
     stripeSecretKey: normalizePrivateSetting(input, existing, "stripeSecretKey"),
     stripeWebhookSecret: normalizePrivateSetting(input, existing, "stripeWebhookSecret"),
     quickBooksCompanyId: String(input.quickBooksCompanyId || "").trim() || existing.quickBooksCompanyId || "",
     quickBooksClientId: String(input.quickBooksClientId || "").trim() || existing.quickBooksClientId || "",
     quickBooksClientSecret: normalizePrivateSetting(input, existing, "quickBooksClientSecret"),
-    quickBooksRedirectUri: String(input.quickBooksRedirectUri || "").trim() || existing.quickBooksRedirectUri || "",
+    quickBooksRedirectUri: normalizeUrl(input.quickBooksRedirectUri) || existing.quickBooksRedirectUri || "",
     quickBooksRefreshToken: normalizePrivateSetting(input, existing, "quickBooksRefreshToken"),
     googleClientId: Object.hasOwn(input, "googleClientId") ? String(input.googleClientId || "").trim() : existing.googleClientId || "",
     googleClientSecret: normalizePrivateSetting(input, existing, "googleClientSecret"),
-    googleRedirectUri: Object.hasOwn(input, "googleRedirectUri") ? String(input.googleRedirectUri || "").trim() || existing.googleRedirectUri : existing.googleRedirectUri,
-    googleCalendarId: String(input.googleCalendarId || "").trim(),
+    googleRedirectUri: Object.hasOwn(input, "googleRedirectUri") ? normalizeUrl(input.googleRedirectUri) || existing.googleRedirectUri : existing.googleRedirectUri,
+    googleCalendarId: String(input.googleCalendarId || "").trim().slice(0, 254),
     mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
     zellePayment: String(input.zellePayment || "").trim(),
     cashAppPayment: String(input.cashAppPayment || "").trim(),
@@ -154,14 +156,13 @@ function normalizePrivateSetting(input, existing, key) {
 }
 
 function normalizeCustomServices(value) {
-  const allowedUnits = new Set(["Qty", "QTY", "SqFt", "Hours", "LFN", "LNF", "Each"]);
   return (Array.isArray(value) ? value : [])
     .map((service) => ({
       id: String(service.id || crypto.randomUUID()),
       source: service.source === "onboarding" ? "onboarding" : "custom",
       name: String(service.name || "").trim().slice(0, 100),
-      unit: allowedUnits.has(service.unit) ? service.unit : "Qty",
-      price: Math.max(Number(service.price || 0), 0)
+      unit: normalizeServiceUnit(service.unit),
+      price: normalizeMoneyNumber(service.price, 0, 1_000_000)
     }))
     .filter((service) => service.name)
     .slice(0, 100);
@@ -169,9 +170,39 @@ function normalizeCustomServices(value) {
 
 function normalizeStringList(value) {
   return [...new Set((Array.isArray(value) ? value : [])
-    .map((item) => String(item || "").trim())
+    .map((item) => String(item || "").trim().slice(0, 100))
     .filter(Boolean))]
     .slice(0, 100);
+}
+
+function normalizeServiceUnit(value) {
+  const aliases = { QTY: "Qty", LNF: "LFN" };
+  const normalized = aliases[String(value || "").trim()] || String(value || "").trim();
+  return ["Qty", "SqFt", "Hours", "LFN", "Each"].includes(normalized) ? normalized : "Qty";
+}
+
+function normalizeMoneyNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return min;
+  }
+  return Math.min(Math.max(number, min), max);
+}
+
+function normalizeEmail(value) {
+  const email = String(value || "").trim().slice(0, 254);
+  return !email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "";
+}
+
+function normalizeUrl(value) {
+  const raw = String(value || "").trim().slice(0, 500);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
 }
 
 function normalizeBusinessLogoDataUrl(value) {
@@ -203,6 +234,7 @@ module.exports = {
   getTemplateMetadata,
   isAllowedImageDataUrl,
   normalizeCustomTemplates,
+  normalizeServiceUnit,
   normalizeSettings,
   publicSettings
 };

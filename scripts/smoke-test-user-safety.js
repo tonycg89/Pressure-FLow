@@ -1,0 +1,248 @@
+const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
+const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
+const { createPublicWorkflowHandlers } = require("../public-workflows");
+const { createRecordRoutes } = require("../record-routes");
+const {
+  normalizeSettings,
+  publicSettings
+} = require("../settings");
+const {
+  normalizeCustomer,
+  normalizeJob
+} = require("../records");
+const { createWorkspaceAccess } = require("../workspace");
+
+function responseStub() {
+  return {
+    status: 0,
+    headers: {},
+    body: "",
+    writeHead(status, headers = {}) {
+      this.status = status;
+      this.headers = headers;
+    },
+    end(body = "") {
+      this.body = String(body);
+    }
+  };
+}
+
+function sendJson(response, status, data) {
+  response.writeHead(status, { "content-type": "application/json" });
+  response.end(JSON.stringify(data));
+}
+
+function sendError(response, status, message) {
+  response.writeHead(status, { "content-type": "application/json" });
+  response.end(JSON.stringify({ error: message }));
+}
+
+function safeCompare(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+async function testLoginAndSession() {
+  process.env.SESSION_SECRET = "smoke-session-secret";
+  let users = [];
+  let accounts = [];
+  const context = { session: null };
+  const auth = createAuthHelpers({
+    readUsers: async () => users,
+    writeUsers: async (value) => { users = value; },
+    readAccounts: async () => accounts,
+    writeAccounts: async (value) => { accounts = value; },
+    safeCompare,
+    getContextStore: () => context
+  });
+
+  const { user } = await auth.createAppUser({
+    name: "Tester",
+    email: "tester@example.com",
+    password: "temporary-password",
+    role: "tester"
+  });
+  const login = await auth.authenticateLogin("tester@example.com", "temporary-password");
+  assert.equal(login.userId, user.id);
+  assert.equal(login.accountId, user.accountId);
+
+  const cookie = auth.buildSessionCookie(login).split(";")[0];
+  const session = auth.getValidSession({ headers: { cookie }, socket: {} });
+  assert.equal(session.userId, user.id);
+  assert.equal(auth.publicSessionUser(session).isOwner, false);
+  assert.ok(cookie.startsWith(`${SESSION_COOKIE}=`));
+}
+
+async function testAccountIsolation() {
+  let jobs = [
+    { id: "job-a", accountId: "acct-a", customerName: "A" },
+    { id: "job-b", accountId: "acct-b", customerName: "B" }
+  ];
+  let customers = [
+    { id: "cust-a", accountId: "acct-a", customerName: "A" },
+    { id: "cust-b", accountId: "acct-b", customerName: "B" }
+  ];
+  let expenses = [
+    { id: "exp-a", accountId: "acct-a", vendor: "A" },
+    { id: "exp-b", accountId: "acct-b", vendor: "B" }
+  ];
+  let settingsWrites = [];
+  const context = { session: { userId: "user-a", accountId: "acct-a", role: "tester" } };
+  const workspace = createWorkspaceAccess({
+    getContextStore: () => context,
+    readAccounts: async () => [{ id: "acct-a" }, { id: "acct-b" }],
+    readAllCustomers: async () => customers,
+    readAllExpenses: async () => expenses,
+    readAllJobs: async () => jobs,
+    readUserSettings: async (accountId) => ({ businessName: accountId }),
+    writeAllCustomers: async (value) => { customers = value; },
+    writeAllExpenses: async (value) => { expenses = value; },
+    writeAllJobs: async (value) => { jobs = value; },
+    writeUserSettings: async (accountId, value) => { settingsWrites.push({ accountId, value }); }
+  });
+
+  assert.deepEqual((await workspace.readJobs()).map((job) => job.id), ["job-a"]);
+  assert.deepEqual((await workspace.readCustomers()).map((customer) => customer.id), ["cust-a"]);
+  assert.deepEqual((await workspace.readExpenses()).map((expense) => expense.id), ["exp-a"]);
+
+  await workspace.writeJobs([{ id: "job-a2", customerName: "A2" }]);
+  assert.deepEqual(jobs.map((job) => [job.id, job.accountId]), [["job-a2", "acct-a"], ["job-b", "acct-b"]]);
+
+  assert.equal((await workspace.readSettings()).businessName, "acct-a");
+  await workspace.writeSettings({ businessName: "A Settings" });
+  assert.deepEqual(settingsWrites[0], { accountId: "acct-a", value: { businessName: "A Settings" } });
+}
+
+async function testRecordCreateRoutes() {
+  let jobs = [];
+  let customers = [];
+  let expenses = [];
+  const routes = createRecordRoutes({
+    cancelStoredInvoiceIfPossible: async () => {},
+    deleteCustomerMeasurementArea: () => true,
+    didPricingChange: () => false,
+    findSavedMeasurements: async () => [],
+    normalizeCustomer,
+    normalizeExpense: (input) => ({ id: "expense-1", ...input }),
+    normalizeJob,
+    readCustomers: async () => customers,
+    readExpenses: async () => expenses,
+    readJobs: async () => jobs,
+    readRequestBody: async (request) => request.body || {},
+    resetJobForPricingChange: async () => {},
+    sendError,
+    sendJson,
+    statuses: ["Lead"],
+    syncJobMeasurementToCustomerFile: async () => {},
+    updateJob: Object.assign,
+    validateCustomer: (customer) => !customer.customerName ? "Customer name is required." : "",
+    validateExpense: () => "",
+    validateJob: (job) => !job.customerName ? "Customer name is required." : "",
+    writeCustomers: async (value) => { customers = value; },
+    writeExpenses: async (value) => { expenses = value; },
+    writeJobs: async (value) => { jobs = value; }
+  });
+
+  let response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "POST",
+    body: {
+      customerName: "Customer",
+      email: "customer@example.com",
+      phone: "555-111-2222",
+      streetAddress: "1 Main",
+      city: "Riverside",
+      state: "ca",
+      zip: "92501",
+      estimate: 100,
+      lineItems: [{ name: "Pressure Washing", unit: "<bad>", quantity: 10, price: -5, total: -50 }]
+    }
+  }, response, new URL("http://local/api/jobs"));
+  assert.equal(response.status, 201);
+  assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].lineItems[0].unit, "Qty");
+  assert.equal(jobs[0].lineItems[0].price, 0);
+
+  response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "POST",
+    body: { customerName: "Customer", email: "customer@example.com" }
+  }, response, new URL("http://local/api/customers"));
+  assert.equal(response.status, 201);
+  assert.equal(customers.length, 1);
+}
+
+function testSettingsVisibilityAndValidation() {
+  const ownerSettings = normalizeSettings({
+    businessEmail: "bad email",
+    smtpFromEmail: "sender@example.com",
+    googleRedirectUri: "javascript:alert(1)",
+    quickBooksRedirectUri: "https://quickbooks.example/callback",
+    mapboxPublicToken: "pk.owner",
+    squareAccessToken: "square-secret",
+    stripeSecretKey: "stripe-secret",
+    smtpPassword: "smtp-secret",
+    quickBooksClientSecret: "qb-secret",
+    customServices: [{ name: "Service", unit: "LNF", price: -5 }],
+    customServiceTypes: ["A".repeat(150)]
+  }, {});
+
+  assert.equal(ownerSettings.businessEmail, "");
+  assert.equal(ownerSettings.smtpFromEmail, "sender@example.com");
+  assert.equal(ownerSettings.googleRedirectUri, undefined);
+  assert.equal(ownerSettings.quickBooksRedirectUri, "https://quickbooks.example/callback");
+  assert.equal(ownerSettings.customServices[0].unit, "LFN");
+  assert.equal(ownerSettings.customServices[0].price, 0);
+  assert.equal(ownerSettings.customServiceTypes[0].length, 100);
+
+  const publicValues = publicSettings(ownerSettings, { hidePlatformCredentials: true });
+  assert.equal(publicValues.squareAccessToken, undefined);
+  assert.equal(publicValues.stripeSecretKey, undefined);
+  assert.equal(publicValues.smtpPassword, undefined);
+  assert.equal(publicValues.quickBooksClientSecret, undefined);
+  assert.equal(publicValues.googleClientSecret, undefined);
+  assert.equal(publicValues.mapboxPublicToken, "");
+  assert.equal(publicValues.hasMapboxPublicToken, true);
+}
+
+async function testEstimateAndInvoicePublicFlow() {
+  const jobs = [{
+    id: "job-1",
+    accountId: "acct-a",
+    customerName: "Customer",
+    email: "customer@example.com",
+    estimate: 200,
+    estimateApprovalToken: "estimate-token",
+    estimateApprovalUrl: "https://pressureflow.test/estimate/job-1?token=estimate-token",
+    contractApprovalToken: "",
+    squareDepositInvoiceId: "deposit-token",
+    squareFinalInvoiceId: "final-token"
+  }];
+  const handlers = createPublicWorkflowHandlers({
+    createPressureFlowInvoice: async () => ({ invoiceId: "deposit-token", publicUrl: "https://invoice.test/deposit" }),
+    readJobs: async () => jobs,
+    readSettingsForJob: async (job) => ({ businessName: `settings-for-${job.accountId}` }),
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => {},
+    writeJobs: async () => {}
+  });
+
+  assert.equal((await handlers.findPublicEstimate("job-1", "estimate-token")).accountId, "acct-a");
+  assert.equal(await handlers.findPublicEstimate("job-1", "wrong-token"), null);
+  assert.equal((await handlers.findPublicInvoice("job-1", "deposit", "deposit-token")).id, "job-1");
+  assert.equal(await handlers.findPublicInvoice("job-1", "deposit", "wrong-token"), null);
+}
+
+(async () => {
+  await testLoginAndSession();
+  await testAccountIsolation();
+  await testRecordCreateRoutes();
+  testSettingsVisibilityAndValidation();
+  await testEstimateAndInvoicePublicFlow();
+  console.log("test-user safety smoke ok");
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

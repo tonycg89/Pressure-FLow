@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const { defaultSettings, statuses } = require("./db");
 const { createInlineFileRecord } = require("./storage");
-const { isAllowedImageDataUrl } = require("./settings");
+const { isAllowedImageDataUrl, normalizeServiceUnit } = require("./settings");
 
 const MAX_PHOTOS_PER_COLLECTION = 40;
 const MAX_PHOTO_DATA_URL_BYTES = 1_500_000;
@@ -247,12 +247,20 @@ function normalizeLineItems(value) {
   }
 
   return items.map((item) => ({
-    name: String(item.name || "").trim(),
-    unit: String(item.unit || "").trim(),
-    quantity: Number(item.quantity || 0),
-    price: Number(item.price || 0),
-    total: Number(item.total || 0)
+    name: String(item.name || "").trim().slice(0, 100),
+    unit: normalizeServiceUnit(item.unit),
+    quantity: normalizePositiveNumber(item.quantity, 0, 1_000_000),
+    price: normalizePositiveNumber(item.price, 0, 1_000_000),
+    total: normalizePositiveNumber(item.total, 0, 100_000_000)
   })).filter((item) => item.name && item.quantity > 0);
+}
+
+function normalizePositiveNumber(value, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return min;
+  }
+  return Math.min(Math.max(number, min), max);
 }
 
 function normalizeMeasurement(value) {

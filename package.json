@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check app.js"
+    "check": "node --check server.js && node --check app.js",
+    "smoke:test-user-safety": "node scripts/smoke-test-user-safety.js"
   },
   "dependencies": {
     "pg": "^8.12.0"
