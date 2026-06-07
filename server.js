@@ -376,7 +376,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded. Your service contract has been sent to your email."));
+    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded. Your service agreement has been sent to your email."));
     return;
   }
 
@@ -399,7 +399,7 @@ async function handleApi(request, response, url) {
     const [, jobId] = contractPageMatch;
     const job = await findPublicContract(jobId, url.searchParams.get("token") || "");
     if (!job) {
-      sendHtml(response, 404, renderEstimateMessagePage("Contract not found", "This contract link is invalid or has expired."));
+      sendHtml(response, 404, renderEstimateMessagePage("Service agreement not found", "This service agreement link is invalid or has expired."));
       return;
     }
 
@@ -412,7 +412,7 @@ async function handleApi(request, response, url) {
     const [, jobId] = executedContractMatch;
     const job = await findPublicContract(jobId, url.searchParams.get("token") || "");
     if (!job || !job.contractSignedAt) {
-      sendHtml(response, 404, renderEstimateMessagePage("Executed contract not found", "This executed contract link is invalid or has not been signed yet."));
+      sendHtml(response, 404, renderEstimateMessagePage("Signed agreement not found", "This signed agreement link is invalid or has not been signed yet."));
       return;
     }
 
@@ -426,11 +426,11 @@ async function handleApi(request, response, url) {
     const body = await readFormOrJsonBody(request);
     const result = await signPublicContract(jobId, body.token || "", body.signerName || "", body.signedDate || "");
     if (!result) {
-      sendHtml(response, 404, renderEstimateMessagePage("Contract not found", "This contract link is invalid or has expired."));
+      sendHtml(response, 404, renderEstimateMessagePage("Service agreement not found", "This service agreement link is invalid or has expired."));
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Contract signed", "Thank you. Your signed contract has been recorded. The deposit invoice has been sent to your email."));
+    sendHtml(response, 200, renderEstimateMessagePage("Agreement signed", "Thank you. Your signed agreement has been recorded. The deposit invoice has been sent to your email."));
     return;
   }
 

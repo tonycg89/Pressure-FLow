@@ -419,13 +419,13 @@ function renderContractSigningPage(job, options = {}) {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Service Contract</title>
+    <title>Service Agreement</title>
     ${estimatePageStyles()}
   </head>
   <body>
     <main>
       ${renderLogoHtml(options.settings || {}, getBaseUrlFromLink(job.contractApprovalUrl), 190)}
-      <p class="eyebrow">Service Contract</p>
+      <p class="eyebrow">Service Agreement</p>
       <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
       <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
 
@@ -450,7 +450,7 @@ function renderContractSigningPage(job, options = {}) {
       ${alreadySigned ? `
         <section class="notice">
           <strong>Signed</strong>
-          <p>This contract was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
+          <p>This service agreement was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
         </section>
         <section>
           <h2>Signature</h2>
@@ -473,7 +473,7 @@ function renderContractSigningPage(job, options = {}) {
             Type your full name to sign
             <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
           </label>
-          <button type="submit">Sign Contract</button>
+          <button type="submit">Sign Agreement</button>
         </form>
         ${contractSigningScript()}
       `}
