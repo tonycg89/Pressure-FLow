@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
+const { formatEmailAddressHeader } = require("../integrations/email");
 const { createJobActionHandler } = require("../job-actions");
 const { createPublicWorkflowHandlers } = require("../public-workflows");
 const { createRecordRoutes } = require("../record-routes");
@@ -208,6 +209,17 @@ function testSettingsVisibilityAndValidation() {
   assert.equal(publicValues.hasMapboxPublicToken, true);
 }
 
+function testCustomerFacingSenderName() {
+  assert.equal(
+    formatEmailAddressHeader("sender@example.com", "Johnson Exterior Cleaning"),
+    "=?UTF-8?B?Sm9obnNvbiBFeHRlcmlvciBDbGVhbmluZw==?= <sender@example.com>"
+  );
+  assert.equal(
+    formatEmailAddressHeader("sender@example.com", ""),
+    "=?UTF-8?B?UHJlc3N1cmVGbG93?= <sender@example.com>"
+  );
+}
+
 async function testEstimateAndInvoicePublicFlow() {
   const jobs = [{
     id: "job-1",
@@ -311,6 +323,7 @@ async function testWorkflowEmailIdempotency() {
   await testAccountIsolation();
   await testRecordCreateRoutes();
   testSettingsVisibilityAndValidation();
+  testCustomerFacingSenderName();
   await testEstimateAndInvoicePublicFlow();
   await testWorkflowEmailIdempotency();
   console.log("test-user safety smoke ok");

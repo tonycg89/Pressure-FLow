@@ -63,7 +63,7 @@ async function sendGmailEmail(settings, message) {
   const accessToken = await getGoogleAccessToken(settings);
   const senderAddress = settings.businessEmail || settings.googleCalendarId || "";
   const raw = buildMimeEmailBase64Url({
-    from: formatEmailAddressHeader(senderAddress),
+    from: formatEmailAddressHeader(senderAddress, settings.businessName),
     to: message.to,
     subject: message.subject,
     textBody: message.textBody,

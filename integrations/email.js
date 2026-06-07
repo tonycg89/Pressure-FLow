@@ -1,5 +1,5 @@
 const crypto = require("node:crypto");
-const CUSTOMER_EMAIL_SENDER_NAME = "Precision Power Washing";
+const CUSTOMER_EMAIL_SENDER_NAME = "PressureFlow";
 
 function buildMimeEmailBase64Url(message) {
   return Buffer.from(buildMimeEmailString(message)).toString("base64url");
@@ -73,7 +73,7 @@ function sanitizeAttachmentFileName(fileName) {
 
 function formatEmailAddressHeader(address, displayName = CUSTOMER_EMAIL_SENDER_NAME) {
   const cleanAddress = String(address || "").trim();
-  const cleanName = String(displayName || "").trim();
+  const cleanName = String(displayName || CUSTOMER_EMAIL_SENDER_NAME).trim();
   if (!cleanAddress) {
     return encodeMimeHeader(cleanName || CUSTOMER_EMAIL_SENDER_NAME);
   }

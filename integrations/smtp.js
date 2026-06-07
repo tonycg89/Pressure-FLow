@@ -6,7 +6,7 @@ async function sendSmtpEmail(settings, message) {
   requireSmtpSettings(settings);
   const fromAddress = extractEmailAddress(settings.smtpFromEmail || settings.businessEmail || settings.smtpUsername);
   const mime = buildMimeEmailString({
-    from: formatEmailAddressHeader(fromAddress),
+    from: formatEmailAddressHeader(fromAddress, settings.businessName),
     to: message.to,
     subject: message.subject,
     textBody: message.textBody,
