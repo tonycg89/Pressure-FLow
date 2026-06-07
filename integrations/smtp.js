@@ -1,12 +1,12 @@
 const net = require("node:net");
 const tls = require("node:tls");
-const { buildMimeEmailString } = require("./email");
+const { buildMimeEmailString, extractEmailAddress, formatEmailAddressHeader } = require("./email");
 
 async function sendSmtpEmail(settings, message) {
   requireSmtpSettings(settings);
-  const from = settings.smtpFromEmail || settings.businessEmail || settings.smtpUsername;
+  const fromAddress = extractEmailAddress(settings.smtpFromEmail || settings.businessEmail || settings.smtpUsername);
   const mime = buildMimeEmailString({
-    from,
+    from: formatEmailAddressHeader(fromAddress),
     to: message.to,
     subject: message.subject,
     textBody: message.textBody,
@@ -31,7 +31,7 @@ async function sendSmtpEmail(settings, message) {
       await client.command(Buffer.from(settings.smtpUsername || "").toString("base64"), [334]);
       await client.command(Buffer.from(settings.smtpPassword || "").toString("base64"), [235]);
     }
-    await client.command(`MAIL FROM:<${from}>`, [250]);
+    await client.command(`MAIL FROM:<${fromAddress}>`, [250]);
     for (const recipient of recipients) {
       await client.command(`RCPT TO:<${recipient}>`, [250, 251]);
     }

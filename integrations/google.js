@@ -1,4 +1,4 @@
-const { buildMimeEmailBase64Url } = require("./email");
+const { buildMimeEmailBase64Url, formatEmailAddressHeader } = require("./email");
 const { getDepositCents } = require("../billing");
 const { addMinutesToLocalDateTime, withPacificOffset } = require("../scheduling");
 
@@ -61,8 +61,9 @@ async function getGoogleAccessToken(settings) {
 
 async function sendGmailEmail(settings, message) {
   const accessToken = await getGoogleAccessToken(settings);
+  const senderAddress = settings.businessEmail || settings.googleCalendarId || "";
   const raw = buildMimeEmailBase64Url({
-    from: settings.businessEmail || settings.googleCalendarId || "me",
+    from: formatEmailAddressHeader(senderAddress),
     to: message.to,
     subject: message.subject,
     textBody: message.textBody,

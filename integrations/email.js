@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const CUSTOMER_EMAIL_SENDER_NAME = "Precision Power Washing";
 
 function buildMimeEmailBase64Url(message) {
   return Buffer.from(buildMimeEmailString(message)).toString("base64url");
@@ -70,11 +71,30 @@ function sanitizeAttachmentFileName(fileName) {
   return String(fileName || "attachment.txt").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "attachment.txt";
 }
 
+function formatEmailAddressHeader(address, displayName = CUSTOMER_EMAIL_SENDER_NAME) {
+  const cleanAddress = String(address || "").trim();
+  const cleanName = String(displayName || "").trim();
+  if (!cleanAddress) {
+    return encodeMimeHeader(cleanName || CUSTOMER_EMAIL_SENDER_NAME);
+  }
+  if (!cleanName) {
+    return cleanAddress;
+  }
+  return `${encodeMimeHeader(cleanName)} <${cleanAddress}>`;
+}
+
+function extractEmailAddress(value) {
+  return String(value || "").trim().match(/<?([^<>\s]+@[^<>\s]+)>?$/)?.[1] || String(value || "").trim();
+}
+
 function encodeMimeHeader(value) {
   return `=?UTF-8?B?${Buffer.from(String(value)).toString("base64")}?=`;
 }
 
 module.exports = {
+  CUSTOMER_EMAIL_SENDER_NAME,
   buildMimeEmailBase64Url,
-  buildMimeEmailString
+  buildMimeEmailString,
+  extractEmailAddress,
+  formatEmailAddressHeader
 };

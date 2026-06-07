@@ -27,18 +27,7 @@ function createMeasurementHandlers({ readCustomers, readJobs, writeCustomers }) 
         })
       ));
 
-    const jobMeasurements = (await readJobs())
-      .filter((job) => normalizeAddressKey(job.address) === target && job.measurement?.geojson && job.measurement?.squareFeet)
-      .flatMap((job) => expandSavedMeasurementAreas({
-        jobId: job.id,
-        customerName: job.customerName,
-        label: `${job.serviceType || "Service"} measurement`,
-        address: job.address,
-        updatedAt: job.updatedAt || job.createdAt || "",
-        measurement: job.measurement
-      }));
-
-    return [...customerMeasurements, ...jobMeasurements]
+    return customerMeasurements
       .filter((item) => {
         const key = JSON.stringify(item.measurement.geojson);
         if (seen.has(key)) {

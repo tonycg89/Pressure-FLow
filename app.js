@@ -1717,7 +1717,7 @@ async function deleteSavedMeasurementFromMap(customerId, measurementId, areaKey)
 }
 
 function renderSavedMeasurementsFromCurrentPanel() {
-  syncSavedMeasurementChecks(savedMeasurementsList, currentMeasurement.areas || []);
+  syncSavedMeasurementChecks(savedMeasurementsList, currentMeasurement.areas || [], measurementGeojsonKey);
 }
 
 function updateMeasurementFromDraw() {

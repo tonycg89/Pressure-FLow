@@ -25,6 +25,7 @@
         const canDelete = item.customerId && item.id;
         const areaKey = measurementGeojsonKey(item.measurement?.geojson);
         row.className = "saved-measurement-button saved-measurement-choice";
+        row.dataset.areaKey = areaKey;
         row.innerHTML = `
           <input type="checkbox" ${isSelected(item) ? "checked" : ""}>
           <span class="saved-measurement-copy">
@@ -49,17 +50,16 @@
       });
     }
 
-    function syncSavedMeasurementChecks(list, areas) {
+    function syncSavedMeasurementChecks(list, areas, measurementGeojsonKey) {
+      const selectedKeys = new Set((areas || []).map((area) => measurementGeojsonKey(area.geojson)));
       const items = Array.from(list.querySelectorAll(".saved-measurement-choice")).map((choice) => ({
         choice,
         checked: choice.querySelector("input")?.checked
       }));
       items.forEach(({ choice }) => {
         const input = choice.querySelector("input");
-        const label = choice.querySelector("strong")?.textContent || "";
-        const area = (areas || []).find((item) => item.name === label);
-        if (input && area) {
-          input.checked = true;
+        if (input) {
+          input.checked = selectedKeys.has(choice.dataset.areaKey || "");
         }
       });
     }
