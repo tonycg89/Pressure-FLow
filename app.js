@@ -40,6 +40,23 @@ const {
   leadSources
 } = window.PressureFlowUiConfig;
 
+const {
+  buildCityRevenueRows,
+  buildServiceRevenueRows,
+  createBreakdownRow,
+  getAddressCity,
+  isRevenueJob
+} = window.PressureFlowDashboardUtils.createDashboardUtils({
+  colors: dashboardBreakdownColors,
+  normalizeKey,
+  roundMoney
+});
+
+const {
+  fileToPhoto,
+  readFileAsDataUrl
+} = window.PressureFlowPhotoUtils;
+
 const jobList = document.querySelector("#jobList");
 const jobDetail = document.querySelector("#jobDetail");
 const customerList = document.querySelector("#customerList");
@@ -842,15 +859,6 @@ async function deleteTemplate(templateId) {
   }
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result));
-    reader.addEventListener("error", () => reject(new Error("Unable to read file.")));
-    reader.readAsDataURL(file);
-  });
-}
-
 function inferTemplateMimeType(fileName) {
   return String(fileName || "").toLowerCase().endsWith(".doc")
     ? "application/msword"
@@ -1092,46 +1100,6 @@ async function addPhotosFromInput(event, target, renderCallback, metadata = {}) 
   target.push(...photos);
   event.target.value = "";
   renderCallback();
-}
-
-function fileToPhoto(file, metadata = {}) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      const image = new Image();
-      image.addEventListener("load", () => {
-        const maxSide = 1100;
-        const scale = Math.min(maxSide / Math.max(image.width, image.height), 1);
-        const width = Math.max(Math.round(image.width * scale), 1);
-        const height = Math.max(Math.round(image.height * scale), 1);
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        context.drawImage(image, 0, 0, width, height);
-
-        resolve({
-          id: crypto.randomUUID(),
-          name: file.name.replace(/\.[^.]+$/, ".jpg"),
-          dataUrl: canvas.toDataURL("image/jpeg", 0.72),
-          capturedAt: new Date().toISOString(),
-          ...metadata
-        });
-      });
-      image.addEventListener("error", () => {
-        resolve({
-          id: crypto.randomUUID(),
-          name: file.name,
-          dataUrl: reader.result,
-          capturedAt: new Date().toISOString(),
-          ...metadata
-        });
-      });
-      image.src = reader.result;
-    });
-    reader.addEventListener("error", reject);
-    reader.readAsDataURL(file);
-  });
 }
 
 function renderServiceAreaPhotos() {
@@ -2246,56 +2214,6 @@ function buildDashboardBreakdownRows(scopedJobs, mode) {
         .reduce((sum, job) => sum + Number(job.estimate || 0), 0)
     };
   });
-}
-
-function buildServiceRevenueRows(scopedJobs) {
-  const rows = new Map();
-  scopedJobs.filter(isRevenueJob).forEach((job) => {
-    const lineItems = job.lineItems?.length ? job.lineItems : [{ name: job.serviceType || "Service", total: Number(job.estimate || 0) }];
-    const lineSubtotal = lineItems.reduce((sum, item) => sum + Number(item.total || 0), 0) || Number(job.estimate || 0) || 1;
-    lineItems.forEach((item) => {
-      const label = item.name || "Service";
-      const current = rows.get(label) || createBreakdownRow(label, rows.size);
-      current.jobs += 1;
-      current.revenue += Number(job.estimate || 0) * (Number(item.total || 0) / lineSubtotal);
-      rows.set(label, current);
-    });
-  });
-  return [...rows.values()].map((row) => ({ ...row, revenue: roundMoney(row.revenue) }));
-}
-
-function buildCityRevenueRows(scopedJobs) {
-  const rows = new Map();
-  scopedJobs.filter(isRevenueJob).forEach((job) => {
-    const label = getAddressCity(job) || "Unknown city";
-    const current = rows.get(label) || createBreakdownRow(label, rows.size);
-    current.jobs += 1;
-    current.revenue += Number(job.estimate || 0);
-    rows.set(label, current);
-  });
-  return [...rows.values()].map((row) => ({ ...row, revenue: roundMoney(row.revenue) }));
-}
-
-function createBreakdownRow(label, index) {
-  return {
-    value: normalizeKey(label),
-    label,
-    color: dashboardBreakdownColors[index % dashboardBreakdownColors.length],
-    jobs: 0,
-    estimatesSent: 0,
-    accepted: 0,
-    revenue: 0
-  };
-}
-
-function isRevenueJob(job) {
-  return job.status === "Paid" || job.squareFinalPaidAt;
-}
-
-function getAddressCity(item) {
-  if (item.city) return item.city;
-  const parts = String(item.address || "").split(",").map((part) => part.trim()).filter(Boolean);
-  return parts.length >= 3 ? parts.at(-2) : "";
 }
 
 function renderDashboardChart(rows) {
