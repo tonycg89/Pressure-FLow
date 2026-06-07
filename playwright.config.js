@@ -22,7 +22,8 @@ module.exports = defineConfig({
       ...process.env,
       PORT,
       SESSION_SECRET: "playwright-local-session-secret",
-      PRESSUREFLOW_DATA_DIR: ".tmp/playwright-data"
+      PRESSUREFLOW_DATA_DIR: ".tmp/playwright-data",
+      PRESSUREFLOW_SKIP_EMAIL_DELIVERY: "true"
     }
   }
 });

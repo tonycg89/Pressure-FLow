@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
+const { sendCustomerEmail } = require("../email-delivery");
 const { formatEmailAddressHeader } = require("../integrations/email");
 const { createJobActionHandler } = require("../job-actions");
 const { createPublicWorkflowHandlers } = require("../public-workflows");
@@ -355,6 +356,27 @@ async function testWorkflowEmailIdempotency() {
   assert.equal(invoices, 1);
 }
 
+async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
+  const previous = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+  process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
+  try {
+    const result = await sendCustomerEmail({ emailSendProvider: "smtp" }, {
+      to: "customer@example.com",
+      subject: "Smoke",
+      textBody: "Smoke",
+      htmlBody: "<p>Smoke</p>"
+    });
+    assert.equal(result.skipped, true);
+    assert.equal(result.to, "customer@example.com");
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+    } else {
+      process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = previous;
+    }
+  }
+}
+
 (async () => {
   await testLoginAndSession();
   await testAccountIsolation();
@@ -364,6 +386,7 @@ async function testWorkflowEmailIdempotency() {
   testCustomerFacingSenderName();
   await testEstimateAndInvoicePublicFlow();
   await testWorkflowEmailIdempotency();
+  await testEmailDeliveryCanBeSkippedForBrowserSmoke();
   console.log("test-user safety smoke ok");
 })().catch((error) => {
   console.error(error);

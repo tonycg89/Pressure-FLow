@@ -63,6 +63,10 @@ function createEmailDelivery({ warn = console.warn } = {}) {
 }
 
 async function sendCustomerEmail(settings, message) {
+  if (process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY === "true") {
+    return { id: `skipped-email-${Date.now()}`, skipped: true, to: message.to };
+  }
+
   if (settings.emailSendProvider === "smtp") {
     return sendSmtpEmail(settings, message);
   }
