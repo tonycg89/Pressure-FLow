@@ -585,6 +585,87 @@
       </form>
     </dialog>
 
+    <dialog id="onboardingDialog" class="onboarding-dialog">
+      <form method="dialog" id="onboardingForm">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">Account Setup</p>
+            <h2>Set up your workspace</h2>
+          </div>
+        </div>
+
+        <section class="onboarding-panel">
+          <div class="section-header">
+            <div>
+              <h3>Business basics</h3>
+              <p class="form-note">These defaults keep estimates, invoices, and service menus ready for this account.</p>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <label>
+              Business name
+              <input name="businessName" required placeholder="Johnson Exterior Cleaning">
+            </label>
+            <label>
+              Service industry
+              <select name="serviceIndustry" required>
+                <option value="">Choose industry</option>
+                <option value="Pressure Washing">Pressure Washing</option>
+                <option value="Landscaping">Landscaping</option>
+                <option value="Handyman">Handyman</option>
+                <option value="Construction">Construction</option>
+                <option value="Misc">Misc</option>
+              </select>
+            </label>
+            <label>
+              Business email
+              <input name="businessEmail" type="email" placeholder="you@example.com">
+            </label>
+            <label>
+              Business phone
+              <input name="businessPhone" placeholder="(555) 123-4567">
+            </label>
+            <label>
+              Default deposit %
+              <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">
+            </label>
+            <label>
+              Email provider
+              <select name="emailSendProvider">
+                <option value="google">Google / Gmail</option>
+                <option value="smtp">SMTP email</option>
+              </select>
+            </label>
+            <label>
+              Zelle
+              <input name="zellePayment" placeholder="Email or phone for Zelle">
+            </label>
+            <label>
+              Venmo
+              <input name="venmoPayment" placeholder="@YourVenmo">
+            </label>
+          </div>
+        </section>
+
+        <section class="onboarding-panel">
+          <div class="section-header">
+            <div>
+              <h3>Saved services</h3>
+              <p class="form-note">Pick the services this account should start with. Rates can be edited now or later in Settings.</p>
+            </div>
+          </div>
+          <div id="onboardingWizardServiceList" class="onboarding-service-list"></div>
+        </section>
+
+        <p id="onboardingWizardStatus" class="form-note"></p>
+
+        <menu class="dialog-actions">
+          <button value="skip" type="button" id="skipOnboardingButton">Finish Later</button>
+          <button value="default" class="primary-button" type="submit">Save Setup</button>
+        </menu>
+      </form>
+    </dialog>
+
     <dialog id="settingsDialog">
       <form method="dialog" id="settingsForm">
         <div class="dialog-header">
@@ -604,6 +685,17 @@
           <label>
             Business phone
             <input name="businessPhone" placeholder="(555) 123-4567">
+          </label>
+          <label>
+            Service industry
+            <select name="serviceIndustry">
+              <option value="">Choose industry</option>
+              <option value="Pressure Washing">Pressure Washing</option>
+              <option value="Landscaping">Landscaping</option>
+              <option value="Handyman">Handyman</option>
+              <option value="Construction">Construction</option>
+              <option value="Misc">Misc</option>
+            </select>
           </label>
           <label class="full-field">
             Company logo

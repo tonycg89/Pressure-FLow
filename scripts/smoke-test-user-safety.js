@@ -211,6 +211,7 @@ async function testRecordCreateRoutes() {
 function testSettingsVisibilityAndValidation() {
   const ownerSettings = normalizeSettings({
     businessEmail: "bad email",
+    serviceIndustry: "Landscaping",
     smtpFromEmail: "sender@example.com",
     googleRedirectUri: "javascript:alert(1)",
     quickBooksRedirectUri: "https://quickbooks.example/callback",
@@ -224,12 +225,16 @@ function testSettingsVisibilityAndValidation() {
   }, {});
 
   assert.equal(ownerSettings.businessEmail, "");
+  assert.equal(ownerSettings.serviceIndustry, "Landscaping");
   assert.equal(ownerSettings.smtpFromEmail, "sender@example.com");
   assert.equal(ownerSettings.googleRedirectUri, undefined);
   assert.equal(ownerSettings.quickBooksRedirectUri, "https://quickbooks.example/callback");
   assert.equal(ownerSettings.customServices[0].unit, "LFN");
   assert.equal(ownerSettings.customServices[0].price, 0);
   assert.equal(ownerSettings.customServiceTypes[0].length, 100);
+
+  const invalidIndustrySettings = normalizeSettings({ serviceIndustry: "Window<script>" }, {});
+  assert.equal(invalidIndustrySettings.serviceIndustry, "");
 
   const publicValues = publicSettings(ownerSettings, { hidePlatformCredentials: true });
   assert.equal(publicValues.squareAccessToken, undefined);

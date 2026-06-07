@@ -141,6 +141,11 @@ const customerDialog = document.querySelector("#customerDialog");
 const customerForm = document.querySelector("#customerForm");
 const expenseDialog = document.querySelector("#expenseDialog");
 const expenseForm = document.querySelector("#expenseForm");
+const onboardingDialog = document.querySelector("#onboardingDialog");
+const onboardingForm = document.querySelector("#onboardingForm");
+const onboardingWizardServiceList = document.querySelector("#onboardingWizardServiceList");
+const onboardingWizardStatus = document.querySelector("#onboardingWizardStatus");
+const skipOnboardingButton = document.querySelector("#skipOnboardingButton");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
 const settingsStatus = document.querySelector("#settingsStatus");
@@ -258,6 +263,9 @@ async function init() {
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   customServiceButton?.addEventListener("click", openCustomServiceDialog);
   customServiceForm?.addEventListener("submit", addCustomService);
+  onboardingForm?.addEventListener("submit", saveOnboardingSetup);
+  skipOnboardingButton?.addEventListener("click", finishOnboardingLater);
+  onboardingForm?.elements.serviceIndustry?.addEventListener("change", () => renderOnboardingWizardServices());
   saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
   addServiceTypeButton?.addEventListener("click", addServiceType);
   geocodeAddressButton.addEventListener("click", geocodeMeasurementAddress);
@@ -329,9 +337,20 @@ async function loadSettings() {
     syncServiceCatalog();
     applySettingsDefaults();
     renderTemplates();
+    maybeOpenOnboarding();
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
+}
+
+function maybeOpenOnboarding() {
+  if (!onboardingDialog || currentUser?.isOwner || settings.onboardingCompleted) {
+    return;
+  }
+
+  fillOnboardingForm();
+  renderOnboardingWizardServices();
+  onboardingDialog.showModal();
 }
 
 function applySettingsDefaults() {
@@ -390,13 +409,25 @@ function getBeforePhotoAreaOptions(selectedValue = "") {
 function renderOnboardingServices() {
   if (!onboardingServiceList) return;
 
+  renderServicePicker(onboardingServiceList);
+  updateOnboardingStatus();
+}
+
+function renderOnboardingWizardServices() {
+  if (!onboardingWizardServiceList) return;
+
+  renderServicePicker(onboardingWizardServiceList, onboardingForm?.elements.serviceIndustry?.value || settings.serviceIndustry || "");
+}
+
+function renderServicePicker(container, preferredCategory = "") {
   const savedServices = Array.isArray(settings.customServices) ? settings.customServices : [];
   const savedByName = new Map(savedServices.map((service) => [String(service.name || "").toLowerCase(), service]));
-  onboardingServiceList.innerHTML = onboardingServiceCategories.map((category) => {
+  container.innerHTML = onboardingServiceCategories.map((category) => {
     const services = onboardingServiceLibrary.filter((service) => service.category === category);
     const selectedCount = services.filter((service) => savedByName.has(service.name.toLowerCase())).length;
+    const shouldOpen = selectedCount || category === preferredCategory;
     return `
-      <details class="service-category" ${selectedCount ? "open" : ""}>
+      <details class="service-category" ${shouldOpen ? "open" : ""}>
         <summary>
           <span>${escapeHtml(category)}</span>
           <small>${selectedCount}/${services.length} saved</small>
@@ -408,7 +439,7 @@ function renderOnboardingServices() {
     `;
   }).join("");
 
-  onboardingServiceList.querySelectorAll("[data-onboarding-service-toggle]").forEach((checkbox) => {
+  container.querySelectorAll("[data-onboarding-service-toggle]").forEach((checkbox) => {
     checkbox.addEventListener("change", () => {
       const row = checkbox.closest("[data-onboarding-service]");
       row.classList.toggle("selected", checkbox.checked);
@@ -417,9 +448,12 @@ function renderOnboardingServices() {
     });
   });
 
-  onboardingServiceList.querySelectorAll(".service-category").forEach(updateServiceCategoryCount);
+  container.querySelectorAll(".service-category").forEach(updateServiceCategoryCount);
+}
 
+function updateOnboardingStatus() {
   if (onboardingStatus) {
+    const savedServices = Array.isArray(settings.customServices) ? settings.customServices : [];
     const selectedCount = savedServices.filter((service) => service.source === "onboarding").length;
     onboardingStatus.textContent = settings.onboardingCompleted
       ? `${selectedCount || savedServices.length} default services saved for this account.`
@@ -460,18 +494,7 @@ function updateServiceCategoryCount(categoryElement) {
 async function saveOnboardingServices() {
   if (!onboardingServiceList) return;
 
-  const selectedServices = Array.from(onboardingServiceList.querySelectorAll("[data-onboarding-service]"))
-    .filter((row) => row.querySelector("[data-onboarding-service-toggle]").checked)
-    .map((row) => {
-      const libraryService = onboardingServiceLibrary.find((service) => service.name === row.dataset.onboardingService);
-      return {
-        id: `onboarding-${slugifyServiceName(libraryService.name)}`,
-        source: "onboarding",
-        name: libraryService.name,
-        unit: libraryService.unit,
-        price: Number(row.querySelector("[data-onboarding-service-rate]").value || libraryService.price || 0)
-      };
-    });
+  const selectedServices = getSelectedOnboardingServices(onboardingServiceList);
 
   if (!selectedServices.length) {
     onboardingStatus.textContent = "Choose at least one service.";
@@ -491,6 +514,23 @@ async function saveOnboardingServices() {
   } catch (error) {
     onboardingStatus.textContent = error.message;
   }
+}
+
+function getSelectedOnboardingServices(container) {
+  return Array.from(container.querySelectorAll("[data-onboarding-service]"))
+    .filter((row) => row.querySelector("[data-onboarding-service-toggle]").checked)
+    .map((row) => {
+      const libraryService = onboardingServiceLibrary.find((service) => service.name === row.dataset.onboardingService);
+      if (!libraryService) return null;
+      return {
+        id: `onboarding-${slugifyServiceName(libraryService.name)}`,
+        source: "onboarding",
+        name: libraryService.name,
+        unit: libraryService.unit,
+        price: Number(row.querySelector("[data-onboarding-service-rate]").value || libraryService.price || 0)
+      };
+    })
+    .filter(Boolean);
 }
 
 function slugifyServiceName(name) {
@@ -616,6 +656,71 @@ function openSettings() {
   settingsDialog.showModal();
 }
 
+function fillOnboardingForm() {
+  if (!onboardingForm) return;
+
+  onboardingForm.elements.businessName.value = settings.businessName || "";
+  onboardingForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
+  onboardingForm.elements.businessEmail.value = settings.businessEmail || "";
+  onboardingForm.elements.businessPhone.value = settings.businessPhone || "";
+  onboardingForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
+  onboardingForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
+  onboardingForm.elements.zellePayment.value = settings.zellePayment || "";
+  onboardingForm.elements.venmoPayment.value = settings.venmoPayment || "";
+  if (onboardingWizardStatus) {
+    onboardingWizardStatus.textContent = "Choose an industry, pick services, and save your setup.";
+  }
+}
+
+async function saveOnboardingSetup(event) {
+  event.preventDefault();
+  if (!onboardingForm || !onboardingWizardServiceList) return;
+
+  const payload = {
+    ...settings,
+    ...Object.fromEntries(new FormData(onboardingForm).entries())
+  };
+  payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
+  payload.defaultJobDurationMinutes = Number(settings.defaultJobDurationMinutes || 180);
+  payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
+
+  const selectedServices = getSelectedOnboardingServices(onboardingWizardServiceList);
+  if (!selectedServices.length) {
+    onboardingWizardStatus.textContent = "Choose at least one saved service.";
+    return;
+  }
+
+  const preservedServices = (settings.customServices || []).filter((service) => service.source !== "onboarding");
+  payload.customServices = [...preservedServices, ...selectedServices];
+  payload.onboardingCompleted = true;
+
+  try {
+    onboardingWizardStatus.textContent = "Saving account setup...";
+    const data = await apiRequest("/api/settings", payload);
+    settings = data.settings;
+    syncServiceCatalog();
+    applySettingsDefaults();
+    fillSettingsForm();
+    onboardingDialog.close();
+  } catch (error) {
+    onboardingWizardStatus.textContent = error.message;
+  }
+}
+
+async function finishOnboardingLater() {
+  if (!onboardingDialog) return;
+
+  try {
+    const data = await apiRequest("/api/settings", { ...settings, onboardingCompleted: true });
+    settings = data.settings;
+    syncServiceCatalog();
+    applySettingsDefaults();
+    onboardingDialog.close();
+  } catch (error) {
+    onboardingWizardStatus.textContent = error.message;
+  }
+}
+
 function applyAccountVisibility() {
   const isOwner = Boolean(currentUser?.isOwner);
   [teamAccessSection, mapboxTokenField, backupExportLink, googleClientIdField, googleClientSecretField, googleRedirectUriField].forEach((element) => {
@@ -629,6 +734,7 @@ function fillSettingsForm() {
   settingsForm.elements.businessName.value = settings.businessName || "";
   settingsForm.elements.businessEmail.value = settings.businessEmail || "";
   settingsForm.elements.businessPhone.value = settings.businessPhone || "";
+  settingsForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
   settingsForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
   settingsForm.elements.defaultJobDurationMinutes.value = settings.defaultJobDurationMinutes || 180;
   settingsForm.elements.zellePayment.value = settings.zellePayment || "";

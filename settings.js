@@ -107,6 +107,7 @@ function normalizeSettings(input, existing) {
     businessName: String(input.businessName || "").trim(),
     businessEmail: normalizeEmail(input.businessEmail),
     businessPhone: String(input.businessPhone || "").trim(),
+    serviceIndustry: normalizeServiceIndustry(input.serviceIndustry ?? existing.serviceIndustry),
     businessLogoDataUrl: normalizeBusinessLogoDataUrl(input.businessLogoDataUrl ?? existing.businessLogoDataUrl),
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
     defaultJobDurationMinutes: normalizeNumber(input.defaultJobDurationMinutes, existing.defaultJobDurationMinutes, 30, 720),
@@ -179,6 +180,11 @@ function normalizeServiceUnit(value) {
   const aliases = { QTY: "Qty", LNF: "LFN" };
   const normalized = aliases[String(value || "").trim()] || String(value || "").trim();
   return ["Qty", "SqFt", "Hours", "LFN", "Each"].includes(normalized) ? normalized : "Qty";
+}
+
+function normalizeServiceIndustry(value) {
+  const industry = String(value || "").trim();
+  return ["Pressure Washing", "Landscaping", "Handyman", "Construction", "Misc"].includes(industry) ? industry : "";
 }
 
 function normalizeMoneyNumber(value, min, max) {

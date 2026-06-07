@@ -4,7 +4,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, "data");
+const DATA_DIR = process.env.PRESSUREFLOW_DATA_DIR || path.join(ROOT, "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
 const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
 const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
@@ -20,6 +20,7 @@ const defaultSettings = {
   businessName: "",
   businessEmail: "",
   businessPhone: "",
+  serviceIndustry: "",
   businessLogoDataUrl: "",
   defaultDepositPercent: 25,
   defaultJobDurationMinutes: 180,
@@ -464,6 +465,7 @@ function applyRuntimeSettings(settings = {}) {
     cashAppPayment: rowSettings.cashAppPayment || "",
     venmoPayment: rowSettings.venmoPayment || "",
     paymentInstructions: rowSettings.paymentInstructions || "",
+    serviceIndustry: rowSettings.serviceIndustry || "",
     onboardingCompleted: Boolean(rowSettings.onboardingCompleted),
     businessLogoDataUrl: rowSettings.businessLogoDataUrl || "",
     customTemplates: Array.isArray(rowSettings.customTemplates) ? rowSettings.customTemplates : [],
