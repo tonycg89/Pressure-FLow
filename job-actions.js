@@ -55,6 +55,11 @@ function createJobActionHandler({
     }
 
     if (action === "send-square-estimate") {
+      if (job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl) {
+        job.status = job.status || "Estimate Sent";
+        return;
+      }
+
       const settings = await readSettings();
       job.status = "Estimate Sent";
       job.estimateApprovalToken = job.estimateApprovalToken || randomToken();
@@ -74,6 +79,11 @@ function createJobActionHandler({
     }
 
     if (action === "send-contract") {
+      if (job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
+        job.status = job.status || "Contract Sent";
+        return;
+      }
+
       const settings = await readSettings();
       job.status = "Contract Sent";
       job.contractApprovalToken = job.contractApprovalToken || randomToken();

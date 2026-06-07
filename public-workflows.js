@@ -65,6 +65,8 @@ function createPublicWorkflowHandlers({
   sendContractEmail,
   writeJobs
 }) {
+  const workflowLocks = new Map();
+
   async function findPublicEstimate(jobId, token) {
     const jobs = await readJobs();
     const job = jobs.find((item) => item.id === jobId);
@@ -75,29 +77,35 @@ function createPublicWorkflowHandlers({
   }
 
   async function approvePublicEstimate(jobId, token) {
-    const jobs = await readJobs();
-    const job = jobs.find((item) => item.id === jobId);
-    if (!job || !job.estimateApprovalToken || job.estimateApprovalToken !== token) {
-      return null;
-    }
+    return withWorkflowLock(`estimate:${jobId}`, async () => {
+      const jobs = await readJobs();
+      const job = jobs.find((item) => item.id === jobId);
+      if (!job || !job.estimateApprovalToken || job.estimateApprovalToken !== token) {
+        return null;
+      }
 
-    const settings = await readSettingsForJob(job);
-    job.status = "Contract Sent";
-    job.estimateApprovedAt = new Date().toISOString();
-    job.estimateRejectedAt = "";
-    job.estimateRejectionReason = "";
-    job.estimateRejectionNote = "";
-    job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
-    job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
-    job.contractMailto = buildContractMailto(job, settings);
-    await sendContractEmail(job, settings);
-    job.contractSentAt = new Date().toISOString();
-    job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
-    job.squareContractUrl = job.contractApprovalUrl;
-    job.updatedAt = new Date().toISOString();
-    await writeJobs(jobs);
-    await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
-    return job;
+      const settings = await readSettingsForJob(job);
+      if (job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
+        return job;
+      }
+
+      job.status = "Contract Sent";
+      job.estimateApprovedAt = new Date().toISOString();
+      job.estimateRejectedAt = "";
+      job.estimateRejectionReason = "";
+      job.estimateRejectionNote = "";
+      job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
+      job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
+      job.contractMailto = buildContractMailto(job, settings);
+      await sendContractEmail(job, settings);
+      job.contractSentAt = new Date().toISOString();
+      job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
+      job.squareContractUrl = job.contractApprovalUrl;
+      job.updatedAt = new Date().toISOString();
+      await writeJobs(jobs);
+      await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
+      return job;
+    });
   }
 
   async function rejectPublicEstimate(jobId, token, reason, note) {
@@ -147,27 +155,53 @@ function createPublicWorkflowHandlers({
   }
 
   async function signPublicContract(jobId, token, signerName, signedDate) {
-    const jobs = await readJobs();
-    const job = jobs.find((item) => item.id === jobId);
-    if (!job || !job.contractApprovalToken || job.contractApprovalToken !== token) {
-      return null;
+    return withWorkflowLock(`contract:${jobId}`, async () => {
+      const jobs = await readJobs();
+      const job = jobs.find((item) => item.id === jobId);
+      if (!job || !job.contractApprovalToken || job.contractApprovalToken !== token) {
+        return null;
+      }
+
+      if (job.contractSignedAt && job.squareDepositInvoiceId && job.squareDepositInvoiceUrl) {
+        return job;
+      }
+
+      const settings = await readSettingsForJob(job);
+      job.status = "Contract Signed";
+      job.contractSignerName = String(signerName || "").trim();
+      job.contractSignedAt = new Date().toISOString();
+      job.contractSignedDate = String(signedDate || "").trim();
+      job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);
+
+      const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
+      job.status = "Deposit Sent";
+      job.squareDepositInvoiceId = invoice.invoiceId;
+      job.squareDepositInvoiceUrl = invoice.publicUrl;
+      job.updatedAt = new Date().toISOString();
+      await writeJobs(jobs);
+      await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`);
+      return job;
+    });
+  }
+
+  async function withWorkflowLock(key, task) {
+    const previous = workflowLocks.get(key) || Promise.resolve();
+    let release;
+    const current = new Promise((resolve) => {
+      release = resolve;
+    });
+    const queued = previous.then(() => current, () => current);
+    workflowLocks.set(key, queued);
+
+    await previous.catch(() => null);
+    try {
+      return await task();
+    } finally {
+      release();
+      if (workflowLocks.get(key) === queued) {
+        workflowLocks.delete(key);
+      }
     }
-
-    const settings = await readSettingsForJob(job);
-    job.status = "Contract Signed";
-    job.contractSignerName = String(signerName || "").trim();
-    job.contractSignedAt = new Date().toISOString();
-    job.contractSignedDate = String(signedDate || "").trim();
-    job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);
-
-    const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
-    job.status = "Deposit Sent";
-    job.squareDepositInvoiceId = invoice.invoiceId;
-    job.squareDepositInvoiceUrl = invoice.publicUrl;
-    job.updatedAt = new Date().toISOString();
-    await writeJobs(jobs);
-    await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`);
-    return job;
   }
 
   return {

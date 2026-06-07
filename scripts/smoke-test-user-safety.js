@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
+const { createJobActionHandler } = require("../job-actions");
 const { createPublicWorkflowHandlers } = require("../public-workflows");
 const { createRecordRoutes } = require("../record-routes");
 const {
@@ -235,12 +236,83 @@ async function testEstimateAndInvoicePublicFlow() {
   assert.equal(await handlers.findPublicInvoice("job-1", "deposit", "wrong-token"), null);
 }
 
+async function testWorkflowEmailIdempotency() {
+  let tokenIndex = 0;
+  const sent = [];
+  const actions = createJobActionHandler({
+    createGoogleCalendarEvent: async () => ({}),
+    createPressureFlowInvoice: async () => ({ invoiceId: "invoice-token", publicUrl: "https://invoice.test/deposit" }),
+    readSettings: async () => ({ businessName: "Test Business" }),
+    randomToken: () => `token-${++tokenIndex}`,
+    sendAdminTextAlertSafe: async () => {},
+    sendCompletionCertificateEmailSafe: async () => {},
+    sendContractEmail: async (job) => { sent.push(["contract", job.contractApprovalUrl]); },
+    sendEstimateEmail: async (job) => { sent.push(["estimate", job.estimateApprovalUrl]); },
+    sendScheduleConfirmationEmail: async () => {}
+  });
+
+  const job = { id: "job-duplicate-click", customerName: "Customer", email: "customer@example.com", estimate: 100 };
+  await actions.applyAction(job, "send-square-estimate", { _baseUrl: "https://pressureflow.test" });
+  const estimateUrl = job.estimateApprovalUrl;
+  await actions.applyAction(job, "send-square-estimate", { _baseUrl: "https://pressureflow.test" });
+  assert.equal(job.estimateApprovalUrl, estimateUrl);
+  assert.deepEqual(sent.filter(([type]) => type === "estimate"), [["estimate", estimateUrl]]);
+
+  await actions.applyAction(job, "send-contract", { _baseUrl: "https://pressureflow.test" });
+  const contractUrl = job.contractApprovalUrl;
+  await actions.applyAction(job, "send-contract", { _baseUrl: "https://pressureflow.test" });
+  assert.equal(job.contractApprovalUrl, contractUrl);
+  assert.deepEqual(sent.filter(([type]) => type === "contract"), [["contract", contractUrl]]);
+
+  const publicJobs = [{
+    id: "public-job",
+    accountId: "acct-a",
+    customerName: "Customer",
+    email: "customer@example.com",
+    estimate: 100,
+    estimateApprovalToken: "estimate-token",
+    estimateApprovalUrl: "https://pressureflow.test/estimate/public-job?token=estimate-token",
+    contractApprovalToken: ""
+  }];
+  let contractEmails = 0;
+  let invoices = 0;
+  const handlers = createPublicWorkflowHandlers({
+    createPressureFlowInvoice: async () => {
+      invoices += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return { invoiceId: "deposit-token", publicUrl: "https://invoice.test/deposit" };
+    },
+    readJobs: async () => publicJobs,
+    readSettingsForJob: async () => ({ businessName: "Test Business" }),
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => {
+      contractEmails += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    },
+    writeJobs: async () => {}
+  });
+
+  await Promise.all([
+    handlers.approvePublicEstimate("public-job", "estimate-token"),
+    handlers.approvePublicEstimate("public-job", "estimate-token")
+  ]);
+  assert.equal(contractEmails, 1);
+
+  const contractToken = publicJobs[0].contractApprovalToken;
+  await Promise.all([
+    handlers.signPublicContract("public-job", contractToken, "Customer", "2026-06-06"),
+    handlers.signPublicContract("public-job", contractToken, "Customer", "2026-06-06")
+  ]);
+  assert.equal(invoices, 1);
+}
+
 (async () => {
   await testLoginAndSession();
   await testAccountIsolation();
   await testRecordCreateRoutes();
   testSettingsVisibilityAndValidation();
   await testEstimateAndInvoicePublicFlow();
+  await testWorkflowEmailIdempotency();
   console.log("test-user safety smoke ok");
 })().catch((error) => {
   console.error(error);

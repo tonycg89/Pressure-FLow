@@ -87,6 +87,7 @@ const {
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const requestContext = new AsyncLocalStorage();
+const jobActionLocks = new Map();
 
 const {
   authenticateLogin,
@@ -526,24 +527,47 @@ async function handleApi(request, response, url) {
   const actionMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/([^/]+)$/);
   if (request.method === "POST" && actionMatch) {
     const [, jobId, action] = actionMatch;
-    const jobs = await readJobs();
-    const job = jobs.find((item) => item.id === jobId);
+    await withJobActionLock(jobId, async () => {
+      const jobs = await readJobs();
+      const job = jobs.find((item) => item.id === jobId);
 
-    if (!job) {
-      sendError(response, 404, "Job not found.");
-      return;
-    }
+      if (!job) {
+        sendError(response, 404, "Job not found.");
+        return;
+      }
 
-    const input = await readRequestBody(request);
-    input._baseUrl = getAppBaseUrl(request);
-    await applyAction(job, action, input);
-    job.updatedAt = new Date().toISOString();
-    await writeJobs(jobs);
-    sendJson(response, 200, { job });
+      const input = await readRequestBody(request);
+      input._baseUrl = getAppBaseUrl(request);
+      await applyAction(job, action, input);
+      job.updatedAt = new Date().toISOString();
+      await writeJobs(jobs);
+      sendJson(response, 200, { job });
+    });
     return;
   }
 
   sendError(response, 404, "API route not found.");
+}
+
+async function withJobActionLock(jobId, task) {
+  const key = String(jobId || "");
+  const previous = jobActionLocks.get(key) || Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  const queued = previous.then(() => current, () => current);
+  jobActionLocks.set(key, queued);
+
+  await previous.catch(() => null);
+  try {
+    return await task();
+  } finally {
+    release();
+    if (jobActionLocks.get(key) === queued) {
+      jobActionLocks.delete(key);
+    }
+  }
 }
 
 async function verifySquareWebhookSignature(request, rawBody) {
