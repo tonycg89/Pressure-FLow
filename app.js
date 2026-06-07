@@ -57,6 +57,17 @@ const {
   readFileAsDataUrl
 } = window.PressureFlowPhotoUtils;
 
+const {
+  calculatePerimeterFeet,
+  measurementGeojsonKey,
+  normalizeMeasurementForEditing,
+  recalculateMeasurementTotals
+} = window.PressureFlowMeasurementUtils.createMeasurementUtils({
+  buildStaticMapUrl,
+  getTurf: () => window.turf,
+  randomId: () => crypto.randomUUID()
+});
+
 const jobList = document.querySelector("#jobList");
 const jobDetail = document.querySelector("#jobDetail");
 const customerList = document.querySelector("#customerList");
@@ -1530,62 +1541,6 @@ function openMeasurementDialog(row) {
   }, 50);
 }
 
-function normalizeMeasurementForEditing(measurement = {}) {
-  const areas = Array.isArray(measurement.areas)
-    ? measurement.areas
-    : measurement.geojson && measurement.squareFeet
-      ? [{
-        id: crypto.randomUUID(),
-        name: "Service area 1",
-        squareFeet: Number(measurement.squareFeet || 0),
-        perimeterFeet: Number(measurement.perimeterFeet || 0),
-        geojson: measurement.geojson,
-        capturedAt: measurement.capturedAt || new Date().toISOString()
-      }]
-      : [];
-
-  const normalized = {
-    ...measurement,
-    areas: areas.map((area, index) => ({
-      id: String(area.id || crypto.randomUUID()),
-      name: String(area.name || area.label || `Service area ${index + 1}`).trim(),
-      squareFeet: Number(area.squareFeet || 0),
-      perimeterFeet: Number(area.perimeterFeet || 0),
-      geojson: area.geojson,
-      capturedAt: String(area.capturedAt || new Date().toISOString())
-    })).filter((area) => area.geojson && area.squareFeet > 0)
-  };
-
-  return recalculateMeasurementTotals(normalized);
-}
-
-function recalculateMeasurementTotals(measurement = currentMeasurement) {
-  const areas = Array.isArray(measurement.areas) ? measurement.areas : [];
-  const squareFeet = areas.reduce((sum, area) => sum + Number(area.squareFeet || 0), 0);
-  const perimeterFeet = areas.reduce((sum, area) => sum + Number(area.perimeterFeet || 0), 0);
-  const firstArea = areas[0] || {};
-  const updated = {
-    ...measurement,
-    squareFeet,
-    perimeterFeet,
-    geojson: buildMeasurementFeatureCollection(areas),
-    center: measurement.center || [],
-    zoom: Number(measurement.zoom || 18),
-    capturedAt: new Date().toISOString()
-  };
-  if (!updated.center?.length && firstArea.center?.length) {
-    updated.center = firstArea.center;
-  }
-  updated.staticImageUrl = buildStaticMapUrl(updated);
-  return updated;
-}
-
-function buildMeasurementFeatureCollection(areas) {
-  const features = (areas || []).map((area) => area.geojson).filter(Boolean);
-  if (!features.length) return null;
-  return { type: "FeatureCollection", features };
-}
-
 function initializeMeasurementMap() {
   if (!window.mapboxgl || !window.MapboxDraw || !window.turf) {
     measurementStatus.textContent = "Map tools are still loading. Try again in a moment.";
@@ -1814,10 +1769,6 @@ function renderSavedMeasurementsFromCurrentPanel() {
   });
 }
 
-function measurementGeojsonKey(geojson) {
-  return JSON.stringify(geojson || {});
-}
-
 function updateMeasurementFromDraw() {
   if (syncingMeasurementDraw) return;
 
@@ -1840,16 +1791,6 @@ function updateMeasurementFromDraw() {
     capturedAt: new Date().toISOString()
   };
   measurementStatus.textContent = `${squareFeet.toLocaleString("en-US")} SqFt drawn. Add or update the named area.`;
-}
-
-function calculatePerimeterFeet(feature) {
-  const outerRing = feature?.geometry?.coordinates?.[0];
-  if (!Array.isArray(outerRing) || outerRing.length < 2) {
-    return 0;
-  }
-
-  const line = turf.lineString(outerRing);
-  return Math.round(turf.length(line, { units: "feet" }));
 }
 
 function clearMeasurementPolygon() {
