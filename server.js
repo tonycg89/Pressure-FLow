@@ -590,6 +590,14 @@ async function verifyStripeWebhookSignature(request, rawBody) {
   return verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
 }
 
+function ignoresSessionForPublicWorkflow(pathname) {
+  return pathname.startsWith("/estimate/") ||
+    pathname.startsWith("/contract/") ||
+    pathname.startsWith("/proof/") ||
+    pathname.startsWith("/invoice/") ||
+    pathname.startsWith("/api/public/");
+}
+
 const server = http.createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
@@ -607,7 +615,10 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    await requestContext.run({ session, authDisabled: !authEnabled }, async () => {
+    await requestContext.run({
+      session: ignoresSessionForPublicWorkflow(url.pathname) ? null : session,
+      authDisabled: !authEnabled
+    }, async () => {
       if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
         await handleApi(request, response, url);
         return;

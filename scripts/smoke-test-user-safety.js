@@ -117,6 +117,38 @@ async function testAccountIsolation() {
   assert.deepEqual(settingsWrites[0], { accountId: "acct-a", value: { businessName: "A Settings" } });
 }
 
+async function testPublicWorkflowLookupIgnoresLoggedInAccountScope() {
+  const jobs = [
+    { id: "public-job-a", accountId: "acct-a", estimateApprovalToken: "token-a" },
+    { id: "public-job-b", accountId: "acct-b", estimateApprovalToken: "token-b" }
+  ];
+  const context = { session: { userId: "user-b", accountId: "acct-b", role: "tester" } };
+  const workspace = createWorkspaceAccess({
+    getContextStore: () => context,
+    readAccounts: async () => [{ id: "acct-a" }, { id: "acct-b" }],
+    readAllCustomers: async () => [],
+    readAllExpenses: async () => [],
+    readAllJobs: async () => jobs,
+    readUserSettings: async () => ({}),
+    writeAllCustomers: async () => {},
+    writeAllExpenses: async () => {},
+    writeAllJobs: async () => {},
+    writeUserSettings: async () => {}
+  });
+  const handlers = createPublicWorkflowHandlers({
+    createPressureFlowInvoice: async () => ({}),
+    readJobs: workspace.readJobs,
+    readSettingsForJob: async () => ({}),
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => {},
+    writeJobs: async () => {}
+  });
+
+  assert.equal(await handlers.findPublicEstimate("public-job-a", "token-a"), null);
+  context.session = null;
+  assert.equal((await handlers.findPublicEstimate("public-job-a", "token-a")).accountId, "acct-a");
+}
+
 async function testRecordCreateRoutes() {
   let jobs = [];
   let customers = [];
@@ -321,6 +353,7 @@ async function testWorkflowEmailIdempotency() {
 (async () => {
   await testLoginAndSession();
   await testAccountIsolation();
+  await testPublicWorkflowLookupIgnoresLoggedInAccountScope();
   await testRecordCreateRoutes();
   testSettingsVisibilityAndValidation();
   testCustomerFacingSenderName();
