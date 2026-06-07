@@ -298,9 +298,11 @@ async function init() {
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
   await loadSession();
   await loadSettings();
-  await loadCustomers();
-  await loadExpenses();
-  await loadJobs();
+  await Promise.all([
+    loadCustomers(),
+    loadExpenses(),
+    loadJobs()
+  ]);
 }
 
 async function loadSession() {
@@ -359,7 +361,8 @@ function applySettingsDefaults() {
     depositInput.value = settings.defaultDepositPercent;
   }
   if (sidebarBusinessName) {
-    sidebarBusinessName.textContent = settings.businessName || "Your Company";
+    sidebarBusinessName.textContent = settings.businessName || "PressureFlow";
+    sidebarBusinessName.classList.remove("loading-name");
   }
 }
 

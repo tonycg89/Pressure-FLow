@@ -84,6 +84,11 @@ button {
   line-height: 1.08;
 }
 
+.sidebar h1.loading-name {
+  color: transparent;
+  user-select: none;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: inherit;

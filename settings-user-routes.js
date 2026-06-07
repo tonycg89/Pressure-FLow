@@ -24,9 +24,13 @@ function createSettingsUserRoutes({
 }) {
   async function handleSettingsUserRoutes(request, response, url) {
     if (request.method === "GET" && url.pathname === "/api/settings") {
+      const [settings, account] = await Promise.all([
+        readSettings(),
+        readCurrentAccount()
+      ]);
       sendJson(response, 200, {
-        settings: publicSettings(await readSettings(), { hidePlatformCredentials: !isOwnerSession() }),
-        account: publicAccount(await readCurrentAccount())
+        settings: publicSettings(settings, { hidePlatformCredentials: !isOwnerSession() }),
+        account: publicAccount(account)
       });
       return true;
     }

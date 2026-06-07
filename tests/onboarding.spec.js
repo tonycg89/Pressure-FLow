@@ -89,6 +89,8 @@ async function loginAndCompleteOnboarding(page) {
   await page.getByLabel("Password").fill(TEST_USER.password);
   await page.getByRole("button", { name: "Sign In" }).click();
 
+  await expect(page.locator("#sidebarBusinessName")).not.toHaveText("Your Company");
+
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
 
   await page.locator("#onboardingForm [name='businessName']").fill("Johnson Exterior Cleaning");

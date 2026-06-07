@@ -384,8 +384,10 @@ async function readUserSettings(userId) {
     return readSettings();
   }
 
-  const ownerSettings = await readSettings();
-  const users = await readUsers();
+  const [ownerSettings, users] = await Promise.all([
+    readSettings(),
+    readUsers()
+  ]);
   const user = findUserForSettings(users, userId);
   const settings = { ...defaultSettings, ...(user?.settings || {}) };
   settings.googleClientId = settings.googleClientId || ownerSettings.googleClientId || "";
