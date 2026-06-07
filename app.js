@@ -158,6 +158,9 @@ const emailIntegrationStatus = document.querySelector("#emailIntegrationStatus")
 const squareIntegrationStatus = document.querySelector("#squareIntegrationStatus");
 const stripeIntegrationStatus = document.querySelector("#stripeIntegrationStatus");
 const quickBooksIntegrationStatus = document.querySelector("#quickBooksIntegrationStatus");
+const onboardingLogoInput = document.querySelector("#onboardingLogoInput");
+const onboardingLogoPreview = document.querySelector("#onboardingLogoPreview");
+const clearOnboardingLogoButton = document.querySelector("#clearOnboardingLogoButton");
 const businessLogoInput = document.querySelector("#businessLogoInput");
 const businessLogoPreview = document.querySelector("#businessLogoPreview");
 const clearBusinessLogoButton = document.querySelector("#clearBusinessLogoButton");
@@ -284,8 +287,10 @@ async function init() {
     button.addEventListener("click", closeDialogFromButton);
   });
   settingsForm.addEventListener("submit", saveSettings);
+  onboardingLogoInput?.addEventListener("change", (event) => updateBusinessLogoFromInput(event, onboardingWizardStatus));
+  clearOnboardingLogoButton?.addEventListener("click", () => clearBusinessLogo(onboardingLogoInput));
   businessLogoInput?.addEventListener("change", updateBusinessLogoFromInput);
-  clearBusinessLogoButton?.addEventListener("click", clearBusinessLogo);
+  clearBusinessLogoButton?.addEventListener("click", () => clearBusinessLogo(businessLogoInput));
   addUserButton?.addEventListener("click", addSettingsUser);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   completionForm.addEventListener("submit", submitCompletionDialog);
@@ -389,12 +394,19 @@ function syncServiceCatalog() {
 }
 
 function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?.value || "") {
-  const select = jobForm?.elements.serviceType;
-  if (!select) return;
+  const field = jobForm?.elements.serviceType;
+  if (!field) return;
 
-  const currentValue = selectedValue || select.value || serviceTypes[0] || "";
-  select.innerHTML = serviceTypes.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  select.value = serviceTypes.includes(currentValue) ? currentValue : serviceTypes[0] || "";
+  if (field.tagName !== "SELECT") {
+    if (selectedValue) {
+      field.value = selectedValue;
+    }
+    return;
+  }
+
+  const currentValue = selectedValue || field.value || serviceTypes[0] || "";
+  field.innerHTML = serviceTypes.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  field.value = serviceTypes.includes(currentValue) ? currentValue : serviceTypes[0] || "";
 }
 
 function renderBeforePhotoSectionOptions(selectedValue = "") {
@@ -449,7 +461,10 @@ function renderServicePicker(container, preferredCategory = "") {
           <span>${escapeHtml(category)}</span>
           <small>${selectedCount}/${services.length} saved</small>
         </summary>
-        <button class="secondary-small-button service-category-select-all" type="button" data-select-category="${escapeHtml(category)}">Select All</button>
+        <div class="service-category-actions">
+          <button class="secondary-small-button" type="button" data-select-category="${escapeHtml(category)}">Select All</button>
+          <button class="secondary-small-button" type="button" data-unselect-category="${escapeHtml(category)}">Unselect All</button>
+        </div>
         <div class="service-category-list">
           ${services.map((service) => renderOnboardingServiceRow(service, savedByName)).join("")}
         </div>
@@ -470,6 +485,9 @@ function renderServicePicker(container, preferredCategory = "") {
   container.querySelectorAll("[data-select-category]").forEach((button) => {
     button.addEventListener("click", () => selectAllServicesInCategory(button.closest(".service-category")));
   });
+  container.querySelectorAll("[data-unselect-category]").forEach((button) => {
+    button.addEventListener("click", () => unselectAllServicesInCategory(button.closest(".service-category")));
+  });
 }
 
 function selectAllServicesInCategory(categoryElement) {
@@ -482,6 +500,21 @@ function selectAllServicesInCategory(categoryElement) {
     row.classList.add("selected");
     if (rate) {
       rate.disabled = false;
+    }
+  });
+  updateServiceCategoryCount(categoryElement);
+}
+
+function unselectAllServicesInCategory(categoryElement) {
+  if (!categoryElement) return;
+
+  categoryElement.querySelectorAll("[data-onboarding-service]").forEach((row) => {
+    const checkbox = row.querySelector("[data-onboarding-service-toggle]");
+    const rate = row.querySelector("[data-onboarding-service-rate]");
+    checkbox.checked = false;
+    row.classList.remove("selected");
+    if (rate) {
+      rate.disabled = true;
     }
   });
   updateServiceCategoryCount(categoryElement);
@@ -714,6 +747,7 @@ function fillOnboardingForm() {
   onboardingForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
   onboardingForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
   syncOnboardingDepositVisibility();
+  renderBusinessLogoPreview();
   if (onboardingWizardStatus) {
     onboardingWizardStatus.textContent = "Choose an industry, pick services, and save your setup.";
   }
@@ -976,16 +1010,20 @@ function formatUserRole(role) {
   }[role] || "Tester";
 }
 
-async function updateBusinessLogoFromInput(event) {
+async function updateBusinessLogoFromInput(event, statusElement = settingsStatus) {
   const file = event.target.files?.[0];
   if (!file) return;
   if (!file.type.startsWith("image/")) {
-    settingsStatus.textContent = "Choose a PNG, JPG, or WebP logo image.";
+    if (statusElement) {
+      statusElement.textContent = "Choose a PNG, JPG, or WebP logo image.";
+    }
     event.target.value = "";
     return;
   }
   if (file.size > 650000) {
-    settingsStatus.textContent = "Choose a smaller logo image under 650 KB.";
+    if (statusElement) {
+      statusElement.textContent = "Choose a smaller logo image under 650 KB.";
+    }
     event.target.value = "";
     return;
   }
@@ -994,19 +1032,21 @@ async function updateBusinessLogoFromInput(event) {
   renderBusinessLogoPreview();
 }
 
-function clearBusinessLogo() {
+function clearBusinessLogo(inputToClear = businessLogoInput) {
   settings.businessLogoDataUrl = "";
-  if (businessLogoInput) {
-    businessLogoInput.value = "";
+  if (inputToClear) {
+    inputToClear.value = "";
   }
   renderBusinessLogoPreview();
 }
 
 function renderBusinessLogoPreview() {
-  if (!businessLogoPreview) return;
+  [businessLogoPreview, onboardingLogoPreview].forEach((preview) => {
+    if (!preview) return;
 
-  businessLogoPreview.src = settings.businessLogoDataUrl || "";
-  businessLogoPreview.hidden = !settings.businessLogoDataUrl;
+    preview.src = settings.businessLogoDataUrl || "";
+    preview.hidden = !settings.businessLogoDataUrl;
+  });
 }
 
 function renderTemplates() {
@@ -1258,7 +1298,7 @@ function openEditJob() {
   if (!job) return;
 
   jobForm.dataset.editingId = job.id;
-  jobDialogTitle.textContent = "Edit pressure washing job";
+  jobDialogTitle.textContent = "Edit job";
   jobForm.elements.customerId.value = job.customerId || "";
   jobForm.elements.customerName.value = job.customerName || "";
   jobForm.elements.email.value = job.email || "";
@@ -1269,7 +1309,7 @@ function openEditJob() {
   }
   fillAddressFields(jobForm, job);
   jobForm.elements.leadSource.value = job.leadSource || "referral";
-  renderServiceTypeOptions(job.serviceType || "Driveway cleaning");
+  renderServiceTypeOptions(job.serviceType || "");
   jobForm.elements.estimate.value = job.estimate || 0;
   jobForm.elements.depositPercent.value = job.depositPercent ?? getDefaultDepositPercent();
   renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 1 }]);
@@ -1291,7 +1331,7 @@ function openEditJob() {
 
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
-  jobDialogTitle.textContent = "New pressure washing job";
+  jobDialogTitle.textContent = "New job";
   if (jobCustomerSearch) {
     jobCustomerSearch.value = "";
   }
@@ -1299,7 +1339,7 @@ function resetJobDialog() {
   currentMeasurement = {};
   activeMeasurementAreaId = "";
   currentJobPhotos = { before: [], after: [] };
-  renderServiceTypeOptions("Driveway cleaning");
+  renderServiceTypeOptions("");
   resetBeforePhotoRows();
   renderBeforePhotoSectionOptions();
   renderJobPhotoPreviews();

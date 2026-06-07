@@ -38,6 +38,7 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await expect(page.locator("#onboardingForm [name='venmoPayment']")).toHaveCount(0);
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingLogoPreview")).toBeVisible();
 });
 
 test("tester creates customer and job, sends estimate, and opens public estimate link", async ({ page, context }) => {
@@ -67,7 +68,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await page.locator("#jobForm [name='city']").fill("Riverside");
   await page.locator("#jobForm [name='state']").fill("CA");
   await page.locator("#jobForm [name='zip']").fill("92501");
-  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
+  await page.locator("#jobForm [name='serviceType']").fill("Landscape maintenance");
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Lawn Mowing");
   await lineItem.locator(".line-quantity").fill("1000");
@@ -86,7 +87,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
 
   const publicPage = await context.newPage();
   await publicPage.goto(job.estimateApprovalUrl);
-  await expect(publicPage.getByRole("heading", { name: /Driveway cleaning for Alex Rivera/ })).toBeVisible();
+  await expect(publicPage.getByRole("heading", { name: /Landscape maintenance for Alex Rivera/ })).toBeVisible();
   await expect(publicPage.getByRole("row", { name: /Lawn Mowing 1000 SqFt \$0\.04 \$40\.00/ })).toBeVisible();
   await expect(publicPage.getByText("Estimate Only, not an actual Invoice.")).toBeVisible();
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);
@@ -106,6 +107,12 @@ async function loginAndCompleteOnboarding(page) {
   await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Landscaping");
   await page.locator("#onboardingForm [name='businessEmail']").fill("owner@johnson.test");
   await page.locator("#onboardingForm [name='businessPhone']").fill("(555) 222-3333");
+  await page.locator("#onboardingLogoInput").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64")
+  });
+  await expect(page.locator("#onboardingLogoPreview")).toBeVisible();
   await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
   await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");
   await expect(page.locator("#onboardingDepositPercentField")).toBeHidden();
@@ -114,7 +121,11 @@ async function loginAndCompleteOnboarding(page) {
   await page.locator("#onboardingForm [name='defaultDepositPercent']").fill("30");
   await page.locator("#onboardingForm [name='emailSendProvider']").selectOption("smtp");
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
-  await page.locator("#onboardingWizardServiceList details.service-category").first().getByRole("button", { name: "Select All" }).click();
+  const firstCategory = page.locator("#onboardingWizardServiceList details.service-category").first();
+  await firstCategory.getByRole("button", { name: "Select All", exact: true }).click();
+  await firstCategory.getByRole("button", { name: "Unselect All", exact: true }).click();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).not.toBeChecked();
+  await firstCategory.getByRole("button", { name: "Select All", exact: true }).click();
   await checkOnboardingService(page, "Lawn Mowing");
   await checkOnboardingService(page, "Hedge Trimming");
   await page.getByRole("button", { name: "Save Setup" }).click();
