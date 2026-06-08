@@ -379,8 +379,20 @@
         </label>
         <label>
           Job title
-          <input name="serviceType" required placeholder="Exterior cleaning, landscape cleanup, bathroom repair">
+          <input name="serviceType" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
         </label>
+        <datalist id="jobTitleSuggestions">
+          <option value="Exterior Cleaning"></option>
+          <option value="Landscape Maintenance"></option>
+          <option value="Handyman Work"></option>
+          <option value="Construction Services"></option>
+          <option value="Property Maintenance"></option>
+          <option value="Multiple Services"></option>
+          <option value="Commercial Service"></option>
+          <option value="Residential Service"></option>
+          <option value="Project Estimate"></option>
+          <option value="Maintenance Visit"></option>
+        </datalist>
 
         <section class="estimate-builder" aria-label="Estimate builder">
           <div class="section-header">
@@ -791,6 +803,22 @@
           </label>
         </div>
 
+        <section class="settings-section calendar-instructions">
+          <div class="section-header compact-header">
+            <div>
+              <h3>Google Calendar setup</h3>
+              <p class="form-note">Use this when the account wants Google Calendar events or Gmail-powered customer emails.</p>
+            </div>
+            <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
+          </div>
+          <ol class="setup-checklist">
+            <li>Save this Settings screen after adding the account's Google calendar ID.</li>
+            <li>Open PressureFlow on phone or desktop and tap Connect Google Calendar.</li>
+            <li>Sign in with the account that should send emails and receive calendar events.</li>
+            <li>If Google says access is blocked while the app is in testing, add that Gmail address as an approved Google OAuth test user.</li>
+          </ol>
+        </section>
+
         <details class="settings-section onboarding-settings" aria-label="Saved services">
           <summary>
             <span>
@@ -962,7 +990,6 @@
         </section>
 
         <menu class="dialog-actions">
-          <a class="secondary-link-button" href="/auth/google/start" target="_blank" rel="noreferrer">Connect Google Calendar</a>
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
         </menu>

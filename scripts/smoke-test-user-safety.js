@@ -283,7 +283,7 @@ function testSettingsVisibilityAndValidation() {
   assert.equal(publicValues.smtpPassword, undefined);
   assert.equal(publicValues.quickBooksClientSecret, undefined);
   assert.equal(publicValues.googleClientSecret, undefined);
-  assert.equal(publicValues.mapboxPublicToken, "");
+  assert.equal(publicValues.mapboxPublicToken, "pk.owner");
   assert.equal(publicValues.hasMapboxPublicToken, true);
 }
 

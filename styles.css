@@ -876,6 +876,25 @@ label {
   display: none;
 }
 
+.calendar-instructions {
+  margin-top: 4px;
+}
+
+.setup-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.setup-checklist li::marker {
+  color: var(--ink);
+  font-weight: 900;
+}
+
 .onboarding-panel {
   display: grid;
   gap: 12px;

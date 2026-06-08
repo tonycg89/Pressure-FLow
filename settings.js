@@ -34,7 +34,6 @@ function publicSettings(settings, options = {}) {
   if (options.hidePlatformCredentials) {
     values.googleClientId = "";
     values.googleRedirectUri = "";
-    values.mapboxPublicToken = "";
     values.hasGoogleClientSecret = false;
     values.hasMapboxPublicToken = Boolean(settings.mapboxPublicToken);
   }
