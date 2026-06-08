@@ -146,6 +146,11 @@ const onboardingForm = document.querySelector("#onboardingForm");
 const onboardingWizardServiceList = document.querySelector("#onboardingWizardServiceList");
 const onboardingWizardStatus = document.querySelector("#onboardingWizardStatus");
 const skipOnboardingButton = document.querySelector("#skipOnboardingButton");
+const onboardingStepButtons = document.querySelectorAll("[data-onboarding-step]");
+const onboardingStepPanels = document.querySelectorAll("[data-onboarding-panel]");
+const onboardingBackButton = document.querySelector("#onboardingBackButton");
+const onboardingNextButton = document.querySelector("#onboardingNextButton");
+const onboardingSaveButton = document.querySelector("#onboardingSaveButton");
 const onboardingDepositPercentField = document.querySelector("#onboardingDepositPercentField");
 const settingsDialog = document.querySelector("#settingsDialog");
 const settingsForm = document.querySelector("#settingsForm");
@@ -240,6 +245,7 @@ let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
 let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
+let onboardingCurrentStep = 0;
 
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
@@ -274,6 +280,11 @@ async function init() {
   onboardingForm?.elements.customerSegment?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.onboardingServiceScope?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.defaultDepositEnabled?.addEventListener("change", syncOnboardingDepositVisibility);
+  onboardingStepButtons.forEach((button) => {
+    button.addEventListener("click", () => requestOnboardingStep(Number(button.dataset.onboardingStep)));
+  });
+  onboardingBackButton?.addEventListener("click", () => setOnboardingStep(onboardingCurrentStep - 1));
+  onboardingNextButton?.addEventListener("click", goToNextOnboardingStep);
   restartOnboardingButton?.addEventListener("click", openOnboardingWizardFromSettings);
   saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
   addServiceTypeButton?.addEventListener("click", addServiceType);
@@ -363,6 +374,7 @@ function maybeOpenOnboarding() {
 
   fillOnboardingForm();
   renderOnboardingWizardServices();
+  setOnboardingStep(0);
   onboardingDialog.showModal();
 }
 
@@ -786,6 +798,58 @@ function fillOnboardingForm() {
   if (onboardingWizardStatus) {
     onboardingWizardStatus.textContent = "Choose an industry, pick services, and save your setup.";
   }
+  setOnboardingStep(0);
+}
+
+function setOnboardingStep(stepIndex) {
+  if (!onboardingStepPanels.length) return;
+
+  const maxStep = onboardingStepPanels.length - 1;
+  onboardingCurrentStep = Math.min(Math.max(Number(stepIndex) || 0, 0), maxStep);
+  onboardingStepPanels.forEach((panel, index) => {
+    panel.hidden = index !== onboardingCurrentStep;
+  });
+  onboardingStepButtons.forEach((button, index) => {
+    const active = index === onboardingCurrentStep;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-current", active ? "step" : "false");
+  });
+  if (onboardingBackButton) {
+    onboardingBackButton.hidden = onboardingCurrentStep === 0;
+  }
+  if (onboardingNextButton) {
+    onboardingNextButton.hidden = onboardingCurrentStep === maxStep;
+  }
+  if (onboardingSaveButton) {
+    onboardingSaveButton.hidden = onboardingCurrentStep !== maxStep;
+  }
+}
+
+function requestOnboardingStep(stepIndex) {
+  if (stepIndex > onboardingCurrentStep && !validateOnboardingStep()) {
+    return;
+  }
+
+  setOnboardingStep(stepIndex);
+}
+
+function goToNextOnboardingStep() {
+  if (!validateOnboardingStep()) {
+    return;
+  }
+
+  setOnboardingStep(onboardingCurrentStep + 1);
+}
+
+function validateOnboardingStep() {
+  const currentPanel = onboardingStepPanels[onboardingCurrentStep];
+  const invalidField = currentPanel?.querySelector("input:invalid, select:invalid, textarea:invalid");
+  if (invalidField) {
+    invalidField.reportValidity();
+    return false;
+  }
+
+  return true;
 }
 
 function syncOnboardingDepositVisibility() {
@@ -799,6 +863,10 @@ function syncOnboardingDepositVisibility() {
 async function saveOnboardingSetup(event) {
   event.preventDefault();
   if (!onboardingForm || !onboardingWizardServiceList) return;
+  if (onboardingCurrentStep < onboardingStepPanels.length - 1) {
+    goToNextOnboardingStep();
+    return;
+  }
 
   const payload = {
     ...settings,

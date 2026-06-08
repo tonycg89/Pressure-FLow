@@ -38,8 +38,13 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await expect(page.locator("#onboardingForm [name='onboardingServiceScope']")).toHaveValue("recommended");
   await expect(page.locator("#onboardingForm [name='zellePayment']")).toHaveCount(0);
   await expect(page.locator("#onboardingForm [name='venmoPayment']")).toHaveCount(0);
+  await expect(page.locator("#onboardingForm [data-onboarding-panel='0']")).toBeVisible();
+  await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeHidden();
+  await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
+  await page.locator("#onboardingBackButton").click();
+  await expect(page.locator("#onboardingForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
   await expect(page.locator("#onboardingLogoPreview")).toBeVisible();
 });
 
@@ -117,13 +122,9 @@ async function loginAndCompleteOnboarding(page) {
     buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64")
   });
   await expect(page.locator("#onboardingLogoPreview")).toBeVisible();
-  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
-  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");
-  await expect(page.locator("#onboardingDepositPercentField")).toBeHidden();
-  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("true");
-  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
-  await page.locator("#onboardingForm [name='defaultDepositPercent']").fill("30");
-  await page.locator("#onboardingForm [name='emailSendProvider']").selectOption("smtp");
+  await expect(page.locator("#onboardingNextButton")).toBeVisible();
+  await page.locator("#onboardingNextButton").click();
+  await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeVisible();
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Sprinkler Repair'] input[type='checkbox']")).not.toBeChecked();
@@ -134,6 +135,16 @@ async function loginAndCompleteOnboarding(page) {
   await firstCategory.getByRole("button", { name: "Select All", exact: true }).click();
   await checkOnboardingService(page, "Lawn Mowing");
   await checkOnboardingService(page, "Hedge Trimming");
+  await page.locator("#onboardingNextButton").click();
+  await expect(page.locator("#onboardingForm [data-onboarding-panel='2']")).toBeVisible();
+  await expect(page.locator("#onboardingSaveButton")).toBeVisible();
+  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
+  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");
+  await expect(page.locator("#onboardingDepositPercentField")).toBeHidden();
+  await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("true");
+  await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
+  await page.locator("#onboardingForm [name='defaultDepositPercent']").fill("30");
+  await page.locator("#onboardingForm [name='emailSendProvider']").selectOption("smtp");
   await page.getByRole("button", { name: "Save Setup" }).click();
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeHidden();

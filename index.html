@@ -591,10 +591,16 @@
           </div>
         </div>
 
-        <section class="onboarding-panel">
+        <ol class="onboarding-steps" aria-label="Setup progress">
+          <li><button type="button" data-onboarding-step="0">Profile</button></li>
+          <li><button type="button" data-onboarding-step="1">Services</button></li>
+          <li><button type="button" data-onboarding-step="2">Preferences</button></li>
+        </ol>
+
+        <section class="onboarding-panel" data-onboarding-panel="0">
           <div class="section-header">
             <div>
-              <h3>Business basics</h3>
+              <h3>Business profile</h3>
               <p class="form-note">These defaults keep estimates, invoices, and service menus ready for this account.</p>
             </div>
           </div>
@@ -647,6 +653,27 @@
               <img id="onboardingLogoPreview" alt="Company logo preview" hidden>
               <button id="clearOnboardingLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
             </div>
+          </div>
+        </section>
+
+        <section class="onboarding-panel" data-onboarding-panel="1" hidden>
+          <div class="section-header">
+            <div>
+              <h3>Saved services</h3>
+              <p class="form-note">Pick the services this account should start with. Rates can be edited now or later in Settings.</p>
+            </div>
+          </div>
+          <div id="onboardingWizardServiceList" class="onboarding-service-list"></div>
+        </section>
+
+        <section class="onboarding-panel" data-onboarding-panel="2" hidden>
+          <div class="section-header">
+            <div>
+              <h3>Preferences</h3>
+              <p class="form-note">Credentials and payment processors can be connected later from Settings.</p>
+            </div>
+          </div>
+          <div class="settings-grid">
             <label>
               Email provider
               <select name="emailSendProvider">
@@ -668,21 +695,13 @@
           </div>
         </section>
 
-        <section class="onboarding-panel">
-          <div class="section-header">
-            <div>
-              <h3>Saved services</h3>
-              <p class="form-note">Pick the services this account should start with. Rates can be edited now or later in Settings.</p>
-            </div>
-          </div>
-          <div id="onboardingWizardServiceList" class="onboarding-service-list"></div>
-        </section>
-
         <p id="onboardingWizardStatus" class="form-note"></p>
 
         <menu class="dialog-actions">
           <button value="skip" type="button" id="skipOnboardingButton">Finish Later</button>
-          <button value="default" class="primary-button" type="submit">Save Setup</button>
+          <button type="button" id="onboardingBackButton">Back</button>
+          <button type="button" id="onboardingNextButton" class="primary-button">Next</button>
+          <button value="default" class="primary-button" type="submit" id="onboardingSaveButton" hidden>Save Setup</button>
         </menu>
       </form>
     </dialog>
