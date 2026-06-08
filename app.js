@@ -271,6 +271,8 @@ async function init() {
   onboardingForm?.addEventListener("submit", saveOnboardingSetup);
   skipOnboardingButton?.addEventListener("click", finishOnboardingLater);
   onboardingForm?.elements.serviceIndustry?.addEventListener("change", () => renderOnboardingWizardServices());
+  onboardingForm?.elements.customerSegment?.addEventListener("change", () => renderOnboardingWizardServices());
+  onboardingForm?.elements.onboardingServiceScope?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.defaultDepositEnabled?.addEventListener("change", syncOnboardingDepositVisibility);
   restartOnboardingButton?.addEventListener("click", openOnboardingWizardFromSettings);
   saveOnboardingServicesButton?.addEventListener("click", saveOnboardingServices);
@@ -439,12 +441,19 @@ function renderOnboardingServices() {
 function renderOnboardingWizardServices() {
   if (!onboardingWizardServiceList) return;
 
-  renderServicePicker(onboardingWizardServiceList, onboardingForm?.elements.serviceIndustry?.value || settings.serviceIndustry || "");
+  renderServicePicker(onboardingWizardServiceList, onboardingForm?.elements.serviceIndustry?.value || settings.serviceIndustry || "", {
+    customerSegment: onboardingForm?.elements.customerSegment?.value || settings.customerSegment || "residential",
+    seedServices: !settings.onboardingCompleted,
+    serviceScope: onboardingForm?.elements.onboardingServiceScope?.value || settings.onboardingServiceScope || "recommended"
+  });
 }
 
-function renderServicePicker(container, preferredCategory = "") {
+function renderServicePicker(container, preferredCategory = "", options = {}) {
   const savedServices = Array.isArray(settings.customServices) ? settings.customServices : [];
   const savedByName = new Map(savedServices.map((service) => [String(service.name || "").toLowerCase(), service]));
+  const seededServiceNames = options.seedServices
+    ? getSeededOnboardingServiceNames(preferredCategory, options.serviceScope, options.customerSegment)
+    : new Set();
   const orderedCategories = preferredCategory
     ? [
         preferredCategory,
@@ -453,7 +462,7 @@ function renderServicePicker(container, preferredCategory = "") {
     : onboardingServiceCategories;
   container.innerHTML = orderedCategories.map((category) => {
     const services = onboardingServiceLibrary.filter((service) => service.category === category);
-    const selectedCount = services.filter((service) => savedByName.has(service.name.toLowerCase())).length;
+    const selectedCount = services.filter((service) => savedByName.has(service.name.toLowerCase()) || seededServiceNames.has(service.name)).length;
     const shouldOpen = selectedCount || category === preferredCategory;
     return `
       <details class="service-category" ${shouldOpen ? "open" : ""}>
@@ -466,7 +475,7 @@ function renderServicePicker(container, preferredCategory = "") {
           <button class="secondary-small-button" type="button" data-unselect-category="${escapeHtml(category)}">Unselect All</button>
         </div>
         <div class="service-category-list">
-          ${services.map((service) => renderOnboardingServiceRow(service, savedByName)).join("")}
+          ${services.map((service) => renderOnboardingServiceRow(service, savedByName, seededServiceNames)).join("")}
         </div>
       </details>
     `;
@@ -488,6 +497,30 @@ function renderServicePicker(container, preferredCategory = "") {
   container.querySelectorAll("[data-unselect-category]").forEach((button) => {
     button.addEventListener("click", () => unselectAllServicesInCategory(button.closest(".service-category")));
   });
+}
+
+function getSeededOnboardingServiceNames(preferredCategory, serviceScope = "recommended", customerSegment = "residential") {
+  if (!preferredCategory || serviceScope === "custom") {
+    return new Set();
+  }
+
+  const categoryServices = onboardingServiceLibrary.filter((service) => service.category === preferredCategory);
+  const seedCount = {
+    starter: 3,
+    recommended: 6,
+    full: categoryServices.length
+  }[serviceScope] || 6;
+  const seededServices = categoryServices.slice(0, seedCount);
+  if ((customerSegment === "commercial" || customerSegment === "both") && preferredCategory === "Pressure Washing") {
+    ["Commercial Exterior Cleaning", "Restaurant Pad Cleaning"].forEach((serviceName) => {
+      const service = categoryServices.find((item) => item.name === serviceName);
+      if (service && !seededServices.some((item) => item.name === service.name)) {
+        seededServices.push(service);
+      }
+    });
+  }
+
+  return new Set(seededServices.map((service) => service.name));
 }
 
 function selectAllServicesInCategory(categoryElement) {
@@ -530,9 +563,9 @@ function updateOnboardingStatus() {
   }
 }
 
-function renderOnboardingServiceRow(service, savedByName) {
+function renderOnboardingServiceRow(service, savedByName, seededServiceNames = new Set()) {
     const saved = savedByName.get(service.name.toLowerCase());
-    const checked = Boolean(saved);
+    const checked = Boolean(saved) || seededServiceNames.has(service.name);
     const rate = Number(saved?.price ?? service.price ?? 0);
     const unit = saved?.unit || service.unit;
     return `
@@ -741,6 +774,8 @@ function fillOnboardingForm() {
 
   onboardingForm.elements.businessName.value = settings.businessName || "";
   onboardingForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
+  onboardingForm.elements.customerSegment.value = settings.customerSegment || "residential";
+  onboardingForm.elements.onboardingServiceScope.value = settings.onboardingServiceScope || "recommended";
   onboardingForm.elements.businessEmail.value = settings.businessEmail || "";
   onboardingForm.elements.businessPhone.value = settings.businessPhone || "";
   onboardingForm.elements.defaultDepositEnabled.value = settings.defaultDepositEnabled === false ? "false" : "true";

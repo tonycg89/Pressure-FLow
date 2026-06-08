@@ -108,6 +108,8 @@ function normalizeSettings(input, existing) {
     businessEmail: normalizeEmail(input.businessEmail),
     businessPhone: String(input.businessPhone || "").trim(),
     serviceIndustry: normalizeServiceIndustry(input.serviceIndustry ?? existing.serviceIndustry),
+    customerSegment: normalizeCustomerSegment(input.customerSegment ?? existing.customerSegment),
+    onboardingServiceScope: normalizeOnboardingServiceScope(input.onboardingServiceScope ?? existing.onboardingServiceScope),
     businessLogoDataUrl: normalizeBusinessLogoDataUrl(input.businessLogoDataUrl ?? existing.businessLogoDataUrl),
     defaultDepositEnabled: Boolean(input.defaultDepositEnabled ?? existing.defaultDepositEnabled ?? true),
     defaultDepositPercent: Number.isFinite(depositPercent) ? Math.min(Math.max(depositPercent, 0), 100) : 25,
@@ -155,6 +157,14 @@ function normalizePrivateSetting(input, existing, key) {
 
   const submittedValue = Object.hasOwn(input, key) ? String(input[key] || "").trim() : "";
   return submittedValue || existing[key] || "";
+}
+
+function normalizeCustomerSegment(value) {
+  return ["residential", "commercial", "both"].includes(value) ? value : "residential";
+}
+
+function normalizeOnboardingServiceScope(value) {
+  return ["starter", "recommended", "full", "custom"].includes(value) ? value : "recommended";
 }
 
 function normalizeCustomServices(value) {
