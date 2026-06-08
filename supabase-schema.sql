@@ -166,6 +166,7 @@ create table if not exists app_settings (
   cash_app_payment text not null default '',
   venmo_payment text not null default '',
   payment_instructions text not null default '',
+  day_of_service_instructions text not null default '',
   onboarding_completed boolean not null default false,
   custom_templates jsonb not null default '[]'::jsonb,
   custom_services jsonb not null default '[]'::jsonb,

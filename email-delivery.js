@@ -41,7 +41,7 @@ function createEmailDelivery({ warn = console.warn } = {}) {
 
   async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
     const scheduleText = formatScheduledWindow(job);
-    const instructions = getDayOfServiceInstructions();
+    const instructions = getDayOfServiceInstructions(settings);
     await sendCustomerEmail(settings, buildScheduleConfirmationEmailMessage(
       job,
       settings,

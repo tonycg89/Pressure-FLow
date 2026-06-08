@@ -141,6 +141,7 @@ function normalizeSettings(input, existing) {
     cashAppPayment: String(input.cashAppPayment || "").trim(),
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
+    dayOfServiceInstructions: normalizeLongText(input.dayOfServiceInstructions ?? existing.dayOfServiceInstructions),
     onboardingCompleted: Boolean(input.onboardingCompleted ?? existing.onboardingCompleted),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
     customServices: normalizeCustomServices(input.customServices ?? existing.customServices),
@@ -164,6 +165,10 @@ function normalizeCustomerSegment(value) {
 
 function normalizeOnboardingServiceScope(value) {
   return ["starter", "recommended", "full", "custom"].includes(value) ? value : "recommended";
+}
+
+function normalizeLongText(value) {
+  return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, 5000);
 }
 
 function normalizeCustomServices(value) {

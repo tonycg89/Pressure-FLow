@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
 const { sendCustomerEmail } = require("../email-delivery");
+const { buildCompletionCertificateEmailMessage } = require("../email-content");
 const { formatEmailAddressHeader } = require("../integrations/email");
 const { createJobActionHandler } = require("../job-actions");
 const { createPublicWorkflowHandlers } = require("../public-workflows");
@@ -14,6 +15,7 @@ const {
   normalizeCustomer,
   normalizeJob
 } = require("../records");
+const { getDayOfServiceInstructions } = require("../scheduling");
 const { createWorkspaceAccess } = require("../workspace");
 
 function responseStub() {
@@ -277,6 +279,12 @@ function testSettingsVisibilityAndValidation() {
   const invalidIndustrySettings = normalizeSettings({ serviceIndustry: "Window<script>" }, {});
   assert.equal(invalidIndustrySettings.serviceIndustry, "");
 
+  const customDayInstructions = normalizeSettings({
+    dayOfServiceInstructions: "- Clear the driveway\n* Meet the crew at the gate"
+  }, {});
+  assert.deepEqual(getDayOfServiceInstructions(customDayInstructions), ["Clear the driveway", "Meet the crew at the gate"]);
+  assert.ok(getDayOfServiceInstructions({ serviceIndustry: "Landscaping" }).some((item) => item.includes("sprinkler")));
+
   const publicValues = publicSettings(ownerSettings, { hidePlatformCredentials: true });
   assert.equal(publicValues.squareAccessToken, undefined);
   assert.equal(publicValues.stripeSecretKey, undefined);
@@ -296,6 +304,22 @@ function testCustomerFacingSenderName() {
     formatEmailAddressHeader("sender@example.com", ""),
     "=?UTF-8?B?UHJlc3N1cmVGbG93?= <sender@example.com>"
   );
+}
+
+function testCompletionCertificateUsesGenericServiceWording() {
+  const message = buildCompletionCertificateEmailMessage({
+    id: "job-complete",
+    customerName: "Customer",
+    email: "customer@example.com",
+    address: "10 Main St",
+    estimate: 100,
+    depositPercent: 100,
+    jobPhotos: { before: [], after: [] }
+  }, { businessName: "Service Company" }, "https://example.test");
+
+  assert.match(message.textBody, /scheduled service work/);
+  assert.doesNotMatch(message.textBody, /pressure washing/i);
+  assert.doesNotMatch(message.htmlBody, /pressure washing/i);
 }
 
 async function testEstimateAndInvoicePublicFlow() {
@@ -425,6 +449,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   await testRecordCreateRoutes();
   testSettingsVisibilityAndValidation();
   testCustomerFacingSenderName();
+  testCompletionCertificateUsesGenericServiceWording();
   await testEstimateAndInvoicePublicFlow();
   await testWorkflowEmailIdempotency();
   await testEmailDeliveryCanBeSkippedForBrowserSmoke();

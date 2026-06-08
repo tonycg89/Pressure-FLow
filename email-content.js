@@ -129,7 +129,7 @@ function buildCompletionCertificateEmailMessage(job, settings, baseUrl) {
     textBody: [
       `Hi ${job.customerName},`,
       "",
-      `Thank you for your business! This email confirms that ${businessName} has completed the pressure washing work at ${job.address}.`,
+      `Thank you for your business! This email confirms that ${businessName} has completed the scheduled service work at ${job.address}.`,
       "",
       `Amount paid: $${paidAmount.toFixed(2)}`,
       job.completionProofUrl ? `Before and after photos: ${job.completionProofUrl}` : "",
@@ -154,7 +154,7 @@ function buildCompletionNotice(job, settings) {
   const body = [
     `Hi ${job.customerName},`,
     "",
-    `The pressure washing services by ${businessName} at ${job.address} have been completed as of ${completedAt}.`,
+    `The scheduled services by ${businessName} at ${job.address} have been completed as of ${completedAt}.`,
     "",
     "Please review the completed work and let us know within 24 hours if you believe any agreed-upon service was not completed. If anything needs review, we will be happy to take a look.",
     "",
@@ -234,7 +234,7 @@ function renderCompletionCertificateEmailHtml(job, settings, baseUrl) {
       ${renderLogoHtml(settings, baseUrl, 210)}
       <h2 style="margin:0 0 12px">Certificate of Completion</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the pressure washing work at ${escapeHtml(job.address)}.</p>
+      <p>Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the scheduled service work at ${escapeHtml(job.address)}.</p>
       <p style="font-size:18px"><strong>Amount paid: $${paidAmount.toFixed(2)}</strong></p>
       ${job.completionProofUrl ? `<p><a href="${escapeHtml(job.completionProofUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">View before and after photos</a></p>` : ""}
       <h3 style="margin:18px 0 8px">Before Photos</h3>
@@ -270,7 +270,7 @@ function renderEstimateEmailHtml(job, settings) {
   return `
     <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
       ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
-      <h2 style="margin:0 0 12px">Your pressure washing estimate is ready</h2>
+      <h2 style="margin:0 0 12px">Your service estimate is ready</h2>
       <p>Hi ${escapeHtml(job.customerName)},</p>
       <p>Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
       <p style="font-size:18px"><strong>Total: $${Number(job.estimate || 0).toFixed(2)}</strong></p>

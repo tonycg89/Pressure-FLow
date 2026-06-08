@@ -21,7 +21,7 @@ function buildScheduleInviteIcs(job, settings) {
     `Address: ${job.address}`,
     "",
     "Day-of-service instructions:",
-    ...getDayOfServiceInstructions().map((item) => `- ${item}`)
+    ...getDayOfServiceInstructions(settings).map((item) => `- ${item}`)
   ].join("\\n");
 
   return [
@@ -61,16 +61,51 @@ function formatScheduledWindow(job) {
   return `${formatLocalScheduleDate(start)}, ${formatLocalTime(start)} - ${formatLocalTime(end)} ${zone}`;
 }
 
-function getDayOfServiceInstructions() {
-  return [
-    "Move all personal items, outdoor furniture, decor, and fragile items away from the service area.",
-    "Move vehicles away from the service area and any areas that may receive water runoff or overspray.",
-    "Leave access to the water source unrestricted and make sure exterior water spigots are working.",
-    "Close and lock all windows and doors before service begins.",
-    "Keep all animals inside the house for the full duration of service.",
-    "Unlock gates or provide access instructions before the scheduled arrival window.",
-    "Point out any known leaks, loose paint, damaged seals, electrical concerns, or sensitive plants before work begins."
+function getDayOfServiceInstructions(settings = {}) {
+  const customInstructions = String(settings.dayOfServiceInstructions || "")
+    .split(/\r?\n/)
+    .map((item) => item.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  if (customInstructions.length) {
+    return customInstructions;
+  }
+
+  const shared = [
+    "Make sure someone is available by phone during the scheduled service window.",
+    "Unlock gates, doors, or access points needed for the scheduled work.",
+    "Move vehicles, personal items, and fragile belongings away from the work area.",
+    "Point out any known sensitive areas, existing damage, or special instructions before work begins."
   ];
+  const industryInstructions = {
+    "Pressure Washing": [
+      "Close all windows and doors before service begins.",
+      "Keep pets and children away from areas that may receive water runoff or overspray.",
+      "Confirm exterior water access is available if water is required for the service."
+    ],
+    Landscaping: [
+      "Clear toys, hoses, pet waste, and loose items from lawn or landscape areas.",
+      "Mark sprinkler heads, shallow lines, or delicate plants that need extra care.",
+      "Secure pets indoors or away from gates and work areas."
+    ],
+    Handyman: [
+      "Clear furniture or belongings from the work area before arrival.",
+      "Have replacement parts, fixtures, paint, or approved materials ready if the job depends on them.",
+      "Confirm access to electrical panels, shutoffs, or rooms needed for the repair."
+    ],
+    Construction: [
+      "Clear the work area and nearby pathways before the crew arrives.",
+      "Keep children, pets, and bystanders away from active work areas.",
+      "Confirm parking, material drop-off, and access instructions before arrival."
+    ],
+    Misc: [
+      "Clear a safe path to the service area before arrival.",
+      "Separate or label any items that should not be moved, cleaned, hauled, or serviced.",
+      "Confirm parking, entry, or loading instructions before the scheduled window."
+    ]
+  };
+
+  return [...shared, ...(industryInstructions[settings.serviceIndustry] || industryInstructions.Misc)];
 }
 
 function addMinutesToLocalDateTime(value, minutes) {

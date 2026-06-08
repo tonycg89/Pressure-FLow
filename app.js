@@ -937,6 +937,7 @@ function fillSettingsForm() {
   settingsForm.elements.cashAppPayment.value = settings.cashAppPayment || "";
   settingsForm.elements.venmoPayment.value = settings.venmoPayment || "";
   settingsForm.elements.paymentInstructions.value = settings.paymentInstructions || "";
+  settingsForm.elements.dayOfServiceInstructions.value = settings.dayOfServiceInstructions || "";
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
   settingsForm.elements.googleClientSecret.value = "";
@@ -1678,7 +1679,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
       <span>${escapeHtml(catalogItem.unit)}</span>
       <strong>$0</strong>
     </div>
-    <button class="secondary-small-button line-measure" type="button" title="Measure pressure washing area" hidden>
+    <button class="secondary-small-button line-measure" type="button" title="Measure service area" hidden>
       <span aria-hidden="true">&#127760;</span>
       Measure from Map
     </button>

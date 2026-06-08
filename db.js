@@ -54,6 +54,7 @@ const defaultSettings = {
   cashAppPayment: "",
   venmoPayment: "",
   paymentInstructions: "",
+  dayOfServiceInstructions: "",
   onboardingCompleted: false,
   customTemplates: [],
   customServices: [],
@@ -517,13 +518,14 @@ async function writeSettings(settings) {
         cash_app_payment,
         venmo_payment,
         payment_instructions,
+        day_of_service_instructions,
         onboarding_completed,
         custom_templates,
         custom_services,
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31::jsonb, $32::jsonb, $33::jsonb, $34::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32::jsonb, $33::jsonb, $34::jsonb, $35::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -557,6 +559,7 @@ async function writeSettings(settings) {
         cash_app_payment = excluded.cash_app_payment,
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
+        day_of_service_instructions = excluded.day_of_service_instructions,
         onboarding_completed = excluded.onboarding_completed,
         custom_templates = excluded.custom_templates,
         custom_services = excluded.custom_services,
@@ -596,6 +599,7 @@ async function writeSettings(settings) {
         settings.cashAppPayment || "",
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
+        settings.dayOfServiceInstructions || "",
         Boolean(settings.onboardingCompleted),
         JSON.stringify(settings.customTemplates || []),
         JSON.stringify(settings.customServices || []),
@@ -775,6 +779,7 @@ async function ensurePostgresSchema() {
     cash_app_payment text not null default '',
     venmo_payment text not null default '',
     payment_instructions text not null default '',
+    day_of_service_instructions text not null default '',
     onboarding_completed boolean not null default false,
     custom_templates jsonb not null default '[]'::jsonb,
     custom_services jsonb not null default '[]'::jsonb,
@@ -805,6 +810,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists day_of_service_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists onboarding_completed boolean not null default false");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
@@ -1360,6 +1366,7 @@ function settingsFromRow(row) {
     cashAppPayment: row.cash_app_payment || "",
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
+    dayOfServiceInstructions: row.day_of_service_instructions || "",
     onboardingCompleted: Boolean(row.onboarding_completed),
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
     customServices: Array.isArray(row.custom_services) ? row.custom_services : [],
