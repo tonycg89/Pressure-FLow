@@ -190,9 +190,26 @@ function createAuthHelpers({
   async function createAppUser(input) {
     const user = normalizeAppUser(input);
     const users = await readUsers();
+    const existingIndex = users.findIndex((item) => item.email.toLowerCase() === user.email.toLowerCase());
 
-    if (users.some((item) => item.email.toLowerCase() === user.email.toLowerCase())) {
-      throw new Error("A user with that email already exists.");
+    if (existingIndex >= 0) {
+      const existingUser = users[existingIndex];
+      if (!existingUser.disabled) {
+        throw new Error("A user with that email already exists.");
+      }
+
+      const reactivatedUser = {
+        ...existingUser,
+        name: user.name,
+        passwordHash: user.passwordHash,
+        role: user.role,
+        disabled: false,
+        updatedAt: new Date().toISOString()
+      };
+      users[existingIndex] = reactivatedUser;
+      await writeUsers(users);
+      await ensureAccountForUser(reactivatedUser);
+      return { user: reactivatedUser, users };
     }
 
     users.push(user);
@@ -204,7 +221,15 @@ function createAuthHelpers({
   async function ensureAccountForUser(user) {
     const accountId = user.accountId || user.id;
     const accounts = await readAccounts();
-    if (accounts.some((account) => account.id === accountId)) {
+    const existingIndex = accounts.findIndex((account) => account.id === accountId);
+    if (existingIndex >= 0) {
+      accounts[existingIndex] = {
+        ...accounts[existingIndex],
+        name: accounts[existingIndex].name || user.name || user.email || "Tester Account",
+        status: user.disabled ? "disabled" : "active",
+        updatedAt: new Date().toISOString()
+      };
+      await writeAccounts(accounts);
       return;
     }
 

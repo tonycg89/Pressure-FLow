@@ -78,6 +78,44 @@ async function testLoginAndSession() {
   assert.ok(cookie.startsWith(`${SESSION_COOKIE}=`));
 }
 
+async function testReaddDisabledTester() {
+  let users = [];
+  let accounts = [];
+  const context = { session: null };
+  const auth = createAuthHelpers({
+    readUsers: async () => users,
+    writeUsers: async (value) => { users = value; },
+    readAccounts: async () => accounts,
+    writeAccounts: async (value) => { accounts = value; },
+    safeCompare,
+    getContextStore: () => context
+  });
+
+  const first = await auth.createAppUser({
+    name: "Tester One",
+    email: "readd@example.com",
+    password: "temporary-password",
+    role: "tester"
+  });
+  users = users.map((user) => user.id === first.user.id ? { ...user, disabled: true } : user);
+  accounts = accounts.map((account) => account.id === first.user.accountId ? { ...account, status: "disabled" } : account);
+
+  const second = await auth.createAppUser({
+    name: "Tester Again",
+    email: "readd@example.com",
+    password: "new-temporary-password",
+    role: "tester"
+  });
+  assert.equal(second.user.id, first.user.id);
+  assert.equal(second.user.disabled, false);
+  assert.equal(second.user.name, "Tester Again");
+  assert.equal(users.filter((user) => user.email === "readd@example.com").length, 1);
+  assert.equal(accounts.find((account) => account.id === first.user.accountId).status, "active");
+
+  const login = await auth.authenticateLogin("readd@example.com", "new-temporary-password");
+  assert.equal(login.userId, first.user.id);
+}
+
 async function testAccountIsolation() {
   let jobs = [
     { id: "job-a", accountId: "acct-a", customerName: "A" },
@@ -381,6 +419,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
 
 (async () => {
   await testLoginAndSession();
+  await testReaddDisabledTester();
   await testAccountIsolation();
   await testPublicWorkflowLookupIgnoresLoggedInAccountScope();
   await testRecordCreateRoutes();
