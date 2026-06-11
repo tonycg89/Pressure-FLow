@@ -27,7 +27,8 @@ function createJobActionHandler({
   sendCompletionCertificateEmailSafe,
   sendContractEmail,
   sendEstimateEmail,
-  sendScheduleConfirmationEmail
+  sendScheduleConfirmationEmail,
+  writeSettings
 }) {
   async function applyAction(job, action, input) {
     if (action === "advance") {
@@ -65,7 +66,12 @@ function createJobActionHandler({
       job.estimateApprovalToken = job.estimateApprovalToken || randomToken();
       job.estimateApprovalUrl = buildEstimateApprovalUrl(input._baseUrl, job);
       job.estimateMailto = buildEstimateMailto(job, settings);
-      await sendEstimateEmail(job, settings);
+      try {
+        await sendEstimateEmail(job, settings);
+      } catch (error) {
+        await clearRevokedGoogleToken(settings, error, writeSettings);
+        throw error;
+      }
       job.estimateSentAt = new Date().toISOString();
       job.estimateRejectedAt = "";
       job.estimateRejectionReason = "";
@@ -171,6 +177,15 @@ function createJobActionHandler({
   return { applyAction };
 }
 
+async function clearRevokedGoogleToken(settings, error, writeSettings) {
+  if (error?.code !== "GOOGLE_AUTH_REVOKED" || !settings?.googleRefreshToken || typeof writeSettings !== "function") {
+    return;
+  }
+
+  settings.googleRefreshToken = "";
+  await writeSettings(settings);
+}
+
 function normalizeNumber(value, fallback, min, max) {
   const number = Number(value ?? fallback);
   if (!Number.isFinite(number)) {
@@ -181,6 +196,7 @@ function normalizeNumber(value, fallback, min, max) {
 }
 
 module.exports = {
+  clearRevokedGoogleToken,
   createJobActionHandler,
   normalizeNumber
 };

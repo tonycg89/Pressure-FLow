@@ -220,7 +220,8 @@ const { applyAction } = createJobActionHandler({
   sendCompletionCertificateEmailSafe,
   sendContractEmail,
   sendEstimateEmail,
-  sendScheduleConfirmationEmail
+  sendScheduleConfirmationEmail,
+  writeSettings
 });
 
 const { handleExportTemplateRoutes } = createExportTemplateRoutes({

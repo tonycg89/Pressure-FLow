@@ -53,7 +53,10 @@ async function getGoogleAccessToken(settings) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error_description || data.error || "Google access token refresh failed.");
+    const message = data.error_description || data.error || "Google access token refresh failed.";
+    const error = new Error(normalizeGoogleAuthErrorMessage(data, message));
+    error.code = data.error === "invalid_grant" ? "GOOGLE_AUTH_REVOKED" : "GOOGLE_AUTH_ERROR";
+    throw error;
   }
 
   return data.access_token;
@@ -162,6 +165,14 @@ function requireGoogleSettings(settings, requireRefreshToken) {
   if (requireRefreshToken && !settings.googleRefreshToken) {
     throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
   }
+}
+
+function normalizeGoogleAuthErrorMessage(data, fallback) {
+  if (data?.error === "invalid_grant") {
+    return "Google access has expired or was revoked. Open Settings and click Connect Google Calendar again so PressureFlow can send estimate emails.";
+  }
+
+  return fallback;
 }
 
 module.exports = {
