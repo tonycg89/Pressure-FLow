@@ -2492,12 +2492,15 @@ function buildDashboardBreakdownRows(scopedJobs, mode) {
   }
 
   return leadSources.map((source) => {
-    const sourceJobs = scopedJobs.filter((job) => (job.leadSource || "referral") === source.value);
+    const sourceJobs = scopedJobs.filter((job) => job.leadSource === source.value);
+    const estimatesSent = sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length;
+    const accepted = sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length;
     return {
       ...source,
       jobs: sourceJobs.length,
-      estimatesSent: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length,
-      accepted: sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length,
+      estimatesSent,
+      accepted,
+      conversionRate: estimatesSent ? accepted / estimatesSent : null,
       revenue: sourceJobs
         .filter(isRevenueJob)
         .reduce((sum, job) => sum + Number(job.estimate || 0), 0)
@@ -2538,10 +2541,24 @@ function renderDashboardBreakdown(rows) {
   document.querySelector("#leadSourceBreakdown").innerHTML = rows.map((row) => `
     <div class="breakdown-row">
       <span class="source-dot" style="background:${row.color}"></span>
-      <span>${row.label}<br><small>${row.jobs} job${row.jobs === 1 ? "" : "s"}${row.estimatesSent ? ` | ${row.estimatesSent} sent` : ""}${row.accepted ? ` | ${row.accepted} accepted` : ""}</small></span>
+      <span>${row.label}<br><small>${formatBreakdownMeta(row)}</small></span>
       <strong>${currency.format(row.revenue)}</strong>
     </div>
   `).join("");
+}
+
+function formatBreakdownMeta(row) {
+  const parts = [`${row.jobs} job${row.jobs === 1 ? "" : "s"}`];
+  if (row.estimatesSent) {
+    parts.push(`${row.estimatesSent} sent`);
+  }
+  if (row.accepted) {
+    parts.push(`${row.accepted} accepted`);
+  }
+  if (row.conversionRate !== null && row.conversionRate !== undefined) {
+    parts.push(`${Math.round(row.conversionRate * 100)}% converted`);
+  }
+  return parts.join(" | ");
 }
 
 function renderDashboardNotifications(scopedJobs) {
