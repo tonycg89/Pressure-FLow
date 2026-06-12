@@ -19,7 +19,7 @@ test.beforeEach(async () => {
 test("pending payments can be manually confirmed with method and reference", async ({ page }) => {
   await login(page);
 
-  await page.getByRole("button", { name: "Pipeline" }).click();
+  await expect(page.locator("#pendingPaymentsPanel")).toBeVisible();
   await expect(page.locator("#pendingPaymentsList")).toContainText("Alex Rivera");
   await expect(page.locator("#pendingPaymentsList")).toContainText("Overdue");
   await page.locator("#pendingPaymentsList").getByRole("button", { name: "Mark as paid" }).click();

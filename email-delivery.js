@@ -3,6 +3,7 @@ const {
   buildContractEmailMessage,
   buildEstimateEmailMessage,
   buildEstimateFollowUpEmailMessage,
+  buildFollowUpEmailMessage,
   buildPressureFlowInvoiceEmailMessage,
   buildScheduleConfirmationEmailMessage
 } = require("./email-content");
@@ -20,8 +21,8 @@ function createEmailDelivery({ warn = console.warn } = {}) {
     await sendCustomerEmail(settings, buildEstimateEmailMessage(job, settings));
   }
 
-  async function sendEstimateFollowUpEmail(job, settings) {
-    await sendCustomerEmail(settings, buildEstimateFollowUpEmailMessage(job, settings));
+  async function sendEstimateFollowUpEmail(job, settings, type = "estimate_followup") {
+    await sendCustomerEmail(settings, buildFollowUpEmailMessage(job, settings, type));
   }
 
   async function sendContractEmail(job, settings) {

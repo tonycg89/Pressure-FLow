@@ -115,6 +115,7 @@ const customerList = document.querySelector("#customerList");
 const customerDetail = document.querySelector("#customerDetail");
 const expenseList = document.querySelector("#expenseList");
 const expenseDetail = document.querySelector("#expenseDetail");
+const pendingPaymentsPanel = document.querySelector("#pendingPaymentsPanel");
 const pendingPaymentsList = document.querySelector("#pendingPaymentsList");
 const statusFilter = document.querySelector("#statusFilter");
 const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
@@ -2456,6 +2457,7 @@ function renderDashboard() {
   document.querySelector("#dashEstimatesAccepted").textContent = estimatesAccepted;
   document.querySelector("#dashRevenue").textContent = currency.format(revenue);
   document.querySelector("#dashExpenses").textContent = currency.format(expenseTotal);
+  renderTopSourceMetric(scopedJobs);
 
   const breakdownRows = buildDashboardBreakdownRows(scopedJobs, dashboardBreakdown?.value || "lead");
   renderDashboardChart(breakdownRows);
@@ -2520,6 +2522,37 @@ function buildDashboardBreakdownRows(scopedJobs, mode) {
   });
 }
 
+function renderTopSourceMetric(scopedJobs) {
+  const topSource = leadSources
+    .map((source) => {
+      const sourceJobs = scopedJobs.filter((job) => job.leadSource === source.value);
+      const estimatesSent = sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length;
+      const accepted = sourceJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length;
+      return {
+        ...source,
+        jobs: sourceJobs.length,
+        estimatesSent,
+        accepted,
+        conversionRate: estimatesSent ? accepted / estimatesSent : null
+      };
+    })
+    .filter((source) => source.estimatesSent >= 3)
+    .sort((a, b) => b.conversionRate - a.conversionRate || b.accepted - a.accepted || b.jobs - a.jobs)[0];
+
+  const value = document.querySelector("#dashTopSource");
+  const meta = document.querySelector("#dashTopSourceMeta");
+  if (!value || !meta) return;
+
+  if (!topSource) {
+    value.textContent = "-";
+    meta.textContent = "Not enough data yet";
+    return;
+  }
+
+  value.textContent = topSource.label;
+  meta.textContent = `${Math.round(topSource.conversionRate * 100)}% conversion · ${topSource.jobs} job${topSource.jobs === 1 ? "" : "s"}`;
+}
+
 function renderDashboardChart(rows) {
   const chart = document.querySelector("#leadSourceChart");
   const legend = document.querySelector("#leadSourceLegend");
@@ -2552,25 +2585,27 @@ function renderDashboardChart(rows) {
 function renderDashboardBreakdown(rows) {
   document.querySelector("#leadSourceBreakdown").innerHTML = rows.map((row) => `
     <div class="breakdown-row">
-      <span class="source-dot" style="background:${row.color}"></span>
-      <span>${row.label}<br><small>${formatBreakdownMeta(row)}</small></span>
+      <div class="breakdown-row-main">
+        <span class="source-dot" style="background:${row.color}"></span>
+        <strong>${row.label}</strong>
+      </div>
       <strong>${currency.format(row.revenue)}</strong>
+      <div class="breakdown-stat-row">${formatBreakdownMeta(row)}</div>
     </div>
   `).join("");
 }
 
 function formatBreakdownMeta(row) {
-  const parts = [`${row.jobs} job${row.jobs === 1 ? "" : "s"}`];
+  const parts = [`<span class="breakdown-stat">${row.jobs} job${row.jobs === 1 ? "" : "s"}</span>`];
   if (row.estimatesSent) {
-    parts.push(`${row.estimatesSent} sent`);
-  }
-  if (row.accepted) {
-    parts.push(`${row.accepted} accepted`);
+    parts.push(`<span class="breakdown-stat">${row.accepted || 0}/${row.estimatesSent} accepted</span>`);
   }
   if (row.conversionRate !== null && row.conversionRate !== undefined) {
-    parts.push(`${Math.round(row.conversionRate * 100)}% converted`);
+    const percent = Math.round(row.conversionRate * 100);
+    const badgeClass = percent >= 70 ? "success" : percent >= 40 ? "warning" : "muted";
+    parts.push(`<span class="conversion-badge ${badgeClass}">${percent}% converted</span>`);
   }
-  return parts.join(" | ");
+  return parts.join("");
 }
 
 function renderDashboardNotifications(scopedJobs) {
@@ -2764,8 +2799,15 @@ function renderPendingPayments() {
     .sort((a, b) => new Date(a.sentAt || 0) - new Date(b.sentAt || 0));
 
   if (!pendingPayments.length) {
-    pendingPaymentsList.innerHTML = '<p class="empty-state">No invoices are waiting on payment confirmation.</p>';
+    if (pendingPaymentsPanel) {
+      pendingPaymentsPanel.hidden = true;
+    }
+    pendingPaymentsList.innerHTML = "";
     return;
+  }
+
+  if (pendingPaymentsPanel) {
+    pendingPaymentsPanel.hidden = false;
   }
 
   pendingPaymentsList.innerHTML = pendingPayments.map((payment) => `
@@ -3049,36 +3091,61 @@ function viewExpensesForJob(jobId) {
 }
 
 function renderEstimateFollowUpControls(job) {
-  if (statuses.indexOf(job.status) < statuses.indexOf("Estimate Sent") || job.estimateApprovedAt || job.estimateRejectedAt) {
+  const followUpType = getActiveFollowUpType(job);
+  if (!followUpType && !getLatestFollowUpTask(job.id)) {
     return "";
   }
 
-  const task = getLatestFollowUpTask(job.id);
+  const task = getLatestFollowUpTask(job.id, followUpType);
   const suppressed = Boolean(job.suppressEstimateFollowUp);
   return `
     <div class="follow-up-control">
-      <label class="inline-toggle">
-        <input type="checkbox" data-suppress-follow-up ${suppressed ? "checked" : ""}>
-        <span>Suppress follow-up</span>
+      <label class="follow-up-toggle-row" title="Suppress follow-up email">
+        <span>Suppress follow-up email</span>
+        <input class="toggle-input" type="checkbox" data-suppress-follow-up ${suppressed ? "checked" : ""}>
+        <span class="toggle-switch" aria-hidden="true"></span>
       </label>
-      <button class="action-button secondary" type="button" data-preview-follow-up ${suppressed || job.status !== "Estimate Sent" ? "disabled" : ""}>Send follow-up email</button>
+      <button class="action-button secondary" type="button" data-preview-follow-up title="${suppressed ? "Follow-up suppressed for this job." : "Send follow-up email"}" ${suppressed || !followUpType ? "disabled" : ""}>Send follow-up email</button>
       <p>${escapeHtml(formatFollowUpStatus(task, suppressed))}</p>
       ${task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
     </div>
   `;
 }
 
-function getLatestFollowUpTask(jobId) {
-  return followUpTasks
-    .filter((task) => task.jobId === jobId && task.type === "estimate_followup")
+function getLatestFollowUpTask(jobId, preferredType = "") {
+  const jobTasks = followUpTasks.filter((task) => task.jobId === jobId && isFollowUpTaskType(task.type));
+  const typedTasks = preferredType ? jobTasks.filter((task) => task.type === preferredType) : jobTasks;
+  const sourceTasks = typedTasks.length ? typedTasks : jobTasks;
+  return sourceTasks
     .sort((a, b) => new Date(b.sentAt || b.updatedAt || b.scheduledFor || 0) - new Date(a.sentAt || a.updatedAt || a.scheduledFor || 0))[0] || null;
+}
+
+function isFollowUpTaskType(type) {
+  return ["estimate_followup", "contract_followup", "deposit_followup", "invoice_followup"].includes(type);
+}
+
+function getActiveFollowUpType(job) {
+  if (job?.status === "Estimate Sent" && job.estimateApprovalUrl && !job.estimateApprovedAt && !job.estimateRejectedAt) return "estimate_followup";
+  if (job?.status === "Contract Sent" && job.contractApprovalUrl && !job.contractSignedAt) return "contract_followup";
+  if (job?.status === "Deposit Sent" && job.squareDepositInvoiceUrl && !job.squareDepositPaidAt) return "deposit_followup";
+  if (job?.status === "Final Invoice Sent" && job.squareFinalInvoiceUrl && !job.squareFinalPaidAt) return "invoice_followup";
+  return "";
+}
+
+function getFollowUpTypeLabel(type) {
+  return {
+    estimate_followup: "estimate",
+    contract_followup: "contract",
+    deposit_followup: "deposit invoice",
+    invoice_followup: "final invoice"
+  }[type] || "estimate";
 }
 
 function formatFollowUpStatus(task, suppressed) {
   if (suppressed) return "Follow-up suppressed for this job.";
   if (!task) return "No follow-up sent yet.";
-  if (task.status === "pending") return `Auto follow-up scheduled for ${formatNotificationDate(task.scheduledFor)}.`;
-  if (task.status === "sent") return `Follow-up sent ${formatNotificationDate(task.sentAt)} - ${task.source === "manual" ? "manual" : "auto"}.`;
+  if (task.status === "pending") return `Auto follow-up scheduled for ${formatNotificationDate(task.scheduledFor)} - ${getFollowUpTypeLabel(task.type)}.`;
+  if (task.status === "sent") return `Follow-up sent ${formatNotificationDate(task.sentAt)} · ${task.source === "manual" ? "manual" : "auto"}.`;
   if (task.status === "cancelled") return `Follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
   return "No follow-up sent yet.";
 }
@@ -3334,7 +3401,7 @@ function renderExpenses() {
       <div>
         <h4>${escapeHtml(expense.vendor)}</h4>
         <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
-        ${linkedJob ? `<p>${escapeHtml(formatJobOptionLabel(linkedJob, { includeStatus: false }))}</p>` : ""}
+        ${linkedJob ? `<p>${escapeHtml(formatJobSummaryLabel(linkedJob))}</p>` : ""}
         <p>${expense.receiptPhotos?.length || 0} receipt photo${expense.receiptPhotos?.length === 1 ? "" : "s"}</p>
       </div>
       <span class="status-pill">${currency.format(expense.amount || 0)}</span>
@@ -3354,7 +3421,7 @@ function renderExpenseDetail() {
       <h4>${escapeHtml(expense.vendor)}</h4>
       <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
       <div class="detail-row"><span>Amount</span><strong>${currency.format(expense.amount || 0)}</strong></div>
-      <div class="detail-row"><span>Linked job</span><strong>${linkedJob ? escapeHtml(formatJobOptionLabel(linkedJob, { includeStatus: true })) : "None"}</strong></div>
+      <div class="detail-row"><span>Linked job</span><strong>${linkedJob ? escapeHtml(formatJobSummaryLabel(linkedJob, { includeStatus: true })) : "None"}</strong></div>
       <div class="action-list">
         <button class="action-button" type="button" data-edit-expense="${escapeHtml(expense.id)}">Edit Expense</button>
         <button class="action-button danger" type="button" data-delete-expense="${escapeHtml(expense.id)}">Delete Expense</button>
@@ -3385,7 +3452,7 @@ function renderExpenseJobFilter() {
   const filterJobs = jobs.filter((job) => linkedJobIds.has(job.id));
   expenseJobFilter.innerHTML = `
     <option value="">All expenses</option>
-    ${filterJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobOptionLabel(job, { includeStatus: true }))}</option>`).join("")}
+    ${filterJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobSummaryLabel(job, { includeStatus: true }))}</option>`).join("")}
   `;
   if (selectedExpenseJobId && !linkedJobIds.has(selectedExpenseJobId)) {
     selectedExpenseJobId = "";
@@ -3399,7 +3466,7 @@ function renderExpenseJobOptions(selectedId = "") {
   const optionJobs = getExpenseLinkableJobs(selectedId);
   select.innerHTML = `
     <option value="">No linked job</option>
-    ${optionJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobOptionLabel(job, { includeStatus: true }))}</option>`).join("")}
+    ${optionJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobDropdownLabel(job))}</option>`).join("")}
   `;
   select.value = selectedId;
 }
@@ -3410,19 +3477,42 @@ function getExpenseLinkableJobs(selectedId = "") {
     .filter((job) => {
       if (job.id === selectedId) return true;
       if (statuses.indexOf(job.status) < statuses.indexOf("Paid")) return true;
-      const createdAt = new Date(job.createdAt || job.updatedAt || 0).getTime();
-      return Number.isFinite(createdAt) && createdAt >= cutoff;
+      return getJobSortDate(job) >= cutoff;
     })
-    .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+    .sort((a, b) => {
+      const aCompleted = statuses.indexOf(a.status) >= statuses.indexOf("Completed");
+      const bCompleted = statuses.indexOf(b.status) >= statuses.indexOf("Completed");
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+      return aCompleted ? getJobSortDate(b) - getJobSortDate(a) : getJobSortDate(a) - getJobSortDate(b);
+    });
 }
 
 function getExpenseJob(expense) {
   return jobs.find((job) => job.id === expense.jobId);
 }
 
-function formatJobOptionLabel(job, options = {}) {
-  const label = `${job.customerName || "Unnamed customer"} - ${job.serviceType || "Job"}`;
+function formatJobSummaryLabel(job, options = {}) {
+  const label = `${job.customerName || "Unnamed customer"} - ${getJobTitle(job)}`;
   return options.includeStatus ? `${label} (${job.status || "Lead"})` : label;
+}
+
+function formatJobDropdownLabel(job) {
+  return `${job.customerName || "Unnamed customer"} — ${getJobTitle(job)} · ${job.status || "Lead"} · ${formatJobDropdownDate(job)}`;
+}
+
+function getJobTitle(job) {
+  return job.serviceType || job.streetAddress || String(job.address || "Job").split(",")[0] || "Job";
+}
+
+function getJobSortDate(job) {
+  const date = new Date(job.scheduledAt || job.createdAt || job.updatedAt || 0).getTime();
+  return Number.isFinite(date) ? date : 0;
+}
+
+function formatJobDropdownDate(job) {
+  const date = new Date(job.scheduledAt || job.createdAt || job.updatedAt || 0);
+  if (Number.isNaN(date.getTime())) return "No date";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 async function deleteExpense(expenseId) {

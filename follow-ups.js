@@ -2,6 +2,43 @@ const crypto = require("node:crypto");
 const { statuses } = require("./db");
 
 const FOLLOW_UP_TYPE = "estimate_followup";
+const FOLLOW_UP_TYPES = {
+  estimate: "estimate_followup",
+  contract: "contract_followup",
+  deposit: "deposit_followup",
+  invoice: "invoice_followup"
+};
+
+const FOLLOW_UP_CONFIG = {
+  estimate_followup: {
+    sentAtField: "estimateSentAt",
+    statusLabel: "estimate",
+    canSend: (job) => job?.status === "Estimate Sent" && job.estimateApprovalUrl && !job.estimateApprovedAt && !job.estimateRejectedAt,
+    cancelReason: (job) => {
+      if (job.estimateRejectedAt) return "declined";
+      if (job.estimateApprovedAt || statuses.indexOf(job.status) > statuses.indexOf("Estimate Sent")) return "approved";
+      return "";
+    }
+  },
+  contract_followup: {
+    sentAtField: "contractSentAt",
+    statusLabel: "contract",
+    canSend: (job) => job?.status === "Contract Sent" && job.contractApprovalUrl && !job.contractSignedAt,
+    cancelReason: (job) => job.contractSignedAt || statuses.indexOf(job.status) > statuses.indexOf("Contract Sent") ? "signed" : ""
+  },
+  deposit_followup: {
+    sentAtField: "",
+    statusLabel: "deposit invoice",
+    canSend: (job) => job?.status === "Deposit Sent" && job.squareDepositInvoiceUrl && !job.squareDepositPaidAt,
+    cancelReason: (job) => job.squareDepositPaidAt || statuses.indexOf(job.status) > statuses.indexOf("Deposit Sent") ? "paid" : ""
+  },
+  invoice_followup: {
+    sentAtField: "completionNoticeSentAt",
+    statusLabel: "final invoice",
+    canSend: (job) => job?.status === "Final Invoice Sent" && job.squareFinalInvoiceUrl && !job.squareFinalPaidAt,
+    cancelReason: (job) => job.squareFinalPaidAt || statuses.indexOf(job.status) > statuses.indexOf("Final Invoice Sent") ? "paid" : ""
+  }
+};
 
 function createFollowUpHandlers({
   itemWorkspaceId,
@@ -16,20 +53,28 @@ function createFollowUpHandlers({
   warn = console.warn
 }) {
   async function scheduleEstimateFollowUp(job, settings) {
+    return scheduleFollowUp(job, settings, FOLLOW_UP_TYPES.estimate);
+  }
+
+  async function scheduleFollowUp(job, settings, type = getActiveFollowUpType(job)) {
     if (!job?.id || settings.estimateFollowUpEnabled === false || job.suppressEstimateFollowUp) {
+      return null;
+    }
+    const config = FOLLOW_UP_CONFIG[type];
+    if (!config?.canSend(job)) {
       return null;
     }
 
     const accountId = itemWorkspaceId(job);
     const tasks = await readScopedTasks(accountId);
-    const existing = tasks.find((task) => task.jobId === job.id && task.type === FOLLOW_UP_TYPE && task.status === "pending");
-    const scheduledFor = new Date(new Date(job.estimateSentAt || new Date().toISOString()).getTime() + getDelayMs(settings)).toISOString();
+    const existing = tasks.find((task) => task.jobId === job.id && task.type === type && task.status === "pending");
     const now = new Date().toISOString();
+    const scheduledFor = new Date(new Date(config.sentAtField ? job[config.sentAtField] || now : now).getTime() + getDelayMs(settings)).toISOString();
     const task = existing || {
       id: crypto.randomUUID(),
       accountId,
       jobId: job.id,
-      type: FOLLOW_UP_TYPE,
+      type,
       source: "auto",
       status: "pending",
       createdAt: now
@@ -46,12 +91,12 @@ function createFollowUpHandlers({
     return task;
   }
 
-  async function cancelPendingFollowUp(jobId, reason, accountId = "") {
+  async function cancelPendingFollowUp(jobId, reason, accountId = "", type = FOLLOW_UP_TYPE) {
     const tasks = accountId ? await readScopedTasks(accountId) : await readFollowUpTasks();
     const now = new Date().toISOString();
     let changed = false;
     const updatedTasks = tasks.map((task) => {
-      if (task.jobId !== jobId || task.type !== FOLLOW_UP_TYPE || task.status !== "pending") {
+      if (task.jobId !== jobId || (type && task.type !== type) || task.status !== "pending") {
         return task;
       }
       changed = true;
@@ -70,7 +115,8 @@ function createFollowUpHandlers({
   }
 
   async function sendManualEstimateFollowUp(job, settings) {
-    if (!canSendFollowUp(job)) {
+    const type = getActiveFollowUpType(job);
+    if (!canSendFollowUp(job, type)) {
       throw new Error("Follow-up is not available for this job.");
     }
     if (job.suppressEstimateFollowUp) {
@@ -78,22 +124,22 @@ function createFollowUpHandlers({
     }
 
     const accountId = itemWorkspaceId(job);
-    await cancelPendingFollowUp(job.id, "manual_sent", accountId);
-    await sendEstimateFollowUpEmail(job, settings);
-    const sentTask = createSentTask(job, accountId, "manual");
+    await cancelPendingFollowUp(job.id, "manual_sent", accountId, type);
+    await sendEstimateFollowUpEmail(job, settings, type);
+    const sentTask = createSentTask(job, accountId, "manual", type);
     const tasks = await readScopedTasks(accountId);
     await writeScopedTasks([...tasks, sentTask], accountId);
     return sentTask;
   }
 
   async function cancelManualFollowUp(job) {
-    return cancelPendingFollowUp(job.id, "manual_cancelled", itemWorkspaceId(job));
+    return cancelPendingFollowUp(job.id, "manual_cancelled", itemWorkspaceId(job), getActiveFollowUpType(job));
   }
 
   async function setSuppressEstimateFollowUp(job, suppressed) {
     job.suppressEstimateFollowUp = Boolean(suppressed);
     if (job.suppressEstimateFollowUp) {
-      await cancelPendingFollowUp(job.id, "suppressed", itemWorkspaceId(job));
+      await cancelPendingFollowUp(job.id, "suppressed", itemWorkspaceId(job), "");
     }
   }
 
@@ -109,12 +155,12 @@ function createFollowUpHandlers({
 
     for (let index = 0; index < updatedTasks.length; index += 1) {
       const task = updatedTasks[index];
-      if (task.type !== FOLLOW_UP_TYPE || task.status !== "pending" || new Date(task.scheduledFor) > now) {
+      if (!FOLLOW_UP_CONFIG[task.type] || task.status !== "pending" || new Date(task.scheduledFor) > now) {
         continue;
       }
 
       const job = jobs.find((item) => item.id === task.jobId);
-      const cancellationReason = getCancellationReason(job, updatedTasks);
+      const cancellationReason = getCancellationReason(job, updatedTasks, task.type);
       if (cancellationReason) {
         updatedTasks[index] = cancelTask(task, cancellationReason);
         tasksChanged = true;
@@ -122,7 +168,7 @@ function createFollowUpHandlers({
       }
 
       try {
-        await sendEstimateFollowUpEmail(job, await readSettingsForJob(job));
+        await sendEstimateFollowUpEmail(job, await readSettingsForJob(job), task.type);
         updatedTasks[index] = {
           ...task,
           source: "auto",
@@ -134,7 +180,7 @@ function createFollowUpHandlers({
         tasksChanged = true;
         jobsChanged = true;
       } catch (error) {
-        warn(`Unable to send estimate follow-up for job ${task.jobId}: ${error.message}`);
+        warn(`Unable to send ${task.type} for job ${task.jobId}: ${error.message}`);
       }
     }
 
@@ -158,6 +204,7 @@ function createFollowUpHandlers({
     cancelManualFollowUp,
     cancelPendingFollowUp,
     processDueFollowUps,
+    scheduleFollowUp,
     scheduleEstimateFollowUp,
     sendManualEstimateFollowUp,
     setSuppressEstimateFollowUp
@@ -171,16 +218,16 @@ function getDelayMs(settings) {
   return hours * 60 * 60 * 1000;
 }
 
-function canSendFollowUp(job) {
-  return job?.status === "Estimate Sent" && job.estimateApprovalUrl && !job.estimateApprovedAt && !job.estimateRejectedAt;
+function canSendFollowUp(job, type = getActiveFollowUpType(job)) {
+  return Boolean(FOLLOW_UP_CONFIG[type]?.canSend(job));
 }
 
-function getCancellationReason(job, tasks) {
+function getCancellationReason(job, tasks, type = FOLLOW_UP_TYPE) {
   if (!job) return "job_missing";
   if (job.suppressEstimateFollowUp) return "suppressed";
-  if (job.estimateRejectedAt) return "declined";
-  if (job.estimateApprovedAt || statuses.indexOf(job.status) > statuses.indexOf("Estimate Sent")) return "approved";
-  if (tasks.some((task) => task.jobId === job.id && task.type === FOLLOW_UP_TYPE && task.status === "sent" && task.source === "manual")) {
+  const stageReason = FOLLOW_UP_CONFIG[type]?.cancelReason(job);
+  if (stageReason) return stageReason;
+  if (tasks.some((task) => task.jobId === job.id && task.type === type && task.status === "sent" && task.source === "manual")) {
     return "manual_sent";
   }
   return "";
@@ -195,13 +242,13 @@ function cancelTask(task, reason) {
   };
 }
 
-function createSentTask(job, accountId, source) {
+function createSentTask(job, accountId, source, type = FOLLOW_UP_TYPE) {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
     accountId,
     jobId: job.id,
-    type: FOLLOW_UP_TYPE,
+    type,
     source,
     scheduledFor: now,
     status: "sent",
@@ -210,6 +257,18 @@ function createSentTask(job, accountId, source) {
     createdAt: now,
     updatedAt: now
   };
+}
+
+function getActiveFollowUpType(job) {
+  if (FOLLOW_UP_CONFIG.estimate_followup.canSend(job)) return FOLLOW_UP_TYPES.estimate;
+  if (FOLLOW_UP_CONFIG.contract_followup.canSend(job)) return FOLLOW_UP_TYPES.contract;
+  if (FOLLOW_UP_CONFIG.deposit_followup.canSend(job)) return FOLLOW_UP_TYPES.deposit;
+  if (FOLLOW_UP_CONFIG.invoice_followup.canSend(job)) return FOLLOW_UP_TYPES.invoice;
+  return FOLLOW_UP_TYPE;
+}
+
+function getFollowUpTypeLabel(type) {
+  return FOLLOW_UP_CONFIG[type]?.statusLabel || "estimate";
 }
 
 function upsertTask(tasks, task) {
@@ -222,5 +281,6 @@ function upsertTask(tasks, task) {
 
 module.exports = {
   FOLLOW_UP_TYPE,
+  FOLLOW_UP_TYPES,
   createFollowUpHandlers
 };

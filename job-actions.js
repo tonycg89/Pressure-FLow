@@ -25,6 +25,7 @@ function createJobActionHandler({
   createPressureFlowInvoice,
   readSettings,
   randomToken,
+  scheduleFollowUp = async () => {},
   scheduleEstimateFollowUp = async () => {},
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
@@ -43,6 +44,15 @@ function createJobActionHandler({
       job.status = getNextStatus(job.status);
       if (previousStatus === "Estimate Sent" && job.status !== "Estimate Sent") {
         await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
+      }
+      if (previousStatus === "Contract Sent" && job.status !== "Contract Sent") {
+        await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
+      }
+      if (previousStatus === "Deposit Sent" && job.status !== "Deposit Sent") {
+        await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "deposit_followup");
+      }
+      if (previousStatus === "Final Invoice Sent" && job.status !== "Final Invoice Sent") {
+        await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       }
     }
 
@@ -104,6 +114,7 @@ function createJobActionHandler({
           await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
         }
         job.status = "Contract Sent";
+        await scheduleFollowUp(job, await readSettings(), "contract_followup");
         return;
       }
 
@@ -117,6 +128,7 @@ function createJobActionHandler({
       job.contractSentAt = new Date().toISOString();
       job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
       job.squareContractUrl = job.contractApprovalUrl;
+      await scheduleFollowUp(job, settings, "contract_followup");
     }
 
     if (action === "send-estimate-follow-up") {
@@ -134,20 +146,24 @@ function createJobActionHandler({
 
     if (action === "mark-contract-signed") {
       job.status = "Contract Signed";
+      await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
     }
 
     if (action === "send-deposit-invoice") {
       const settings = await readSettings();
+      await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
       const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl);
       job.status = "Deposit Sent";
       job.squareDepositInvoiceId = invoice.invoiceId;
       job.squareDepositInvoiceUrl = invoice.publicUrl;
+      await scheduleFollowUp(job, settings, "deposit_followup");
     }
 
     if (action === "mark-deposit-paid") {
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = job.squareDepositPaidAt || new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "deposit_followup");
       recordManualPayment(job, "deposit", input);
       await sendAdminTextAlertSafe(`PressureFlow: Deposit marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
@@ -156,6 +172,7 @@ function createJobActionHandler({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "deposit_followup");
       recordAutomaticPayment(job, "deposit", "Square");
       await sendAdminTextAlertSafe(`PressureFlow: Deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
@@ -178,6 +195,7 @@ function createJobActionHandler({
       job.completionNoticeMailto = notice.mailto;
       job.squareFinalInvoiceId = invoice.invoiceId;
       job.squareFinalInvoiceUrl = invoice.publicUrl;
+      await scheduleFollowUp(job, settings, "invoice_followup");
     }
 
     if (action === "send-final-invoice") {
@@ -186,6 +204,7 @@ function createJobActionHandler({
       job.status = "Final Invoice Sent";
       job.squareFinalInvoiceId = invoice.invoiceId;
       job.squareFinalInvoiceUrl = invoice.publicUrl;
+      await scheduleFollowUp(job, settings, "invoice_followup");
     }
 
     if (action === "mark-paid") {
@@ -193,6 +212,7 @@ function createJobActionHandler({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordManualPayment(job, "final", input);
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
@@ -203,6 +223,7 @@ function createJobActionHandler({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordAutomaticPayment(job, "final", "Square");
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);

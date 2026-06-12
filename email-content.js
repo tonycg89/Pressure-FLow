@@ -98,6 +98,32 @@ function buildEstimateFollowUpEmailMessage(job, settings) {
   };
 }
 
+function buildFollowUpEmailMessage(job, settings, type = "estimate_followup") {
+  if (type === "estimate_followup") {
+    return buildEstimateFollowUpEmailMessage(job, settings);
+  }
+
+  const config = getFollowUpEmailConfig(job, type);
+  const businessName = getBusinessName(settings);
+  const textBody = [
+    `Hi ${getFirstName(job)},`,
+    "",
+    config.body,
+    "",
+    `${config.cta}: ${config.url}`,
+    "",
+    "Thank you,",
+    businessName
+  ].join("\n");
+
+  return {
+    to: job.email,
+    subject: `${businessName} follow-up - ${job.serviceType || "your service"} at ${job.address || ""}`,
+    textBody,
+    htmlBody: renderFollowUpEmailHtml(job, settings, config)
+  };
+}
+
 function buildContractEmailMessage(job, settings) {
   const businessName = getBusinessName(settings);
   return {
@@ -348,6 +374,51 @@ function renderEstimateFollowUpEmailHtml(job, settings, bodyTemplate) {
   `;
 }
 
+function renderFollowUpEmailHtml(job, settings, config) {
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+    ${renderLogoHtml(settings, getBaseUrlFromLink(config.url))}
+    <p>Hi ${escapeHtml(getFirstName(job))},</p>
+    <p>${escapeHtml(config.body)}</p>
+    <p>
+      <a href="${escapeHtml(config.url)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+        ${escapeHtml(config.cta)}
+      </a>
+    </p>
+    <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(config.url)}</p>
+    <p>Thank you,<br>${escapeHtml(getBusinessName(settings))}</p>
+    </div>
+  `;
+}
+
+function getFollowUpEmailConfig(job, type) {
+  if (type === "contract_followup") {
+    return {
+      body: `Just a reminder that your service agreement for ${job.serviceType || "your service"} is still waiting for your signature.`,
+      cta: "Review and sign agreement",
+      url: job.contractApprovalUrl || job.squareContractUrl || ""
+    };
+  }
+
+  if (type === "deposit_followup") {
+    return {
+      body: `Your deposit invoice for ${job.serviceType || "your service"} is still outstanding. Once received, we'll get your job on the schedule.`,
+      cta: "View deposit invoice",
+      url: job.squareDepositInvoiceUrl || ""
+    };
+  }
+
+  return {
+    body: `Your final invoice for ${job.serviceType || "your service"} is still outstanding. Please let us know if you have any questions.`,
+    cta: "View invoice",
+    url: job.squareFinalInvoiceUrl || ""
+  };
+}
+
+function getFirstName(job) {
+  return String(job.customerName || "").trim().split(/\s+/).filter(Boolean)[0] || "there";
+}
+
 function renderEstimateFollowUpTemplate(template, job, settings) {
   const nameParts = String(job.customerName || "").trim().split(/\s+/).filter(Boolean);
   const firstName = nameParts[0] || job.customerName || "there";
@@ -394,6 +465,7 @@ module.exports = {
   buildContractEmailMessage,
   buildContractMailto,
   buildEstimateEmailMessage,
+  buildFollowUpEmailMessage,
   buildEstimateFollowUpEmailMessage,
   buildEstimateMailto,
   buildPressureFlowInvoiceEmailMessage,

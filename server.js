@@ -161,6 +161,7 @@ const {
   cancelManualFollowUp,
   cancelPendingFollowUp,
   processDueFollowUps,
+  scheduleFollowUp,
   scheduleEstimateFollowUp,
   sendManualEstimateFollowUp,
   setSuppressEstimateFollowUp
@@ -199,6 +200,7 @@ const {
   signPublicContract
 } = createPublicWorkflowHandlers({
   cancelPendingFollowUp,
+  scheduleFollowUp,
   createPressureFlowInvoice,
   itemWorkspaceId,
   readJobs,
@@ -215,6 +217,7 @@ const {
   handleStripeWebhook,
   recordWebhookEvent
 } = createWebhookHandlers({
+  cancelPendingFollowUp,
   readAllJobs,
   readJobs,
   readSettings,
@@ -244,6 +247,7 @@ const { applyAction } = createJobActionHandler({
   readSettings,
   randomToken: () => crypto.randomBytes(24).toString("hex"),
   scheduleEstimateFollowUp,
+  scheduleFollowUp,
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
   sendContractEmail,

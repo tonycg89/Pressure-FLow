@@ -110,6 +110,17 @@
           <article><span>Estimates Accepted</span><strong id="dashEstimatesAccepted">0</strong></article>
           <article><span>Revenue</span><strong id="dashRevenue">$0</strong></article>
           <article><span>Expenses</span><strong id="dashExpenses">$0</strong></article>
+          <article><span>Top source</span><strong id="dashTopSource">-</strong><small id="dashTopSourceMeta">Not enough data yet</small></article>
+        </section>
+
+        <section class="panel pending-payments-panel" id="pendingPaymentsPanel" aria-labelledby="pendingPaymentsTitle" hidden>
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Pending Payments</p>
+              <h3 id="pendingPaymentsTitle">Invoices waiting on confirmation</h3>
+            </div>
+          </div>
+          <div id="pendingPaymentsList" class="pending-payments-list"></div>
         </section>
 
         <section class="content-grid dashboard-grid">
@@ -241,16 +252,6 @@
         </div>
         <div id="jobDetail" class="job-detail"></div>
       </aside>
-        </section>
-
-        <section class="panel pending-payments-panel" aria-labelledby="pendingPaymentsTitle">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Pending Payments</p>
-              <h3 id="pendingPaymentsTitle">Invoices waiting on confirmation</h3>
-            </div>
-          </div>
-          <div id="pendingPaymentsList" class="pending-payments-list"></div>
         </section>
       </section>
 

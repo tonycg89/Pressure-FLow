@@ -10,6 +10,7 @@ const { extractSquareInvoice, parseSquareWebhookInvoiceId } = require("./integra
 const { parseStripeWebhookMetadata } = require("./integrations/stripe");
 
 function createWebhookHandlers({
+  cancelPendingFollowUp = async () => {},
   readAllJobs,
   readJobs,
   readSettings,
@@ -78,6 +79,7 @@ function createWebhookHandlers({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = invoice.status || "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "deposit_followup");
       recordPayment(job, "deposit", "Square", getDepositCents(job) / 100);
       await sendAdminTextAlertSafe(`PressureFlow: Square deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
@@ -86,6 +88,7 @@ function createWebhookHandlers({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = invoice.status || "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordPayment(job, "final", "Square", getFinalBalanceCents(job) / 100);
       await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
@@ -139,12 +142,14 @@ function createWebhookHandlers({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "deposit_followup");
       recordPayment(job, "deposit", "Stripe", getDepositCents(job) / 100);
       await sendAdminTextAlertSafe(`PressureFlow: Card deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     } else {
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordPayment(job, "final", "Stripe", getFinalBalanceCents(job) / 100);
       await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);

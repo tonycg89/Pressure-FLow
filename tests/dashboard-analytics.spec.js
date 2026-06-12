@@ -20,11 +20,12 @@ test("lead-source conversion excludes jobs with blank lead source", async ({ pag
   await login(page);
 
   const referralRow = page.locator("#leadSourceBreakdown .breakdown-row").filter({ hasText: "Referral" });
-  await expect(referralRow).toContainText("1 job");
-  await expect(referralRow).toContainText("1 sent");
-  await expect(referralRow).toContainText("1 accepted");
+  await expect(referralRow).toContainText("3 jobs");
+  await expect(referralRow).toContainText("3/3 accepted");
   await expect(referralRow).toContainText("100% converted");
-  await expect(referralRow).toContainText("$200.00");
+  await expect(referralRow).toContainText("$600.00");
+  await expect(page.locator("#dashTopSource")).toHaveText("Referral");
+  await expect(page.locator("#dashTopSourceMeta")).toHaveText("100% conversion · 3 jobs");
 
   await expect(page.locator("#leadSourceBreakdown")).not.toContainText("Unknown");
 });
@@ -82,7 +83,9 @@ async function resetTestData() {
     customTemplates: []
   }, null, 2));
   await fs.writeFile(path.join(DATA_DIR, "jobs.json"), JSON.stringify([
-    job("explicit-referral", "Referral Won", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
+    job("explicit-referral-1", "Referral Won 1", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
+    job("explicit-referral-2", "Referral Won 2", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
+    job("explicit-referral-3", "Referral Won 3", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
     job("blank-sent", "Blank Sent", "", "Estimate Sent", 300),
     job("blank-accepted", "Blank Accepted", "", "Estimate Signed", 400),
     job("blank-paid", "Blank Paid", "", "Paid", 500, { squareFinalPaidAt: new Date().toISOString() })

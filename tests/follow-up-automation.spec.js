@@ -92,6 +92,61 @@ test("manual follow-up send cancels pending auto follow-up before sending", asyn
   expect(manualTask.status).toBe("sent");
 });
 
+test("contract signing cancels contract follow-up and schedules deposit follow-up", async ({ page }) => {
+  const approveResponse = await page.request.post("/api/public/estimates/approve-job/approve", {
+    form: { token: "approve-token" }
+  });
+  expect(approveResponse.ok()).toBeTruthy();
+
+  let tasks = await readTasks();
+  const contractTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "contract_followup");
+  expect(contractTask).toMatchObject({ status: "pending", source: "auto" });
+
+  const jobs = await readJobs();
+  const approvedJob = jobs.find((item) => item.id === "approve-job");
+  const signResponse = await page.request.post("/api/public/contracts/approve-job/sign", {
+    form: {
+      token: approvedJob.contractApprovalToken,
+      signerName: "Approve Parker",
+      signedDate: "2026-06-12"
+    }
+  });
+  expect(signResponse.ok()).toBeTruthy();
+
+  tasks = await readTasks();
+  const cancelledContractTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "contract_followup");
+  const depositTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "deposit_followup");
+  expect(cancelledContractTask).toMatchObject({ status: "cancelled", cancelledReason: "signed" });
+  expect(depositTask).toMatchObject({ status: "pending", source: "auto" });
+});
+
+test("deposit and final invoice follow-ups cancel on payment", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Deposit Drew/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
+  await page.getByRole("button", { name: "Mark Deposit Paid" }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Deposit Paid");
+
+  let tasks = await readTasks();
+  const depositTask = tasks.find((item) => item.jobId === "deposit-job" && item.type === "deposit_followup");
+  expect(depositTask).toMatchObject({ status: "cancelled", cancelledReason: "paid" });
+
+  await page.getByRole("button", { name: /Completed Finn/ }).click();
+  await page.getByRole("button", { name: "Send Final Invoice" }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
+  tasks = await readTasks();
+  const invoiceTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "invoice_followup");
+  expect(invoiceTask).toMatchObject({ status: "pending", source: "auto" });
+
+  await page.getByRole("button", { name: "Mark Paid" }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Paid");
+  tasks = await readTasks();
+  const cancelledInvoiceTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "invoice_followup");
+  expect(cancelledInvoiceTask).toMatchObject({ status: "cancelled", cancelledReason: "paid" });
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);
@@ -102,6 +157,10 @@ async function login(page) {
 
 async function readTasks() {
   return JSON.parse(await fs.readFile(path.join(DATA_DIR, "follow-up-tasks.json"), "utf8"));
+}
+
+async function readJobs() {
+  return JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
 }
 
 async function resetTestData() {
@@ -144,13 +203,16 @@ async function resetTestData() {
     estimateJob("approve-job", "Approve Parker", "approve-token"),
     estimateJob("reject-job", "Reject Rivers", "reject-token"),
     estimateJob("manual-job", "Manual Carter", "manual-token"),
-    estimateJob("followup-job", "Followup Stone", "followup-token")
+    estimateJob("followup-job", "Followup Stone", "followup-token"),
+    depositJob("deposit-job", "Deposit Drew"),
+    completedJob("completed-job", "Completed Finn")
   ], null, 2));
   await fs.writeFile(path.join(DATA_DIR, "follow-up-tasks.json"), JSON.stringify([
     followUpTask("approve-task", "approve-job"),
     followUpTask("reject-task", "reject-job"),
     followUpTask("manual-task", "manual-job"),
-    followUpTask("followup-task", "followup-job")
+    followUpTask("followup-task", "followup-job"),
+    followUpTask("deposit-task", "deposit-job", "deposit_followup")
   ], null, 2));
 }
 
@@ -195,12 +257,31 @@ function estimateJob(id, customerName, token) {
   };
 }
 
-function followUpTask(id, jobId) {
+function depositJob(id, customerName) {
+  return {
+    ...leadJob(id, customerName),
+    status: "Deposit Sent",
+    squareDepositInvoiceId: `deposit-${id}`,
+    squareDepositInvoiceUrl: `http://127.0.0.1:3173/invoice/${id}?type=deposit&token=deposit-${id}`,
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  };
+}
+
+function completedJob(id, customerName) {
+  return {
+    ...leadJob(id, customerName),
+    status: "Completed",
+    completionNoticeSentAt: "",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  };
+}
+
+function followUpTask(id, jobId, type = "estimate_followup") {
   return {
     id,
     accountId: TEST_USER.accountId,
     jobId,
-    type: "estimate_followup",
+    type,
     source: "auto",
     scheduledFor: "2026-06-02T12:00:00.000Z",
     status: "pending",

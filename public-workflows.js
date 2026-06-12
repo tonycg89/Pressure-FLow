@@ -65,6 +65,7 @@ function createPublicWorkflowHandlers({
   readSettingsForJob,
   sendAdminTextAlertSafe,
   sendContractEmail,
+  scheduleFollowUp = async () => {},
   writeJobs
 }) {
   const workflowLocks = new Map();
@@ -106,6 +107,7 @@ function createPublicWorkflowHandlers({
       job.squareContractUrl = job.contractApprovalUrl;
       job.updatedAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "approved", itemWorkspaceId(job));
+      await scheduleFollowUp(job, settings, "contract_followup");
       await writeJobs(jobs);
       await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
       return job;
@@ -183,6 +185,8 @@ function createPublicWorkflowHandlers({
       job.squareDepositInvoiceId = invoice.invoiceId;
       job.squareDepositInvoiceUrl = invoice.publicUrl;
       job.updatedAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "signed", itemWorkspaceId(job), "contract_followup");
+      await scheduleFollowUp(job, settings, "deposit_followup");
       await writeJobs(jobs);
       await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`);
       return job;

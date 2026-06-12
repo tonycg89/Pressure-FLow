@@ -50,6 +50,7 @@ test("linked expenses can be filtered and shown in completed job profitability",
   await page.locator("#expenseForm [name='vendor']").fill("Chem Shop");
   await page.locator("#expenseForm [name='amount']").fill("12750");
   await page.locator("#expenseForm [name='category']").fill("Chemicals");
+  await expect(page.locator("#expenseForm [name='jobId'] option[value='job-profitability']")).toHaveText(/Morgan Lee .+ Roof Wash .+ Completed .+ Jun/);
   await page.locator("#expenseForm [name='jobId']").selectOption("job-profitability");
   await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
 
@@ -141,7 +142,9 @@ async function resetTestData() {
       customerName: "Morgan Lee",
       serviceType: "Roof Wash",
       estimate: 390,
-      status: "Completed"
+      status: "Completed",
+      createdAt: "2026-06-12T12:00:00.000Z",
+      updatedAt: "2026-06-12T12:00:00.000Z"
     })
   ], null, 2));
 }
