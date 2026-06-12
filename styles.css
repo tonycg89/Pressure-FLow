@@ -252,6 +252,50 @@ button {
   gap: 10px;
 }
 
+.pending-payments-panel {
+  margin-top: 18px;
+}
+
+.pending-payments-list {
+  display: grid;
+}
+
+.pending-payment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.pending-payment-row:first-child {
+  border-top: 0;
+}
+
+.pending-payment-row p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pending-payment-row.overdue {
+  background: #fff8eb;
+}
+
+.overdue-pill {
+  background: #fff0c2;
+  color: #805300;
+}
+
+.payment-confirmation-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .notification-menu {
   position: relative;
 }
@@ -1845,7 +1889,9 @@ label {
   .map-address-row,
   .map-area-row,
   .measurement-area-card,
-  .measurement-summary {
+  .measurement-summary,
+  .pending-payment-row,
+  .payment-confirmation-form {
     grid-template-columns: 1fr;
   }
 

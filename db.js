@@ -54,6 +54,7 @@ const defaultSettings = {
   cashAppPayment: "",
   venmoPayment: "",
   paymentInstructions: "",
+  paymentFollowUpHours: 48,
   dayOfServiceInstructions: "",
   onboardingCompleted: false,
   customTemplates: [],
@@ -469,6 +470,8 @@ function applyRuntimeSettings(settings = {}) {
     cashAppPayment: rowSettings.cashAppPayment || "",
     venmoPayment: rowSettings.venmoPayment || "",
     paymentInstructions: rowSettings.paymentInstructions || "",
+    paymentFollowUpHours: Number(rowSettings.paymentFollowUpHours ?? 48),
+    dayOfServiceInstructions: rowSettings.dayOfServiceInstructions || "",
     serviceIndustry: rowSettings.serviceIndustry || "",
     defaultDepositEnabled: rowSettings.defaultDepositEnabled !== false,
     onboardingCompleted: Boolean(rowSettings.onboardingCompleted),
@@ -518,6 +521,7 @@ async function writeSettings(settings) {
         cash_app_payment,
         venmo_payment,
         payment_instructions,
+        payment_follow_up_hours,
         day_of_service_instructions,
         onboarding_completed,
         custom_templates,
@@ -525,7 +529,7 @@ async function writeSettings(settings) {
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35::jsonb, $36::jsonb, $37::jsonb, $38::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36::jsonb, $37::jsonb, $38::jsonb, $39::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -559,6 +563,7 @@ async function writeSettings(settings) {
         cash_app_payment = excluded.cash_app_payment,
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
+        payment_follow_up_hours = excluded.payment_follow_up_hours,
         day_of_service_instructions = excluded.day_of_service_instructions,
         onboarding_completed = excluded.onboarding_completed,
         custom_templates = excluded.custom_templates,
@@ -599,6 +604,7 @@ async function writeSettings(settings) {
         settings.cashAppPayment || "",
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
+        Number(settings.paymentFollowUpHours ?? 48),
         settings.dayOfServiceInstructions || "",
         Boolean(settings.onboardingCompleted),
         JSON.stringify(settings.customTemplates || []),
@@ -779,6 +785,7 @@ async function ensurePostgresSchema() {
     cash_app_payment text not null default '',
     venmo_payment text not null default '',
     payment_instructions text not null default '',
+    payment_follow_up_hours integer not null default 48,
     day_of_service_instructions text not null default '',
     onboarding_completed boolean not null default false,
     custom_templates jsonb not null default '[]'::jsonb,
@@ -810,6 +817,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists cash_app_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists payment_follow_up_hours integer not null default 48");
   await getPool().query("alter table app_settings add column if not exists day_of_service_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists onboarding_completed boolean not null default false");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
@@ -864,6 +872,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists estimate_rejection_reason text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_rejection_note text not null default ''");
   await getPool().query("alter table jobs add column if not exists scheduled_event_at timestamptz");
+  await getPool().query("alter table jobs add column if not exists payment_records jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
@@ -1147,8 +1156,9 @@ async function upsertJob(client, job) {
       city = $23,
       state = $24,
       zip = $25,
-      account_id = $26
-    where id = $27`,
+      account_id = $26,
+      payment_records = $27::jsonb
+    where id = $28`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -1176,6 +1186,7 @@ async function upsertJob(client, job) {
       job.state || "",
       job.zip || "",
       job.accountId || "owner",
+      JSON.stringify(job.paymentRecords || []),
       job.id
     ]
   );
@@ -1240,6 +1251,7 @@ function jobFromRow(row) {
     squareFinalInvoiceUrl: row.square_final_invoice_url || "",
     squareFinalInvoiceStatus: row.square_final_invoice_status || "",
     squareFinalPaidAt: row.square_final_paid_at?.toISOString?.() || "",
+    paymentRecords: Array.isArray(row.payment_records) ? row.payment_records : [],
     googleCalendarEventId: row.google_calendar_event_id || "",
     googleCalendarEventUrl: row.google_calendar_event_url || "",
     completionNoticeSentAt: row.completion_notice_sent_at?.toISOString?.() || "",
@@ -1366,6 +1378,7 @@ function settingsFromRow(row) {
     cashAppPayment: row.cash_app_payment || "",
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
+    paymentFollowUpHours: Number(row.payment_follow_up_hours ?? 48),
     dayOfServiceInstructions: row.day_of_service_instructions || "",
     onboardingCompleted: Boolean(row.onboarding_completed),
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],

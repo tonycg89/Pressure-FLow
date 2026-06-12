@@ -59,6 +59,7 @@ function normalizeJob(input) {
     squareFinalOrderId: "",
     squareFinalInvoiceId: "",
     squareFinalInvoiceUrl: "",
+    paymentRecords: [],
     squareContractId: "",
     squareContractUrl: "",
     contractApprovalToken: "",

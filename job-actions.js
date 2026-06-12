@@ -117,6 +117,7 @@ function createJobActionHandler({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = job.squareDepositPaidAt || new Date().toISOString();
+      recordManualPayment(job, "deposit", input);
       await sendAdminTextAlertSafe(`PressureFlow: Deposit marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
 
@@ -124,6 +125,7 @@ function createJobActionHandler({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      recordAutomaticPayment(job, "deposit", "Square");
       await sendAdminTextAlertSafe(`PressureFlow: Deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
 
@@ -160,6 +162,7 @@ function createJobActionHandler({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      recordManualPayment(job, "final", input);
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
@@ -169,12 +172,58 @@ function createJobActionHandler({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      recordAutomaticPayment(job, "final", "Square");
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
   }
 
   return { applyAction };
+}
+
+function recordManualPayment(job, invoiceType, input = {}) {
+  recordPayment(job, {
+    invoiceType,
+    source: "manual",
+    method: normalizePaymentMethod(input.paymentMethod),
+    reference: String(input.paymentReference || "").trim().slice(0, 120),
+    amount: invoiceType === "deposit" ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100
+  });
+}
+
+function recordAutomaticPayment(job, invoiceType, method) {
+  recordPayment(job, {
+    invoiceType,
+    source: "auto",
+    method,
+    reference: "",
+    amount: invoiceType === "deposit" ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100
+  });
+}
+
+function recordPayment(job, payment) {
+  const records = Array.isArray(job.paymentRecords) ? job.paymentRecords : [];
+  const existingIndex = records.findIndex((item) => item.invoiceType === payment.invoiceType);
+  const record = {
+    id: `${payment.invoiceType}-${Date.now()}`,
+    invoiceType: payment.invoiceType,
+    source: payment.source,
+    method: payment.method,
+    reference: payment.reference,
+    amount: Number(payment.amount || 0),
+    paidAt: new Date().toISOString(),
+    quickBooksSyncStatus: "pending"
+  };
+
+  job.paymentRecords = existingIndex >= 0
+    ? records.map((item, index) => index === existingIndex ? record : item)
+    : [...records, record];
+}
+
+function normalizePaymentMethod(value) {
+  const allowed = new Set(["Venmo", "Zelle", "Cash App", "Cash", "Check", "Other"]);
+  const method = String(value || "").trim();
+  return allowed.has(method) ? method : "Other";
 }
 
 async function clearRevokedGoogleToken(settings, error, writeSettings) {

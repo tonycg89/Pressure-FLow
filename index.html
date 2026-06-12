@@ -242,6 +242,16 @@
         <div id="jobDetail" class="job-detail"></div>
       </aside>
         </section>
+
+        <section class="panel pending-payments-panel" aria-labelledby="pendingPaymentsTitle">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Pending Payments</p>
+              <h3 id="pendingPaymentsTitle">Invoices waiting on confirmation</h3>
+            </div>
+          </div>
+          <div id="pendingPaymentsList" class="pending-payments-list"></div>
+        </section>
       </section>
 
       <section class="workspace workspace-view" id="customersView" data-view-panel="customers" hidden>
@@ -780,6 +790,16 @@
           <label class="full-field">
             Payment instructions
             <textarea name="paymentInstructions" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
+          </label>
+          <label>
+            Payment follow-up reminder
+            <select name="paymentFollowUpHours">
+              <option value="0">Off</option>
+              <option value="24">24 hours</option>
+              <option value="48">48 hours</option>
+              <option value="72">72 hours</option>
+              <option value="168">1 week</option>
+            </select>
           </label>
           <label class="full-field">
             Day of Service Instructions

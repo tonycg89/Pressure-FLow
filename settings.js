@@ -141,6 +141,7 @@ function normalizeSettings(input, existing) {
     cashAppPayment: String(input.cashAppPayment || "").trim(),
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
+    paymentFollowUpHours: normalizePaymentFollowUpHours(input.paymentFollowUpHours ?? existing.paymentFollowUpHours),
     dayOfServiceInstructions: normalizeLongText(input.dayOfServiceInstructions ?? existing.dayOfServiceInstructions),
     onboardingCompleted: Boolean(input.onboardingCompleted ?? existing.onboardingCompleted),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
@@ -148,6 +149,12 @@ function normalizeSettings(input, existing) {
     customServiceTypes: normalizeStringList(input.customServiceTypes ?? existing.customServiceTypes),
     customPhotoSections: normalizeStringList(input.customPhotoSections ?? existing.customPhotoSections)
   };
+}
+
+function normalizePaymentFollowUpHours(value) {
+  const allowed = new Set([0, 24, 48, 72, 168]);
+  const hours = Number(value);
+  return allowed.has(hours) ? hours : 48;
 }
 
 function normalizePrivateSetting(input, existing, key) {

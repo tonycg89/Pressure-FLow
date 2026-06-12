@@ -78,6 +78,7 @@ function createWebhookHandlers({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = invoice.status || "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      recordPayment(job, "deposit", "Square", getDepositCents(job) / 100);
       await sendAdminTextAlertSafe(`PressureFlow: Square deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
 
@@ -85,6 +86,7 @@ function createWebhookHandlers({
       job.status = "Paid";
       job.squareFinalInvoiceStatus = invoice.status || "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      recordPayment(job, "final", "Square", getFinalBalanceCents(job) / 100);
       await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
@@ -137,11 +139,13 @@ function createWebhookHandlers({
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
+      recordPayment(job, "deposit", "Stripe", getDepositCents(job) / 100);
       await sendAdminTextAlertSafe(`PressureFlow: Card deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     } else {
       job.status = "Paid";
       job.squareFinalInvoiceStatus = "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
+      recordPayment(job, "final", "Stripe", getFinalBalanceCents(job) / 100);
       await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
@@ -163,6 +167,25 @@ function createWebhookHandlers({
     handleStripeWebhook,
     recordWebhookEvent
   };
+}
+
+function recordPayment(job, invoiceType, method, amount) {
+  const records = Array.isArray(job.paymentRecords) ? job.paymentRecords : [];
+  const existingIndex = records.findIndex((item) => item.invoiceType === invoiceType);
+  const record = {
+    id: `${invoiceType}-${Date.now()}`,
+    invoiceType,
+    source: "auto",
+    method,
+    reference: "",
+    amount: Number(amount || 0),
+    paidAt: new Date().toISOString(),
+    quickBooksSyncStatus: "pending"
+  };
+
+  job.paymentRecords = existingIndex >= 0
+    ? records.map((item, index) => index === existingIndex ? record : item)
+    : [...records, record];
 }
 
 function setInvoiceStatus(job, invoice) {

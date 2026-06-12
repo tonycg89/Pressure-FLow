@@ -113,6 +113,7 @@ const customerList = document.querySelector("#customerList");
 const customerDetail = document.querySelector("#customerDetail");
 const expenseList = document.querySelector("#expenseList");
 const expenseDetail = document.querySelector("#expenseDetail");
+const pendingPaymentsList = document.querySelector("#pendingPaymentsList");
 const statusFilter = document.querySelector("#statusFilter");
 const dashboardTimeframe = document.querySelector("#dashboardTimeframe");
 const dashboardBreakdown = document.querySelector("#dashboardBreakdown");
@@ -939,6 +940,7 @@ function fillSettingsForm() {
   settingsForm.elements.cashAppPayment.value = settings.cashAppPayment || "";
   settingsForm.elements.venmoPayment.value = settings.venmoPayment || "";
   settingsForm.elements.paymentInstructions.value = settings.paymentInstructions || "";
+  settingsForm.elements.paymentFollowUpHours.value = String(settings.paymentFollowUpHours ?? 48);
   settingsForm.elements.dayOfServiceInstructions.value = settings.dayOfServiceInstructions || "";
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
@@ -2382,6 +2384,7 @@ function buildStaticMapUrl(measurement) {
 function render() {
   renderDashboard();
   renderMetrics();
+  renderPendingPayments();
   renderJobList();
   renderJobDetail();
   renderCustomers();
@@ -2686,6 +2689,104 @@ function renderMetrics() {
   document.querySelector("#unpaidBalance").textContent = currency.format(unpaidBalance);
 }
 
+function renderPendingPayments() {
+  if (!pendingPaymentsList) return;
+
+  const pendingPayments = jobs
+    .flatMap(getPendingPaymentRows)
+    .sort((a, b) => new Date(a.sentAt || 0) - new Date(b.sentAt || 0));
+
+  if (!pendingPayments.length) {
+    pendingPaymentsList.innerHTML = '<p class="empty-state">No invoices are waiting on payment confirmation.</p>';
+    return;
+  }
+
+  pendingPaymentsList.innerHTML = pendingPayments.map((payment) => `
+    <article class="pending-payment-row ${payment.isOverdue ? "overdue" : ""}">
+      <div>
+        <strong>${escapeHtml(payment.job.customerName)}</strong>
+        <p>${escapeHtml(payment.label)} ${escapeHtml(payment.invoiceNumber)} | ${currency.format(payment.amount)} | ${payment.daysSinceSent} day${payment.daysSinceSent === 1 ? "" : "s"}</p>
+      </div>
+      ${payment.isOverdue ? '<span class="status-pill overdue-pill">Overdue</span>' : ""}
+      <button class="secondary-small-button" type="button" data-open-payment-confirmation="${escapeHtml(payment.job.id)}" data-invoice-type="${escapeHtml(payment.invoiceType)}">Mark as paid</button>
+      <form class="payment-confirmation-form" data-payment-confirmation="${escapeHtml(payment.job.id)}|${escapeHtml(payment.invoiceType)}" hidden>
+        <select name="paymentMethod" aria-label="Payment method">
+          <option value="Venmo">Venmo</option>
+          <option value="Zelle">Zelle</option>
+          <option value="Cash App">Cash App</option>
+          <option value="Cash">Cash</option>
+          <option value="Check">Check</option>
+          <option value="Other">Other</option>
+        </select>
+        <input name="paymentReference" placeholder="Reference note">
+        <button class="primary-button" type="submit">Confirm</button>
+      </form>
+    </article>
+  `).join("");
+
+  pendingPaymentsList.querySelectorAll("[data-open-payment-confirmation]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = `${button.dataset.openPaymentConfirmation}|${button.dataset.invoiceType}`;
+      const form = pendingPaymentsList.querySelector(`[data-payment-confirmation="${CSS.escape(key)}"]`);
+      if (form) form.hidden = !form.hidden;
+    });
+  });
+
+  pendingPaymentsList.querySelectorAll("[data-payment-confirmation]").forEach((form) => {
+    form.addEventListener("submit", confirmPendingPayment);
+  });
+}
+
+function getPendingPaymentRows(job) {
+  const rows = [];
+  if (job.status === "Deposit Sent") {
+    rows.push(buildPendingPaymentRow(job, "deposit"));
+  }
+  if (job.status === "Final Invoice Sent") {
+    rows.push(buildPendingPaymentRow(job, "final"));
+  }
+  return rows.filter(Boolean);
+}
+
+function buildPendingPaymentRow(job, invoiceType) {
+  const isDeposit = invoiceType === "deposit";
+  const sentAt = isDeposit
+    ? job.squareDepositInvoiceSentAt || job.updatedAt || job.createdAt
+    : job.squareFinalInvoiceSentAt || job.completionNoticeSentAt || job.updatedAt || job.createdAt;
+  const followUpHours = Number(settings.paymentFollowUpHours ?? 48);
+  return {
+    job,
+    invoiceType,
+    sentAt,
+    daysSinceSent: getElapsedDays(sentAt),
+    isOverdue: followUpHours > 0 && getElapsedHours(sentAt) >= followUpHours,
+    label: isDeposit ? "Deposit" : "Final",
+    amount: isDeposit ? getDeposit(job) : getFinalBalance(job),
+    invoiceNumber: getPressureFlowInvoiceNumber(job, invoiceType)
+  };
+}
+
+function getElapsedHours(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - date.getTime()) / 36e5));
+}
+
+function getElapsedDays(value) {
+  return Math.floor(getElapsedHours(value) / 24);
+}
+
+async function confirmPendingPayment(event) {
+  event.preventDefault();
+  const [jobId, invoiceType] = event.currentTarget.dataset.paymentConfirmation.split("|");
+  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+  const action = invoiceType === "deposit" ? "mark-deposit-paid" : "mark-paid";
+  await runAction(jobId, action, {
+    paymentMethod: payload.paymentMethod,
+    paymentReference: payload.paymentReference
+  });
+}
+
 function renderJobList() {
   const selectedStatus = statusFilter.value;
   jobList.innerHTML = "";
@@ -2798,6 +2899,8 @@ function renderJobDetail() {
       <div class="detail-row"><span>PressureFlow contract</span><strong>${renderContractLink(job)}</strong></div>
     </section>
 
+    ${renderPaymentHistory(job)}
+
     <section class="detail-section">
       <h4>Workflow</h4>
       <div class="timeline">
@@ -2827,6 +2930,31 @@ function renderJobDetail() {
     button.addEventListener("click", () => runAction(job.id, button.dataset.action));
   });
   attachPhotoViewerHandlers(jobDetail);
+}
+
+function renderPaymentHistory(job) {
+  const records = Array.isArray(job.paymentRecords) ? job.paymentRecords : [];
+  if (!records.length) return "";
+
+  return `
+    <section class="detail-section">
+      <h4>Payment history</h4>
+      ${records.map((record) => `
+        <div class="detail-row">
+          <span>${escapeHtml(record.invoiceType === "deposit" ? "Deposit" : "Final invoice")}</span>
+          <strong>${escapeHtml(formatPaymentRecord(record))}</strong>
+        </div>
+      `).join("")}
+    </section>
+  `;
+}
+
+function formatPaymentRecord(record) {
+  const source = record.source === "manual" ? "marked paid" : "paid";
+  const method = record.method ? ` · ${record.method}` : "";
+  const amount = ` · ${currency.format(record.amount || 0)}`;
+  const reference = record.reference ? ` · ref: ${record.reference}` : "";
+  return `${source}${method}${amount}${reference}`;
 }
 
 function renderCustomers() {
@@ -3124,7 +3252,7 @@ function getFallbackAction(job) {
   return actions[job.status] ?? null;
 }
 
-async function runAction(jobId, action) {
+async function runAction(jobId, action, actionPayload = {}) {
   if (action === "delete-job") {
     await deleteJob(jobId);
     return;
@@ -3145,7 +3273,7 @@ async function runAction(jobId, action) {
     return;
   }
 
-  const payload = {};
+  const payload = { ...actionPayload };
 
   if (action === "schedule") {
     const schedule = await openScheduleDialog();
