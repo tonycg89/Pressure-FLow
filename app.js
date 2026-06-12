@@ -2,6 +2,7 @@ let statuses = [];
 let jobs = [];
 let customers = [];
 let expenses = [];
+let followUpTasks = [];
 let selectedJobId = null;
 let selectedCustomerId = null;
 let selectedExpenseId = null;
@@ -194,6 +195,10 @@ const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
 const completionDialog = document.querySelector("#completionDialog");
 const completionForm = document.querySelector("#completionForm");
+const followUpDialog = document.querySelector("#followUpDialog");
+const followUpForm = document.querySelector("#followUpForm");
+const followUpPreviewSubject = document.querySelector("#followUpPreviewSubject");
+const followUpPreviewBody = document.querySelector("#followUpPreviewBody");
 const addLineItemButton = document.querySelector("#addLineItemButton");
 const customServiceButton = document.querySelector("#customServiceButton");
 const customServiceDialog = document.querySelector("#customServiceDialog");
@@ -234,6 +239,7 @@ const receiptPhotoInput = document.querySelector("#receiptPhotoInput");
 const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
+let pendingFollowUpJobId = "";
 let currentMeasurement = {};
 let activeMeasurementAreaId = "";
 let currentServiceAreaPhotos = [];
@@ -321,11 +327,13 @@ async function init() {
   });
   scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
+  followUpForm?.addEventListener("submit", submitFollowUpDialog);
   await loadSession();
   await loadSettings();
   await Promise.all([
     loadCustomers(),
     loadExpenses(),
+    loadFollowUpTasks(),
     loadJobs()
   ]);
 }
@@ -750,6 +758,19 @@ async function loadExpenses() {
   }
 }
 
+async function loadFollowUpTasks() {
+  try {
+    const response = await fetch("/api/follow-up-tasks");
+    if (!response.ok) {
+      throw new Error("Unable to load follow-up tasks.");
+    }
+    const data = await response.json();
+    followUpTasks = data.tasks || [];
+  } catch {
+    followUpTasks = [];
+  }
+}
+
 function renderStatusOptions() {
   const currentValue = statusFilter.value || "all";
   statusFilter.innerHTML = '<option value="all">All statuses</option>';
@@ -941,6 +962,10 @@ function fillSettingsForm() {
   settingsForm.elements.venmoPayment.value = settings.venmoPayment || "";
   settingsForm.elements.paymentInstructions.value = settings.paymentInstructions || "";
   settingsForm.elements.paymentFollowUpHours.value = String(settings.paymentFollowUpHours ?? 48);
+  settingsForm.elements.estimateFollowUpEnabled.value = String(settings.estimateFollowUpEnabled !== false);
+  settingsForm.elements.estimateFollowUpDelayHours.value = String(settings.estimateFollowUpDelayHours ?? 24);
+  settingsForm.elements.estimateFollowUpSubject.value = settings.estimateFollowUpSubject || "Following up on your estimate - {jobTitle} at {address}";
+  settingsForm.elements.estimateFollowUpBody.value = settings.estimateFollowUpBody || getDefaultEstimateFollowUpBody();
   settingsForm.elements.dayOfServiceInstructions.value = settings.dayOfServiceInstructions || "";
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
@@ -1006,6 +1031,19 @@ function renderIntegrationStatuses() {
       ? "QuickBooks profile saved for this account."
       : "QuickBooks is not connected yet.";
   }
+}
+
+function getDefaultEstimateFollowUpBody() {
+  return [
+    "Hi {firstName},",
+    "",
+    "Just wanted to follow up on the estimate we sent for {jobTitle} at {address}.",
+    "",
+    "Your estimate of {estimateTotal} is still available for review. Let us know if you have any questions - we're happy to walk you through it.",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n");
 }
 
 async function saveSettings(event) {
@@ -2913,7 +2951,7 @@ function renderJobDetail() {
       <div class="action-list">
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}">${nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}">${fallbackAction.label}</button>` : ""}
-        <button class="action-button secondary" type="button" data-action="reminder">Send Follow-up Email</button>
+        ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job">Delete Job</button>
       </div>
     </section>
@@ -2927,9 +2965,94 @@ function renderJobDetail() {
   `;
 
   jobDetail.querySelectorAll("[data-action]").forEach((button) => {
-    button.addEventListener("click", () => runAction(job.id, button.dataset.action));
+    button.addEventListener("click", () => runAction(job.id, button.dataset.action, readActionPayload(button)));
+  });
+  jobDetail.querySelector("[data-preview-follow-up]")?.addEventListener("click", () => openFollowUpDialog(job));
+  jobDetail.querySelector("[data-suppress-follow-up]")?.addEventListener("change", (event) => {
+    runAction(job.id, "suppress-estimate-follow-up", { suppressed: event.target.checked });
   });
   attachPhotoViewerHandlers(jobDetail);
+}
+
+function renderEstimateFollowUpControls(job) {
+  if (statuses.indexOf(job.status) < statuses.indexOf("Estimate Sent") || job.estimateApprovedAt || job.estimateRejectedAt) {
+    return "";
+  }
+
+  const task = getLatestFollowUpTask(job.id);
+  const suppressed = Boolean(job.suppressEstimateFollowUp);
+  return `
+    <div class="follow-up-control">
+      <label class="inline-toggle">
+        <input type="checkbox" data-suppress-follow-up ${suppressed ? "checked" : ""}>
+        <span>Suppress follow-up</span>
+      </label>
+      <button class="action-button secondary" type="button" data-preview-follow-up ${suppressed || job.status !== "Estimate Sent" ? "disabled" : ""}>Send follow-up email</button>
+      <p>${escapeHtml(formatFollowUpStatus(task, suppressed))}</p>
+      ${task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
+    </div>
+  `;
+}
+
+function getLatestFollowUpTask(jobId) {
+  return followUpTasks
+    .filter((task) => task.jobId === jobId && task.type === "estimate_followup")
+    .sort((a, b) => new Date(b.sentAt || b.updatedAt || b.scheduledFor || 0) - new Date(a.sentAt || a.updatedAt || a.scheduledFor || 0))[0] || null;
+}
+
+function formatFollowUpStatus(task, suppressed) {
+  if (suppressed) return "Follow-up suppressed for this job.";
+  if (!task) return "No follow-up sent yet.";
+  if (task.status === "pending") return `Auto follow-up scheduled for ${formatNotificationDate(task.scheduledFor)}.`;
+  if (task.status === "sent") return `Follow-up sent ${formatNotificationDate(task.sentAt)} - ${task.source === "manual" ? "manual" : "auto"}.`;
+  if (task.status === "cancelled") return `Follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
+  return "No follow-up sent yet.";
+}
+
+function readActionPayload(button) {
+  if (button.dataset.action !== "cancel-estimate-follow-up") {
+    return {};
+  }
+  return {};
+}
+
+function openFollowUpDialog(job) {
+  pendingFollowUpJobId = job.id;
+  const subject = renderFollowUpTemplate(settings.estimateFollowUpSubject || "Following up on your estimate - {jobTitle} at {address}", job);
+  const body = renderFollowUpTemplate(settings.estimateFollowUpBody || getDefaultEstimateFollowUpBody(), job);
+  followUpPreviewSubject.textContent = subject;
+  followUpPreviewBody.innerHTML = body.split("\n\n").map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("");
+  followUpDialog.showModal();
+}
+
+async function submitFollowUpDialog(event) {
+  if (event.submitter?.value === "cancel") {
+    pendingFollowUpJobId = "";
+    return;
+  }
+
+  event.preventDefault();
+  if (!pendingFollowUpJobId) return;
+
+  await runAction(pendingFollowUpJobId, "send-estimate-follow-up");
+  pendingFollowUpJobId = "";
+  followUpDialog.close();
+}
+
+function renderFollowUpTemplate(template, job) {
+  const nameParts = String(job.customerName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || job.customerName || "there";
+  const lastName = nameParts.length > 1 ? nameParts.at(-1) : "";
+  const values = {
+    firstName,
+    lastName,
+    jobTitle: job.serviceType || "your service",
+    address: job.address || "",
+    estimateTotal: currency.format(job.estimate || 0),
+    businessName: settings.businessName || "Your Company",
+    approvalLink: job.estimateApprovalUrl || ""
+  };
+  return String(template || "").replace(/\{(firstName|lastName|jobTitle|address|estimateTotal|businessName|approvalLink)\}/g, (_, key) => values[key] || "");
 }
 
 function renderPaymentHistory(job) {
@@ -2951,9 +3074,9 @@ function renderPaymentHistory(job) {
 
 function formatPaymentRecord(record) {
   const source = record.source === "manual" ? "marked paid" : "paid";
-  const method = record.method ? ` · ${record.method}` : "";
-  const amount = ` · ${currency.format(record.amount || 0)}`;
-  const reference = record.reference ? ` · ref: ${record.reference}` : "";
+  const method = record.method ? ` - ${record.method}` : "";
+  const amount = ` - ${currency.format(record.amount || 0)}`;
+  const reference = record.reference ? ` - ref: ${record.reference}` : "";
   return `${source}${method}${amount}${reference}`;
 }
 
@@ -3302,6 +3425,7 @@ async function runAction(jobId, action, actionPayload = {}) {
     if (action === "complete") {
       alert(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);
     }
+    await loadFollowUpTasks();
     await loadJobs();
     await loadCustomers();
   } catch (error) {

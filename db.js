@@ -8,6 +8,7 @@ const DATA_DIR = process.env.PRESSUREFLOW_DATA_DIR || path.join(ROOT, "data");
 const JOBS_FILE = path.join(DATA_DIR, "jobs.json");
 const CUSTOMERS_FILE = path.join(DATA_DIR, "customers.json");
 const EXPENSES_FILE = path.join(DATA_DIR, "expenses.json");
+const FOLLOW_UP_TASKS_FILE = path.join(DATA_DIR, "follow-up-tasks.json");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.local.json");
@@ -55,6 +56,19 @@ const defaultSettings = {
   venmoPayment: "",
   paymentInstructions: "",
   paymentFollowUpHours: 48,
+  estimateFollowUpEnabled: true,
+  estimateFollowUpDelayHours: 24,
+  estimateFollowUpSubject: "Following up on your estimate - {jobTitle} at {address}",
+  estimateFollowUpBody: [
+    "Hi {firstName},",
+    "",
+    "Just wanted to follow up on the estimate we sent for {jobTitle} at {address}.",
+    "",
+    "Your estimate of {estimateTotal} is still available for review. Let us know if you have any questions - we're happy to walk you through it.",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n"),
   dayOfServiceInstructions: "",
   onboardingCompleted: false,
   customTemplates: [],
@@ -139,6 +153,10 @@ async function ensureDataFile() {
 
   if (!existsSync(EXPENSES_FILE)) {
     await writeJson(EXPENSES_FILE, []);
+  }
+
+  if (!existsSync(FOLLOW_UP_TASKS_FILE)) {
+    await writeJson(FOLLOW_UP_TASKS_FILE, []);
   }
 
   if (!existsSync(USERS_FILE)) {
@@ -322,6 +340,52 @@ async function writeExpenses(expenses, options = {}) {
   await writeJson(EXPENSES_FILE, expenses);
 }
 
+async function readFollowUpTasks(options = {}) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const result = options.accountId
+      ? await getPool().query("select * from follow_up_tasks where account_id = $1 order by scheduled_for asc", [options.accountId])
+      : await getPool().query("select * from follow_up_tasks order by scheduled_for asc");
+    return result.rows.map(followUpTaskFromRow);
+  }
+
+  return readJson(FOLLOW_UP_TASKS_FILE);
+}
+
+async function writeFollowUpTasks(tasks, options = {}) {
+  if (usePostgres) {
+    await ensurePostgresSchema();
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      if (options.accountId) {
+        await client.query("delete from follow_up_tasks where account_id = $1", [options.accountId]);
+      } else {
+        await client.query("delete from follow_up_tasks");
+      }
+      for (const task of tasks) {
+        await upsertFollowUpTask(client, task);
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
+
+  if (options.accountId) {
+    const allTasks = await readJson(FOLLOW_UP_TASKS_FILE);
+    const otherTasks = allTasks.filter((task) => (task.accountId || "owner") !== options.accountId);
+    await writeJson(FOLLOW_UP_TASKS_FILE, [...otherTasks, ...tasks.map((task) => ({ ...task, accountId: options.accountId }))]);
+    return;
+  }
+
+  await writeJson(FOLLOW_UP_TASKS_FILE, tasks);
+}
+
 async function readUsers() {
   if (usePostgres) {
     await ensurePostgresSchema();
@@ -471,6 +535,10 @@ function applyRuntimeSettings(settings = {}) {
     venmoPayment: rowSettings.venmoPayment || "",
     paymentInstructions: rowSettings.paymentInstructions || "",
     paymentFollowUpHours: Number(rowSettings.paymentFollowUpHours ?? 48),
+    estimateFollowUpEnabled: rowSettings.estimateFollowUpEnabled !== false,
+    estimateFollowUpDelayHours: Number(rowSettings.estimateFollowUpDelayHours ?? 24),
+    estimateFollowUpSubject: rowSettings.estimateFollowUpSubject || defaultSettings.estimateFollowUpSubject,
+    estimateFollowUpBody: rowSettings.estimateFollowUpBody || defaultSettings.estimateFollowUpBody,
     dayOfServiceInstructions: rowSettings.dayOfServiceInstructions || "",
     serviceIndustry: rowSettings.serviceIndustry || "",
     defaultDepositEnabled: rowSettings.defaultDepositEnabled !== false,
@@ -522,6 +590,10 @@ async function writeSettings(settings) {
         venmo_payment,
         payment_instructions,
         payment_follow_up_hours,
+        estimate_follow_up_enabled,
+        estimate_follow_up_delay_hours,
+        estimate_follow_up_subject,
+        estimate_follow_up_body,
         day_of_service_instructions,
         onboarding_completed,
         custom_templates,
@@ -529,7 +601,7 @@ async function writeSettings(settings) {
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36::jsonb, $37::jsonb, $38::jsonb, $39::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40::jsonb, $41::jsonb, $42::jsonb, $43::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -564,6 +636,10 @@ async function writeSettings(settings) {
         venmo_payment = excluded.venmo_payment,
         payment_instructions = excluded.payment_instructions,
         payment_follow_up_hours = excluded.payment_follow_up_hours,
+        estimate_follow_up_enabled = excluded.estimate_follow_up_enabled,
+        estimate_follow_up_delay_hours = excluded.estimate_follow_up_delay_hours,
+        estimate_follow_up_subject = excluded.estimate_follow_up_subject,
+        estimate_follow_up_body = excluded.estimate_follow_up_body,
         day_of_service_instructions = excluded.day_of_service_instructions,
         onboarding_completed = excluded.onboarding_completed,
         custom_templates = excluded.custom_templates,
@@ -605,6 +681,10 @@ async function writeSettings(settings) {
         settings.venmoPayment || "",
         settings.paymentInstructions || "",
         Number(settings.paymentFollowUpHours ?? 48),
+        settings.estimateFollowUpEnabled !== false,
+        Number(settings.estimateFollowUpDelayHours ?? 24),
+        settings.estimateFollowUpSubject || defaultSettings.estimateFollowUpSubject,
+        settings.estimateFollowUpBody || defaultSettings.estimateFollowUpBody,
         settings.dayOfServiceInstructions || "",
         Boolean(settings.onboardingCompleted),
         JSON.stringify(settings.customTemplates || []),
@@ -786,6 +866,10 @@ async function ensurePostgresSchema() {
     venmo_payment text not null default '',
     payment_instructions text not null default '',
     payment_follow_up_hours integer not null default 48,
+    estimate_follow_up_enabled boolean not null default true,
+    estimate_follow_up_delay_hours integer not null default 24,
+    estimate_follow_up_subject text not null default '',
+    estimate_follow_up_body text not null default '',
     day_of_service_instructions text not null default '',
     onboarding_completed boolean not null default false,
     custom_templates jsonb not null default '[]'::jsonb,
@@ -818,6 +902,10 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists venmo_payment text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists payment_follow_up_hours integer not null default 48");
+  await getPool().query("alter table app_settings add column if not exists estimate_follow_up_enabled boolean not null default true");
+  await getPool().query("alter table app_settings add column if not exists estimate_follow_up_delay_hours integer not null default 24");
+  await getPool().query("alter table app_settings add column if not exists estimate_follow_up_subject text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists estimate_follow_up_body text not null default ''");
   await getPool().query("alter table app_settings add column if not exists day_of_service_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists onboarding_completed boolean not null default false");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
@@ -873,6 +961,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists estimate_rejection_note text not null default ''");
   await getPool().query("alter table jobs add column if not exists scheduled_event_at timestamptz");
   await getPool().query("alter table jobs add column if not exists payment_records jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table jobs add column if not exists suppress_estimate_follow_up boolean not null default false");
   await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
@@ -885,6 +974,21 @@ async function ensurePostgresSchema() {
   await getPool().query("create index if not exists idx_expenses_account_expense_date on expenses(account_id, expense_date desc, created_at desc)");
   await getPool().query("create index if not exists idx_file_assets_account_owner on file_assets(account_id, owner_type, owner_id)");
   await getPool().query("create index if not exists idx_file_assets_content_hash on file_assets(content_hash)");
+  await getPool().query(`create table if not exists follow_up_tasks (
+    id text primary key,
+    account_id text not null default 'owner',
+    job_id text not null,
+    type text not null default 'estimate_followup',
+    source text not null default 'auto',
+    scheduled_for timestamptz not null,
+    status text not null default 'pending',
+    cancelled_reason text not null default '',
+    sent_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await getPool().query("alter table follow_up_tasks add column if not exists source text not null default 'auto'");
+  await getPool().query("create index if not exists idx_follow_up_tasks_account_status_scheduled on follow_up_tasks(account_id, status, scheduled_for)");
   postgresSchemaReady = true;
 }
 
@@ -1157,8 +1261,9 @@ async function upsertJob(client, job) {
       state = $24,
       zip = $25,
       account_id = $26,
-      payment_records = $27::jsonb
-    where id = $28`,
+      payment_records = $27::jsonb,
+      suppress_estimate_follow_up = $28
+    where id = $29`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -1187,6 +1292,7 @@ async function upsertJob(client, job) {
       job.zip || "",
       job.accountId || "owner",
       JSON.stringify(job.paymentRecords || []),
+      Boolean(job.suppressEstimateFollowUp),
       job.id
     ]
   );
@@ -1252,6 +1358,7 @@ function jobFromRow(row) {
     squareFinalInvoiceStatus: row.square_final_invoice_status || "",
     squareFinalPaidAt: row.square_final_paid_at?.toISOString?.() || "",
     paymentRecords: Array.isArray(row.payment_records) ? row.payment_records : [],
+    suppressEstimateFollowUp: Boolean(row.suppress_estimate_follow_up),
     googleCalendarEventId: row.google_calendar_event_id || "",
     googleCalendarEventUrl: row.google_calendar_event_url || "",
     completionNoticeSentAt: row.completion_notice_sent_at?.toISOString?.() || "",
@@ -1379,6 +1486,10 @@ function settingsFromRow(row) {
     venmoPayment: row.venmo_payment || "",
     paymentInstructions: row.payment_instructions || "",
     paymentFollowUpHours: Number(row.payment_follow_up_hours ?? 48),
+    estimateFollowUpEnabled: row.estimate_follow_up_enabled !== false,
+    estimateFollowUpDelayHours: Number(row.estimate_follow_up_delay_hours ?? 24),
+    estimateFollowUpSubject: row.estimate_follow_up_subject || defaultSettings.estimateFollowUpSubject,
+    estimateFollowUpBody: row.estimate_follow_up_body || defaultSettings.estimateFollowUpBody,
     dayOfServiceInstructions: row.day_of_service_instructions || "",
     onboardingCompleted: Boolean(row.onboarding_completed),
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
@@ -1431,6 +1542,53 @@ function expenseFromRow(row) {
   };
 }
 
+async function upsertFollowUpTask(client, task) {
+  await client.query(
+    `insert into follow_up_tasks (
+      id, account_id, job_id, type, source, scheduled_for, status, cancelled_reason, sent_at, created_at, updated_at
+    ) values ($1, $2, $3, $4, $5, $6::timestamptz, $7, $8, nullif($9, '')::timestamptz, $10::timestamptz, $11::timestamptz)
+    on conflict (id) do update set
+      account_id = excluded.account_id,
+      job_id = excluded.job_id,
+      type = excluded.type,
+      source = excluded.source,
+      scheduled_for = excluded.scheduled_for,
+      status = excluded.status,
+      cancelled_reason = excluded.cancelled_reason,
+      sent_at = excluded.sent_at,
+      updated_at = excluded.updated_at`,
+    [
+      task.id,
+      task.accountId || "owner",
+      task.jobId,
+      task.type || "estimate_followup",
+      task.source || "auto",
+      task.scheduledFor,
+      task.status || "pending",
+      task.cancelledReason || "",
+      task.sentAt || "",
+      task.createdAt || new Date().toISOString(),
+      task.updatedAt || new Date().toISOString()
+    ]
+  );
+}
+
+function followUpTaskFromRow(row) {
+  return {
+    id: row.id,
+    accountId: row.account_id || "owner",
+    jobId: row.job_id || "",
+    type: row.type || "estimate_followup",
+    source: row.source || "auto",
+    scheduledFor: row.scheduled_for?.toISOString?.() || "",
+    status: row.status || "pending",
+    cancelledReason: row.cancelled_reason || "",
+    sentAt: row.sent_at?.toISOString?.() || "",
+    createdAt: row.created_at?.toISOString?.() || "",
+    updatedAt: row.updated_at?.toISOString?.() || ""
+  };
+}
+
 function toLocalInputValue(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -1452,6 +1610,8 @@ module.exports = {
   writeCustomers,
   readExpenses,
   writeExpenses,
+  readFollowUpTasks,
+  writeFollowUpTasks,
   readAccounts,
   writeAccounts,
   readUsers,

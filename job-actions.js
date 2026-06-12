@@ -19,20 +19,31 @@ const { getNextStatus, normalizeJobPhotos } = require("./records");
 const { formatScheduledWindow } = require("./scheduling");
 
 function createJobActionHandler({
+  cancelManualFollowUp = async () => {},
+  cancelPendingFollowUp = async () => {},
   createGoogleCalendarEvent,
   createPressureFlowInvoice,
   readSettings,
   randomToken,
+  scheduleEstimateFollowUp = async () => {},
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
   sendContractEmail,
   sendEstimateEmail,
+  sendManualEstimateFollowUp = async () => {},
   sendScheduleConfirmationEmail,
+  setSuppressEstimateFollowUp = async (job, suppressed) => {
+    job.suppressEstimateFollowUp = Boolean(suppressed);
+  },
   writeSettings
 }) {
   async function applyAction(job, action, input) {
     if (action === "advance") {
+      const previousStatus = job.status;
       job.status = getNextStatus(job.status);
+      if (previousStatus === "Estimate Sent" && job.status !== "Estimate Sent") {
+        await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
+      }
     }
 
     if (action === "schedule") {
@@ -58,6 +69,7 @@ function createJobActionHandler({
     if (action === "send-square-estimate") {
       if (job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl) {
         job.status = job.status || "Estimate Sent";
+        await scheduleEstimateFollowUp(job, await readSettings());
         return;
       }
 
@@ -78,19 +90,25 @@ function createJobActionHandler({
       job.estimateRejectionNote = "";
       job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
       job.squareEstimateUrl = job.estimateApprovalUrl;
+      await scheduleEstimateFollowUp(job, settings);
     }
 
     if (action === "mark-estimate-signed") {
       job.status = "Estimate Signed";
+      await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
     }
 
     if (action === "send-contract") {
       if (job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
-        job.status = job.status || "Contract Sent";
+        if (job.status === "Estimate Sent") {
+          await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
+        }
+        job.status = "Contract Sent";
         return;
       }
 
       const settings = await readSettings();
+      await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
       job.status = "Contract Sent";
       job.contractApprovalToken = job.contractApprovalToken || randomToken();
       job.contractApprovalUrl = buildContractApprovalUrl(input._baseUrl, job);
@@ -99,6 +117,19 @@ function createJobActionHandler({
       job.contractSentAt = new Date().toISOString();
       job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
       job.squareContractUrl = job.contractApprovalUrl;
+    }
+
+    if (action === "send-estimate-follow-up") {
+      const settings = await readSettings();
+      await sendManualEstimateFollowUp(job, settings);
+    }
+
+    if (action === "cancel-estimate-follow-up") {
+      await cancelManualFollowUp(job);
+    }
+
+    if (action === "suppress-estimate-follow-up") {
+      await setSuppressEstimateFollowUp(job, input.suppressed);
     }
 
     if (action === "mark-contract-signed") {

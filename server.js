@@ -10,6 +10,8 @@ const {
   writeCustomers: writeAllCustomers,
   readExpenses: readAllExpenses,
   writeExpenses: writeAllExpenses,
+  readFollowUpTasks,
+  writeFollowUpTasks,
   readAccounts,
   writeAccounts,
   readUsers,
@@ -65,6 +67,7 @@ const { didPricingChange, resetJobForPricingChange, updateJob } = require("./job
 const { createJobActionHandler } = require("./job-actions");
 const { createWorkspaceAccess } = require("./workspace");
 const { createPaymentHandlers } = require("./payment-workflows");
+const { createFollowUpHandlers } = require("./follow-ups");
 const { createEmailDelivery } = require("./email-delivery");
 const { createExportTemplateRoutes } = require("./export-template-routes");
 const { createSettingsUserRoutes } = require("./settings-user-routes");
@@ -149,9 +152,29 @@ const {
   sendCompletionCertificateEmailSafe,
   sendContractEmail,
   sendEstimateEmail,
+  sendEstimateFollowUpEmail,
   sendPressureFlowInvoiceEmail,
   sendScheduleConfirmationEmail
 } = createEmailDelivery();
+
+const {
+  cancelManualFollowUp,
+  cancelPendingFollowUp,
+  processDueFollowUps,
+  scheduleEstimateFollowUp,
+  sendManualEstimateFollowUp,
+  setSuppressEstimateFollowUp
+} = createFollowUpHandlers({
+  itemWorkspaceId,
+  readAllJobs,
+  readFollowUpTasks,
+  readJobs,
+  readSettingsForJob,
+  sendEstimateFollowUpEmail,
+  writeAllJobs,
+  writeFollowUpTasks,
+  writeJobs
+});
 
 const {
   cancelStoredInvoiceIfPossible,
@@ -175,7 +198,9 @@ const {
   rejectPublicEstimate,
   signPublicContract
 } = createPublicWorkflowHandlers({
+  cancelPendingFollowUp,
   createPressureFlowInvoice,
+  itemWorkspaceId,
   readJobs,
   readSettingsForJob,
   sendAdminTextAlertSafe,
@@ -212,15 +237,20 @@ const {
 });
 
 const { applyAction } = createJobActionHandler({
+  cancelManualFollowUp,
+  cancelPendingFollowUp,
   createGoogleCalendarEvent,
   createPressureFlowInvoice,
   readSettings,
   randomToken: () => crypto.randomBytes(24).toString("hex"),
+  scheduleEstimateFollowUp,
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
   sendContractEmail,
   sendEstimateEmail,
+  sendManualEstimateFollowUp,
   sendScheduleConfirmationEmail,
+  setSuppressEstimateFollowUp,
   writeSettings
 });
 
@@ -275,10 +305,12 @@ const { handleSettingsUserRoutes } = createSettingsUserRoutes({
 });
 
 const { handleRecordRoutes } = createRecordRoutes({
+  cancelPendingFollowUp,
   cancelStoredInvoiceIfPossible,
   deleteCustomerMeasurementArea,
   didPricingChange,
   findSavedMeasurements,
+  itemWorkspaceId,
   normalizeCustomer,
   normalizeExpense,
   normalizeJob,
@@ -474,6 +506,12 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/follow-up-tasks") {
+    const tasks = await readFollowUpTasks({ accountId: getWorkspaceId() });
+    sendJson(response, 200, { tasks });
+    return;
+  }
+
   if (request.method === "POST" && url.pathname === "/webhooks/square") {
     const rawBody = await readRawRequestBody(request);
     if (!(await verifySquareWebhookSignature(request, rawBody))) {
@@ -638,6 +676,15 @@ ensureDataFile()
     server.listen(PORT, () => {
       console.log(`PressureFlow running at http://localhost:${PORT}`);
     });
+    processDueFollowUps().catch((error) => {
+      console.warn(`Unable to process follow-up tasks on startup: ${error.message}`);
+    });
+    const followUpInterval = setInterval(() => {
+      processDueFollowUps().catch((error) => {
+        console.warn(`Unable to process follow-up tasks: ${error.message}`);
+      });
+    }, 15 * 60 * 1000);
+    followUpInterval.unref?.();
   })
   .catch((error) => {
     console.error(error);

@@ -58,7 +58,9 @@ function formatEstimateRejectionReason(reason) {
 }
 
 function createPublicWorkflowHandlers({
+  cancelPendingFollowUp = async () => {},
   createPressureFlowInvoice,
+  itemWorkspaceId = (job) => job.accountId || "owner",
   readJobs,
   readSettingsForJob,
   sendAdminTextAlertSafe,
@@ -86,6 +88,7 @@ function createPublicWorkflowHandlers({
 
       const settings = await readSettingsForJob(job);
       if (job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
+        await cancelPendingFollowUp(job.id, "approved", itemWorkspaceId(job));
         return job;
       }
 
@@ -102,6 +105,7 @@ function createPublicWorkflowHandlers({
       job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
       job.squareContractUrl = job.contractApprovalUrl;
       job.updatedAt = new Date().toISOString();
+      await cancelPendingFollowUp(job.id, "approved", itemWorkspaceId(job));
       await writeJobs(jobs);
       await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
       return job;
@@ -120,6 +124,7 @@ function createPublicWorkflowHandlers({
     job.estimateRejectionReason = normalizeEstimateRejectionReason(reason);
     job.estimateRejectionNote = String(note || "").trim().slice(0, 500);
     job.updatedAt = new Date().toISOString();
+    await cancelPendingFollowUp(job.id, "declined", itemWorkspaceId(job));
     await writeJobs(jobs);
     const reasonText = job.estimateRejectionReason ? formatEstimateRejectionReason(job.estimateRejectionReason) : "No reason given";
     await sendAdminTextAlertSafe(`PressureFlow: Estimate rejected by ${formatAlertCustomer(job)}. Reason: ${reasonText}.`);

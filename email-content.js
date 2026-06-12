@@ -71,6 +71,33 @@ function buildEstimateEmailMessage(job, settings) {
   };
 }
 
+function buildEstimateFollowUpEmailMessage(job, settings) {
+  const subjectTemplate = settings.estimateFollowUpSubject || "Following up on your estimate - {jobTitle} at {address}";
+  const bodyTemplate = settings.estimateFollowUpBody || [
+    "Hi {firstName},",
+    "",
+    "Just wanted to follow up on the estimate we sent for {jobTitle} at {address}.",
+    "",
+    "Your estimate of {estimateTotal} is still available for review. Let us know if you have any questions - we're happy to walk you through it.",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n");
+  const subject = renderEstimateFollowUpTemplate(subjectTemplate, job, settings);
+  const textBody = [
+    renderEstimateFollowUpTemplate(bodyTemplate, job, settings),
+    "",
+    `Review and approve estimate: ${job.estimateApprovalUrl}`
+  ].join("\n");
+
+  return {
+    to: job.email,
+    subject,
+    textBody,
+    htmlBody: renderEstimateFollowUpEmailHtml(job, settings, bodyTemplate)
+  };
+}
+
 function buildContractEmailMessage(job, settings) {
   const businessName = getBusinessName(settings);
   return {
@@ -305,6 +332,38 @@ function renderContractEmailHtml(job, settings) {
   `;
 }
 
+function renderEstimateFollowUpEmailHtml(job, settings, bodyTemplate) {
+  const body = renderEstimateFollowUpTemplate(bodyTemplate, job, settings);
+  return `
+    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
+    ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
+    ${body.split("\n\n").map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")}
+    <p>
+      <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+        Review and approve estimate
+      </a>
+    </p>
+    <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.estimateApprovalUrl)}</p>
+    </div>
+  `;
+}
+
+function renderEstimateFollowUpTemplate(template, job, settings) {
+  const nameParts = String(job.customerName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || job.customerName || "there";
+  const lastName = nameParts.length > 1 ? nameParts.at(-1) : "";
+  const values = {
+    firstName,
+    lastName,
+    jobTitle: job.serviceType || "your service",
+    address: job.address || "",
+    estimateTotal: `$${Number(job.estimate || 0).toFixed(2)}`,
+    businessName: getBusinessName(settings),
+    approvalLink: job.estimateApprovalUrl || ""
+  };
+  return String(template || "").replace(/\{(firstName|lastName|jobTitle|address|estimateTotal|businessName|approvalLink)\}/g, (_, key) => values[key] || "");
+}
+
 function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions) {
   const businessName = getBusinessName(settings);
   return `
@@ -335,7 +394,9 @@ module.exports = {
   buildContractEmailMessage,
   buildContractMailto,
   buildEstimateEmailMessage,
+  buildEstimateFollowUpEmailMessage,
   buildEstimateMailto,
   buildPressureFlowInvoiceEmailMessage,
-  buildScheduleConfirmationEmailMessage
+  buildScheduleConfirmationEmailMessage,
+  renderEstimateFollowUpTemplate
 };

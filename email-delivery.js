@@ -2,6 +2,7 @@ const {
   buildCompletionCertificateEmailMessage,
   buildContractEmailMessage,
   buildEstimateEmailMessage,
+  buildEstimateFollowUpEmailMessage,
   buildPressureFlowInvoiceEmailMessage,
   buildScheduleConfirmationEmailMessage
 } = require("./email-content");
@@ -17,6 +18,10 @@ const {
 function createEmailDelivery({ warn = console.warn } = {}) {
   async function sendEstimateEmail(job, settings) {
     await sendCustomerEmail(settings, buildEstimateEmailMessage(job, settings));
+  }
+
+  async function sendEstimateFollowUpEmail(job, settings) {
+    await sendCustomerEmail(settings, buildEstimateFollowUpEmailMessage(job, settings));
   }
 
   async function sendContractEmail(job, settings) {
@@ -57,6 +62,7 @@ function createEmailDelivery({ warn = console.warn } = {}) {
     sendCompletionCertificateEmailSafe,
     sendContractEmail,
     sendEstimateEmail,
+    sendEstimateFollowUpEmail,
     sendPressureFlowInvoiceEmail,
     sendScheduleConfirmationEmail
   };

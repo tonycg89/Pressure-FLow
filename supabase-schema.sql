@@ -79,6 +79,7 @@ create table if not exists jobs (
   square_final_invoice_status text not null default '',
   square_final_paid_at timestamptz,
   payment_records jsonb not null default '[]'::jsonb,
+  suppress_estimate_follow_up boolean not null default false,
   google_calendar_event_id text not null default '',
   google_calendar_event_url text not null default '',
   completion_notice_sent_at timestamptz,
@@ -168,6 +169,10 @@ create table if not exists app_settings (
   venmo_payment text not null default '',
   payment_instructions text not null default '',
   payment_follow_up_hours integer not null default 48,
+  estimate_follow_up_enabled boolean not null default true,
+  estimate_follow_up_delay_hours integer not null default 24,
+  estimate_follow_up_subject text not null default '',
+  estimate_follow_up_body text not null default '',
   day_of_service_instructions text not null default '',
   onboarding_completed boolean not null default false,
   custom_templates jsonb not null default '[]'::jsonb,
@@ -207,6 +212,22 @@ create index if not exists idx_customers_lead_source on customers(lead_source);
 create index if not exists idx_customers_account_updated_at on customers(account_id, updated_at desc);
 create index if not exists idx_expenses_expense_date on expenses(expense_date desc);
 create index if not exists idx_expenses_account_expense_date on expenses(account_id, expense_date desc, created_at desc);
+
+create table if not exists follow_up_tasks (
+  id text primary key,
+  account_id text not null default 'owner',
+  job_id text not null,
+  type text not null default 'estimate_followup',
+  source text not null default 'auto',
+  scheduled_for timestamptz not null,
+  status text not null default 'pending',
+  cancelled_reason text not null default '',
+  sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_follow_up_tasks_account_status_scheduled on follow_up_tasks(account_id, status, scheduled_for);
 create index if not exists idx_file_assets_account_owner on file_assets(account_id, owner_type, owner_id);
 create index if not exists idx_file_assets_content_hash on file_assets(content_hash);
 create index if not exists idx_webhook_events_received_at on webhook_events(received_at desc);

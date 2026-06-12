@@ -60,6 +60,7 @@ function normalizeJob(input) {
     squareFinalInvoiceId: "",
     squareFinalInvoiceUrl: "",
     paymentRecords: [],
+    suppressEstimateFollowUp: false,
     squareContractId: "",
     squareContractUrl: "",
     contractApprovalToken: "",

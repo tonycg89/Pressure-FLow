@@ -142,6 +142,10 @@ function normalizeSettings(input, existing) {
     venmoPayment: String(input.venmoPayment || "").trim(),
     paymentInstructions: String(input.paymentInstructions || "").trim(),
     paymentFollowUpHours: normalizePaymentFollowUpHours(input.paymentFollowUpHours ?? existing.paymentFollowUpHours),
+    estimateFollowUpEnabled: normalizeBoolean(input.estimateFollowUpEnabled ?? existing.estimateFollowUpEnabled ?? true),
+    estimateFollowUpDelayHours: normalizeEstimateFollowUpDelayHours(input.estimateFollowUpDelayHours ?? existing.estimateFollowUpDelayHours),
+    estimateFollowUpSubject: normalizeShortTemplate(input.estimateFollowUpSubject || existing.estimateFollowUpSubject || ""),
+    estimateFollowUpBody: normalizeLongText(input.estimateFollowUpBody || existing.estimateFollowUpBody || ""),
     dayOfServiceInstructions: normalizeLongText(input.dayOfServiceInstructions ?? existing.dayOfServiceInstructions),
     onboardingCompleted: Boolean(input.onboardingCompleted ?? existing.onboardingCompleted),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
@@ -155,6 +159,20 @@ function normalizePaymentFollowUpHours(value) {
   const allowed = new Set([0, 24, 48, 72, 168]);
   const hours = Number(value);
   return allowed.has(hours) ? hours : 48;
+}
+
+function normalizeEstimateFollowUpDelayHours(value) {
+  const allowed = new Set([24, 48, 72, 168]);
+  const hours = Number(value);
+  return allowed.has(hours) ? hours : 24;
+}
+
+function normalizeShortTemplate(value) {
+  return String(value || "").trim().slice(0, 180);
+}
+
+function normalizeBoolean(value) {
+  return value === true || value === "true" || value === "on" || value === "1";
 }
 
 function normalizePrivateSetting(input, existing, key) {

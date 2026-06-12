@@ -1,8 +1,10 @@
 function createRecordRoutes({
+  cancelPendingFollowUp = async () => {},
   cancelStoredInvoiceIfPossible,
   deleteCustomerMeasurementArea,
   didPricingChange,
   findSavedMeasurements,
+  itemWorkspaceId = (item) => item.accountId || "owner",
   normalizeCustomer,
   normalizeExpense,
   normalizeJob,
@@ -225,6 +227,7 @@ function createRecordRoutes({
 
       const input = await readRequestBody(request);
       const pricingChanged = didPricingChange(job, input);
+      const previousStatus = job.status;
       updateJob(job, input);
       const validationError = validateJob(job);
       if (validationError) {
@@ -234,6 +237,9 @@ function createRecordRoutes({
 
       if (pricingChanged) {
         await resetJobForPricingChange(job, cancelStoredInvoiceIfPossible);
+        if (statuses.indexOf(previousStatus) >= statuses.indexOf("Estimate Sent")) {
+          await cancelPendingFollowUp(job.id, "pricing_changed", itemWorkspaceId(job));
+        }
       }
 
       await syncJobMeasurementToCustomerFile(job);

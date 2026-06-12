@@ -801,6 +801,31 @@
               <option value="168">1 week</option>
             </select>
           </label>
+          <label>
+            Auto estimate follow-up
+            <select name="estimateFollowUpEnabled">
+              <option value="true">On</option>
+              <option value="false">Off</option>
+            </select>
+          </label>
+          <label>
+            Estimate follow-up delay
+            <select name="estimateFollowUpDelayHours">
+              <option value="24">24 hours</option>
+              <option value="48">48 hours</option>
+              <option value="72">72 hours</option>
+              <option value="168">1 week</option>
+            </select>
+          </label>
+          <label class="full-field">
+            Estimate follow-up subject
+            <input name="estimateFollowUpSubject" placeholder="Following up on your estimate - {jobTitle} at {address}">
+          </label>
+          <label class="full-field">
+            Estimate follow-up message
+            <textarea name="estimateFollowUpBody" rows="7"></textarea>
+            <span class="form-note">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
+          </label>
           <label class="full-field">
             Day of Service Instructions
             <textarea name="dayOfServiceInstructions" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
@@ -1140,6 +1165,23 @@
         <menu class="dialog-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Send Final Invoice</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="followUpDialog">
+      <form method="dialog" id="followUpForm">
+        <div class="dialog-header">
+          <h2>Send follow-up email</h2>
+          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        </div>
+        <section class="detail-section">
+          <h4 id="followUpPreviewSubject"></h4>
+          <div id="followUpPreviewBody" class="email-preview-body"></div>
+        </section>
+        <menu class="dialog-actions">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Send now</button>
         </menu>
       </form>
     </dialog>
