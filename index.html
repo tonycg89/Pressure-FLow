@@ -293,7 +293,15 @@
             <p class="eyebrow">Expenses</p>
             <h2>Store receipts and track operating costs.</h2>
           </div>
-          <button id="newExpenseButton" class="primary-button" type="button">Add Expense</button>
+          <div class="topbar-actions">
+            <label class="compact-select">
+              Filter by job
+              <select id="expenseJobFilter">
+                <option value="">All expenses</option>
+              </select>
+            </label>
+            <button id="newExpenseButton" class="primary-button" type="button">Add Expense</button>
+          </div>
         </header>
 
         <section class="metrics" aria-label="Expense snapshot">
@@ -579,6 +587,12 @@
         <label>
           Category
           <input name="category" placeholder="Chemicals, fuel, equipment">
+        </label>
+        <label>
+          Link to job (optional)
+          <select name="jobId">
+            <option value="">No linked job</option>
+          </select>
         </label>
         <label>
           Notes

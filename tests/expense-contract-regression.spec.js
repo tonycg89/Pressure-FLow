@@ -28,7 +28,7 @@ test("expenses support cents-first entry, editing, and deleting", async ({ page 
   await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
 
   await expect(page.locator("#expenseDetail")).toContainText("$13.35");
-  await expectStoredExpenseAmount(13.35);
+  await expectStoredExpense(13.35, "");
   await page.getByRole("button", { name: "Edit Expense" }).click();
   await expect(page.locator("#expenseForm [name='amount']")).toHaveValue("13.35");
   await page.locator("#expenseForm [name='amount']").fill("2000");
@@ -36,10 +36,45 @@ test("expenses support cents-first entry, editing, and deleting", async ({ page 
   await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
 
   await expect(page.locator("#expenseDetail")).toContainText("$20.00");
-  await expectStoredExpenseAmount(20);
+  await expectStoredExpense(20, "");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete Expense" }).click();
   await expect(page.locator("#expenseList")).toContainText("No expenses yet");
+});
+
+test("linked expenses can be filtered and shown in completed job profitability", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Expenses" }).click();
+  await page.getByRole("button", { name: "Add Expense" }).click();
+  await page.locator("#expenseForm [name='vendor']").fill("Chem Shop");
+  await page.locator("#expenseForm [name='amount']").fill("12750");
+  await page.locator("#expenseForm [name='category']").fill("Chemicals");
+  await page.locator("#expenseForm [name='jobId']").selectOption("job-profitability");
+  await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
+
+  await expect(page.locator("#expenseDetail")).toContainText("Morgan Lee - Roof Wash (Completed)");
+  await expectStoredExpense(127.5, "job-profitability");
+
+  await page.locator("#expenseJobFilter").selectOption("job-profitability");
+  await expect(page.locator("#expenseList")).toContainText("Chem Shop");
+  await expect(page.locator("#expenseList")).toContainText("Morgan Lee - Roof Wash");
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Morgan Lee/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Job costs");
+  await expect(page.locator("#jobDetail")).toContainText("Linked expenses");
+  await expect(page.locator("#jobDetail")).toContainText("$127.50");
+  await expect(page.locator("#jobDetail")).toContainText("View 1 expense");
+  await expect(page.locator("#jobDetail")).toContainText("Invoice total");
+  await expect(page.locator("#jobDetail")).toContainText("$390.00");
+  await expect(page.locator("#jobDetail")).toContainText("Estimated profit");
+  await expect(page.locator("#jobDetail")).toContainText("$262.50 (67% margin)");
+
+  await page.getByRole("button", { name: "View 1 expense" }).click();
+  await expect(page.locator("#expensesView")).toBeVisible();
+  await expect(page.locator("#expenseJobFilter")).toHaveValue("job-profitability");
+  await expect(page.locator("#expenseList")).toContainText("Chem Shop");
 });
 
 test("contract project details show the saved business name", async ({ page }) => {
@@ -91,33 +126,54 @@ async function resetTestData() {
     businessPhone: "",
     onboardingCompleted: false
   }, null, 2));
-  await fs.writeFile(path.join(DATA_DIR, "jobs.json"), JSON.stringify([{
-    id: "job-contract-business-name",
+  await fs.writeFile(path.join(DATA_DIR, "jobs.json"), JSON.stringify([
+    jobFixture({
+      id: "job-contract-business-name",
+      customerName: "Alex Rivera",
+      serviceType: "Driveway cleaning",
+      estimate: 135,
+      status: "Contract Sent",
+      contractApprovalToken: "contract-token",
+      contractApprovalUrl: "http://127.0.0.1:3173/contract/job-contract-business-name?token=contract-token"
+    }),
+    jobFixture({
+      id: "job-profitability",
+      customerName: "Morgan Lee",
+      serviceType: "Roof Wash",
+      estimate: 390,
+      status: "Completed"
+    })
+  ], null, 2));
+}
+
+async function expectStoredExpense(expectedAmount, expectedJobId) {
+  const expenses = JSON.parse(await fs.readFile(path.join(DATA_DIR, "expenses.json"), "utf8"));
+  expect(expenses).toHaveLength(1);
+  expect(expenses[0].amount).toBe(expectedAmount);
+  expect(expenses[0].jobId || "").toBe(expectedJobId);
+}
+
+function jobFixture(overrides) {
+  return {
+    id: overrides.id,
     accountId: TEST_USER.accountId,
-    customerName: "Alex Rivera",
-    email: "alex@example.com",
+    customerName: overrides.customerName,
+    email: `${overrides.customerName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
     phone: "(555) 444-1212",
     streetAddress: "100 Main Street",
     city: "Riverside",
     state: "CA",
     zip: "92501",
     address: "100 Main Street, Riverside, CA 92501",
-    serviceType: "Driveway cleaning",
-    estimate: 135,
+    serviceType: overrides.serviceType,
+    estimate: overrides.estimate,
     depositPercent: 25,
-    lineItems: [{ name: "Driveway cleaning", quantity: 1, unit: "QTY", total: 135 }],
-    status: "Contract Sent",
-    contractApprovalToken: "contract-token",
-    contractApprovalUrl: "http://127.0.0.1:3173/contract/job-contract-business-name?token=contract-token",
+    lineItems: [{ name: overrides.serviceType, quantity: 1, unit: "QTY", total: overrides.estimate }],
+    status: overrides.status,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }], null, 2));
-}
-
-async function expectStoredExpenseAmount(expectedAmount) {
-  const expenses = JSON.parse(await fs.readFile(path.join(DATA_DIR, "expenses.json"), "utf8"));
-  expect(expenses).toHaveLength(1);
-  expect(expenses[0].amount).toBe(expectedAmount);
+    updatedAt: new Date().toISOString(),
+    ...overrides
+  };
 }
 
 function testSettings() {

@@ -6,6 +6,7 @@ let followUpTasks = [];
 let selectedJobId = null;
 let selectedCustomerId = null;
 let selectedExpenseId = null;
+let selectedExpenseJobId = "";
 let settings = {};
 let currentUser = null;
 let csrfToken = "";
@@ -131,6 +132,7 @@ const editJobButton = document.querySelector("#editJobButton");
 const newCustomerButton = document.querySelector("#newCustomerButton");
 const editCustomerButton = document.querySelector("#editCustomerButton");
 const newExpenseButton = document.querySelector("#newExpenseButton");
+const expenseJobFilter = document.querySelector("#expenseJobFilter");
 const settingsButton = document.querySelector("#settingsButton");
 const templatesButton = document.querySelector("#templatesButton");
 const navItems = document.querySelectorAll("[data-view]");
@@ -269,6 +271,11 @@ async function init() {
   newCustomerButton.addEventListener("click", openNewCustomer);
   editCustomerButton.addEventListener("click", openEditCustomer);
   newExpenseButton.addEventListener("click", openNewExpense);
+  expenseJobFilter?.addEventListener("change", () => {
+    selectedExpenseJobId = expenseJobFilter.value;
+    selectedExpenseId = null;
+    renderExpenses();
+  });
   settingsButton.addEventListener("click", openSettings);
   templateUploadForm?.addEventListener("submit", uploadTemplate);
   jobForm.addEventListener("submit", createJob);
@@ -1414,6 +1421,8 @@ function openNewExpense() {
   currentReceiptPhotos = [];
   receiptPhotoInput.value = "";
   expenseForm.elements.expenseDate.value = new Date().toISOString().slice(0, 10);
+  expenseForm.elements.jobId.value = "";
+  renderExpenseJobOptions();
   renderReceiptPhotos();
   expenseDialog.showModal();
 }
@@ -1454,6 +1463,8 @@ function openEditExpense() {
   expenseForm.elements.amount.value = Number(expense.amount || 0).toFixed(2);
   expenseForm.elements.expenseDate.value = expense.expenseDate || new Date().toISOString().slice(0, 10);
   expenseForm.elements.category.value = expense.category || "";
+  renderExpenseJobOptions(expense.jobId || "");
+  expenseForm.elements.jobId.value = expense.jobId || "";
   expenseForm.elements.notes.value = expense.notes || "";
   currentReceiptPhotos = [...(expense.receiptPhotos || [])];
   receiptPhotoInput.value = "";
@@ -1467,6 +1478,7 @@ function resetExpenseDialog() {
   expenseForm.reset();
   currentReceiptPhotos = [];
   receiptPhotoInput.value = "";
+  expenseForm.elements.jobId.value = "";
   renderReceiptPhotos();
 }
 
@@ -2979,6 +2991,8 @@ function renderJobDetail() {
       <p><strong>Access:</strong> ${escapeHtml(job.accessNotes || "No access notes.")}</p>
       <p><strong>Sensitive areas:</strong> ${escapeHtml(job.sensitiveAreas || "No sensitive areas noted.")}</p>
     </section>
+
+    ${renderJobCosts(job)}
   `;
 
   jobDetail.querySelectorAll("[data-action]").forEach((button) => {
@@ -2989,6 +3003,49 @@ function renderJobDetail() {
     runAction(job.id, "suppress-estimate-follow-up", { suppressed: event.target.checked });
   });
   attachPhotoViewerHandlers(jobDetail);
+  jobDetail.querySelector("[data-view-job-expenses]")?.addEventListener("click", () => viewExpensesForJob(job.id));
+}
+
+function renderJobCosts(job) {
+  if (statuses.indexOf(job.status) < statuses.indexOf("Completed")) {
+    return "";
+  }
+
+  const linkedExpenses = expenses.filter((expense) => expense.jobId === job.id);
+  if (!linkedExpenses.length) {
+    return "";
+  }
+
+  const linkedTotal = linkedExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const invoiceTotal = Number(job.estimate || 0);
+  const profit = invoiceTotal - linkedTotal;
+  const margin = invoiceTotal > 0 ? Math.round((profit / invoiceTotal) * 100) : 0;
+  const paid = job.status === "Paid" || job.squareFinalPaidAt;
+
+  return `
+    <section class="detail-section job-costs">
+      <h4>Job costs</h4>
+      <div class="detail-row">
+        <span>Linked expenses</span>
+        <strong>${currency.format(linkedTotal)} <button class="text-link-button" type="button" data-view-job-expenses>View ${linkedExpenses.length} expense${linkedExpenses.length === 1 ? "" : "s"}</button></strong>
+      </div>
+      <div class="detail-row"><span>Invoice total</span><strong>${currency.format(invoiceTotal)}</strong></div>
+      <div class="detail-row profit-row ${paid ? "paid" : "estimated"}">
+        <span>${paid ? "Profit" : "Estimated profit"}</span>
+        <strong>${currency.format(profit)} (${margin}% margin)</strong>
+      </div>
+    </section>
+  `;
+}
+
+function viewExpensesForJob(jobId) {
+  selectedExpenseJobId = jobId;
+  selectedExpenseId = null;
+  navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === "expenses"));
+  viewPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.viewPanel !== "expenses";
+  });
+  renderExpenses();
 }
 
 function renderEstimateFollowUpControls(job) {
@@ -3233,6 +3290,7 @@ async function deleteCustomer(customerId) {
 function renderExpenses() {
   if (!expenseList || !expenseDetail) return;
   expenseList.innerHTML = "";
+  renderExpenseJobFilter();
   const total = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const monthKey = new Date().toISOString().slice(0, 7);
   const monthTotal = expenses
@@ -3245,17 +3303,26 @@ function renderExpenses() {
   document.querySelector("#expenseMonthTotal").textContent = currency.format(monthTotal);
   document.querySelector("#expenseCount").textContent = expenses.length;
 
+  const visibleExpenses = getVisibleExpenses();
+
   if (!expenses.length) {
     expenseList.innerHTML = '<p class="empty-state">No expenses yet. Add your first receipt.</p>';
     expenseDetail.innerHTML = '<p class="empty-state">Select an expense to see receipt photos.</p>';
     return;
   }
 
-  if (!expenses.some((expense) => expense.id === selectedExpenseId)) {
-    selectedExpenseId = expenses[0].id;
+  if (!visibleExpenses.length) {
+    expenseList.innerHTML = '<p class="empty-state">No expenses match this job filter.</p>';
+    expenseDetail.innerHTML = '<p class="empty-state">Choose another job or clear the filter.</p>';
+    return;
   }
 
-  expenses.forEach((expense) => {
+  if (!visibleExpenses.some((expense) => expense.id === selectedExpenseId)) {
+    selectedExpenseId = visibleExpenses[0].id;
+  }
+
+  visibleExpenses.forEach((expense) => {
+    const linkedJob = getExpenseJob(expense);
     const card = document.createElement("button");
     card.className = `expense-card ${expense.id === selectedExpenseId ? "selected" : ""}`;
     card.type = "button";
@@ -3267,6 +3334,7 @@ function renderExpenses() {
       <div>
         <h4>${escapeHtml(expense.vendor)}</h4>
         <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
+        ${linkedJob ? `<p>${escapeHtml(formatJobOptionLabel(linkedJob, { includeStatus: false }))}</p>` : ""}
         <p>${expense.receiptPhotos?.length || 0} receipt photo${expense.receiptPhotos?.length === 1 ? "" : "s"}</p>
       </div>
       <span class="status-pill">${currency.format(expense.amount || 0)}</span>
@@ -3280,11 +3348,13 @@ function renderExpenses() {
 function renderExpenseDetail() {
   const expense = expenses.find((item) => item.id === selectedExpenseId);
   if (!expense) return;
+  const linkedJob = getExpenseJob(expense);
   expenseDetail.innerHTML = `
     <section class="detail-section">
       <h4>${escapeHtml(expense.vendor)}</h4>
       <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
       <div class="detail-row"><span>Amount</span><strong>${currency.format(expense.amount || 0)}</strong></div>
+      <div class="detail-row"><span>Linked job</span><strong>${linkedJob ? escapeHtml(formatJobOptionLabel(linkedJob, { includeStatus: true })) : "None"}</strong></div>
       <div class="action-list">
         <button class="action-button" type="button" data-edit-expense="${escapeHtml(expense.id)}">Edit Expense</button>
         <button class="action-button danger" type="button" data-delete-expense="${escapeHtml(expense.id)}">Delete Expense</button>
@@ -3302,6 +3372,57 @@ function renderExpenseDetail() {
   attachPhotoViewerHandlers(expenseDetail);
   expenseDetail.querySelector("[data-edit-expense]")?.addEventListener("click", openEditExpense);
   expenseDetail.querySelector("[data-delete-expense]")?.addEventListener("click", () => deleteExpense(expense.id));
+}
+
+function getVisibleExpenses() {
+  if (!selectedExpenseJobId) return expenses;
+  return expenses.filter((expense) => expense.jobId === selectedExpenseJobId);
+}
+
+function renderExpenseJobFilter() {
+  if (!expenseJobFilter) return;
+  const linkedJobIds = new Set(expenses.map((expense) => expense.jobId).filter(Boolean));
+  const filterJobs = jobs.filter((job) => linkedJobIds.has(job.id));
+  expenseJobFilter.innerHTML = `
+    <option value="">All expenses</option>
+    ${filterJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobOptionLabel(job, { includeStatus: true }))}</option>`).join("")}
+  `;
+  if (selectedExpenseJobId && !linkedJobIds.has(selectedExpenseJobId)) {
+    selectedExpenseJobId = "";
+  }
+  expenseJobFilter.value = selectedExpenseJobId;
+}
+
+function renderExpenseJobOptions(selectedId = "") {
+  const select = expenseForm?.elements.jobId;
+  if (!select) return;
+  const optionJobs = getExpenseLinkableJobs(selectedId);
+  select.innerHTML = `
+    <option value="">No linked job</option>
+    ${optionJobs.map((job) => `<option value="${escapeHtml(job.id)}">${escapeHtml(formatJobOptionLabel(job, { includeStatus: true }))}</option>`).join("")}
+  `;
+  select.value = selectedId;
+}
+
+function getExpenseLinkableJobs(selectedId = "") {
+  const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  return jobs
+    .filter((job) => {
+      if (job.id === selectedId) return true;
+      if (statuses.indexOf(job.status) < statuses.indexOf("Paid")) return true;
+      const createdAt = new Date(job.createdAt || job.updatedAt || 0).getTime();
+      return Number.isFinite(createdAt) && createdAt >= cutoff;
+    })
+    .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+}
+
+function getExpenseJob(expense) {
+  return jobs.find((job) => job.id === expense.jobId);
+}
+
+function formatJobOptionLabel(job, options = {}) {
+  const label = `${job.customerName || "Unnamed customer"} - ${job.serviceType || "Job"}`;
+  return options.includeStatus ? `${label} (${job.status || "Lead"})` : label;
 }
 
 async function deleteExpense(expenseId) {

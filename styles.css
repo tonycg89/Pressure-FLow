@@ -245,6 +245,22 @@ button {
   min-width: 160px;
 }
 
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+label.compact-select {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .dashboard-actions {
   position: relative;
   display: flex;
@@ -570,6 +586,35 @@ textarea {
 .detail-row strong {
   color: var(--ink);
   text-align: right;
+}
+
+.job-costs {
+  padding-top: 4px;
+}
+
+.profit-row {
+  border-bottom: 0;
+  font-weight: 800;
+}
+
+.profit-row.estimated strong {
+  color: var(--amber);
+}
+
+.profit-row.paid strong {
+  color: var(--green);
+}
+
+.text-link-button {
+  min-height: 0;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
 }
 
 .saved-area-row {
