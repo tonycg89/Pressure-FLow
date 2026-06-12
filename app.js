@@ -187,6 +187,7 @@ const templateFileInput = document.querySelector("#templateFileInput");
 const templateUploadStatus = document.querySelector("#templateUploadStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
 const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
+const expenseDialogTitle = expenseDialog.querySelector(".dialog-header h2");
 const addServiceTypeButton = document.querySelector("#addServiceTypeButton");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
@@ -266,6 +267,7 @@ async function init() {
   jobForm.addEventListener("submit", createJob);
   customerForm.addEventListener("submit", saveCustomer);
   expenseForm.addEventListener("submit", saveExpense);
+  expenseForm.elements.amount?.addEventListener("input", formatExpenseAmountInput);
   serviceAreaPhotoInputs.forEach((input) => {
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
   });
@@ -1366,6 +1368,8 @@ async function saveCustomer(event) {
 }
 
 function openNewExpense() {
+  expenseForm.dataset.editingId = "";
+  expenseDialogTitle.textContent = "Add expense";
   expenseForm.reset();
   currentReceiptPhotos = [];
   receiptPhotoInput.value = "";
@@ -1376,6 +1380,7 @@ function openNewExpense() {
 
 async function saveExpense(event) {
   if (event.submitter?.value === "cancel") {
+    resetExpenseDialog();
     return;
   }
 
@@ -1383,18 +1388,55 @@ async function saveExpense(event) {
   const payload = Object.fromEntries(new FormData(expenseForm).entries());
   payload.amount = Number(payload.amount || 0);
   payload.receiptPhotos = currentReceiptPhotos;
+  const editingId = expenseForm.dataset.editingId;
 
   try {
-    const saved = await apiRequest("/api/expenses", payload);
+    const saved = editingId
+      ? await apiRequest(`/api/expenses/${encodeURIComponent(editingId)}`, payload, "PATCH")
+      : await apiRequest("/api/expenses", payload);
     selectedExpenseId = saved.expense.id;
-    expenseForm.reset();
-    currentReceiptPhotos = [];
+    resetExpenseDialog();
     expenseDialog.close();
     await loadExpenses();
     renderDashboard();
   } catch (error) {
     alert(error.message);
   }
+}
+
+function openEditExpense() {
+  const expense = expenses.find((item) => item.id === selectedExpenseId);
+  if (!expense) return;
+
+  expenseForm.dataset.editingId = expense.id;
+  expenseDialogTitle.textContent = "Edit expense";
+  expenseForm.elements.vendor.value = expense.vendor || "";
+  expenseForm.elements.amount.value = Number(expense.amount || 0).toFixed(2);
+  expenseForm.elements.expenseDate.value = expense.expenseDate || new Date().toISOString().slice(0, 10);
+  expenseForm.elements.category.value = expense.category || "";
+  expenseForm.elements.notes.value = expense.notes || "";
+  currentReceiptPhotos = [...(expense.receiptPhotos || [])];
+  receiptPhotoInput.value = "";
+  renderReceiptPhotos();
+  expenseDialog.showModal();
+}
+
+function resetExpenseDialog() {
+  expenseForm.dataset.editingId = "";
+  expenseDialogTitle.textContent = "Add expense";
+  expenseForm.reset();
+  currentReceiptPhotos = [];
+  receiptPhotoInput.value = "";
+  renderReceiptPhotos();
+}
+
+function formatExpenseAmountInput(event) {
+  const digits = event.target.value.replace(/\D/g, "");
+  if (!digits) {
+    event.target.value = "";
+    return;
+  }
+  event.target.value = (Number(digits || 0) / 100).toFixed(2);
 }
 
 function openEditJob() {
@@ -1622,6 +1664,10 @@ function closeDialogFromButton(event) {
 
   if (dialog === customerDialog) {
     resetCustomerDialog();
+  }
+
+  if (dialog === expenseDialog) {
+    resetExpenseDialog();
   }
 
   if (dialog === scheduleDialog) {
@@ -2971,6 +3017,10 @@ function renderExpenseDetail() {
       <h4>${escapeHtml(expense.vendor)}</h4>
       <p>${escapeHtml(expense.category || "Uncategorized")} | ${escapeHtml(expense.expenseDate || "")}</p>
       <div class="detail-row"><span>Amount</span><strong>${currency.format(expense.amount || 0)}</strong></div>
+      <div class="action-list">
+        <button class="action-button" type="button" data-edit-expense="${escapeHtml(expense.id)}">Edit Expense</button>
+        <button class="action-button danger" type="button" data-delete-expense="${escapeHtml(expense.id)}">Delete Expense</button>
+      </div>
     </section>
     <section class="detail-section">
       <h4>Receipts</h4>
@@ -2982,6 +3032,26 @@ function renderExpenseDetail() {
     </section>
   `;
   attachPhotoViewerHandlers(expenseDetail);
+  expenseDetail.querySelector("[data-edit-expense]")?.addEventListener("click", openEditExpense);
+  expenseDetail.querySelector("[data-delete-expense]")?.addEventListener("click", () => deleteExpense(expense.id));
+}
+
+async function deleteExpense(expenseId) {
+  const expense = expenses.find((item) => item.id === expenseId);
+  if (!expense) return;
+
+  const confirmed = confirm(`Delete expense from ${expense.vendor} for ${currency.format(expense.amount || 0)}?`);
+  if (!confirmed) return;
+
+  try {
+    await apiRequest(`/api/expenses/${encodeURIComponent(expenseId)}`, {}, "DELETE");
+    expenses = expenses.filter((item) => item.id !== expenseId);
+    selectedExpenseId = expenses[0]?.id ?? null;
+    await loadExpenses();
+    renderDashboard();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function getCustomerJobPhotos(relatedJobs, type) {

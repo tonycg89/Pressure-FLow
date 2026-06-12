@@ -429,7 +429,7 @@ function renderContractSigningPage(job, options = {}) {
       <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
       <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
 
-      ${renderContractProjectDetails(job, depositAmount)}
+      ${renderContractProjectDetails(job, depositAmount, options.settings || {})}
 
       <section>
         <h2>Scope of Work</h2>
@@ -505,9 +505,10 @@ function renderContractTerms(job, options = {}) {
   </section>`;
 }
 
-function renderContractProjectDetails(job, depositAmount) {
+function renderContractProjectDetails(job, depositAmount, settings = {}) {
+  const businessName = getBusinessName(settings);
   const details = [
-    ["Business", "Your Company"],
+    ["Business", businessName],
     ["Client", job.customerName],
     ["Service Address", job.address],
     ["Approved Estimate", "PressureFlow estimate approved online"],

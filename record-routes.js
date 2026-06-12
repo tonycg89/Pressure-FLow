@@ -96,6 +96,7 @@ function createRecordRoutes({
 
     const updateMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/);
     const customerUpdateMatch = url.pathname.match(/^\/api\/customers\/([^/]+)$/);
+    const expenseUpdateMatch = url.pathname.match(/^\/api\/expenses\/([^/]+)$/);
     const customerMeasurementDeleteMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/measurements\/([^/]+)$/);
 
     if (request.method === "DELETE" && customerMeasurementDeleteMatch) {
@@ -155,6 +156,44 @@ function createRecordRoutes({
       }
 
       await writeCustomers(remainingCustomers);
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+
+    if (request.method === "PATCH" && expenseUpdateMatch) {
+      const [, expenseId] = expenseUpdateMatch;
+      const expenses = await readExpenses();
+      const expense = expenses.find((item) => item.id === expenseId);
+
+      if (!expense) {
+        sendError(response, 404, "Expense not found.");
+        return true;
+      }
+
+      const updatedExpense = normalizeExpense(await readRequestBody(request), expense);
+      const validationError = validateExpense(updatedExpense);
+      if (validationError) {
+        sendError(response, 400, validationError);
+        return true;
+      }
+
+      Object.assign(expense, updatedExpense);
+      await writeExpenses(expenses);
+      sendJson(response, 200, { expense });
+      return true;
+    }
+
+    if (request.method === "DELETE" && expenseUpdateMatch) {
+      const [, expenseId] = expenseUpdateMatch;
+      const expenses = await readExpenses();
+      const remainingExpenses = expenses.filter((item) => item.id !== expenseId);
+
+      if (remainingExpenses.length === expenses.length) {
+        sendError(response, 404, "Expense not found.");
+        return true;
+      }
+
+      await writeExpenses(remainingExpenses);
       sendJson(response, 200, { ok: true });
       return true;
     }
