@@ -28,6 +28,7 @@ test("expenses support cents-first entry, editing, and deleting", async ({ page 
   await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
 
   await expect(page.locator("#expenseDetail")).toContainText("$13.35");
+  await expectStoredExpenseAmount(13.35);
   await page.getByRole("button", { name: "Edit Expense" }).click();
   await expect(page.locator("#expenseForm [name='amount']")).toHaveValue("13.35");
   await page.locator("#expenseForm [name='amount']").fill("2000");
@@ -35,6 +36,7 @@ test("expenses support cents-first entry, editing, and deleting", async ({ page 
   await page.locator("#expenseForm").getByRole("button", { name: "Save Expense" }).click();
 
   await expect(page.locator("#expenseDetail")).toContainText("$20.00");
+  await expectStoredExpenseAmount(20);
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete Expense" }).click();
   await expect(page.locator("#expenseList")).toContainText("No expenses yet");
@@ -110,6 +112,12 @@ async function resetTestData() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }], null, 2));
+}
+
+async function expectStoredExpenseAmount(expectedAmount) {
+  const expenses = JSON.parse(await fs.readFile(path.join(DATA_DIR, "expenses.json"), "utf8"));
+  expect(expenses).toHaveLength(1);
+  expect(expenses[0].amount).toBe(expectedAmount);
 }
 
 function testSettings() {

@@ -145,13 +145,19 @@ function normalizeExpense(input, existing = {}) {
     id: existing.id || input.id || crypto.randomUUID(),
     vendor: String(input.vendor || existing.vendor || "").trim(),
     category: String(input.category || existing.category || "").trim(),
-    amount: Number(input.amount ?? existing.amount ?? 0),
+    amount: normalizeMoneyDollars(input.amount ?? existing.amount ?? 0),
     expenseDate: String(input.expenseDate || existing.expenseDate || new Date().toISOString().slice(0, 10)).slice(0, 10),
     notes: String(input.notes || existing.notes || "").trim(),
     receiptPhotos: normalizePhotos(input.receiptPhotos ?? existing.receiptPhotos),
     createdAt: existing.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+function normalizeMoneyDollars(value) {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return NaN;
+  return Math.round(amount * 100) / 100;
 }
 
 function validateExpense(expense) {
