@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PressureFlow Temporary Style Guide</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+      .style-guide-shell {
+        min-height: 100vh;
+        padding: 32px;
+        background: var(--background);
+      }
+
+      .style-guide {
+        display: grid;
+        max-width: 1040px;
+        margin: 0 auto;
+        gap: 18px;
+      }
+
+      .style-guide-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .style-guide-card {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+      }
+
+      .style-guide-sample-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="style-guide-shell">
+      <section class="style-guide">
+        <header class="panel style-guide-card">
+          <p class="eyebrow">Temporary / Dev Only</p>
+          <h1 class="text-h1">PressureFlow Design System Foundation</h1>
+          <p class="text-body">Unlinked static style guide for validating tokens, typography, buttons, badges, cards, and forms.</p>
+        </header>
+
+        <section class="panel style-guide-card">
+          <h2 class="text-h2">Typography</h2>
+          <p class="text-h1">H1 24/32 semibold</p>
+          <p class="text-h2">H2 20/28 semibold</p>
+          <p class="text-h3">H3 16/24 semibold</p>
+          <p class="text-body">Body 14/20 regular for primary interface text.</p>
+          <p class="text-small">Small 13/18 medium for labels and supporting text.</p>
+          <p class="text-caption">Caption 12/16 regular for compact metadata.</p>
+          <p class="text-body tabular-nums">$1,284.50 / 32 jobs / 90%</p>
+        </section>
+
+        <section class="panel style-guide-card">
+          <h2 class="text-h2">Buttons</h2>
+          <div class="style-guide-row">
+            <button class="primary-button" type="button">Primary</button>
+            <button class="secondary-button" type="button">Secondary</button>
+            <button class="action-button secondary" type="button">Ghost</button>
+            <button class="action-button danger" type="button">Destructive</button>
+            <button class="icon-button" type="button" title="Icon button">X</button>
+            <button class="link-button" type="button">Link button</button>
+          </div>
+          <div class="style-guide-row">
+            <button class="primary-button button-sm" type="button">Small</button>
+            <button class="primary-button" type="button">Default</button>
+            <button class="primary-button button-lg" type="button">Large</button>
+            <button class="primary-button" type="button" disabled>Disabled</button>
+          </div>
+        </section>
+
+        <section class="panel style-guide-card">
+          <h2 class="text-h2">Badges</h2>
+          <div class="style-guide-row">
+            <span class="status-badge status-neutral"><span class="status-dot"></span>Neutral</span>
+            <span class="status-badge status-info"><span class="status-dot"></span>Sent</span>
+            <span class="status-badge status-warning"><span class="status-dot"></span>Overdue</span>
+            <span class="status-badge status-success"><span class="status-dot"></span>Paid</span>
+            <span class="status-badge status-danger"><span class="status-dot"></span>Failed</span>
+          </div>
+        </section>
+
+        <section class="style-guide-sample-grid">
+          <article class="panel style-guide-card">
+            <h2 class="text-h2">Card</h2>
+            <p class="text-body">Card background, border, and radius sample using the app panel style.</p>
+          </article>
+          <form class="panel style-guide-card">
+            <h2 class="text-h2">Form</h2>
+            <label class="text-small">
+              Customer name
+              <input placeholder="Maria Johnson">
+            </label>
+            <label class="text-small">
+              Job status
+              <select>
+                <option>Lead</option>
+                <option>Scheduled</option>
+                <option>Paid</option>
+              </select>
+            </label>
+            <label class="text-small">
+              Notes
+              <textarea rows="3" placeholder="Optional notes"></textarea>
+            </label>
+          </form>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
