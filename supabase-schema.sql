@@ -110,6 +110,7 @@ create table if not exists customers (
 create table if not exists expenses (
   id uuid primary key default gen_random_uuid(),
   account_id text not null default 'owner',
+  job_id uuid references jobs(id) on delete set null,
   vendor text not null default '',
   category text not null default '',
   amount numeric(10, 2) not null default 0,

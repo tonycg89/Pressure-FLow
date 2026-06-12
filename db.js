@@ -930,7 +930,30 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_users add column if not exists settings jsonb not null default '{}'::jsonb");
   await getPool().query("alter table customers add column if not exists account_id text not null default 'owner'");
   await getPool().query("alter table expenses add column if not exists account_id text not null default 'owner'");
+  await getPool().query("alter table expenses add column if not exists job_id uuid");
   await getPool().query("alter table jobs add column if not exists account_id text not null default 'owner'");
+  await getPool().query(`
+    do $$
+    begin
+      if not exists (
+        select 1
+        from pg_constraint constraint_info
+        join pg_attribute column_info
+          on column_info.attrelid = constraint_info.conrelid
+          and column_info.attnum = any(constraint_info.conkey)
+        where constraint_info.contype = 'f'
+          and constraint_info.conrelid = 'expenses'::regclass
+          and constraint_info.confrelid = 'jobs'::regclass
+          and column_info.attname = 'job_id'
+      ) then
+        alter table expenses
+          add constraint expenses_job_id_fkey
+          foreign key (job_id)
+          references jobs(id)
+          on delete set null;
+      end if;
+    end $$;
+  `);
   await getPool().query("alter table customers add column if not exists lead_source text not null default ''");
   await getPool().query("alter table customers add column if not exists property_measurements jsonb not null default '[]'::jsonb");
   await getPool().query("alter table customers add column if not exists street_address text not null default ''");
@@ -1502,9 +1525,10 @@ function settingsFromRow(row) {
 async function upsertExpense(client, expense) {
   await client.query(
     `insert into expenses (
-      id, vendor, category, amount, expense_date, notes, receipt_photos, created_at, updated_at
-    ) values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+      id, job_id, vendor, category, amount, expense_date, notes, receipt_photos, created_at, updated_at
+    ) values ($1, nullif($2, '')::uuid, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
     on conflict (id) do update set
+      job_id = excluded.job_id,
       vendor = excluded.vendor,
       category = excluded.category,
       amount = excluded.amount,
@@ -1514,6 +1538,7 @@ async function upsertExpense(client, expense) {
       updated_at = excluded.updated_at`,
     [
       expense.id,
+      expense.jobId || "",
       expense.vendor || "",
       expense.category || "",
       Number(expense.amount || 0),
@@ -1531,6 +1556,7 @@ function expenseFromRow(row) {
   return {
     id: row.id,
     accountId: row.account_id || "owner",
+    jobId: row.job_id || "",
     vendor: row.vendor || "",
     category: row.category || "",
     amount: Number(row.amount || 0),

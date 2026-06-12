@@ -145,6 +145,7 @@ function normalizePropertyMeasurements(value) {
 function normalizeExpense(input, existing = {}) {
   return {
     id: existing.id || input.id || crypto.randomUUID(),
+    jobId: String(input.jobId ?? existing.jobId ?? "").trim(),
     vendor: String(input.vendor || existing.vendor || "").trim(),
     category: String(input.category || existing.category || "").trim(),
     amount: normalizeMoneyDollars(input.amount ?? existing.amount ?? 0),
