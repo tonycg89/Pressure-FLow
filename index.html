@@ -483,136 +483,142 @@
       </form>
     </dialog>
 
-    <dialog id="customerDialog">
+    <dialog id="customerDialog" class="modal modal--md">
       <form method="dialog" id="customerForm" class="form-section">
-        <div class="dialog-header">
-          <h2>New customer</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">New customer</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <label class="field">
-          Customer name
-          <input name="customerName" class="input" required placeholder="Maria Johnson">
-        </label>
-        <label class="field">
-          Email
-          <input name="email" class="input" type="email" placeholder="maria@example.com">
-        </label>
-        <label class="field">
-          Phone
-          <input name="phone" class="input" placeholder="(555) 123-4567">
-        </label>
-        <label class="field">
-          Street address
-          <input name="streetAddress" class="input" placeholder="214 Oak Ridge Dr">
-        </label>
-        <div class="field-row">
+        <div class="modal__body">
           <label class="field">
-            Apt / Suite #
-            <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
+            Customer name
+            <input name="customerName" class="input" required placeholder="Maria Johnson">
           </label>
           <label class="field">
-            City
-            <input name="city" class="input" placeholder="City">
-          </label>
-        </div>
-        <div class="field-row">
-          <label class="field">
-            State
-            <input name="state" class="input" maxlength="2" placeholder="CA">
+            Email
+            <input name="email" class="input" type="email" placeholder="maria@example.com">
           </label>
           <label class="field">
-            ZIP
-            <input name="zip" class="input" inputmode="numeric" placeholder="ZIP code">
+            Phone
+            <input name="phone" class="input" placeholder="(555) 123-4567">
           </label>
-        </div>
-        <input name="address" type="hidden">
-        <label class="field">
-          Lead source
-          <select name="leadSource" class="select">
-            <option value="referral">Referral</option>
-            <option value="door-hanger">Door hanger</option>
-            <option value="door-to-door">Door to door</option>
-            <option value="meta-ad">Meta ad</option>
-            <option value="nextdoor-ad">Nextdoor ad</option>
-          </select>
-        </label>
-        <label class="field">
-          Notes
-          <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
-        </label>
+          <label class="field">
+            Street address
+            <input name="streetAddress" class="input" placeholder="214 Oak Ridge Dr">
+          </label>
+          <div class="field-row">
+            <label class="field">
+              Apt / Suite #
+              <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
+            </label>
+            <label class="field">
+              City
+              <input name="city" class="input" placeholder="City">
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field">
+              State
+              <input name="state" class="input" maxlength="2" placeholder="CA">
+            </label>
+            <label class="field">
+              ZIP
+              <input name="zip" class="input" inputmode="numeric" placeholder="ZIP code">
+            </label>
+          </div>
+          <input name="address" type="hidden">
+          <label class="field">
+            Lead source
+            <select name="leadSource" class="select">
+              <option value="referral">Referral</option>
+              <option value="door-hanger">Door hanger</option>
+              <option value="door-to-door">Door to door</option>
+              <option value="meta-ad">Meta ad</option>
+              <option value="nextdoor-ad">Nextdoor ad</option>
+            </select>
+          </label>
+          <label class="field">
+            Notes
+            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
+          </label>
 
-        <section class="photo-uploader" aria-label="Service area photos">
-          <div class="section-header compact-header">
-            <div>
-              <p class="eyebrow">Property Photos</p>
-              <h3>Service area</h3>
+          <section class="photo-uploader" aria-label="Service area photos">
+            <div class="section-header compact-header">
+              <div>
+                <p class="eyebrow">Property Photos</p>
+                <h3>Service area</h3>
+              </div>
             </div>
-          </div>
-          <div class="photo-actions">
-            <label class="photo-action-button primary">Upload
-              <input data-service-area-photo-input type="file" accept="image/*" multiple>
-            </label>
-            <label class="photo-action-button">Take Picture
-              <input data-service-area-photo-input type="file" accept="image/*" capture="environment">
-            </label>
-          </div>
-          <div id="serviceAreaPhotoPreview" class="photo-grid"></div>
-        </section>
+            <div class="photo-actions">
+              <label class="photo-action-button primary">Upload
+                <input data-service-area-photo-input type="file" accept="image/*" multiple>
+              </label>
+              <label class="photo-action-button">Take Picture
+                <input data-service-area-photo-input type="file" accept="image/*" capture="environment">
+              </label>
+            </div>
+            <div id="serviceAreaPhotoPreview" class="photo-grid"></div>
+          </section>
+        </div>
 
-        <menu class="dialog-actions form-actions">
+        <menu class="dialog-actions form-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Customer</button>
         </menu>
       </form>
     </dialog>
 
-    <dialog id="expenseDialog">
+    <dialog id="expenseDialog" class="modal modal--md">
       <form method="dialog" id="expenseForm" class="form-section">
-        <div class="dialog-header">
-          <h2>Add expense</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">Add expense</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
-        <label class="field">
-          Vendor
-          <input name="vendor" class="input" required placeholder="Home Depot">
-        </label>
-        <label class="field">
-          Amount
-          <input name="amount" class="input" required inputmode="numeric" pattern="[0-9.]*" placeholder="13.35">
-        </label>
-        <label class="field">
-          Date
-          <input name="expenseDate" class="input" type="date" required>
-        </label>
-        <label class="field">
-          Category
-          <input name="category" class="input" placeholder="Chemicals, fuel, equipment">
-        </label>
-        <label class="field">
-          Link to job (optional)
-          <select name="jobId" class="select">
-            <option value="">No linked job</option>
-          </select>
-        </label>
-        <label class="field">
-          Notes
-          <textarea name="notes" class="textarea" rows="2" placeholder="Optional notes"></textarea>
-        </label>
-        <section class="photo-uploader" aria-label="Receipt photos">
-          <div class="section-header compact-header">
-            <div>
-              <p class="eyebrow">Receipts</p>
-              <h3>Receipt photos</h3>
-            </div>
-          </div>
+
+        <div class="modal__body">
           <label class="field">
-            Add receipt photos
-            <input id="receiptPhotoInput" type="file" accept="image/*" multiple>
+            Vendor
+            <input name="vendor" class="input" required placeholder="Home Depot">
           </label>
-          <div id="receiptPhotoPreview" class="photo-grid"></div>
-        </section>
-        <menu class="dialog-actions form-actions">
+          <label class="field">
+            Amount
+            <input name="amount" class="input" required inputmode="numeric" pattern="[0-9.]*" placeholder="13.35">
+          </label>
+          <label class="field">
+            Date
+            <input name="expenseDate" class="input" type="date" required>
+          </label>
+          <label class="field">
+            Category
+            <input name="category" class="input" placeholder="Chemicals, fuel, equipment">
+          </label>
+          <label class="field">
+            Link to job (optional)
+            <select name="jobId" class="select">
+              <option value="">No linked job</option>
+            </select>
+          </label>
+          <label class="field">
+            Notes
+            <textarea name="notes" class="textarea" rows="2" placeholder="Optional notes"></textarea>
+          </label>
+          <section class="photo-uploader" aria-label="Receipt photos">
+            <div class="section-header compact-header">
+              <div>
+                <p class="eyebrow">Receipts</p>
+                <h3>Receipt photos</h3>
+              </div>
+            </div>
+            <label class="field">
+              Add receipt photos
+              <input id="receiptPhotoInput" type="file" accept="image/*" multiple>
+            </label>
+            <div id="receiptPhotoPreview" class="photo-grid"></div>
+          </section>
+        </div>
+
+        <menu class="dialog-actions form-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Expense</button>
         </menu>
