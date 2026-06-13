@@ -24,7 +24,7 @@ function getSquareWebhookNotificationUrl(request) {
 
 function verifySquareSignature(request, rawBody, signatureKey, safeCompare) {
   if (!signatureKey) {
-    return true;
+    return false;
   }
 
   const signature = request.headers["x-square-hmacsha256-signature"];

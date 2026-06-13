@@ -24,6 +24,8 @@ const {
 } = require("../records");
 const { getDayOfServiceInstructions } = require("../scheduling");
 const { createWorkspaceAccess } = require("../workspace");
+const { verifySquareSignature } = require("../integrations/square");
+const { verifyStripeSignature } = require("../integrations/stripe");
 
 function responseStub() {
   return {
@@ -54,6 +56,38 @@ function safeCompare(a, b) {
   const left = Buffer.from(String(a));
   const right = Buffer.from(String(b));
   return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function testWebhookSignatureVerificationRequiresSecrets() {
+  const stripeBody = JSON.stringify({ id: "evt_test" });
+  const stripeTimestamp = "1800000000";
+  const stripeSecret = "whsec_test_secret";
+  const stripeDigest = crypto
+    .createHmac("sha256", stripeSecret)
+    .update(`${stripeTimestamp}.${stripeBody}`)
+    .digest("hex");
+  const stripeHeader = `t=${stripeTimestamp},v1=${stripeDigest}`;
+
+  assert.equal(verifyStripeSignature(stripeHeader, stripeBody, "", safeCompare), false);
+  assert.equal(verifyStripeSignature("t=1800000000,v1=bad", stripeBody, stripeSecret, safeCompare), false);
+  assert.equal(verifyStripeSignature(stripeHeader, stripeBody, stripeSecret, safeCompare), true);
+
+  const squareBody = JSON.stringify({ data: { object: { invoice: { id: "sq-test" } } } });
+  const squareSecret = "square_signature_key";
+  const squareRequest = {
+    headers: {
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "example.test"
+    }
+  };
+  const squareSignature = crypto
+    .createHmac("sha256", squareSecret)
+    .update(`https://example.test/webhooks/square${squareBody}`)
+    .digest("base64");
+
+  assert.equal(verifySquareSignature(squareRequest, squareBody, "", safeCompare), false);
+  assert.equal(verifySquareSignature({ headers: { ...squareRequest.headers, "x-square-hmacsha256-signature": "bad" } }, squareBody, squareSecret, safeCompare), false);
+  assert.equal(verifySquareSignature({ headers: { ...squareRequest.headers, "x-square-hmacsha256-signature": squareSignature } }, squareBody, squareSecret, safeCompare), true);
 }
 
 async function testLoginAndSession() {
@@ -602,6 +636,47 @@ async function testWorkflowEmailIdempotency() {
   assert.equal(invoices, 1);
 }
 
+async function testManualPaymentMarkingStillWorks() {
+  const sent = [];
+  const actions = createJobActionHandler({
+    cancelPendingFollowUp: async (jobId, reason, accountId, type) => {
+      sent.push({ jobId, reason, accountId, type });
+    },
+    createGoogleCalendarEvent: async () => ({}),
+    createPressureFlowInvoice: async () => ({}),
+    readSettings: async () => ({ businessName: "Test Business" }),
+    randomToken: () => "token",
+    sendAdminTextAlertSafe: async () => {},
+    sendCompletionCertificateEmailSafe: async () => {},
+    sendContractEmail: async () => {},
+    sendEstimateEmail: async () => {},
+    sendScheduleConfirmationEmail: async () => {}
+  });
+  const job = {
+    id: "manual-payment-job",
+    accountId: "acct-manual",
+    customerName: "Manual Customer",
+    email: "manual@example.com",
+    address: "10 Main",
+    serviceType: "Driveway cleaning",
+    estimate: 200,
+    depositPercent: 25,
+    status: "Final Invoice Sent",
+    squareFinalInvoiceId: "final-invoice",
+    squareFinalInvoiceUrl: "https://invoice.test/final"
+  };
+
+  await actions.applyAction(job, "mark-paid", {
+    paymentMethod: "Check",
+    paymentReference: "1001",
+    _baseUrl: "https://pressureflow.test"
+  });
+
+  assert.equal(job.status, "Paid");
+  assert.equal(job.paymentRecords[0].method, "Check");
+  assert.equal(sent[0].type, "invoice_followup");
+}
+
 async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   const previous = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
   process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
@@ -624,6 +699,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
 }
 
 (async () => {
+  testWebhookSignatureVerificationRequiresSecrets();
   await testLoginAndSession();
   await testReaddDisabledTester();
   await testAccountIsolation();
@@ -636,6 +712,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   testCompletionCertificateUsesGenericServiceWording();
   await testEstimateAndInvoicePublicFlow();
   await testWorkflowEmailIdempotency();
+  await testManualPaymentMarkingStillWorks();
   await testEmailDeliveryCanBeSkippedForBrowserSmoke();
   console.log("test-user safety smoke ok");
 })().catch((error) => {

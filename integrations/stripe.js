@@ -15,7 +15,7 @@ function parseStripeWebhookMetadata(rawBody) {
 
 function verifyStripeSignature(signatureHeader, rawBody, secret, safeCompare) {
   if (!secret) {
-    return true;
+    return false;
   }
 
   const signature = String(signatureHeader || "");

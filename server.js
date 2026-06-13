@@ -520,9 +520,10 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/webhooks/square") {
     const rawBody = await readRawRequestBody(request);
-    if (!(await verifySquareWebhookSignature(request, rawBody))) {
-      await recordWebhookEvent({ provider: "square", status: "rejected", reason: "invalid signature" });
-      sendError(response, 401, "Invalid Square webhook signature.");
+    const verification = await verifySquareWebhookSignature(request, rawBody);
+    if (!verification.ok) {
+      await recordWebhookEvent({ provider: "square", status: "rejected", reason: verification.reason });
+      sendError(response, 401, verification.message);
       return;
     }
 
@@ -541,8 +542,9 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/webhooks/stripe") {
     const rawBody = await readRawRequestBody(request);
-    if (!(await verifyStripeWebhookSignature(request, rawBody))) {
-      sendError(response, 401, "Invalid Stripe webhook signature.");
+    const verification = await verifyStripeWebhookSignature(request, rawBody);
+    if (!verification.ok) {
+      sendError(response, 401, verification.message);
       return;
     }
 
@@ -617,7 +619,20 @@ async function withJobActionLock(jobId, task) {
 
 async function verifySquareWebhookSignature(request, rawBody) {
   const settings = await getSquareWebhookSettings(rawBody);
-  return verifySquareSignature(request, rawBody, settings.squareWebhookSignatureKey, safeCompare);
+  if (!settings.squareWebhookSignatureKey) {
+    return {
+      ok: false,
+      reason: "missing signature key",
+      message: "Square webhook signature key is not configured."
+    };
+  }
+  return verifySquareSignature(request, rawBody, settings.squareWebhookSignatureKey, safeCompare)
+    ? { ok: true }
+    : {
+      ok: false,
+      reason: "invalid signature",
+      message: "Invalid Square webhook signature."
+    };
 }
 
 function safeCompare(a, b) {
@@ -632,7 +647,18 @@ function safeCompare(a, b) {
 
 async function verifyStripeWebhookSignature(request, rawBody) {
   const secret = await getStripeWebhookSecret(rawBody);
-  return verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
+  if (!secret) {
+    return {
+      ok: false,
+      message: "Stripe webhook secret is not configured."
+    };
+  }
+  return verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare)
+    ? { ok: true }
+    : {
+      ok: false,
+      message: "Invalid Stripe webhook signature."
+    };
 }
 
 function ignoresSessionForPublicWorkflow(pathname) {
