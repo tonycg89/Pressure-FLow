@@ -249,6 +249,77 @@ async function testRecordCreateRoutes() {
   assert.equal(customers.length, 1);
 }
 
+async function testExpenseJobLinkTenantGuard() {
+  const jobs = [
+    { id: "job-a", accountId: "acct-a", customerName: "A" }
+  ];
+  let expenses = [
+    { id: "exp-existing", accountId: "acct-a", vendor: "Existing", amount: 15, jobId: "job-a" }
+  ];
+  const routes = createRecordRoutes({
+    cancelStoredInvoiceIfPossible: async () => {},
+    deleteCustomerMeasurementArea: () => true,
+    didPricingChange: () => false,
+    findSavedMeasurements: async () => [],
+    normalizeCustomer,
+    normalizeExpense: (input, existing = {}) => ({
+      id: existing.id || input.id || `expense-${expenses.length + 1}`,
+      vendor: input.vendor ?? existing.vendor ?? "",
+      amount: Number(input.amount ?? existing.amount ?? 0),
+      jobId: String(input.jobId ?? existing.jobId ?? "").trim()
+    }),
+    normalizeJob,
+    readCustomers: async () => [],
+    readExpenses: async () => expenses,
+    readJobs: async () => jobs,
+    readRequestBody: async (request) => request.body || {},
+    resetJobForPricingChange: async () => {},
+    sendError,
+    sendJson,
+    statuses: ["Lead"],
+    syncJobMeasurementToCustomerFile: async () => {},
+    updateJob: Object.assign,
+    validateCustomer: () => "",
+    validateExpense: (expense) => !expense.vendor ? "Vendor is required." : "",
+    validateJob: () => "",
+    writeCustomers: async () => {},
+    writeExpenses: async (value) => { expenses = value; },
+    writeJobs: async () => {}
+  });
+
+  let response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "POST",
+    body: { vendor: "Same Account", amount: 10, jobId: "job-a" }
+  }, response, new URL("http://local/api/expenses"));
+  assert.equal(response.status, 201);
+  assert.equal(JSON.parse(response.body).expense.jobId, "job-a");
+
+  response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "POST",
+    body: { vendor: "Unlinked", amount: 12, jobId: "" }
+  }, response, new URL("http://local/api/expenses"));
+  assert.equal(response.status, 201);
+  assert.equal(JSON.parse(response.body).expense.jobId, "");
+
+  response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "POST",
+    body: { vendor: "Cross Account", amount: 14, jobId: "job-b" }
+  }, response, new URL("http://local/api/expenses"));
+  assert.equal(response.status, 400);
+  assert.match(JSON.parse(response.body).error, /Linked job/);
+
+  response = responseStub();
+  await routes.handleRecordRoutes({
+    method: "PATCH",
+    body: { vendor: "Existing", amount: 15, jobId: "job-b" }
+  }, response, new URL("http://local/api/expenses/exp-existing"));
+  assert.equal(response.status, 400);
+  assert.equal(expenses.find((expense) => expense.id === "exp-existing").jobId, "job-a");
+}
+
 function testSettingsVisibilityAndValidation() {
   const ownerSettings = normalizeSettings({
     businessEmail: "bad email",
@@ -447,6 +518,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   await testAccountIsolation();
   await testPublicWorkflowLookupIgnoresLoggedInAccountScope();
   await testRecordCreateRoutes();
+  await testExpenseJobLinkTenantGuard();
   testSettingsVisibilityAndValidation();
   testCustomerFacingSenderName();
   testCompletionCertificateUsesGenericServiceWording();

@@ -89,6 +89,11 @@ function createRecordRoutes({
         return true;
       }
 
+      if (!(await isValidExpenseJobLink(expense))) {
+        sendError(response, 400, "Linked job was not found in this account.");
+        return true;
+      }
+
       const expenses = await readExpenses();
       expenses.unshift(expense);
       await writeExpenses(expenses);
@@ -179,6 +184,11 @@ function createRecordRoutes({
         return true;
       }
 
+      if (!(await isValidExpenseJobLink(updatedExpense))) {
+        sendError(response, 400, "Linked job was not found in this account.");
+        return true;
+      }
+
       Object.assign(expense, updatedExpense);
       await writeExpenses(expenses);
       sendJson(response, 200, { expense });
@@ -250,6 +260,15 @@ function createRecordRoutes({
     }
 
     return false;
+  }
+
+  async function isValidExpenseJobLink(expense) {
+    if (!expense.jobId) {
+      return true;
+    }
+
+    const jobs = await readJobs();
+    return jobs.some((job) => job.id === expense.jobId);
   }
 
   return { handleRecordRoutes };
