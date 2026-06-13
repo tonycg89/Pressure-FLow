@@ -47,7 +47,8 @@ const {
   getTemplateMetadata,
   normalizeCustomTemplates,
   normalizeSettings,
-  publicSettings
+  publicSettings,
+  validateSettingsInput
 } = require("./settings");
 const { buildGoogleAuthUrl, createGoogleCalendarEvent, exchangeGoogleCode } = require("./integrations/google");
 const {
@@ -305,6 +306,7 @@ const { handleSettingsUserRoutes } = createSettingsUserRoutes({
   requestFallbackUser: { id: "local-owner", accountId: "owner", email: "", role: "owner", isOwner: true },
   sendError,
   sendJson,
+  validateSettingsInput,
   writeSettings
 });
 

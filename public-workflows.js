@@ -7,6 +7,7 @@ const {
 } = require("./billing");
 const { buildContractMailto } = require("./email-content");
 const { getBaseUrlFromLink } = require("./rendering");
+const { FIELD_LIMITS, isValidDateOnly, limitText } = require("./records");
 
 function buildEstimateApprovalUrl(baseUrl, job) {
   const root = String(baseUrl || process.env.APP_BASE_URL || "").replace(/\/$/, "");
@@ -174,10 +175,15 @@ function createPublicWorkflowHandlers({
       }
 
       const settings = await readSettingsForJob(job);
+      const cleanSignedDate = String(signedDate || "").trim();
+      if (cleanSignedDate && !isValidDateOnly(cleanSignedDate)) {
+        throw validationError("Signed date must be a real date in YYYY-MM-DD format.");
+      }
+
       job.status = "Contract Signed";
-      job.contractSignerName = String(signerName || "").trim();
+      job.contractSignerName = limitText(signerName, FIELD_LIMITS.publicSignerName);
       job.contractSignedAt = new Date().toISOString();
-      job.contractSignedDate = String(signedDate || "").trim();
+      job.contractSignedDate = cleanSignedDate;
       job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);
 
       const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
@@ -211,6 +217,12 @@ function createPublicWorkflowHandlers({
         workflowLocks.delete(key);
       }
     }
+  }
+
+  function validationError(message) {
+    const error = new Error(message);
+    error.statusCode = 400;
+    return error;
   }
 
   return {

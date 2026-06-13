@@ -3,6 +3,14 @@ const { createInlineFileRecord, publicFileRecord } = require("./storage");
 
 const MAX_CUSTOM_TEMPLATES = 25;
 const MAX_TEMPLATE_DATA_URL_BYTES = 7_000_000;
+const SETTINGS_LIMITS = Object.freeze({
+  businessName: 120,
+  businessPhone: 40,
+  paymentHandle: 80,
+  paymentInstructions: 2000,
+  integrationId: 254,
+  integrationSecret: 2000
+});
 
 const privateSettingKeys = new Set([
   "squareAccessToken",
@@ -103,9 +111,9 @@ function normalizeSettings(input, existing) {
   const depositPercent = Number(input.defaultDepositPercent ?? existing.defaultDepositPercent);
   return {
     ...existing,
-    businessName: String(input.businessName || "").trim(),
+    businessName: limitText(input.businessName, SETTINGS_LIMITS.businessName),
     businessEmail: normalizeEmail(input.businessEmail),
-    businessPhone: String(input.businessPhone || "").trim(),
+    businessPhone: limitText(input.businessPhone, SETTINGS_LIMITS.businessPhone),
     serviceIndustry: normalizeServiceIndustry(input.serviceIndustry ?? existing.serviceIndustry),
     customerSegment: normalizeCustomerSegment(input.customerSegment ?? existing.customerSegment),
     onboardingServiceScope: normalizeOnboardingServiceScope(input.onboardingServiceScope ?? existing.onboardingServiceScope),
@@ -116,31 +124,31 @@ function normalizeSettings(input, existing) {
     finalInvoiceTiming: "immediate_after_completion",
     squareEnvironment: ["sandbox", "production"].includes(input.squareEnvironment) ? input.squareEnvironment : existing.squareEnvironment || "sandbox",
     squareAccessToken: normalizePrivateSetting(input, existing, "squareAccessToken"),
-    squareLocationId: String(input.squareLocationId || "").trim() || existing.squareLocationId || "",
+    squareLocationId: limitText(input.squareLocationId, SETTINGS_LIMITS.integrationId) || existing.squareLocationId || "",
     squareWebhookSignatureKey: normalizePrivateSetting(input, existing, "squareWebhookSignatureKey"),
     emailSendProvider: ["google", "smtp"].includes(input.emailSendProvider) ? input.emailSendProvider : existing.emailSendProvider || "google",
-    smtpHost: String(input.smtpHost || "").trim(),
+    smtpHost: limitText(input.smtpHost, SETTINGS_LIMITS.integrationId),
     smtpPort: normalizeNumber(input.smtpPort, existing.smtpPort || 587, 1, 65535),
     smtpSecurity: ["ssl", "starttls", "none"].includes(input.smtpSecurity) ? input.smtpSecurity : existing.smtpSecurity || "starttls",
-    smtpUsername: String(input.smtpUsername || "").trim().slice(0, 254),
+    smtpUsername: limitText(input.smtpUsername, SETTINGS_LIMITS.integrationId),
     smtpPassword: normalizePrivateSetting(input, existing, "smtpPassword"),
     smtpFromEmail: normalizeEmail(input.smtpFromEmail),
     stripeSecretKey: normalizePrivateSetting(input, existing, "stripeSecretKey"),
     stripeWebhookSecret: normalizePrivateSetting(input, existing, "stripeWebhookSecret"),
-    quickBooksCompanyId: String(input.quickBooksCompanyId || "").trim() || existing.quickBooksCompanyId || "",
-    quickBooksClientId: String(input.quickBooksClientId || "").trim() || existing.quickBooksClientId || "",
+    quickBooksCompanyId: limitText(input.quickBooksCompanyId, SETTINGS_LIMITS.integrationId) || existing.quickBooksCompanyId || "",
+    quickBooksClientId: limitText(input.quickBooksClientId, SETTINGS_LIMITS.integrationId) || existing.quickBooksClientId || "",
     quickBooksClientSecret: normalizePrivateSetting(input, existing, "quickBooksClientSecret"),
     quickBooksRedirectUri: normalizeUrl(input.quickBooksRedirectUri) || existing.quickBooksRedirectUri || "",
     quickBooksRefreshToken: normalizePrivateSetting(input, existing, "quickBooksRefreshToken"),
-    googleClientId: Object.hasOwn(input, "googleClientId") ? String(input.googleClientId || "").trim() : existing.googleClientId || "",
+    googleClientId: Object.hasOwn(input, "googleClientId") ? limitText(input.googleClientId, SETTINGS_LIMITS.integrationId) : existing.googleClientId || "",
     googleClientSecret: normalizePrivateSetting(input, existing, "googleClientSecret"),
     googleRedirectUri: Object.hasOwn(input, "googleRedirectUri") ? normalizeUrl(input.googleRedirectUri) || existing.googleRedirectUri : existing.googleRedirectUri,
-    googleCalendarId: String(input.googleCalendarId || "").trim().slice(0, 254),
-    mapboxPublicToken: String(input.mapboxPublicToken || "").trim() || existing.mapboxPublicToken,
-    zellePayment: String(input.zellePayment || "").trim(),
-    cashAppPayment: String(input.cashAppPayment || "").trim(),
-    venmoPayment: String(input.venmoPayment || "").trim(),
-    paymentInstructions: String(input.paymentInstructions || "").trim(),
+    googleCalendarId: limitText(input.googleCalendarId, SETTINGS_LIMITS.integrationId),
+    mapboxPublicToken: limitText(input.mapboxPublicToken, SETTINGS_LIMITS.integrationSecret) || existing.mapboxPublicToken,
+    zellePayment: limitText(input.zellePayment, SETTINGS_LIMITS.paymentHandle),
+    cashAppPayment: limitText(input.cashAppPayment, SETTINGS_LIMITS.paymentHandle),
+    venmoPayment: limitText(input.venmoPayment, SETTINGS_LIMITS.paymentHandle),
+    paymentInstructions: limitText(input.paymentInstructions, SETTINGS_LIMITS.paymentInstructions),
     paymentFollowUpHours: normalizePaymentFollowUpHours(input.paymentFollowUpHours ?? existing.paymentFollowUpHours),
     estimateFollowUpEnabled: normalizeBoolean(input.estimateFollowUpEnabled ?? existing.estimateFollowUpEnabled ?? true),
     estimateFollowUpDelayHours: normalizeEstimateFollowUpDelayHours(input.estimateFollowUpDelayHours ?? existing.estimateFollowUpDelayHours),
@@ -171,6 +179,16 @@ function normalizeShortTemplate(value) {
   return String(value || "").trim().slice(0, 180);
 }
 
+function validateSettingsInput(input = {}) {
+  if (Object.hasOwn(input, "businessEmail")) {
+    const email = String(input.businessEmail || "").trim();
+    if (email && !isValidEmail(email)) {
+      return "Business email must be a valid email address.";
+    }
+  }
+  return "";
+}
+
 function normalizeBoolean(value) {
   return value === true || value === "true" || value === "on" || value === "1";
 }
@@ -180,7 +198,7 @@ function normalizePrivateSetting(input, existing, key) {
     return "";
   }
 
-  const submittedValue = Object.hasOwn(input, key) ? String(input[key] || "").trim() : "";
+  const submittedValue = Object.hasOwn(input, key) ? limitText(input[key], SETTINGS_LIMITS.integrationSecret) : "";
   return submittedValue || existing[key] || "";
 }
 
@@ -237,7 +255,12 @@ function normalizeMoneyNumber(value, min, max) {
 
 function normalizeEmail(value) {
   const email = String(value || "").trim().slice(0, 254);
-  return !email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "";
+  return !email || isValidEmail(email) ? email : "";
+}
+
+function isValidEmail(value) {
+  const email = String(value || "").trim();
+  return email.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 
 function normalizeUrl(value) {
@@ -274,13 +297,19 @@ function normalizeNumber(value, fallback, min, max) {
   return Math.min(Math.max(number, min), max);
 }
 
+function limitText(value, max) {
+  return String(value || "").trim().slice(0, max);
+}
+
 module.exports = {
   MAX_CUSTOM_TEMPLATES,
   MAX_TEMPLATE_DATA_URL_BYTES,
+  SETTINGS_LIMITS,
   getTemplateMetadata,
   isAllowedImageDataUrl,
   normalizeCustomTemplates,
   normalizeServiceUnit,
   normalizeSettings,
-  publicSettings
+  publicSettings,
+  validateSettingsInput
 };

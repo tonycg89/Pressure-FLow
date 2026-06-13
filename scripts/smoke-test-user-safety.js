@@ -9,11 +9,18 @@ const { createPublicWorkflowHandlers } = require("../public-workflows");
 const { createRecordRoutes } = require("../record-routes");
 const {
   normalizeSettings,
-  publicSettings
+  publicSettings,
+  validateSettingsInput
 } = require("../settings");
 const {
+  FIELD_LIMITS,
+  MAX_EXPENSE_AMOUNT,
   normalizeCustomer,
-  normalizeJob
+  normalizeExpense,
+  normalizeJob,
+  validateCustomer,
+  validateExpense,
+  validateJob
 } = require("../records");
 const { getDayOfServiceInstructions } = require("../scheduling");
 const { createWorkspaceAccess } = require("../workspace");
@@ -320,6 +327,110 @@ async function testExpenseJobLinkTenantGuard() {
   assert.equal(expenses.find((expense) => expense.id === "exp-existing").jobId, "job-a");
 }
 
+function testValidationReadiness() {
+  const validJob = normalizeJob({
+    customerName: "Valid Customer",
+    email: "valid@example.com",
+    phone: "555-111-2222",
+    streetAddress: "10 Main St",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    serviceType: "Window cleaning",
+    estimate: 250,
+    depositPercent: 25,
+    measurement: { staticImageUrl: "https://example.test/map.png" }
+  });
+  assert.equal(validateJob(validJob), "");
+
+  const badJobEmail = normalizeJob({
+    ...validJob,
+    email: "bad email"
+  });
+  assert.match(validateJob(badJobEmail), /valid email/);
+
+  const unsafeMeasurementJob = normalizeJob({
+    ...validJob,
+    measurement: { staticImageUrl: "javascript:alert(1)" }
+  });
+  assert.match(validateJob(unsafeMeasurementJob), /preview image URL/);
+
+  const overlongJob = normalizeJob({
+    ...validJob,
+    serviceType: "S".repeat(FIELD_LIMITS.serviceType + 20),
+    notes: "N".repeat(FIELD_LIMITS.jobNotes + 20)
+  });
+  assert.equal(overlongJob.serviceType.length, FIELD_LIMITS.serviceType);
+  assert.equal(overlongJob.notes.length, FIELD_LIMITS.jobNotes);
+
+  const validCustomer = normalizeCustomer({
+    customerName: "Valid Customer",
+    email: "valid@example.com",
+    phone: "555-111-2222"
+  });
+  assert.equal(validateCustomer(validCustomer), "");
+
+  const badCustomerEmail = normalizeCustomer({
+    customerName: "Bad Email",
+    email: "bad email",
+    phone: ""
+  });
+  assert.match(validateCustomer(badCustomerEmail), /valid email/);
+
+  const overlongCustomer = normalizeCustomer({
+    customerName: "C".repeat(FIELD_LIMITS.customerName + 20),
+    email: "customer@example.com",
+    phone: "1".repeat(FIELD_LIMITS.phone + 20)
+  });
+  assert.equal(overlongCustomer.customerName.length, FIELD_LIMITS.customerName);
+  assert.equal(overlongCustomer.phone.length, FIELD_LIMITS.phone);
+
+  const validExpense = normalizeExpense({
+    vendor: "Home Depot",
+    category: "Materials",
+    amount: 123.45,
+    expenseDate: "2026-06-12",
+    notes: "Receipt for supplies"
+  });
+  assert.equal(validateExpense(validExpense), "");
+
+  const badExpenseDate = normalizeExpense({
+    vendor: "Bad Date",
+    amount: 12,
+    expenseDate: "2026-02-31"
+  });
+  assert.match(validateExpense(badExpenseDate), /real date/);
+
+  const hugeExpense = normalizeExpense({
+    vendor: "Huge Amount",
+    amount: MAX_EXPENSE_AMOUNT + 0.01,
+    expenseDate: "2026-06-12"
+  });
+  assert.match(validateExpense(hugeExpense), /1,000,000/);
+
+  const overlongExpense = normalizeExpense({
+    vendor: "V".repeat(FIELD_LIMITS.expenseVendor + 20),
+    category: "C".repeat(FIELD_LIMITS.expenseCategory + 20),
+    amount: 12,
+    expenseDate: "2026-06-12",
+    notes: "N".repeat(FIELD_LIMITS.expenseNotes + 20)
+  });
+  assert.equal(overlongExpense.vendor.length, FIELD_LIMITS.expenseVendor);
+  assert.equal(overlongExpense.category.length, FIELD_LIMITS.expenseCategory);
+  assert.equal(overlongExpense.notes.length, FIELD_LIMITS.expenseNotes);
+
+  assert.match(validateSettingsInput({ businessEmail: "bad email" }), /Business email/);
+  assert.equal(validateSettingsInput({ businessEmail: "valid@example.com" }), "");
+  const validSettings = normalizeSettings({
+    businessName: "Valid Business",
+    businessEmail: "valid@example.com",
+    businessPhone: "555-111-2222",
+    paymentInstructions: "Pay online."
+  }, {});
+  assert.equal(validSettings.businessEmail, "valid@example.com");
+  assert.equal(validSettings.businessName, "Valid Business");
+}
+
 function testSettingsVisibilityAndValidation() {
   const ownerSettings = normalizeSettings({
     businessEmail: "bad email",
@@ -519,6 +630,7 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   await testPublicWorkflowLookupIgnoresLoggedInAccountScope();
   await testRecordCreateRoutes();
   await testExpenseJobLinkTenantGuard();
+  testValidationReadiness();
   testSettingsVisibilityAndValidation();
   testCustomerFacingSenderName();
   testCompletionCertificateUsesGenericServiceWording();

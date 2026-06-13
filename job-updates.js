@@ -1,6 +1,8 @@
 const { statuses } = require("./db");
 const {
   buildFullAddress,
+  FIELD_LIMITS,
+  limitText,
   normalizeJobPhotos,
   normalizeLineItems,
   normalizeMeasurement
@@ -26,13 +28,13 @@ function updateJob(job, input) {
 
   fields.forEach((field) => {
     if (Object.hasOwn(input, field)) {
-      job[field] = String(input[field] || "").trim();
+      job[field] = limitText(input[field], getJobFieldLimit(field));
     }
   });
 
   if (["streetAddress", "addressUnit", "city", "state", "zip"].some((field) => Object.hasOwn(input, field))) {
     job.state = String(job.state || "").trim().toUpperCase();
-    job.address = String(input.address || buildFullAddress(job) || job.address || "").trim();
+    job.address = limitText(input.address || buildFullAddress(job) || job.address, FIELD_LIMITS.address);
   }
 
   if (Object.hasOwn(input, "estimate")) {
@@ -124,6 +126,25 @@ async function resetJobForPricingChange(job, cancelStoredInvoiceIfPossible) {
   job.squareFinalInvoiceUrl = "";
   job.squareFinalInvoiceStatus = "";
   job.squareFinalPaidAt = "";
+}
+
+function getJobFieldLimit(field) {
+  return {
+    customerName: FIELD_LIMITS.customerName,
+    customerId: FIELD_LIMITS.email,
+    email: FIELD_LIMITS.email,
+    phone: FIELD_LIMITS.phone,
+    address: FIELD_LIMITS.address,
+    serviceType: FIELD_LIMITS.serviceType,
+    notes: FIELD_LIMITS.jobNotes,
+    accessNotes: FIELD_LIMITS.jobNotes,
+    sensitiveAreas: FIELD_LIMITS.jobNotes,
+    squareEstimateId: FIELD_LIMITS.email,
+    squareEstimateUrl: FIELD_LIMITS.address,
+    squareContractId: FIELD_LIMITS.email,
+    squareContractUrl: FIELD_LIMITS.address,
+    leadSource: FIELD_LIMITS.serviceType
+  }[field] || FIELD_LIMITS.address;
 }
 
 module.exports = {

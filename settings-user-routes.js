@@ -20,6 +20,7 @@ function createSettingsUserRoutes({
   requestFallbackUser,
   sendError,
   sendJson,
+  validateSettingsInput = () => "",
   writeSettings
 }) {
   async function handleSettingsUserRoutes(request, response, url) {
@@ -99,6 +100,12 @@ function createSettingsUserRoutes({
     if (request.method === "POST" && url.pathname === "/api/settings") {
       const existing = await readSettings();
       const input = await readRequestBody(request);
+      const validationError = validateSettingsInput(input);
+      if (validationError) {
+        sendError(response, 400, validationError);
+        return true;
+      }
+
       const settings = normalizeSettings(input, existing);
       if (!isOwnerSession()) {
         settings.mapboxPublicToken = "";

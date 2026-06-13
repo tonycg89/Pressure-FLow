@@ -15,7 +15,7 @@ const {
   buildContractApprovalUrl,
   buildEstimateApprovalUrl
 } = require("./public-workflows");
-const { getNextStatus, normalizeJobPhotos } = require("./records");
+const { getNextStatus, isValidLocalDateTime, normalizeJobPhotos } = require("./records");
 const { formatScheduledWindow } = require("./scheduling");
 
 function createJobActionHandler({
@@ -59,6 +59,9 @@ function createJobActionHandler({
     if (action === "schedule") {
       const settings = await readSettings();
       const scheduledAt = input.scheduledAt || "";
+      if (!isValidLocalDateTime(scheduledAt)) {
+        throw validationError("Schedule date/time must be a real date and time.");
+      }
       const duration = normalizeNumber(
         input.jobDurationMinutes,
         settings.defaultJobDurationMinutes,
@@ -294,6 +297,12 @@ function normalizeNumber(value, fallback, min, max) {
   }
 
   return Math.min(Math.max(number, min), max);
+}
+
+function validationError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
 }
 
 module.exports = {
