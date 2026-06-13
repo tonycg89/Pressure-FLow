@@ -696,17 +696,37 @@ textarea {
   border-radius: var(--radius);
   background: var(--card);
   color: var(--ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
 select,
 input {
-  min-height: 40px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
 }
 
 textarea {
   resize: vertical;
-  padding: 10px;
+  min-height: 96px;
+  padding: 12px;
+}
+
+:where(input, select, textarea):focus {
+  border-color: var(--ring);
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
+}
+
+:where(input, select, textarea):disabled,
+:where(input, select, textarea)[readonly] {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+:where(input, textarea)::placeholder {
+  color: color-mix(in srgb, var(--muted-foreground) 72%, white);
 }
 
 .job-list {
@@ -1338,12 +1358,42 @@ form {
   gap: 14px;
 }
 
+.form-section {
+  display: grid;
+  gap: 16px;
+}
+
+.field,
+.form-field,
 label {
   display: grid;
   gap: 6px;
   color: var(--muted-foreground);
   font-size: 13px;
   font-weight: 700;
+}
+
+.field__label,
+.form-label {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.field__help,
+.field__error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.field__help {
+  color: var(--muted-foreground);
+}
+
+.field__error {
+  color: var(--status-danger-text);
 }
 
 .field-row {
@@ -1357,6 +1407,48 @@ label {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
+}
+
+.input-wrap,
+.select-wrap {
+  position: relative;
+  display: grid;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.check,
+.radio,
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.check input,
+.radio input,
+.checkbox-field input {
+  flex: 0 0 auto;
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
 }
 
 .settings-grid {

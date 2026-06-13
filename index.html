@@ -96,7 +96,7 @@
                 <div id="dashboardNotifications" class="notification-list"></div>
               </div>
             </div>
-            <select id="dashboardTimeframe" class="compact-select" aria-label="Dashboard timeframe">
+            <select id="dashboardTimeframe" class="compact-select select" aria-label="Dashboard timeframe">
               <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
               <option value="365">Last year</option>
@@ -130,7 +130,7 @@
                 <p class="eyebrow">Revenue Source</p>
                 <h3 id="dashboardChartTitle">Income by lead type</h3>
               </div>
-              <select id="dashboardBreakdown" class="compact-select" aria-label="Dashboard revenue breakdown">
+              <select id="dashboardBreakdown" class="compact-select select" aria-label="Dashboard revenue breakdown">
                 <option value="lead">Lead type</option>
                 <option value="service">Service</option>
                 <option value="city">City</option>
@@ -235,7 +235,7 @@
                 <p class="eyebrow">Pipeline</p>
                 <h3 id="pipelineTitle">Active jobs</h3>
               </div>
-              <select id="statusFilter" aria-label="Filter jobs by status">
+              <select id="statusFilter" class="select" aria-label="Filter jobs by status">
                 <option value="all">All statuses</option>
               </select>
             </div>
@@ -295,9 +295,9 @@
             <h2>Store receipts and track operating costs.</h2>
           </div>
           <div class="topbar-actions">
-            <label class="compact-select">
+            <label class="compact-select field">
               Filter by job
-              <select id="expenseJobFilter">
+              <select id="expenseJobFilter" class="select">
                 <option value="">All expenses</option>
               </select>
             </label>
@@ -336,7 +336,7 @@
     </main>
 
     <dialog id="jobDialog">
-      <form method="dialog" id="jobForm">
+      <form method="dialog" id="jobForm" class="form-section">
         <div class="dialog-header">
           <h2>New job</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
@@ -344,51 +344,51 @@
 
         <input name="customerId" type="hidden">
 
-        <label>
+        <label class="field">
           Customer lookup
-          <input id="jobCustomerSearch" list="jobCustomerOptions" placeholder="Start typing a customer name">
+          <input id="jobCustomerSearch" class="input" list="jobCustomerOptions" placeholder="Start typing a customer name">
           <datalist id="jobCustomerOptions"></datalist>
         </label>
-        <label>
+        <label class="field">
           Customer name
-          <input name="customerName" required placeholder="Maria Johnson">
+          <input name="customerName" class="input" required placeholder="Maria Johnson">
         </label>
-        <label>
+        <label class="field">
           Email
-          <input name="email" required type="email" placeholder="maria@example.com">
+          <input name="email" class="input" required type="email" placeholder="maria@example.com">
         </label>
-        <label>
+        <label class="field">
           Phone
-          <input name="phone" required placeholder="(555) 123-4567">
+          <input name="phone" class="input" required placeholder="(555) 123-4567">
         </label>
-        <label>
+        <label class="field">
           Street address
-          <input name="streetAddress" required placeholder="214 Oak Ridge Dr">
+          <input name="streetAddress" class="input" required placeholder="214 Oak Ridge Dr">
         </label>
         <div class="field-row">
-          <label>
+          <label class="field">
             Apt / Suite #
-            <input name="addressUnit" placeholder="Apt 2, Suite B">
+            <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
           </label>
-          <label>
+          <label class="field">
             City
-            <input name="city" required placeholder="City">
+            <input name="city" class="input" required placeholder="City">
           </label>
         </div>
         <div class="field-row">
-          <label>
+          <label class="field">
             State
-            <input name="state" required maxlength="2" placeholder="CA">
+            <input name="state" class="input" required maxlength="2" placeholder="CA">
           </label>
-          <label>
+          <label class="field">
             ZIP
-            <input name="zip" required inputmode="numeric" placeholder="ZIP code">
+            <input name="zip" class="input" required inputmode="numeric" placeholder="ZIP code">
           </label>
         </div>
         <input name="address" type="hidden">
-        <label>
+        <label class="field">
           Lead source
-          <select name="leadSource">
+          <select name="leadSource" class="select">
             <option value="referral">Referral</option>
             <option value="door-hanger">Door hanger</option>
             <option value="door-to-door">Door to door</option>
@@ -396,9 +396,9 @@
             <option value="nextdoor-ad">Nextdoor ad</option>
           </select>
         </label>
-        <label>
+        <label class="field">
           Job title
-          <input name="serviceType" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
+          <input name="serviceType" class="input" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
         </label>
         <datalist id="jobTitleSuggestions">
           <option value="Exterior Cleaning"></option>
@@ -427,9 +427,9 @@
           <div id="lineItems" class="line-items"></div>
           <details class="discount-panel">
             <summary>Discounts</summary>
-            <label>
+            <label class="field">
               Estimate discount
-              <select id="discountSelect" name="discountPercent">
+              <select id="discountSelect" name="discountPercent" class="select">
                 <option value="0">No discount</option>
                 <option value="10">10% discount</option>
                 <option value="15">15% discount</option>
@@ -445,21 +445,21 @@
         </section>
 
         <input name="estimate" type="hidden" value="450">
-        <label>
+        <label class="field">
           Deposit %
-          <input name="depositPercent" required type="number" min="0" max="100" step="5" value="25">
+          <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
         </label>
-        <label>
+        <label class="field">
           Notes
-          <textarea name="notes" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
+          <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
         </label>
-        <label>
+        <label class="field">
           Access notes
-          <textarea name="accessNotes" rows="2" placeholder="Gate code, parking, water spigot, pets"></textarea>
+          <textarea name="accessNotes" class="textarea" rows="2" placeholder="Gate code, parking, water spigot, pets"></textarea>
         </label>
-        <label>
+        <label class="field">
           Sensitive areas
-          <textarea name="sensitiveAreas" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
+          <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
         </label>
 
         <section class="photo-uploader" aria-label="Before job photos">
@@ -476,7 +476,7 @@
           </div>
         </section>
 
-        <menu class="dialog-actions">
+        <menu class="dialog-actions form-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Create Job</button>
         </menu>
@@ -484,52 +484,52 @@
     </dialog>
 
     <dialog id="customerDialog">
-      <form method="dialog" id="customerForm">
+      <form method="dialog" id="customerForm" class="form-section">
         <div class="dialog-header">
           <h2>New customer</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <label>
+        <label class="field">
           Customer name
-          <input name="customerName" required placeholder="Maria Johnson">
+          <input name="customerName" class="input" required placeholder="Maria Johnson">
         </label>
-        <label>
+        <label class="field">
           Email
-          <input name="email" type="email" placeholder="maria@example.com">
+          <input name="email" class="input" type="email" placeholder="maria@example.com">
         </label>
-        <label>
+        <label class="field">
           Phone
-          <input name="phone" placeholder="(555) 123-4567">
+          <input name="phone" class="input" placeholder="(555) 123-4567">
         </label>
-        <label>
+        <label class="field">
           Street address
-          <input name="streetAddress" placeholder="214 Oak Ridge Dr">
+          <input name="streetAddress" class="input" placeholder="214 Oak Ridge Dr">
         </label>
         <div class="field-row">
-          <label>
+          <label class="field">
             Apt / Suite #
-            <input name="addressUnit" placeholder="Apt 2, Suite B">
+            <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
           </label>
-          <label>
+          <label class="field">
             City
-            <input name="city" placeholder="City">
+            <input name="city" class="input" placeholder="City">
           </label>
         </div>
         <div class="field-row">
-          <label>
+          <label class="field">
             State
-            <input name="state" maxlength="2" placeholder="CA">
+            <input name="state" class="input" maxlength="2" placeholder="CA">
           </label>
-          <label>
+          <label class="field">
             ZIP
-            <input name="zip" inputmode="numeric" placeholder="ZIP code">
+            <input name="zip" class="input" inputmode="numeric" placeholder="ZIP code">
           </label>
         </div>
         <input name="address" type="hidden">
-        <label>
+        <label class="field">
           Lead source
-          <select name="leadSource">
+          <select name="leadSource" class="select">
             <option value="referral">Referral</option>
             <option value="door-hanger">Door hanger</option>
             <option value="door-to-door">Door to door</option>
@@ -537,9 +537,9 @@
             <option value="nextdoor-ad">Nextdoor ad</option>
           </select>
         </label>
-        <label>
+        <label class="field">
           Notes
-          <textarea name="notes" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
+          <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
         </label>
 
         <section class="photo-uploader" aria-label="Service area photos">
@@ -560,7 +560,7 @@
           <div id="serviceAreaPhotoPreview" class="photo-grid"></div>
         </section>
 
-        <menu class="dialog-actions">
+        <menu class="dialog-actions form-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Customer</button>
         </menu>
@@ -568,36 +568,36 @@
     </dialog>
 
     <dialog id="expenseDialog">
-      <form method="dialog" id="expenseForm">
+      <form method="dialog" id="expenseForm" class="form-section">
         <div class="dialog-header">
           <h2>Add expense</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
-        <label>
+        <label class="field">
           Vendor
-          <input name="vendor" required placeholder="Home Depot">
+          <input name="vendor" class="input" required placeholder="Home Depot">
         </label>
-        <label>
+        <label class="field">
           Amount
-          <input name="amount" required inputmode="numeric" pattern="[0-9.]*" placeholder="13.35">
+          <input name="amount" class="input" required inputmode="numeric" pattern="[0-9.]*" placeholder="13.35">
         </label>
-        <label>
+        <label class="field">
           Date
-          <input name="expenseDate" type="date" required>
+          <input name="expenseDate" class="input" type="date" required>
         </label>
-        <label>
+        <label class="field">
           Category
-          <input name="category" placeholder="Chemicals, fuel, equipment">
+          <input name="category" class="input" placeholder="Chemicals, fuel, equipment">
         </label>
-        <label>
+        <label class="field">
           Link to job (optional)
-          <select name="jobId">
+          <select name="jobId" class="select">
             <option value="">No linked job</option>
           </select>
         </label>
-        <label>
+        <label class="field">
           Notes
-          <textarea name="notes" rows="2" placeholder="Optional notes"></textarea>
+          <textarea name="notes" class="textarea" rows="2" placeholder="Optional notes"></textarea>
         </label>
         <section class="photo-uploader" aria-label="Receipt photos">
           <div class="section-header compact-header">
@@ -606,13 +606,13 @@
               <h3>Receipt photos</h3>
             </div>
           </div>
-          <label>
+          <label class="field">
             Add receipt photos
             <input id="receiptPhotoInput" type="file" accept="image/*" multiple>
           </label>
           <div id="receiptPhotoPreview" class="photo-grid"></div>
         </section>
-        <menu class="dialog-actions">
+        <menu class="dialog-actions form-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Expense</button>
         </menu>
