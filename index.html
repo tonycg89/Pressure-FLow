@@ -744,28 +744,28 @@
     </dialog>
 
     <dialog id="settingsDialog">
-      <form method="dialog" id="settingsForm">
+      <form method="dialog" id="settingsForm" class="form-section">
         <div class="dialog-header">
           <h2>Business settings</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <div class="settings-grid">
-          <label>
+        <div class="settings-grid form-section">
+          <label class="field">
             Business name
-            <input name="businessName" placeholder="Your Pressure Washing LLC">
+            <input name="businessName" class="input" placeholder="Your Pressure Washing LLC">
           </label>
-          <label>
+          <label class="field">
             Business email
-            <input name="businessEmail" type="email" placeholder="you@example.com">
+            <input name="businessEmail" class="input" type="email" placeholder="you@example.com">
           </label>
-          <label>
+          <label class="field">
             Business phone
-            <input name="businessPhone" placeholder="(555) 123-4567">
+            <input name="businessPhone" class="input" placeholder="(555) 123-4567">
           </label>
-          <label>
+          <label class="field">
             Service industry
-            <select name="serviceIndustry">
+            <select name="serviceIndustry" class="select">
               <option value="">Choose industry</option>
               <option value="Pressure Washing">Pressure Washing</option>
               <option value="Landscaping">Landscaping</option>
@@ -774,7 +774,7 @@
               <option value="Misc">Misc</option>
             </select>
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Company logo
             <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
           </label>
@@ -782,33 +782,33 @@
             <img id="businessLogoPreview" alt="Company logo preview" hidden>
             <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
           </div>
-          <label>
+          <label class="field">
             Default deposit %
-            <input name="defaultDepositPercent" type="number" min="0" max="100" step="5" value="25">
+            <input name="defaultDepositPercent" class="input" type="number" min="0" max="100" step="5" value="25">
           </label>
-          <label>
+          <label class="field">
             Default job duration
-            <input name="defaultJobDurationMinutes" type="number" min="30" max="720" step="15" value="180">
+            <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
           </label>
-          <label>
+          <label class="field">
             Zelle
-            <input name="zellePayment" placeholder="Email or phone for Zelle">
+            <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
           </label>
-          <label>
+          <label class="field">
             Cash App
-            <input name="cashAppPayment" placeholder="$YourCashtag">
+            <input name="cashAppPayment" class="input" placeholder="$YourCashtag">
           </label>
-          <label>
+          <label class="field">
             Venmo
-            <input name="venmoPayment" placeholder="@YourVenmo">
+            <input name="venmoPayment" class="input" placeholder="@YourVenmo">
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Payment instructions
-            <textarea name="paymentInstructions" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
+            <textarea name="paymentInstructions" class="textarea" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
           </label>
-          <label>
+          <label class="field">
             Payment follow-up reminder
-            <select name="paymentFollowUpHours">
+            <select name="paymentFollowUpHours" class="select">
               <option value="0">Off</option>
               <option value="24">24 hours</option>
               <option value="48">48 hours</option>
@@ -816,54 +816,54 @@
               <option value="168">1 week</option>
             </select>
           </label>
-          <label>
+          <label class="field">
             Auto estimate follow-up
-            <select name="estimateFollowUpEnabled">
+            <select name="estimateFollowUpEnabled" class="select">
               <option value="true">On</option>
               <option value="false">Off</option>
             </select>
           </label>
-          <label>
+          <label class="field">
             Estimate follow-up delay
-            <select name="estimateFollowUpDelayHours">
+            <select name="estimateFollowUpDelayHours" class="select">
               <option value="24">24 hours</option>
               <option value="48">48 hours</option>
               <option value="72">72 hours</option>
               <option value="168">1 week</option>
             </select>
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Estimate follow-up subject
-            <input name="estimateFollowUpSubject" placeholder="Following up on your estimate - {jobTitle} at {address}">
+            <input name="estimateFollowUpSubject" class="input" placeholder="Following up on your estimate - {jobTitle} at {address}">
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Estimate follow-up message
-            <textarea name="estimateFollowUpBody" rows="7"></textarea>
-            <span class="form-note">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
+            <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
+            <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Day of Service Instructions
-            <textarea name="dayOfServiceInstructions" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
+            <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
           </label>
-          <label class="full-field">
+          <label class="field full-field">
             Google calendar ID
-            <input name="googleCalendarId" placeholder="Your Google Calendar ID">
+            <input name="googleCalendarId" class="input" placeholder="Your Google Calendar ID">
           </label>
-          <label id="googleClientIdField" class="full-field">
+          <label id="googleClientIdField" class="field full-field">
             Google client ID
-            <input name="googleClientId" autocomplete="off" placeholder="Google OAuth client ID">
+            <input name="googleClientId" class="input" autocomplete="off" placeholder="Google OAuth client ID">
           </label>
-          <label id="googleClientSecretField" class="full-field">
+          <label id="googleClientSecretField" class="field full-field">
             Google client secret
-            <input name="googleClientSecret" type="password" autocomplete="off" placeholder="Enter Google client secret">
+            <input name="googleClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter Google client secret">
           </label>
-          <label id="googleRedirectUriField" class="full-field">
+          <label id="googleRedirectUriField" class="field full-field">
             Google redirect URI
-            <input name="googleRedirectUri" placeholder="Your PressureFlow Google OAuth callback URL">
+            <input name="googleRedirectUri" class="input" placeholder="Your PressureFlow Google OAuth callback URL">
           </label>
-          <label id="mapboxTokenField" class="full-field">
+          <label id="mapboxTokenField" class="field full-field">
             Mapbox public token
-            <input name="mapboxPublicToken" autocomplete="off" placeholder="Required for map measurements">
+            <input name="mapboxPublicToken" class="input" autocomplete="off" placeholder="Required for map measurements">
           </label>
         </div>
 
@@ -912,100 +912,100 @@
             </div>
           </div>
           <div class="integration-grid">
-            <section class="integration-panel">
+            <section class="integration-panel form-section">
               <h4>Sending Email</h4>
-              <label>
+              <label class="field">
                 Provider
-                <select name="emailSendProvider">
+                <select name="emailSendProvider" class="select">
                   <option value="google">Google / Gmail</option>
                   <option value="smtp">SMTP email</option>
                 </select>
               </label>
-              <label>
+              <label class="field">
                 SMTP host
-                <input name="smtpHost" autocomplete="off" placeholder="smtp.mail.me.com">
+                <input name="smtpHost" class="input" autocomplete="off" placeholder="smtp.mail.me.com">
               </label>
-              <label>
+              <label class="field">
                 SMTP port
-                <input name="smtpPort" type="number" min="1" max="65535" value="587">
+                <input name="smtpPort" class="input" type="number" min="1" max="65535" value="587">
               </label>
-              <label>
+              <label class="field">
                 Security
-                <select name="smtpSecurity">
+                <select name="smtpSecurity" class="select">
                   <option value="starttls">STARTTLS</option>
                   <option value="ssl">SSL/TLS</option>
                   <option value="none">None</option>
                 </select>
               </label>
-              <label>
+              <label class="field">
                 SMTP username
-                <input name="smtpUsername" autocomplete="off" placeholder="you@example.com">
+                <input name="smtpUsername" class="input" autocomplete="off" placeholder="you@example.com">
               </label>
-              <label>
+              <label class="field">
                 SMTP password
-                <input name="smtpPassword" type="password" autocomplete="off" placeholder="Enter SMTP/app password">
+                <input name="smtpPassword" class="input" type="password" autocomplete="off" placeholder="Enter SMTP/app password">
               </label>
-              <label>
+              <label class="field">
                 From email
-                <input name="smtpFromEmail" type="email" autocomplete="off" placeholder="you@example.com">
+                <input name="smtpFromEmail" class="input" type="email" autocomplete="off" placeholder="you@example.com">
               </label>
               <p id="emailIntegrationStatus" class="form-note"></p>
             </section>
 
-            <section class="integration-panel">
+            <section class="integration-panel form-section">
               <h4>Square</h4>
-              <label>
+              <label class="field">
                 Environment
-                <select name="squareEnvironment">
+                <select name="squareEnvironment" class="select">
                   <option value="sandbox">Sandbox</option>
                   <option value="production">Production</option>
                 </select>
               </label>
-              <label>
+              <label class="field">
                 Location ID
-                <input name="squareLocationId" autocomplete="off" placeholder="Square location ID">
+                <input name="squareLocationId" class="input" autocomplete="off" placeholder="Square location ID">
               </label>
-              <label>
+              <label class="field">
                 Access token
-                <input name="squareAccessToken" type="password" autocomplete="off" placeholder="Enter Square access token">
+                <input name="squareAccessToken" class="input" type="password" autocomplete="off" placeholder="Enter Square access token">
               </label>
-              <label>
+              <label class="field">
                 Webhook signature key
-                <input name="squareWebhookSignatureKey" type="password" autocomplete="off" placeholder="Enter Square webhook key">
+                <input name="squareWebhookSignatureKey" class="input" type="password" autocomplete="off" placeholder="Enter Square webhook key">
               </label>
               <p id="squareIntegrationStatus" class="form-note"></p>
             </section>
 
-            <section class="integration-panel">
+            <section class="integration-panel form-section">
               <h4>Stripe</h4>
-              <label>
+              <label class="field">
                 Secret key
-                <input name="stripeSecretKey" type="password" autocomplete="off" placeholder="Enter Stripe secret key">
+                <input name="stripeSecretKey" class="input" type="password" autocomplete="off" placeholder="Enter Stripe secret key">
               </label>
-              <label>
+              <label class="field">
                 Webhook secret
-                <input name="stripeWebhookSecret" type="password" autocomplete="off" placeholder="Enter Stripe webhook secret">
+                <input name="stripeWebhookSecret" class="input" type="password" autocomplete="off" placeholder="Enter Stripe webhook secret">
               </label>
               <p id="stripeIntegrationStatus" class="form-note"></p>
             </section>
 
-            <section class="integration-panel">
+            <section class="integration-panel form-section">
               <h4>QuickBooks</h4>
-              <label>
+              <label class="field">
                 Company ID
-                <input name="quickBooksCompanyId" autocomplete="off" placeholder="QuickBooks realm/company ID">
+                <input name="quickBooksCompanyId" class="input" autocomplete="off" placeholder="QuickBooks realm/company ID">
               </label>
-              <label>
+              <label class="field">
                 Client ID
-                <input name="quickBooksClientId" autocomplete="off" placeholder="QuickBooks app client ID">
+                <input name="quickBooksClientId" class="input" autocomplete="off" placeholder="QuickBooks app client ID">
               </label>
-              <label>
+              <label class="field">
                 Client secret
-                <input name="quickBooksClientSecret" type="password" autocomplete="off" placeholder="Enter QuickBooks client secret">
+                <input name="quickBooksClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter QuickBooks client secret">
               </label>
-              <label>
+              <label class="field">
                 Redirect URI
-                <input name="quickBooksRedirectUri" autocomplete="off" placeholder="QuickBooks OAuth redirect URI">
+                <input name="quickBooksRedirectUri" class="input" autocomplete="off" placeholder="QuickBooks OAuth redirect URI">
               </label>
               <p id="quickBooksIntegrationStatus" class="form-note"></p>
             </section>
@@ -1020,25 +1020,25 @@
             </div>
           </div>
           <div class="settings-user-grid">
-            <label>
+            <label class="field">
               Name
-              <input id="userNameInput" autocomplete="off" placeholder="Test user name">
+              <input id="userNameInput" class="input" autocomplete="off" placeholder="Test user name">
             </label>
-            <label>
+            <label class="field">
               Email
-              <input id="userEmailInput" type="email" autocomplete="off" placeholder="tester@example.com">
+              <input id="userEmailInput" class="input" type="email" autocomplete="off" placeholder="tester@example.com">
             </label>
-            <label>
+            <label class="field">
               Role
-              <select id="userRoleInput">
+              <select id="userRoleInput" class="select">
                 <option value="tester">Tester</option>
                 <option value="admin">Admin</option>
                 <option value="technician">Technician</option>
               </select>
             </label>
-            <label>
+            <label class="field">
               Temporary password
-              <input id="userPasswordInput" type="password" autocomplete="new-password" placeholder="Minimum 8 characters">
+              <input id="userPasswordInput" class="input" type="password" autocomplete="new-password" placeholder="Minimum 8 characters">
             </label>
             <button id="addUserButton" class="secondary-small-button" type="button">Add User</button>
           </div>
@@ -1053,7 +1053,7 @@
           <a id="backupExportLink" class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
         </section>
 
-        <menu class="dialog-actions">
+        <menu class="dialog-actions form-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
         </menu>

@@ -1454,7 +1454,7 @@ label {
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .logo-settings-row {
@@ -1476,11 +1476,11 @@ label {
 
 .settings-section {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 16px;
+  padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcfe;
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--card);
 }
 
 .settings-section[hidden] {
@@ -1646,13 +1646,13 @@ label {
 .integration-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .integration-panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
