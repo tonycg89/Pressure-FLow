@@ -1061,19 +1061,19 @@
     </dialog>
 
     <dialog id="customServiceDialog">
-      <form method="dialog" id="customServiceForm">
+      <form method="dialog" id="customServiceForm" class="form-section">
         <div class="dialog-header">
           <h2>Add custom service</h2>
           <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
         </div>
-        <label>
+        <label class="field">
           Service name
-          <input name="name" required placeholder="Window cleaning">
+          <input name="name" class="input" required placeholder="Window cleaning">
         </label>
         <div class="field-row">
-          <label>
+          <label class="field">
             Unit
-            <select name="unit">
+            <select name="unit" class="select">
               <option value="QTY">QTY</option>
               <option value="SqFt">SqFt</option>
               <option value="Hours">Hours</option>
@@ -1081,17 +1081,17 @@
               <option value="Each">Each</option>
             </select>
           </label>
-          <label>
+          <label class="field">
             Rate
-            <input name="price" required type="number" min="0" step="0.01" value="0">
+            <input name="price" class="input" required type="number" min="0" step="0.01" value="0">
           </label>
         </div>
-        <label class="checkbox-field">
+        <label class="checkbox-field check">
           <input name="saveForFuture" type="checkbox">
           Save service for future jobs
         </label>
         <p id="customServiceStatus" class="form-note"></p>
-        <menu class="dialog-actions">
+        <menu class="dialog-actions form-actions">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Add Service</button>
         </menu>

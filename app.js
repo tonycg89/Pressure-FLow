@@ -1629,9 +1629,9 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
   row.dataset.beforePhotoRow = rowId;
   row.innerHTML = `
     <div class="before-photo-row-main">
-      <label>
+      <label class="field">
         Service area
-        <select data-before-photo-section-select aria-label="Service area">
+        <select class="select" data-before-photo-section-select aria-label="Service area">
           ${getBeforePhotoAreaOptions(selectedArea)}
         </select>
       </label>
@@ -1645,9 +1645,9 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
       </div>
     </div>
     <div class="new-before-area" data-new-before-area hidden>
-      <label>
+      <label class="field">
         New service area
-        <input data-new-before-area-name autocomplete="off" placeholder="Bathroom">
+        <input class="input" data-new-before-area-name autocomplete="off" placeholder="Bathroom">
       </label>
       <button class="secondary-small-button" type="button" data-save-before-area>Add new Area</button>
     </div>
@@ -1767,9 +1767,9 @@ function addLineItemRow(item = serviceCatalog[0]) {
   const row = document.createElement("div");
   row.className = "line-item-row";
   row.innerHTML = `
-    <label>
+    <label class="field">
       Service
-      <select class="line-service">
+      <select class="line-service select">
         ${rowCatalog.map((service) => `
           <option value="${escapeHtml(service.name)}" ${service.name === catalogItem.name ? "selected" : ""}>
             ${escapeHtml(service.name)}
@@ -1777,13 +1777,13 @@ function addLineItemRow(item = serviceCatalog[0]) {
         `).join("")}
       </select>
     </label>
-    <label>
+    <label class="field">
       <span class="line-quantity-label">${escapeHtml(catalogItem.unit)}</span>
-      <input class="line-quantity" type="number" min="0" step="1" value="${Number(item.quantity || 1)}">
+      <input class="line-quantity input" type="number" min="0" step="1" value="${Number(item.quantity || 1)}">
     </label>
-    <label>
+    <label class="field">
       Rate
-      <input class="line-rate" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
+      <input class="line-rate input" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
     </label>
     <div class="line-item-total">
       <span>${escapeHtml(catalogItem.unit)}</span>
@@ -3117,7 +3117,7 @@ function renderEstimateFollowUpControls(job) {
         <span class="toggle-switch" aria-hidden="true"></span>
       </label>
       <button class="action-button secondary" type="button" data-preview-follow-up title="${suppressed ? "Follow-up suppressed for this job." : "Send follow-up email"}" ${suppressed || !followUpType ? "disabled" : ""}>Send follow-up email</button>
-      <p>${escapeHtml(formatFollowUpStatus(task, suppressed))}</p>
+      <p class="field__help">${escapeHtml(formatFollowUpStatus(task, suppressed))}</p>
       ${task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
     </div>
   `;
