@@ -1191,6 +1191,70 @@ textarea {
   padding: 24px 18px;
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.table thead {
+  background: var(--muted);
+}
+
+.table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: left;
+}
+
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: var(--muted);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.table .num {
+  text-align: right;
+}
+
+.cell--strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.cell--muted {
+  color: var(--muted-foreground);
+}
+
+.cell--nowrap {
+  white-space: nowrap;
+}
+
+.cell--empty {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
 .chart-legend {
   display: grid;
   gap: 9px;

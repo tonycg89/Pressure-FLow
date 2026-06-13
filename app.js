@@ -2587,8 +2587,8 @@ function renderDashboardChart(rows) {
   legend.innerHTML = revenueRows.map((row) => `
     <div class="legend-row">
       <span class="source-dot" style="background:${row.color}"></span>
-      <span>${row.label}</span>
-      <strong>${currency.format(row.revenue)}</strong>
+      <span class="cell--muted">${row.label}</span>
+      <strong class="num cell--strong">${currency.format(row.revenue)}</strong>
     </div>
   `).join("");
 }
@@ -2598,18 +2598,18 @@ function renderDashboardBreakdown(rows) {
     <div class="breakdown-row">
       <div class="breakdown-row-main">
         <span class="source-dot" style="background:${row.color}"></span>
-        <strong>${row.label}</strong>
+        <strong class="cell--strong">${row.label}</strong>
       </div>
-      <strong>${currency.format(row.revenue)}</strong>
+      <strong class="num cell--strong cell--nowrap">${currency.format(row.revenue)}</strong>
       <div class="breakdown-stat-row">${formatBreakdownMeta(row)}</div>
     </div>
   `).join("");
 }
 
 function formatBreakdownMeta(row) {
-  const parts = [`<span class="breakdown-stat">${row.jobs} job${row.jobs === 1 ? "" : "s"}</span>`];
+  const parts = [`<span class="breakdown-stat num">${row.jobs} job${row.jobs === 1 ? "" : "s"}</span>`];
   if (row.estimatesSent) {
-    parts.push(`<span class="breakdown-stat">${row.accepted || 0}/${row.estimatesSent} accepted</span>`);
+    parts.push(`<span class="breakdown-stat num">${row.accepted || 0}/${row.estimatesSent} accepted</span>`);
   }
   if (row.conversionRate !== null && row.conversionRate !== undefined) {
     const percent = Math.round(row.conversionRate * 100);
@@ -2825,7 +2825,7 @@ function renderPendingPayments() {
     <article class="pending-payment-row ${payment.isOverdue ? "overdue" : ""}">
       <div>
         <strong>${escapeHtml(payment.job.customerName)}</strong>
-        <p>${escapeHtml(payment.label)} ${escapeHtml(payment.invoiceNumber)} | ${currency.format(payment.amount)} | ${payment.daysSinceSent} day${payment.daysSinceSent === 1 ? "" : "s"}</p>
+        <p>${escapeHtml(payment.label)} ${escapeHtml(payment.invoiceNumber)} | <span class="num cell--nowrap">${currency.format(payment.amount)}</span> | <span class="num cell--nowrap">${payment.daysSinceSent} day${payment.daysSinceSent === 1 ? "" : "s"}</span></p>
       </div>
       ${payment.isOverdue ? '<span class="status-pill overdue-pill">Overdue</span>' : ""}
       <button class="secondary-small-button" type="button" data-open-payment-confirmation="${escapeHtml(payment.job.id)}" data-invoice-type="${escapeHtml(payment.invoiceType)}">Mark as paid</button>
@@ -3415,7 +3415,7 @@ function renderExpenses() {
         ${linkedJob ? `<p>${escapeHtml(formatJobSummaryLabel(linkedJob))}</p>` : ""}
         <p>${expense.receiptPhotos?.length || 0} receipt photo${expense.receiptPhotos?.length === 1 ? "" : "s"}</p>
       </div>
-      <span class="status-pill">${currency.format(expense.amount || 0)}</span>
+      <span class="status-pill num">${currency.format(expense.amount || 0)}</span>
     `;
     expenseList.append(card);
   });
