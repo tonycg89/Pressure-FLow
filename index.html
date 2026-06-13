@@ -105,12 +105,12 @@
           </div>
         </header>
 
-        <section class="metrics dashboard-metrics" aria-label="Dashboard snapshot">
-          <article><span>Estimates Sent</span><strong id="dashEstimatesSent">0</strong></article>
-          <article><span>Estimates Accepted</span><strong id="dashEstimatesAccepted">0</strong></article>
-          <article><span>Revenue</span><strong id="dashRevenue">$0</strong></article>
-          <article><span>Expenses</span><strong id="dashExpenses">$0</strong></article>
-          <article><span>Top source</span><strong id="dashTopSource">-</strong><small id="dashTopSourceMeta">Not enough data yet</small></article>
+        <section class="metrics stat-card-grid dashboard-metrics" aria-label="Dashboard snapshot">
+          <article class="stat-card"><span class="stat-card__label">Estimates Sent</span><strong id="dashEstimatesSent" class="stat-card__value">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Estimates Accepted</span><strong id="dashEstimatesAccepted" class="stat-card__value">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Revenue</span><strong id="dashRevenue" class="stat-card__value">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Expenses</span><strong id="dashExpenses" class="stat-card__value">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Top source</span><strong id="dashTopSource" class="stat-card__value">-</strong><small id="dashTopSourceMeta" class="stat-card__delta">Not enough data yet</small></article>
         </section>
 
         <section class="panel pending-payments-panel" id="pendingPaymentsPanel" aria-labelledby="pendingPaymentsTitle" hidden>
@@ -209,22 +209,22 @@
           <button id="newJobButton" class="primary-button" type="button">New Job</button>
         </header>
 
-        <section class="metrics" aria-label="Business snapshot">
-          <article>
-            <span>Open Jobs</span>
-            <strong id="openJobs">0</strong>
+        <section class="metrics stat-card-grid" aria-label="Business snapshot">
+          <article class="stat-card">
+            <span class="stat-card__label">Open Jobs</span>
+            <strong id="openJobs" class="stat-card__value">0</strong>
           </article>
-          <article>
-            <span>Awaiting Deposit</span>
-            <strong id="awaitingDeposit">$0</strong>
+          <article class="stat-card">
+            <span class="stat-card__label">Awaiting Deposit</span>
+            <strong id="awaitingDeposit" class="stat-card__value">$0</strong>
           </article>
-          <article>
-            <span>Ready to Schedule</span>
-            <strong id="readyToSchedule">0</strong>
+          <article class="stat-card">
+            <span class="stat-card__label">Ready to Schedule</span>
+            <strong id="readyToSchedule" class="stat-card__value">0</strong>
           </article>
-          <article>
-            <span>Unpaid Balance</span>
-            <strong id="unpaidBalance">$0</strong>
+          <article class="stat-card">
+            <span class="stat-card__label">Unpaid Balance</span>
+            <strong id="unpaidBalance" class="stat-card__value">$0</strong>
           </article>
         </section>
 
@@ -305,11 +305,11 @@
           </div>
         </header>
 
-        <section class="metrics" aria-label="Expense snapshot">
-          <article><span>Total Expenses</span><strong id="expenseTotal">$0</strong></article>
-          <article><span>Receipt Files</span><strong id="expenseReceiptCount">0</strong></article>
-          <article><span>This Month</span><strong id="expenseMonthTotal">$0</strong></article>
-          <article><span>Entries</span><strong id="expenseCount">0</strong></article>
+        <section class="metrics stat-card-grid" aria-label="Expense snapshot">
+          <article class="stat-card"><span class="stat-card__label">Total Expenses</span><strong id="expenseTotal" class="stat-card__value">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Receipt Files</span><strong id="expenseReceiptCount" class="stat-card__value">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">This Month</span><strong id="expenseMonthTotal" class="stat-card__value">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Entries</span><strong id="expenseCount" class="stat-card__value">0</strong></article>
         </section>
 
         <section class="content-grid">

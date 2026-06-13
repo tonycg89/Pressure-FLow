@@ -1,9 +1,24 @@
 (function () {
   function createPhotoRendering({ escapeHtml }) {
+    function renderEmptyState(title, hint = "") {
+      return `
+        <div class="empty-state photo-empty">
+          <span class="empty-state__icon-wrap" aria-hidden="true">
+            <svg class="empty-state__icon" viewBox="0 0 24 24">
+              <path d="M4 7h5l2 2h9v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path>
+              <path d="M9 14h6"></path>
+            </svg>
+          </span>
+          <p class="empty-state__title">${escapeHtml(title)}</p>
+          ${hint ? `<p class="empty-state__hint">${escapeHtml(hint)}</p>` : ""}
+        </div>
+      `;
+    }
+
     function renderEditablePhotoGrid(container, photos, rerender, removePhoto) {
       container.innerHTML = "";
       if (!photos.length) {
-        container.innerHTML = '<p class="photo-empty">No photos yet.</p>';
+        container.innerHTML = renderEmptyState("No photos yet", "Added photos will appear here.");
         return;
       }
 
@@ -30,7 +45,7 @@
 
     function renderBeforePhotoPreview(container, photos) {
       if (!photos.length) {
-        container.innerHTML = '<p class="photo-empty">No before photos yet.</p>';
+        container.innerHTML = renderEmptyState("No before photos yet", "Before photos will appear here.");
         return;
       }
 
@@ -55,7 +70,7 @@
 
     function renderBeforePhotoSections(photos, knownSections) {
       if (!photos.length) {
-        return '<p>No photos saved.</p>';
+        return renderEmptyState("No photos saved", "Saved photos will appear here.");
       }
 
       const sections = [...knownSections];
@@ -82,7 +97,7 @@
 
     function renderPhotoGrid(photos) {
       if (!photos.length) {
-        return '<p>No photos saved.</p>';
+        return renderEmptyState("No photos saved", "Saved photos will appear here.");
       }
 
       return `

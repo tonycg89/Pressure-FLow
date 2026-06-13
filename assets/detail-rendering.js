@@ -8,6 +8,21 @@
     renderBeforePhotoSections,
     renderPhotoGrid
   }) {
+    function renderEmptyState(title, hint = "") {
+      return `
+        <div class="empty-state">
+          <span class="empty-state__icon-wrap" aria-hidden="true">
+            <svg class="empty-state__icon" viewBox="0 0 24 24">
+              <path d="M5 12h14"></path>
+              <path d="M12 5v14"></path>
+            </svg>
+          </span>
+          <p class="empty-state__title">${escapeHtml(title)}</p>
+          ${hint ? `<p class="empty-state__hint">${escapeHtml(hint)}</p>` : ""}
+        </div>
+      `;
+    }
+
     function formatShortDate(value) {
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) {
@@ -73,7 +88,7 @@
     function renderCustomerMeasurements(measurements) {
       const reusable = expandCustomerMeasurementAreas(measurements);
       if (!reusable.length) {
-        return '<p>No saved map measurements yet.</p>';
+        return renderEmptyState("No saved map measurements yet", "Saved measurements will appear here.");
       }
 
       return reusable.map((item) => `

@@ -89,11 +89,11 @@
         </section>
 
         <section class="style-guide-sample-grid">
-          <article class="panel style-guide-card">
-            <h2 class="text-h2">Card</h2>
+          <article class="card style-guide-card">
+            <h2 class="card__title">Card</h2>
             <p class="text-body">Card background, border, and radius sample using the app panel style.</p>
           </article>
-          <form class="panel style-guide-card">
+          <form class="card style-guide-card">
             <h2 class="text-h2">Form</h2>
             <label class="text-small">
               Customer name
@@ -112,6 +112,44 @@
               <textarea rows="3" placeholder="Optional notes"></textarea>
             </label>
           </form>
+        </section>
+
+        <section class="panel style-guide-card">
+          <h2 class="text-h2">Stat Cards</h2>
+          <div class="stat-card-grid">
+            <article class="stat-card">
+              <span class="stat-card__label">Revenue</span>
+              <strong class="stat-card__value tabular-nums">$8,425</strong>
+              <small class="stat-card__delta stat-card__delta--up">12% above last month</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Expenses</span>
+              <strong class="stat-card__value tabular-nums">$1,244</strong>
+              <small class="stat-card__delta stat-card__delta--down">4% higher</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Open Jobs</span>
+              <strong class="stat-card__value tabular-nums">18</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-card__label">Conversion</span>
+              <strong class="stat-card__value tabular-nums">64%</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel style-guide-card">
+          <h2 class="text-h2">Empty State</h2>
+          <div class="empty-state">
+            <span class="empty-state__icon-wrap" aria-hidden="true">
+              <svg class="empty-state__icon" viewBox="0 0 24 24">
+                <path d="M5 12h14"></path>
+                <path d="M12 5v14"></path>
+              </svg>
+            </span>
+            <p class="empty-state__title">No revenue yet</p>
+            <p class="empty-state__hint">Paid work will appear in this chart.</p>
+          </div>
         </section>
       </section>
     </main>

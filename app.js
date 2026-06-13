@@ -128,6 +128,21 @@ const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationClearAll = document.querySelector("#notificationClearAll");
+
+function renderEmptyState(title, hint = "") {
+  return `
+    <div class="empty-state">
+      <span class="empty-state__icon-wrap" aria-hidden="true">
+        <svg class="empty-state__icon" viewBox="0 0 24 24">
+          <path d="M5 12h14"></path>
+          <path d="M12 5v14"></path>
+        </svg>
+      </span>
+      <p class="empty-state__title">${escapeHtml(title)}</p>
+      ${hint ? `<p class="empty-state__hint">${escapeHtml(hint)}</p>` : ""}
+    </div>
+  `;
+}
 const newJobButton = document.querySelector("#newJobButton");
 const editJobButton = document.querySelector("#editJobButton");
 const newCustomerButton = document.querySelector("#newCustomerButton");
@@ -687,12 +702,8 @@ async function loadJobs() {
     renderStatusOptions();
     render();
   } catch (error) {
-    jobList.innerHTML = `
-      <p class="empty-state">
-        Start the local server with <strong>node server.js</strong>, then open http://localhost:3000.
-      </p>
-    `;
-    jobDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+    jobList.innerHTML = renderEmptyState("Unable to load jobs", "Start the local server with node server.js, then open http://localhost:3000.");
+    jobDetail.innerHTML = renderEmptyState("Unable to load job details", error.message);
   }
 }
 
@@ -709,8 +720,8 @@ async function loadCustomers() {
     renderJobCustomerOptions();
     renderCustomers();
   } catch (error) {
-    customerList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
-    customerDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+    customerList.innerHTML = renderEmptyState("Unable to load customers", error.message);
+    customerDetail.innerHTML = renderEmptyState("Unable to load customer details", error.message);
   }
 }
 
@@ -761,8 +772,8 @@ async function loadExpenses() {
     selectedExpenseId = selectedExpenseId ?? expenses[0]?.id ?? null;
     renderExpenses();
   } catch (error) {
-    expenseList.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
-    expenseDetail.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+    expenseList.innerHTML = renderEmptyState("Unable to load expenses", error.message);
+    expenseDetail.innerHTML = renderEmptyState("Unable to load expense details", error.message);
   }
 }
 
@@ -1093,7 +1104,7 @@ async function loadSettingsUsers() {
     renderSettingsUsers(data.users || []);
     settingsUserStatus.textContent = "Team logins are for invited testers only.";
   } catch (error) {
-    settingsUserList.innerHTML = '<p class="photo-empty">Unable to load team users.</p>';
+    settingsUserList.innerHTML = renderEmptyState("Unable to load team users");
     settingsUserStatus.textContent = error.message;
   }
 }
@@ -1102,7 +1113,7 @@ function renderSettingsUsers(users) {
   if (!settingsUserList) return;
 
   if (!users.length) {
-    settingsUserList.innerHTML = '<p class="photo-empty">No invited users yet.</p>';
+    settingsUserList.innerHTML = renderEmptyState("No invited users yet", "Added users will show up here.");
     return;
   }
 
@@ -2205,7 +2216,7 @@ function renderMeasurementAreas() {
 
   const areas = currentMeasurement.areas || [];
   if (!areas.length) {
-    measurementAreaList.innerHTML = '<p class="photo-empty">No service areas added yet.</p>';
+    measurementAreaList.innerHTML = renderEmptyState("No service areas added yet", "Draw and save an area to add it here.");
     return;
   }
 
@@ -2559,8 +2570,8 @@ function renderDashboardChart(rows) {
   const revenueRows = rows.filter((row) => row.revenue > 0);
   const total = revenueRows.reduce((sum, row) => sum + row.revenue, 0);
   if (!total) {
-    chart.style.background = "#edf2f7";
-    chart.innerHTML = "<span>No revenue yet</span>";
+    chart.style.background = "var(--muted)";
+    chart.innerHTML = renderEmptyState("No revenue yet", "Paid work will appear in this chart.");
     legend.innerHTML = "";
     return;
   }
@@ -2623,7 +2634,7 @@ function renderDashboardNotifications(scopedJobs) {
   }
 
   if (!notifications.length) {
-    container.innerHTML = '<p class="empty-state compact-empty">No unread notifications.</p>';
+    container.innerHTML = renderEmptyState("No unread notifications", "Customer actions and payment updates will appear here.");
     return;
   }
 
@@ -2905,14 +2916,14 @@ function renderJobList() {
     const completedJobs = jobs.filter((job) => job.status === "Paid");
 
     if (!activeJobs.length && !completedJobs.length) {
-      jobList.innerHTML = '<p class="empty-state">No jobs match this filter.</p>';
+      jobList.innerHTML = renderEmptyState("No jobs match this filter", "Try a different status or add a new job.");
       return;
     }
 
     if (activeJobs.length) {
       activeJobs.forEach((job) => appendJobCard(jobList, job));
     } else {
-      jobList.innerHTML = '<p class="empty-state">No in-progress jobs right now.</p>';
+      jobList.innerHTML = renderEmptyState("No in-progress jobs right now", "Active jobs will show here.");
     }
 
     if (completedJobs.length) {
@@ -2935,7 +2946,7 @@ function renderJobList() {
 
   const visibleJobs = jobs.filter((job) => job.status === selectedStatus);
   if (visibleJobs.length === 0) {
-    jobList.innerHTML = '<p class="empty-state">No jobs match this filter.</p>';
+    jobList.innerHTML = renderEmptyState("No jobs match this filter", "Try a different status or add a new job.");
     return;
   }
 
@@ -2969,7 +2980,7 @@ function renderJobDetail() {
   const job = jobs.find((item) => item.id === selectedJobId) ?? jobs.find((item) => item.status !== "Paid") ?? jobs[0];
 
   if (!job) {
-    jobDetail.innerHTML = '<p class="empty-state">Create your first job to start the workflow.</p>';
+    jobDetail.innerHTML = renderEmptyState("Create your first job", "The workflow details will appear here.");
     return;
   }
 
@@ -3225,8 +3236,8 @@ function renderCustomers() {
   customerList.innerHTML = "";
 
   if (customers.length === 0) {
-    customerList.innerHTML = '<p class="empty-state">No customer files yet. Add a customer before creating a job.</p>';
-    customerDetail.innerHTML = '<p class="empty-state">Create your first customer file to store contact info and service-area photos.</p>';
+    customerList.innerHTML = renderEmptyState("No customer files yet", "Add a customer before creating a job.");
+    customerDetail.innerHTML = renderEmptyState("Create your first customer file", "Contact info, photos, and measurements will appear here.");
     return;
   }
 
@@ -3261,7 +3272,7 @@ function renderCustomers() {
 function renderCustomerDetail() {
   const customer = customers.find((item) => item.id === selectedCustomerId);
   if (!customer) {
-    customerDetail.innerHTML = '<p class="empty-state">Select a customer.</p>';
+    customerDetail.innerHTML = renderEmptyState("Select a customer", "Customer details will appear here.");
     return;
   }
 
@@ -3296,7 +3307,7 @@ function renderCustomerDetail() {
           <span>${escapeHtml(job.serviceType)} | ${escapeHtml(job.status)}<br><small>${escapeHtml(renderCustomerJobMilestonesText(job))}</small></span>
           <strong>${currency.format(job.estimate)}</strong>
         </button>
-      `).join("") : '<p>No jobs yet.</p>'}
+      `).join("") : renderEmptyState("No jobs yet", "Jobs created for this customer will appear here.")}
     </section>
 
     <section class="detail-section">
@@ -3373,14 +3384,14 @@ function renderExpenses() {
   const visibleExpenses = getVisibleExpenses();
 
   if (!expenses.length) {
-    expenseList.innerHTML = '<p class="empty-state">No expenses yet. Add your first receipt.</p>';
-    expenseDetail.innerHTML = '<p class="empty-state">Select an expense to see receipt photos.</p>';
+    expenseList.innerHTML = renderEmptyState("No expenses yet", "Add your first receipt to track job costs.");
+    expenseDetail.innerHTML = renderEmptyState("Select an expense", "Receipt photos and notes will appear here.");
     return;
   }
 
   if (!visibleExpenses.length) {
-    expenseList.innerHTML = '<p class="empty-state">No expenses match this job filter.</p>';
-    expenseDetail.innerHTML = '<p class="empty-state">Choose another job or clear the filter.</p>';
+    expenseList.innerHTML = renderEmptyState("No expenses match this job filter", "Choose another job or clear the filter.");
+    expenseDetail.innerHTML = renderEmptyState("No expense selected", "Choose another job or clear the filter.");
     return;
   }
 
