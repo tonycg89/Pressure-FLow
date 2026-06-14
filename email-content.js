@@ -393,21 +393,24 @@ function renderEstimateEmailHtml(job, settings) {
 
 function renderContractEmailHtml(job, settings) {
   const businessName = getBusinessName(settings);
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(settings, getBaseUrlFromLink(job.contractApprovalUrl))}
-      <h2 style="margin:0 0 12px">Your service agreement is ready</h2>
-      <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Please review and sign the ${escapeHtml(businessName)} service agreement for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
-      <p>
-        <a href="${escapeHtml(job.contractApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+  const contractUrl = escapeHtml(job.contractApprovalUrl);
+  return renderEmailShell({
+    settings,
+    baseUrl: getBaseUrlFromLink(job.contractApprovalUrl),
+    preheader: `Your ${businessName} service agreement is ready for review and signature.`,
+    title: "Your service agreement is ready",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
+      <p style="margin:0 0 18px;color:${emailTheme.text}">Please review and sign the ${escapeHtml(businessName)} service agreement for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)}.</p>
+      <p style="margin:0 0 18px">
+        <a href="${contractUrl}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
           Review and sign agreement
         </a>
       </p>
-      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.contractApprovalUrl)}</p>
-      <p>Thank you,<br>${escapeHtml(businessName)}</p>
-    </div>
-  `;
+      <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${contractUrl}</p>
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
+    `
+  });
 }
 
 function renderEstimateFollowUpEmailHtml(job, settings, bodyTemplate) {

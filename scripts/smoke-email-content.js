@@ -49,6 +49,17 @@ const expectedEstimateText = [
   "Johnson Exterior Cleaning"
 ].join("\n");
 
+const expectedContractText = [
+  "Hi Alex Rivera,",
+  "",
+  "Your Johnson Exterior Cleaning service agreement is ready for review and signature.",
+  "",
+  "Review and sign: https://pressureflow.test/contract/job-email-content?token=contract-token",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+
 const estimate = buildEstimateEmailMessage(job, settings);
 assert.equal(estimate.to, "alex.rivera@example.com");
 assert.equal(estimate.subject, "Johnson Exterior Cleaning estimate for Driveway cleaning at 123 Maple St");
@@ -67,6 +78,20 @@ assert.match(estimate.htmlBody, /https:\/\/pressureflow\.test\/estimate\/job-ema
 assert.match(estimate.textBody, /https:\/\/pressureflow\.test\/estimate\/job-email-content\?token=estimate-token/);
 
 const contract = buildContractEmailMessage(job, settings);
+assert.equal(contract.to, "alex.rivera@example.com");
+assert.equal(contract.subject, "Johnson Exterior Cleaning service agreement for Driveway cleaning at 123 Maple St");
+assert.equal(contract.textBody, expectedContractText);
+assert.match(contract.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(contract.htmlBody, /Your service agreement is ready/);
+assert.match(contract.htmlBody, /Alex Rivera/);
+assert.match(contract.htmlBody, /Johnson Exterior Cleaning/);
+assert.match(contract.htmlBody, /Driveway cleaning/);
+assert.match(contract.htmlBody, /123 Maple St/);
+assert.match(contract.htmlBody, /Review and sign agreement/);
+assert.match(contract.htmlBody, /href="https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token"/);
+assert.match(contract.htmlBody, /https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token/);
+assert.match(contract.textBody, /https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token/);
+
 const depositInvoice = buildPressureFlowInvoiceEmailMessage(job, settings, "deposit", job.squareDepositInvoiceUrl);
 const finalInvoice = buildPressureFlowInvoiceEmailMessage(job, settings, "final", job.squareFinalInvoiceUrl);
 const estimateFollowUp = buildFollowUpEmailMessage(job, settings, "estimate_followup");
@@ -82,7 +107,6 @@ const schedule = buildScheduleConfirmationEmailMessage(
 );
 
 [
-  contract,
   depositInvoice,
   finalInvoice,
   estimateFollowUp,
