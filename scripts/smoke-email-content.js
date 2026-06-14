@@ -96,6 +96,37 @@ const expectedFinalInvoiceText = [
   "Thank you,",
   "Johnson Exterior Cleaning"
 ].join("\n");
+const expectedEstimateFollowUpText = [
+  "Hi Alex,",
+  "",
+  "Just wanted to follow up on the estimate we sent for Driveway cleaning at 123 Maple St.",
+  "",
+  "Your estimate of $425.00 is still available for review. Let us know if you have any questions - we're happy to walk you through it.",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning",
+  "",
+  "Review and approve estimate: https://pressureflow.test/estimate/job-email-content?token=estimate-token"
+].join("\n");
+const expectedContractFollowUpText = [
+  "Hi Alex,",
+  "",
+  "Just a reminder that your service agreement for Driveway cleaning is still waiting for your signature.",
+  "",
+  "Review and sign agreement: https://pressureflow.test/contract/job-email-content?token=contract-token",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+const expectedCompletionText = [
+  "Hi Alex Rivera,",
+  "Thank you for your business! This email confirms that Johnson Exterior Cleaning has completed the scheduled service work at 123 Maple St.",
+  `Amount paid: $${(getFinalBalanceCents(job) / 100).toFixed(2)}`,
+  "Before and after photos: https://pressureflow.test/proof/job-email-content?token=proof-token",
+  "We appreciate the opportunity to work on your property.",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
 
 const estimate = buildEstimateEmailMessage(job, settings);
 assert.equal(estimate.to, "alex.rivera@example.com");
@@ -169,6 +200,37 @@ assert.match(finalInvoice.textBody, /https:\/\/pressureflow\.test\/proof\/job-em
 const estimateFollowUp = buildFollowUpEmailMessage(job, settings, "estimate_followup");
 const contractFollowUp = buildFollowUpEmailMessage(job, settings, "contract_followup");
 const completion = buildCompletionCertificateEmailMessage(job, settings, "https://pressureflow.test");
+assert.equal(estimateFollowUp.to, "alex.rivera@example.com");
+assert.equal(estimateFollowUp.subject, "Following up on your estimate - Driveway cleaning at 123 Maple St");
+assert.equal(estimateFollowUp.textBody, expectedEstimateFollowUpText);
+assert.match(estimateFollowUp.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(estimateFollowUp.htmlBody, /Following up on your estimate/);
+assert.match(estimateFollowUp.htmlBody, /Review and approve estimate/);
+assert.match(estimateFollowUp.htmlBody, /href="https:\/\/pressureflow\.test\/estimate\/job-email-content\?token=estimate-token"/);
+assert.match(estimateFollowUp.htmlBody, /https:\/\/pressureflow\.test\/estimate\/job-email-content\?token=estimate-token/);
+assert.match(estimateFollowUp.textBody, /https:\/\/pressureflow\.test\/estimate\/job-email-content\?token=estimate-token/);
+
+assert.equal(contractFollowUp.to, "alex.rivera@example.com");
+assert.equal(contractFollowUp.subject, "Johnson Exterior Cleaning follow-up - Driveway cleaning at 123 Maple St");
+assert.equal(contractFollowUp.textBody, expectedContractFollowUpText);
+assert.match(contractFollowUp.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(contractFollowUp.htmlBody, /A quick follow-up/);
+assert.match(contractFollowUp.htmlBody, /Review and sign agreement/);
+assert.match(contractFollowUp.htmlBody, /href="https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token"/);
+assert.match(contractFollowUp.htmlBody, /https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token/);
+assert.match(contractFollowUp.textBody, /https:\/\/pressureflow\.test\/contract\/job-email-content\?token=contract-token/);
+
+assert.equal(completion.to, "alex.rivera@example.com");
+assert.equal(completion.subject, "Johnson Exterior Cleaning Certificate of Completion - 123 Maple St");
+assert.equal(completion.textBody, expectedCompletionText);
+assert.match(completion.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(completion.htmlBody, /Certificate of Completion/);
+assert.match(completion.htmlBody, /\$318\.75/);
+assert.match(completion.htmlBody, /View before and after photos/);
+assert.match(completion.htmlBody, /href="https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token"/);
+assert.match(completion.htmlBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+assert.match(completion.textBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+
 const schedule = buildScheduleConfirmationEmailMessage(
   { ...job, scheduledAt: "2026-06-10T09:00", jobDurationMinutes: 180 },
   settings,
@@ -179,9 +241,6 @@ const schedule = buildScheduleConfirmationEmailMessage(
 );
 
 [
-  estimateFollowUp,
-  contractFollowUp,
-  completion,
   schedule
 ].forEach((message) => {
   assert.doesNotMatch(message.htmlBody, /data-email-shell="pressureflow"/);

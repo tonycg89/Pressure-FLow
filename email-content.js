@@ -303,22 +303,29 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
 function renderCompletionCertificateEmailHtml(job, settings, baseUrl) {
   const businessName = getBusinessName(settings);
   const paidAmount = getFinalBalanceCents(job) / 100;
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(settings, baseUrl, 210)}
-      <h2 style="margin:0 0 12px">Certificate of Completion</h2>
-      <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the scheduled service work at ${escapeHtml(job.address)}.</p>
-      <p style="font-size:18px"><strong>Amount paid: $${paidAmount.toFixed(2)}</strong></p>
-      ${job.completionProofUrl ? `<p><a href="${escapeHtml(job.completionProofUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">View before and after photos</a></p>` : ""}
-      <h3 style="margin:18px 0 8px">Before Photos</h3>
+  return renderEmailShell({
+    settings,
+    baseUrl,
+    preheader: `${businessName} has completed the scheduled service work at ${job.address}.`,
+    title: "Certificate of Completion",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Thank you for your business! This confirms that ${escapeHtml(businessName)} has completed the scheduled service work at ${escapeHtml(job.address)}.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:18px 0;background:${emailTheme.background};border:1px solid ${emailTheme.border};border-radius:10px">
+        <tr>
+          <td style="padding:16px;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Amount paid</td>
+          <td align="right" style="padding:16px;font-family:Arial,sans-serif;color:${emailTheme.text};font-size:20px;line-height:24px;font-weight:700">$${paidAmount.toFixed(2)}</td>
+        </tr>
+      </table>
+      ${job.completionProofUrl ? `<p style="margin:0 0 18px"><a href="${escapeHtml(job.completionProofUrl)}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">View before and after photos</a></p>` : ""}
+      <h3 style="margin:18px 0 8px;color:${emailTheme.text};font-family:Arial,sans-serif;font-size:16px;line-height:22px">Before Photos</h3>
       ${renderEmailPhotoGrid(job.jobPhotos?.before || [])}
-      <h3 style="margin:18px 0 8px">Completed Work Photos</h3>
+      <h3 style="margin:18px 0 8px;color:${emailTheme.text};font-family:Arial,sans-serif;font-size:16px;line-height:22px">Completed Work Photos</h3>
       ${renderEmailPhotoGrid(job.jobPhotos?.after || [])}
-      <p>We appreciate the opportunity to work on your property.</p>
-      <p>Thank you,<br>${escapeHtml(businessName)}</p>
-    </div>
-  `;
+      <p style="margin:18px 0 14px;color:${emailTheme.text}">We appreciate the opportunity to work on your property.</p>
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
+    `
+  });
 }
 
 function renderEmailPhotoGrid(photos) {
@@ -426,35 +433,43 @@ function renderContractEmailHtml(job, settings) {
 
 function renderEstimateFollowUpEmailHtml(job, settings, bodyTemplate) {
   const body = renderEstimateFollowUpTemplate(bodyTemplate, job, settings);
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-    ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
-    ${body.split("\n\n").map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")}
-    <p>
-      <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
-        Review and approve estimate
-      </a>
-    </p>
-    <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.estimateApprovalUrl)}</p>
-    </div>
-  `;
+  const approvalUrl = escapeHtml(job.estimateApprovalUrl);
+  return renderEmailShell({
+    settings,
+    baseUrl: getBaseUrlFromLink(job.estimateApprovalUrl),
+    preheader: `Following up on your estimate for ${job.serviceType || "your service"}.`,
+    title: "Following up on your estimate",
+    body: `
+      ${body.split("\n\n").map((paragraph) => `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")}
+      <p style="margin:0 0 18px">
+        <a href="${approvalUrl}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
+          Review and approve estimate
+        </a>
+      </p>
+      <p style="margin:0;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${approvalUrl}</p>
+    `
+  });
 }
 
 function renderFollowUpEmailHtml(job, settings, config) {
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-    ${renderLogoHtml(settings, getBaseUrlFromLink(config.url))}
-    <p>Hi ${escapeHtml(getFirstName(job))},</p>
-    <p>${escapeHtml(config.body)}</p>
-    <p>
-      <a href="${escapeHtml(config.url)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
-        ${escapeHtml(config.cta)}
-      </a>
-    </p>
-    <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(config.url)}</p>
-    <p>Thank you,<br>${escapeHtml(getBusinessName(settings))}</p>
-    </div>
-  `;
+  const followUpUrl = escapeHtml(config.url);
+  return renderEmailShell({
+    settings,
+    baseUrl: getBaseUrlFromLink(config.url),
+    preheader: config.body,
+    title: "A quick follow-up",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(getFirstName(job))},</p>
+      <p style="margin:0 0 18px;color:${emailTheme.text}">${escapeHtml(config.body)}</p>
+      <p style="margin:0 0 18px">
+        <a href="${followUpUrl}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
+          ${escapeHtml(config.cta)}
+        </a>
+      </p>
+      <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${followUpUrl}</p>
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(getBusinessName(settings))}</p>
+    `
+  });
 }
 
 function getFollowUpEmailConfig(job, type) {
