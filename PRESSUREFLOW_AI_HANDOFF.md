@@ -1,0 +1,145 @@
+# PressureFlow AI Handoff
+
+This file is the shared source of truth for Codex, Claude, v0, ChatGPT, and any other AI system working on PressureFlow. Read it before making recommendations, designs, plans, or code changes.
+
+## 1. Project Governance
+
+- Codex is the lead implementation engineer and the only AI allowed to directly modify production code.
+- Claude may provide UX audit findings, workflow critique, copy suggestions, and prioritization input only.
+- v0 may provide UI/visual audit findings, layout critique, styling concepts, and component mockups only.
+- ChatGPT/project chat controls planning, decisions, sequencing, and approvals.
+- Outside AI output is design/spec input, not production code.
+- All Claude/v0 recommendations must be reviewed, scoped, and adapted before Codex implements anything.
+- Preserve backend logic, auth, validation, tenant isolation, integrations, database behavior, and existing workflows unless an explicit approved task says otherwise.
+
+Priority order:
+
+1. Stability and test-user readiness
+2. Tenant isolation/security
+3. Core workflow speed
+4. Mobile usability
+5. UI polish
+6. New feature building
+
+## 2. Current Stack
+
+PressureFlow is a plain Node/static frontend application.
+
+- HTML: `index.html`
+- CSS: `styles.css`
+- Vanilla JavaScript: `app.js`
+- Node.js backend: `server.js` plus modular route/helper files
+- Persistence: local JSON by default, Supabase/Postgres when `DATABASE_URL` is set
+- No React
+- No Next.js
+- No Tailwind CSS
+- No shadcn/ui
+- No Radix
+- No framework migration is approved
+
+## 3. AI Roles
+
+- Codex: implementation, code review, test execution, safe refactoring, final integration.
+- Claude: UX audit only. Claude should identify workflow friction, confusing copy, missing feedback, prioritization, and user journey issues.
+- v0: UI/visual audit only. v0 should identify visual hierarchy, spacing, layout, polish, consistency, and responsive issues.
+- ChatGPT/project chat: planning, decision control, approval gates, and priority calls.
+
+Claude and v0 should not produce drop-in production code for this project. If they include snippets, treat them as rough examples only.
+
+## 4. Completed Phases And Packages
+
+- Tenant isolation/security audit completed.
+- Validation and sanitization audit completed.
+- Integration credential and secrets audit completed.
+- Webhook secret hardening completed for Stripe and Square.
+- Smoke test plan created.
+- UI Packages 01-06 completed:
+  - Design system foundation
+  - Cards, KPI stat cards, empty states
+  - Form system phases
+  - Table foundation
+  - Modal foundation/dialog polish
+  - Dashboard, customer-facing documents, contract/print, and transactional email shells
+- Phase 06 email shell work is complete.
+- Pre-audit readiness is complete.
+- Test-user readiness checks pass with the documented environment setup.
+
+## 5. Current Status
+
+- Claude UX Audit is next.
+- v0 UI Audit comes after approved UX fixes from Claude are reviewed and implemented.
+- Do not start broad UI redesign before the UX audit findings are reviewed and approved.
+
+## 6. Audit Environment Requirements
+
+Required for audits:
+
+```text
+MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
+```
+
+Scheduling requires one of these options:
+
+```text
+PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+```
+
+or connect a dedicated Google test calendar for the tester account.
+
+For local/browser smoke testing that must not send real emails:
+
+```text
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+```
+
+Use sandbox/test credentials only. Do not use live customer email, payment, accounting, or calendar credentials during audits.
+
+## 7. Testing Notes
+
+Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+Run from the repo root:
+
+```powershell
+npm.cmd run check
+npm.cmd run smoke:test-user-safety
+npm.cmd run test:browser
+```
+
+The full browser suite should pass in single-worker mode. Targeted specs can be run one at a time if needed.
+
+## 8. Decision Hierarchy
+
+When documents or recommendations conflict, follow this order:
+
+1. Project Governance
+2. Master Status
+3. AI Handoff
+4. Codex implementation reports
+5. Approved Claude/v0 recommendations
+
+If a recommendation conflicts with stability, security, tenant isolation, credential safety, or existing production workflows, pause and ask for approval before implementation.
+
+## 9. Rules For Future AI Recommendations
+
+- No architecture changes without explicit approval.
+- No framework assumptions.
+- Do not assume React, Next.js, Tailwind, shadcn, Radix, or a component framework.
+- Do not suggest implementation that requires a stack migration unless explicitly asked.
+- Do not ask Claude or v0 to directly implement production code.
+- Do not blindly paste outside AI code into the project.
+- Do not change backend routes, auth, tenant isolation, validation, payments, signing, public links, integrations, or database behavior as part of UI/UX audit work.
+- Keep recommendations scoped, prioritized, and tied to the current app.
+- Separate audit findings into blockers, high-impact improvements, medium improvements, and polish.
+- Codex must review every audit finding before implementation.
+
+## 10. Next Action
+
+Give Claude:
+
+- a test login
+- the audit environment URL
+- this `PRESSUREFLOW_AI_HANDOFF.md` file
+- the instruction that Claude is performing UX audit only
+
+After Claude findings are reviewed and approved, Codex should implement the smallest safe UX fixes in chunks. Then give v0 the updated app and this handoff file for the visual/UI audit.
