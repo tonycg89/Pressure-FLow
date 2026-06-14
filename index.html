@@ -71,10 +71,11 @@
       </aside>
 
       <section class="workspace workspace-view" id="dashboardView" data-view-panel="dashboard">
-        <header class="topbar">
+        <header class="topbar dashboard-header">
           <div>
             <p class="eyebrow">Business Dashboard</p>
-            <h2>Track estimates, accepted work, revenue, expenses, and lead sources.</h2>
+            <h2 class="dashboard-title">Dashboard</h2>
+            <p class="dashboard-subtitle">Track estimates, accepted work, revenue, expenses, and lead sources.</p>
           </div>
           <div class="dashboard-actions">
             <div class="notification-menu">
@@ -96,7 +97,7 @@
                 <div id="dashboardNotifications" class="notification-list"></div>
               </div>
             </div>
-            <select id="dashboardTimeframe" class="compact-select select" aria-label="Dashboard timeframe">
+            <select id="dashboardTimeframe" class="compact-select select dashboard-timeframe" aria-label="Dashboard timeframe">
               <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
               <option value="365">Last year</option>
@@ -106,10 +107,10 @@
         </header>
 
         <section class="metrics stat-card-grid dashboard-metrics" aria-label="Dashboard snapshot">
-          <article class="stat-card"><span class="stat-card__label">Estimates Sent</span><strong id="dashEstimatesSent" class="stat-card__value">0</strong></article>
-          <article class="stat-card"><span class="stat-card__label">Estimates Accepted</span><strong id="dashEstimatesAccepted" class="stat-card__value">0</strong></article>
-          <article class="stat-card"><span class="stat-card__label">Revenue</span><strong id="dashRevenue" class="stat-card__value">$0</strong></article>
-          <article class="stat-card"><span class="stat-card__label">Expenses</span><strong id="dashExpenses" class="stat-card__value">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Estimates Sent</span><strong id="dashEstimatesSent" class="stat-card__value tabular-nums">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Estimates Accepted</span><strong id="dashEstimatesAccepted" class="stat-card__value tabular-nums">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Revenue</span><strong id="dashRevenue" class="stat-card__value tabular-nums">$0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Expenses</span><strong id="dashExpenses" class="stat-card__value tabular-nums">$0</strong></article>
           <article class="stat-card"><span class="stat-card__label">Top source</span><strong id="dashTopSource" class="stat-card__value">-</strong><small id="dashTopSourceMeta" class="stat-card__delta">Not enough data yet</small></article>
         </section>
 
@@ -124,8 +125,8 @@
         </section>
 
         <section class="content-grid dashboard-grid">
-          <section class="panel">
-            <div class="panel-header">
+          <section class="panel card card--flush dashboard-card dashboard-chart-card">
+            <div class="panel-header card__header dashboard-card__header">
               <div>
                 <p class="eyebrow">Revenue Source</p>
                 <h3 id="dashboardChartTitle">Income by lead type</h3>
@@ -142,14 +143,14 @@
             </div>
           </section>
 
-          <aside class="panel">
-            <div class="panel-header">
+          <aside class="panel card card--flush dashboard-card dashboard-breakdown-card">
+            <div class="panel-header card__header dashboard-card__header">
               <div>
                 <p class="eyebrow" id="dashboardBreakdownEyebrow">Lead Sources</p>
                 <h3 id="dashboardBreakdownTitle">Pipeline breakdown</h3>
               </div>
             </div>
-            <div id="leadSourceBreakdown" class="job-detail"></div>
+            <div id="leadSourceBreakdown" class="job-detail dashboard-breakdown-list"></div>
           </aside>
         </section>
       </section>

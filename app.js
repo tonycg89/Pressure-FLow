@@ -2588,7 +2588,7 @@ function renderDashboardChart(rows) {
     <div class="legend-row">
       <span class="source-dot" style="background:${row.color}"></span>
       <span class="cell--muted">${row.label}</span>
-      <strong class="num cell--strong">${currency.format(row.revenue)}</strong>
+      <strong class="num cell--strong cell--nowrap">${currency.format(row.revenue)}</strong>
     </div>
   `).join("");
 }
@@ -2614,7 +2614,7 @@ function formatBreakdownMeta(row) {
   if (row.conversionRate !== null && row.conversionRate !== undefined) {
     const percent = Math.round(row.conversionRate * 100);
     const badgeClass = percent >= 70 ? "success" : percent >= 40 ? "warning" : "muted";
-    parts.push(`<span class="conversion-badge ${badgeClass}">${percent}% converted</span>`);
+    parts.push(`<span class="conversion-badge ${badgeClass} num">${percent}% converted</span>`);
   }
   return parts.join("");
 }
