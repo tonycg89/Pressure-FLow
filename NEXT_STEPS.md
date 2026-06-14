@@ -1,73 +1,112 @@
-# Next Steps
+# PressureFlow Current Status
 
-## Current Focus
+This is the current project status and near-term action list. For AI coordination, also read `PRESSUREFLOW_AI_HANDOFF.md` before making recommendations or code changes.
 
-PressureFlow is in polish mode. The app works end-to-end for the Precision Power Washing workflow, so near-term work should focus on usability, mobile behavior, reliability, and production readiness.
+## Current Phase
 
-## Highest Priority
+PressureFlow is ready for the live Claude UX audit.
 
-1. Mobile QA
-   - Test the dashboard on an actual phone.
-   - Check job creation, customer creation, photo capture, completion photos, notifications, and map measurement.
-   - Tighten any layout overflow or hard-to-tap controls.
+Phase 06 email/document/UI foundation work is complete. Pre-audit readiness is complete. The next step is not more UI polish yet; it is a UX audit using a fresh test account, followed by reviewed/approved UX fixes, then the v0 visual/UI audit.
 
-2. Notification polish
-   - Confirm dashboard notifications clear properly.
-   - Keep SMS alerts deferred until PressureFlow is ready to scale beyond the current single-business workflow.
-   - Decide whether browser push notifications are worth adding later.
+## Current Stack
 
-3. Template workflow
-   - Confirm uploaded templates save and download correctly.
-   - Decide which templates are informational only versus actually used by automated emails/contracts.
-   - Eventually add an editor/builder for contract, invoice, estimate, and completion templates.
+- Plain HTML: `index.html`
+- CSS: `styles.css`
+- Vanilla browser JavaScript: `app.js`
+- Node.js backend: `server.js` plus modular helpers/routes
+- Local JSON storage by default
+- Supabase/Postgres when `DATABASE_URL` is configured
+- No React, Next.js, Tailwind, shadcn, Radix, or framework migration
 
-4. Address and reporting QA
-   - Confirm street, unit, city, state, and ZIP save for jobs/customers.
-   - Confirm Mapbox still geocodes the full composed address.
-   - Confirm dashboard revenue by city looks right.
+## Completed Readiness Work
 
-5. Browser testing fallback
-   - Next week, add a repo-level Playwright smoke test setup so PressureFlow can be browser-tested even when the Codex in-app browser connector has Windows sandbox startup issues.
-   - Cover the map measurement dialog, saved service area dropdown, checkbox polygon display/removal, and saved area delete button.
-   - Keep this deferred for now; do not add browser-test dependencies until we are ready to work on it.
+- Tenant isolation/security audit and smallest safe fixes completed.
+- Validation and sanitization audit and priority backend validation fixes completed.
+- Credential/secrets audit completed.
+- Stripe/Square webhook secret hardening completed.
+- Smoke test plan completed in `docs/test-user-smoke-plan.md`.
+- UI Packages 01-06 completed.
+- Phase 06 shared customer-facing document shell and transactional email shell completed.
+- Pre-audit readiness completed:
+  - Fresh tester Mapbox token propagation is covered when `MAPBOX_PUBLIC_TOKEN` is configured.
+  - Calendarless audit scheduling is available for disconnected test accounts when explicitly enabled.
+  - Playwright is configured for one worker to avoid shared `.tmp/playwright-data` races.
+- Central AI handoff created: `PRESSUREFLOW_AI_HANDOFF.md`.
 
-## Operational Improvements
+## Audit Environment Requirements
 
-- Expand invited-user access into fuller roles and permissions after the first tester logins are validated.
-- Add password reset, email verification, and public trial signup after invited-user testing is stable.
-- Expand onboarding into first-login account setup with service defaults, integration prompts, and progress tracking.
-- Audit account isolation during tester use, especially public estimate/contract/invoice links and third-party integrations.
-- Add a visible audit/history area per customer/job for sent estimate, accepted estimate, sent contract, signed contract, invoices, schedule confirmation, and completion notice.
-- Add better filtering/search across customers and jobs.
-- Add invoice payment status badges and clearer completed-job archive behavior.
+Configure the audit environment with:
 
-## Larger Future Upgrade
+```text
+MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
+```
 
-Before offering PressureFlow to other businesses, build a multi-tenant v2:
+Scheduling needs one of these:
 
-- `businesses`
-- `users`
-- `business_users`
-- `customers`
-- `jobs`
-- `templates`
-- `invoices`
-- `notifications`
-- `files`
+```text
+PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+```
 
-Every customer, job, template, invoice, notification, and file should belong to a `business_id`.
+or a dedicated connected Google test calendar for the tester account.
 
-Also move photos/templates/contracts/invoices to object storage such as Supabase Storage, S3, or Cloudflare R2.
+For local/browser smoke tests that must never send real email:
 
-## Nice-To-Have Later
+```text
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+```
 
-- Complete Square/Stripe/QuickBooks OAuth-style account connection flows and webhook routing per account
-- Twilio SMS alerts after the app has a valid terms/privacy web presence and A2P campaign approval
-- Customer scheduling portal
-- Technician-only mobile workflow
-- Recurring customer/job support
-- Service catalog manager
-- Estimate/contract PDF generation
-- Automatic payment reminders
-- Browser push notifications
-- Multi-user roles and permissions
+Use sandbox/test credentials only for Stripe, Square, Google, SMTP, QuickBooks, and any other integration.
+
+## Test Status
+
+Latest required readiness commands passed:
+
+```powershell
+npm.cmd run check
+npm.cmd run smoke:test-user-safety
+npm.cmd run test:browser -- --workers=1
+```
+
+Playwright also has `workers: 1` configured, so `npm.cmd run test:browser` should run the suite in the reliable single-worker mode.
+
+## Next Action
+
+Give Claude:
+
+- the audit environment URL
+- a fresh test login
+- `PRESSUREFLOW_AI_HANDOFF.md`
+- this current status file
+- the instruction that Claude is performing UX audit only, not implementation
+
+Claude should return UX findings grouped by blocker/high/medium/polish. Codex should review the findings, propose small safe implementation chunks, and only then make code changes.
+
+After approved UX fixes are implemented and smoke-tested, give v0 the updated app plus `PRESSUREFLOW_AI_HANDOFF.md` for a visual/UI audit.
+
+## Current Priority Order
+
+1. Stability and test-user readiness
+2. Tenant isolation/security
+3. Core workflow speed
+4. Mobile usability
+5. UI polish
+6. New feature building
+
+## Watch Items
+
+- Confirm the real audit environment has `MAPBOX_PUBLIC_TOKEN`; without it, map tiles/geocoding will not work for fresh testers.
+- Decide whether the audit uses a dedicated Google test calendar or calendarless audit mode.
+- Keep all Claude/v0 recommendations as spec input only. Codex remains responsible for implementation.
+- Do not start broad redesign or stack migration work.
+
+## Safe To Defer
+
+- Password reset/self-service signup.
+- Full credential encryption at rest before broader beta.
+- Deeper role permissions beyond owner/tester.
+- Live QuickBooks sync automation.
+- Twilio SMS alerts.
+- Customer scheduling portal.
+- Technician-only mobile workflow.
+- Recurring jobs/customers.
+- Broader production tenant administration.
