@@ -485,9 +485,9 @@ function renderContractSigningPage(job, options = {}) {
       <div class="doc__content">
         ${renderContractProjectDetails(job, depositAmount, options.settings || {})}
 
-        <section>
+        <section class="contract-section">
           <h2>Scope of Work</h2>
-          <table>
+          <table class="table">
             <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
             <tbody>${lineRows}</tbody>
           </table>
@@ -502,13 +502,13 @@ function renderContractSigningPage(job, options = {}) {
         ${renderContractTerms(job, { executed: alreadySigned || options.executedOnly, initials })}
 
         ${alreadySigned ? `
-          <section class="notice">
+          <section class="notice doc__callout contract-signature">
             <strong>Signed</strong>
             <p>This service agreement was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
           </section>
-          <section>
+          <section class="contract-signature">
             <h2>Signature</h2>
-            <table>
+            <table class="table">
               <tbody>
                 <tr><th>Signer</th><td>${escapeHtml(job.contractSignerName || job.customerName)}</td></tr>
                 <tr><th>Date signed</th><td>${escapeHtml(job.contractSignedDate || new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</td></tr>
@@ -520,7 +520,7 @@ function renderContractSigningPage(job, options = {}) {
 
       ${alreadySigned ? "" : `
         <div class="doc__actions">
-          <form id="contractSignForm" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
+          <form id="contractSignForm" class="contract-sign-form contract-signature" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
             <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
             <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
             <label>
@@ -531,7 +531,7 @@ function renderContractSigningPage(job, options = {}) {
               Type your full name to sign
               <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
             </label>
-            <button type="submit">Sign Agreement</button>
+            <button class="btn" type="submit">Sign Agreement</button>
           </form>
         </div>
         ${contractSigningScript()}
@@ -542,10 +542,11 @@ function renderContractSigningPage(job, options = {}) {
 }
 
 function renderContractTerms(job, options = {}) {
-  return `<section>
+  return `<section class="contract-section">
     <h2>Terms and Conditions</h2>
-    ${serviceAgreementTemplate.sections.map((section, index) => `
-      <article class="term">
+    <div class="contract-terms">
+      ${serviceAgreementTemplate.sections.map((section, index) => `
+      <article class="term contract-clause">
         <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
         ${escapeHtml(section.body).split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}
         ${section.initialsRequired && options.executed ? `
@@ -560,7 +561,8 @@ function renderContractTerms(job, options = {}) {
           </label>
         ` : ""}
       </article>
-    `).join("")}
+      `).join("")}
+    </div>
   </section>`;
 }
 
@@ -576,9 +578,9 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
     ["Scheduled Date", job.scheduledAt || "To be scheduled after deposit payment"]
   ];
 
-  return `<section>
+  return `<section class="contract-section">
     <h2>Project Details</h2>
-    <table>
+    <table class="table">
       <tbody>
         ${details.map(([label, value]) => `
           <tr>

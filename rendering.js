@@ -82,6 +82,19 @@ function estimatePageStyles() {
     .doc__gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 0; }
     .doc__gallery figure { margin: 0; border: 1px solid #d8dee8; border-radius: 10px; overflow: hidden; background: #f7f8fb; }
     .doc__gallery img { display: block; width: 100%; height: 150px; object-fit: cover; }
+    .contract-section { display: grid; gap: 14px; }
+    .contract-terms { display: grid; gap: 12px; }
+    .contract-clause { padding: 16px; border: 1px solid #d8dee8; border-radius: 10px; background: #fbfcfe; break-inside: avoid; }
+    .contract-clause h3 { margin: 0 0 10px; color: #202124; font-size: 15px; font-weight: 800; line-height: 1.35; }
+    .contract-clause p { margin: 0; color: #475467; }
+    .contract-clause p + p { margin-top: 10px; }
+    .contract-signature { padding: 16px; border: 1px solid #d8dee8; border-radius: 10px; background: #fbfcfe; break-inside: avoid; }
+    .contract-sign-form { display: grid; gap: 12px; }
+    .initials-field { max-width: 180px; }
+    .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
+    .executed-initials { display: inline-grid; gap: 4px; min-width: 120px; margin-top: 12px; padding: 10px 12px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
+    .executed-initials span { color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .executed-initials strong { color: #1c7c54; font-size: 18px; }
     h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0; }
     p { margin: 0 0 20px; color: #667085; line-height: 1.45; }
     h2 { margin: 24px 0 8px; font-size: 20px; }
@@ -91,11 +104,6 @@ function estimatePageStyles() {
     input, select, textarea { width: 100%; border: 1px solid #d8dee8; border-radius: 8px; font: inherit; }
     input, select { min-height: 42px; padding: 0 10px; }
     textarea { padding: 10px; resize: vertical; }
-    .initials-field { max-width: 180px; }
-    .initials-input { text-align: center; font-weight: 800; cursor: pointer; }
-    .executed-initials { display: inline-grid; gap: 4px; min-width: 120px; margin-top: 12px; padding: 10px 12px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
-    .executed-initials span { color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-    .executed-initials strong { font-size: 18px; }
     .measurement-preview-wrap { position: relative; overflow: hidden; border: 1px solid #d8dee8; border-radius: 8px; background: #101828; }
     .measurement-preview { display: block; width: 100%; }
     .measurement-badge { position: absolute; left: 50%; padding: 0; border: 0; background: transparent; color: #ff1f1f; font-size: 13px; font-weight: 900; line-height: 1.15; text-align: center; text-shadow: 0 1px 2px rgba(255,255,255,0.95), 0 -1px 2px rgba(255,255,255,0.95), 1px 0 2px rgba(255,255,255,0.95), -1px 0 2px rgba(255,255,255,0.95); transform: translate(-50%, -50%); pointer-events: none; }
@@ -108,6 +116,7 @@ function estimatePageStyles() {
     .totals div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
     .totals span { color: #667085; }
     .term { padding: 12px 0; border-bottom: 1px solid #d8dee8; }
+    .term.contract-clause { padding: 16px; border: 1px solid #d8dee8; }
     .term p { margin: 0; }
     .term p + p { margin-top: 10px; }
     .notice { padding: 14px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
@@ -127,13 +136,24 @@ function estimatePageStyles() {
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .doc__gallery img { height: 128px; }
       .doc__pay-method { display: grid; gap: 4px; }
+      .contract-clause,
+      .contract-signature { padding: 14px; }
     }
     @media print {
       body { background: white; }
       main,
       .doc { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
-      .doc__brand { break-inside: avoid; }
+      .doc__brand,
+      .doc__intro,
+      .doc__totals,
+      .doc__callout,
+      .doc__amount-due,
+      .contract-signature,
+      .contract-clause { break-inside: avoid; page-break-inside: avoid; }
       .doc__actions { break-inside: avoid; }
+      .doc__actions button,
+      .doc__actions .btn { min-height: 38px; }
+      a { color: inherit; text-decoration: underline; }
     }
   </style>`;
 }
