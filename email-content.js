@@ -518,26 +518,37 @@ function renderEstimateFollowUpTemplate(template, job, settings) {
 
 function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions) {
   const businessName = getBusinessName(settings);
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(settings, baseUrl, 190)}
-      <h2 style="margin:0 0 12px">Schedule Confirmation</h2>
-      <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Your ${escapeHtml(businessName)} service has been scheduled.</p>
-      <table style="border-collapse:collapse;width:100%;max-width:560px;margin:12px 0">
+  return renderEmailShell({
+    settings,
+    baseUrl,
+    preheader: `Your ${businessName} service at ${job.address} has been scheduled.`,
+    title: "Schedule Confirmation",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Your ${escapeHtml(businessName)} service has been scheduled.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:18px 0;background:${emailTheme.background};border:1px solid ${emailTheme.border};border-radius:10px">
         <tbody>
-          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Service</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(job.serviceType)}</td></tr>
-          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Address</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(job.address)}</td></tr>
-          <tr><td style="border:1px solid #d8dee8;padding:8px"><strong>Scheduled time</strong></td><td style="border:1px solid #d8dee8;padding:8px">${escapeHtml(scheduleText)}</td></tr>
+          <tr>
+            <td style="padding:14px 16px;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Service</td>
+            <td align="right" style="padding:14px 16px;font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(job.serviceType)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Address</td>
+            <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(job.address)}</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Scheduled time</td>
+            <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(scheduleText)}</td>
+          </tr>
         </tbody>
       </table>
-      <p><strong>Day-of-service instructions</strong></p>
-      <ul>
+      <p style="margin:0 0 10px;color:${emailTheme.text};font-weight:700">Day-of-service instructions</p>
+      <ul style="margin:0 0 18px;padding-left:22px;color:${emailTheme.text}">
         ${instructions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
       </ul>
-      <p>Thank you,<br>${escapeHtml(businessName)}</p>
-    </div>
-  `;
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
+    `
+  });
 }
 
 module.exports = {

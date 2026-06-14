@@ -6,8 +6,11 @@ const {
 } = require("../billing");
 const {
   buildCompletionCertificateEmailMessage,
+  buildCompletionNotice,
   buildContractEmailMessage,
+  buildContractMailto,
   buildEstimateEmailMessage,
+  buildEstimateMailto,
   buildFollowUpEmailMessage,
   buildPressureFlowInvoiceEmailMessage,
   buildScheduleConfirmationEmailMessage
@@ -127,6 +130,21 @@ const expectedCompletionText = [
   "Thank you,",
   "Johnson Exterior Cleaning"
 ].join("\n");
+const expectedScheduleText = [
+  "Hi Alex Rivera,",
+  "",
+  "Your Johnson Exterior Cleaning service has been scheduled.",
+  "",
+  "Service: Driveway cleaning",
+  "Address: 123 Maple St",
+  "Scheduled time: June 10, 2026, 9:00 AM - 12:00 PM",
+  "",
+  "Day-of-service instructions:",
+  "- Move vehicles from the driveway.",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
 
 const estimate = buildEstimateEmailMessage(job, settings);
 assert.equal(estimate.to, "alex.rivera@example.com");
@@ -240,10 +258,61 @@ const schedule = buildScheduleConfirmationEmailMessage(
   ["Move vehicles from the driveway."]
 );
 
-[
-  schedule
-].forEach((message) => {
-  assert.doesNotMatch(message.htmlBody, /data-email-shell="pressureflow"/);
-});
+assert.equal(schedule.to, "alex.rivera@example.com");
+assert.equal(schedule.subject, "Johnson Exterior Cleaning schedule confirmation - 123 Maple St");
+assert.equal(schedule.textBody, expectedScheduleText);
+assert.equal(schedule.attachments.length, 1);
+assert.equal(schedule.attachments[0].filename, "invite.ics");
+assert.match(schedule.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(schedule.htmlBody, /Schedule Confirmation/);
+assert.match(schedule.htmlBody, /Alex Rivera/);
+assert.match(schedule.htmlBody, /Driveway cleaning/);
+assert.match(schedule.htmlBody, /123 Maple St/);
+assert.match(schedule.htmlBody, /June 10, 2026, 9:00 AM - 12:00 PM/);
+assert.match(schedule.htmlBody, /Move vehicles from the driveway\./);
+
+const estimateMailto = buildEstimateMailto(job, settings);
+const expectedEstimateMailtoBody = [
+  "Hi Alex Rivera,",
+  "",
+  "Your estimate from Johnson Exterior Cleaning is ready for review.",
+  "",
+  "Estimate total: $425.00",
+  "This estimate is valid through July 1, 2026.",
+  "Approve estimate: https://pressureflow.test/estimate/job-email-content?token=estimate-token",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+assert.equal(
+  estimateMailto,
+  `mailto:${encodeURIComponent("alex.rivera@example.com")}?subject=${encodeURIComponent("Johnson Exterior Cleaning estimate for Driveway cleaning at 123 Maple St")}&body=${encodeURIComponent(expectedEstimateMailtoBody)}`
+);
+
+const contractMailto = buildContractMailto(job, settings);
+const expectedContractMailtoBody = [
+  "Hi Alex Rivera,",
+  "",
+  "Your Johnson Exterior Cleaning service agreement is ready for review and signature.",
+  "",
+  "Review and sign: https://pressureflow.test/contract/job-email-content?token=contract-token",
+  "",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+assert.equal(
+  contractMailto,
+  `mailto:${encodeURIComponent("alex.rivera@example.com")}?subject=${encodeURIComponent("Johnson Exterior Cleaning service agreement for Driveway cleaning at 123 Maple St")}&body=${encodeURIComponent(expectedContractMailtoBody)}`
+);
+
+const completionNotice = buildCompletionNotice(job, settings);
+assert.equal(completionNotice.subject, "Johnson Exterior Cleaning service completed - 123 Maple St");
+assert.match(completionNotice.body, /Hi Alex Rivera,/);
+assert.match(completionNotice.body, /Your final invoice for the remaining balance has been sent through PressureFlow\./);
+assert.match(completionNotice.body, /Completion photos and proof page: https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+assert.equal(
+  completionNotice.mailto,
+  `mailto:${encodeURIComponent("alex.rivera@example.com")}?subject=${encodeURIComponent(completionNotice.subject)}&body=${encodeURIComponent(completionNotice.body)}`
+);
 
 console.log("email content smoke ok");
