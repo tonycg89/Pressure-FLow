@@ -24,8 +24,8 @@ function renderEstimateApprovalPage(job, settings = {}) {
     <tr>
       <td>${escapeHtml(item.name)}</td>
       <td>${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</td>
-      <td>$${Number(item.price || 0).toFixed(2)}</td>
-      <td>$${Number(item.total || 0).toFixed(2)}</td>
+      <td class="num">$${Number(item.price || 0).toFixed(2)}</td>
+      <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
     </tr>
   `).join("");
 
@@ -50,7 +50,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
       </header>
       <div class="doc__content">
         <section>
-          <table>
+          <table class="table">
             <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
             <tbody>${lineRows}</tbody>
           </table>
@@ -60,7 +60,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
           ${discountAmount > 0 ? `<div class="doc__total-row"><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
           <div class="doc__total-row"><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
         </section>
-        <section class="notice">
+        <section class="notice doc__callout">
           <strong>Estimate valid for 30 days</strong>
           <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
         </section>
@@ -69,7 +69,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
       <div class="doc__actions">
         <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
           <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
-          <button type="submit">Approve Estimate</button>
+          <button class="btn" type="submit">Approve Estimate</button>
         </form>
         <details class="reject-estimate">
           <summary>Decline estimate</summary>
@@ -91,7 +91,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
               Other reason
               <textarea name="otherReason" rows="3" placeholder="Optional"></textarea>
             </label>
-            <button type="submit" class="secondary-action">Decline Estimate</button>
+            <button type="submit" class="secondary-action btn btn--danger">Decline Estimate</button>
           </form>
         </details>
       </div>
@@ -120,6 +120,11 @@ function renderDocumentBrand(settings = {}, baseUrl = "") {
       ${contact ? `<div class="doc__contact">${escapeHtml(contact)}</div>` : ""}
     </div>
   </div>`;
+}
+
+function renderStatusBadge(label, tone = "neutral") {
+  const toneClass = tone === "success" ? " status--success" : tone === "warning" ? " status--warning" : "";
+  return `<span class="status${toneClass}">${escapeHtml(label)}</span>`;
 }
 
 function renderEstimateApprovalWordTemplate(settings) {
@@ -258,15 +263,9 @@ function renderCompletionProofPage(job, settings = {}) {
     <title>Completion Proof - ${escapeHtml(job.customerName)}</title>
     ${estimatePageStyles()}
     <style>
-      .proof-meta { display: grid; gap: 6px; margin: 16px 0 22px; color: #667085; }
-      .proof-details { width: 100%; margin: 18px 0 24px; border-collapse: collapse; }
-      .proof-details th, .proof-details td { padding: 10px; border: 1px solid #d8dee8; text-align: left; vertical-align: top; }
-      .proof-details th { width: 34%; background: #f7f8fb; color: #667085; }
-      .proof-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 24px; }
-      .proof-grid figure { margin: 0; border: 1px solid #d8dee8; border-radius: 8px; overflow: hidden; background: #f7f8fb; }
-      .proof-grid img { display: block; width: 100%; height: 150px; object-fit: cover; }
+      .proof-meta { display: grid; gap: 6px; color: #667085; }
+      .proof-details th { width: 34%; }
       .print-actions { margin-top: 20px; }
-      @media (max-width: 640px) { .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proof-grid img { height: 128px; } }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } .print-actions { display: none; } }
     </style>
   </head>
@@ -285,14 +284,14 @@ function renderCompletionProofPage(job, settings = {}) {
       <div class="doc__content">
         <section>
           <h2>Completion and Invoice Details</h2>
-          <table class="proof-details">
+          <table class="proof-details table">
             <tbody>
               <tr><th>Service</th><td>${escapeHtml(job.serviceType || "Pressure washing")}</td></tr>
               <tr><th>Invoice</th><td>${escapeHtml(invoiceNumber)}</td></tr>
-              <tr><th>Estimate total</th><td>${escapeHtml(formatAlertMoney(total))}</td></tr>
-              <tr><th>Deposit</th><td>${escapeHtml(formatAlertMoney(deposit))}</td></tr>
-              <tr><th>Final balance</th><td>${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
-              <tr><th>Status</th><td>${escapeHtml(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent")}</td></tr>
+              <tr><th>Estimate total</th><td class="num">${escapeHtml(formatAlertMoney(total))}</td></tr>
+              <tr><th>Deposit</th><td class="num">${escapeHtml(formatAlertMoney(deposit))}</td></tr>
+              <tr><th>Final balance</th><td class="num">${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
+              <tr><th>Status</th><td>${renderStatusBadge(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent", job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "success" : "warning")}</td></tr>
             </tbody>
           </table>
         </section>
@@ -307,7 +306,7 @@ function renderCompletionProofPage(job, settings = {}) {
         </section>
       </div>
       <div class="print-actions doc__actions">
-        <button type="button" onclick="window.print()">Print or Save as PDF</button>
+        <button class="btn btn--secondary" type="button" onclick="window.print()">Print or Save as PDF</button>
       </div>
     </main>
   </body>
@@ -335,7 +334,7 @@ function renderProofPhotoGrid(photos) {
     return "<p>No photos provided.</p>";
   }
 
-  return `<div class="proof-grid">
+  return `<div class="proof-grid doc__gallery">
     ${photos.map((photo) => `
       <figure>
         <img src="${escapeHtml(photo.dataUrl)}" alt="${escapeHtml(photo.name)}">
@@ -350,6 +349,9 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
   const businessName = getBusinessName(settings);
   const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
+  const invoicePaid = isDeposit
+    ? job.squareDepositInvoiceStatus === "PAID" || job.squareDepositPaidAt
+    : job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -358,15 +360,10 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
     <title>${title} - ${escapeHtml(job.customerName)}</title>
     ${estimatePageStyles()}
     <style>
-      .invoice-total { margin: 18px 0; padding: 18px; border: 1px solid #b8e3dc; border-radius: 8px; background: #eef9f7; }
-      .invoice-total span { display: block; color: #667085; font-weight: 800; }
-      .invoice-total strong { display: block; margin-top: 4px; font-size: 32px; }
-      .payment-methods { display: grid; gap: 10px; margin: 18px 0; }
-      .payment-methods div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
+      .invoice-total { margin: 0; }
+      .invoice-status-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      .payment-methods { margin: 12px 0; }
       .proof-link { margin: 18px 0; padding: 14px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
-      .proof-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .proof-grid img { height: 150px; }
-      @media (max-width: 640px) { .proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proof-grid img { height: 128px; } }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } button { display: none; } }
     </style>
   </head>
@@ -383,25 +380,28 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
         </div>
       </header>
       <div class="doc__content">
-        <section class="invoice-total doc__totals">
-          <span>Amount Due</span>
-          <strong>$${amount.toFixed(2)}</strong>
+        <section class="invoice-total doc__amount-due">
+          <div class="invoice-status-row">
+            <span>Amount Due</span>
+            ${renderStatusBadge(invoicePaid ? "Paid" : "Payment due", invoicePaid ? "success" : "warning")}
+          </div>
+          <strong class="num">$${amount.toFixed(2)}</strong>
         </section>
         <section>
           <h2>Service</h2>
-          <table>
+          <table class="table">
             <tbody>
               ${(job.lineItems || []).map((item) => `
                 <tr>
                   <td>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</td>
-                  <td>$${Number(item.total || 0).toFixed(2)}</td>
+                  <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
                 </tr>
               `).join("")}
-              <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td>$${amount.toFixed(2)}</td></tr>
+              <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td class="num">$${amount.toFixed(2)}</td></tr>
             </tbody>
           </table>
         </section>
-        <section>
+        <section class="doc__pay">
           <h2>Payment Options</h2>
           ${renderPaymentMethods(settings)}
           ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
@@ -411,7 +411,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
         ${!isDeposit ? `<section><h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}</section><section><h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}</section>` : ""}
       </div>
       <div class="doc__actions">
-        <button type="button" onclick="window.print()">Print or Save as PDF</button>
+        <button class="btn btn--secondary" type="button" onclick="window.print()">Print or Save as PDF</button>
       </div>
     </main>
   </body>
@@ -425,10 +425,10 @@ function renderCardPaymentForm(job, settings, invoiceType) {
 
   const token = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
   return `
-    <form method="post" action="/api/public/invoices/${encodeURIComponent(job.id)}/pay-card" style="margin:18px 0">
+    <form class="doc__pay" method="post" action="/api/public/invoices/${encodeURIComponent(job.id)}/pay-card" style="margin:18px 0">
       <input type="hidden" name="type" value="${escapeHtml(invoiceType)}">
       <input type="hidden" name="token" value="${escapeHtml(token)}">
-      <button type="submit">Pay by Credit Card</button>
+      <button class="btn" type="submit">Pay by Credit Card</button>
     </form>
   `;
 }
@@ -444,8 +444,8 @@ function renderPaymentMethods(settings) {
     return "<p>Payment instructions will be provided by the business.</p>";
   }
 
-  return `<div class="payment-methods">
-    ${methods.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
+  return `<div class="payment-methods doc__pay-methods">
+    ${methods.map(([label, value]) => `<div class="doc__pay-method"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
   </div>`;
 }
 
