@@ -1,5 +1,10 @@
 const assert = require("node:assert/strict");
 const {
+  getDepositCents,
+  getFinalBalanceCents,
+  getPressureFlowInvoiceNumber
+} = require("../billing");
+const {
   buildCompletionCertificateEmailMessage,
   buildContractEmailMessage,
   buildEstimateEmailMessage,
@@ -60,6 +65,38 @@ const expectedContractText = [
   "Johnson Exterior Cleaning"
 ].join("\n");
 
+const depositInvoiceNumber = getPressureFlowInvoiceNumber(job, "deposit");
+const finalInvoiceNumber = getPressureFlowInvoiceNumber(job, "final");
+const expectedDepositInvoiceText = [
+  "Hi Alex Rivera,",
+  "Your deposit invoice from Johnson Exterior Cleaning is ready.",
+  `Invoice number: ${depositInvoiceNumber}`,
+  `Amount due: $${(getDepositCents(job) / 100).toFixed(2)}`,
+  "Invoice: https://pressureflow.test/invoice/job-email-content?type=deposit&token=deposit-token",
+  "Payment options:",
+  "Zelle: owner@johnson.test",
+  "Cash App: $JohnsonExterior",
+  "Venmo: @JohnsonExterior",
+  "Please include the invoice number.",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+const expectedFinalInvoiceText = [
+  "Hi Alex Rivera,",
+  "Your final invoice from Johnson Exterior Cleaning is ready.",
+  `Invoice number: ${finalInvoiceNumber}`,
+  `Amount due: $${(getFinalBalanceCents(job) / 100).toFixed(2)}`,
+  "Invoice: https://pressureflow.test/invoice/job-email-content?type=final&token=final-token",
+  "Completion photos: https://pressureflow.test/proof/job-email-content?token=proof-token",
+  "Payment options:",
+  "Zelle: owner@johnson.test",
+  "Cash App: $JohnsonExterior",
+  "Venmo: @JohnsonExterior",
+  "Please include the invoice number.",
+  "Thank you,",
+  "Johnson Exterior Cleaning"
+].join("\n");
+
 const estimate = buildEstimateEmailMessage(job, settings);
 assert.equal(estimate.to, "alex.rivera@example.com");
 assert.equal(estimate.subject, "Johnson Exterior Cleaning estimate for Driveway cleaning at 123 Maple St");
@@ -94,6 +131,41 @@ assert.match(contract.textBody, /https:\/\/pressureflow\.test\/contract\/job-ema
 
 const depositInvoice = buildPressureFlowInvoiceEmailMessage(job, settings, "deposit", job.squareDepositInvoiceUrl);
 const finalInvoice = buildPressureFlowInvoiceEmailMessage(job, settings, "final", job.squareFinalInvoiceUrl);
+assert.equal(depositInvoice.to, "alex.rivera@example.com");
+assert.equal(depositInvoice.subject, `Johnson Exterior Cleaning deposit invoice ${depositInvoiceNumber} for Driveway cleaning at 123 Maple St`);
+assert.equal(depositInvoice.textBody, expectedDepositInvoiceText);
+assert.match(depositInvoice.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(depositInvoice.htmlBody, /Deposit invoice/);
+assert.match(depositInvoice.htmlBody, /Alex Rivera/);
+assert.match(depositInvoice.htmlBody, /Johnson Exterior Cleaning/);
+assert.match(depositInvoice.htmlBody, /Driveway cleaning/);
+assert.match(depositInvoice.htmlBody, /123 Maple St/);
+assert.match(depositInvoice.htmlBody, new RegExp(depositInvoiceNumber));
+assert.match(depositInvoice.htmlBody, /\$106\.25/);
+assert.match(depositInvoice.htmlBody, /View invoice/);
+assert.match(depositInvoice.htmlBody, /href="https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=deposit&amp;token=deposit-token"/);
+assert.match(depositInvoice.htmlBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=deposit&amp;token=deposit-token/);
+assert.match(depositInvoice.textBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=deposit&token=deposit-token/);
+
+assert.equal(finalInvoice.to, "alex.rivera@example.com");
+assert.equal(finalInvoice.subject, `Johnson Exterior Cleaning final invoice ${finalInvoiceNumber} for Driveway cleaning at 123 Maple St`);
+assert.equal(finalInvoice.textBody, expectedFinalInvoiceText);
+assert.match(finalInvoice.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(finalInvoice.htmlBody, /Final invoice/);
+assert.match(finalInvoice.htmlBody, /Alex Rivera/);
+assert.match(finalInvoice.htmlBody, /Johnson Exterior Cleaning/);
+assert.match(finalInvoice.htmlBody, /Driveway cleaning/);
+assert.match(finalInvoice.htmlBody, /123 Maple St/);
+assert.match(finalInvoice.htmlBody, new RegExp(finalInvoiceNumber));
+assert.match(finalInvoice.htmlBody, /\$318\.75/);
+assert.match(finalInvoice.htmlBody, /View invoice/);
+assert.match(finalInvoice.htmlBody, /View completion photos/);
+assert.match(finalInvoice.htmlBody, /href="https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&amp;token=final-token"/);
+assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&amp;token=final-token/);
+assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+assert.match(finalInvoice.textBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&token=final-token/);
+assert.match(finalInvoice.textBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+
 const estimateFollowUp = buildFollowUpEmailMessage(job, settings, "estimate_followup");
 const contractFollowUp = buildFollowUpEmailMessage(job, settings, "contract_followup");
 const completion = buildCompletionCertificateEmailMessage(job, settings, "https://pressureflow.test");
@@ -107,8 +179,6 @@ const schedule = buildScheduleConfirmationEmailMessage(
 );
 
 [
-  depositInvoice,
-  finalInvoice,
   estimateFollowUp,
   contractFollowUp,
   completion,

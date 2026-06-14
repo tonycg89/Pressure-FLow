@@ -262,31 +262,42 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const businessName = getBusinessName(settings);
   const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(settings, getBaseUrlFromLink(invoiceUrl))}
-      <h2 style="margin:0 0 12px">${isDeposit ? "Deposit invoice" : "Final invoice"}</h2>
-      <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Your ${isDeposit ? "deposit" : "final"} invoice from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
-      <p><strong>Invoice number:</strong> ${escapeHtml(invoiceNumber)}</p>
-      <p style="font-size:18px"><strong>Amount due: $${amount.toFixed(2)}</strong></p>
-      <p>
-        <a href="${escapeHtml(invoiceUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+  const escapedInvoiceUrl = escapeHtml(invoiceUrl);
+  return renderEmailShell({
+    settings,
+    baseUrl: getBaseUrlFromLink(invoiceUrl),
+    preheader: `Your ${isDeposit ? "deposit" : "final"} invoice from ${businessName} is ready.`,
+    title: isDeposit ? "Deposit invoice" : "Final invoice",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Your ${isDeposit ? "deposit" : "final"} invoice from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:18px 0;background:${emailTheme.background};border:1px solid ${emailTheme.border};border-radius:10px">
+        <tr>
+          <td style="padding:14px 16px;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Invoice number</td>
+          <td align="right" style="padding:14px 16px;font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(invoiceNumber)}</td>
+        </tr>
+        <tr>
+          <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Amount due</td>
+          <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:20px;line-height:24px;font-weight:700">$${amount.toFixed(2)}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 18px">
+        <a href="${escapedInvoiceUrl}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
           View invoice
         </a>
       </p>
-      ${!isDeposit && job.completionProofUrl ? `<p><a href="${escapeHtml(job.completionProofUrl)}">View completion photos</a></p>` : ""}
-      <p><strong>Payment options</strong></p>
-      <ul>
+      ${!isDeposit && job.completionProofUrl ? `<p style="margin:0 0 18px"><a href="${escapeHtml(job.completionProofUrl)}" style="color:${emailTheme.green};font-weight:bold">View completion photos</a></p>` : ""}
+      <p style="margin:0 0 8px;color:${emailTheme.text}"><strong>Payment options</strong></p>
+      <ul style="margin:0 0 14px 20px;padding:0;color:${emailTheme.text}">
         ${settings.zellePayment ? `<li>Zelle: ${escapeHtml(settings.zellePayment)}</li>` : ""}
         ${settings.cashAppPayment ? `<li>Cash App: ${escapeHtml(settings.cashAppPayment)}</li>` : ""}
         ${settings.venmoPayment ? `<li>Venmo: ${escapeHtml(settings.venmoPayment)}</li>` : ""}
       </ul>
-      ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
-      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(invoiceUrl)}</p>
-      <p>Thank you,<br>${escapeHtml(businessName)}</p>
-    </div>
-  `;
+      ${settings.paymentInstructions ? `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(settings.paymentInstructions)}</p>` : ""}
+      <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${escapedInvoiceUrl}</p>
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
+    `
+  });
 }
 
 function renderCompletionCertificateEmailHtml(job, settings, baseUrl) {
