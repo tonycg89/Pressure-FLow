@@ -68,7 +68,9 @@ function createJobActionHandler({
         30,
         720
       );
-      const calendarEvent = await createGoogleCalendarEvent(settings, job, scheduledAt, duration);
+      const calendarEvent = shouldCreateGoogleCalendarEvent(settings)
+        ? await createGoogleCalendarEvent(settings, job, scheduledAt, duration)
+        : {};
       job.status = "Scheduled";
       job.scheduledAt = scheduledAt;
       job.scheduledEventAt = new Date().toISOString();
@@ -305,8 +307,18 @@ function validationError(message) {
   return error;
 }
 
+function shouldCreateGoogleCalendarEvent(settings = {}) {
+  if (settings.googleRefreshToken) {
+    return true;
+  }
+
+  return process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY !== "true" &&
+    process.env.PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING !== "true";
+}
+
 module.exports = {
   clearRevokedGoogleToken,
   createJobActionHandler,
-  normalizeNumber
+  normalizeNumber,
+  shouldCreateGoogleCalendarEvent
 };

@@ -59,6 +59,12 @@ Run these from the repo root:
 ```powershell
 npm.cmd run check
 npm.cmd run smoke:test-user-safety
+npm.cmd run test:browser -- --workers=1
+```
+
+Targeted browser specs can also be run one at a time:
+
+```powershell
 npm.cmd run test:browser -- tests/onboarding.spec.js
 npm.cmd run test:browser -- tests/follow-up-automation.spec.js
 npm.cmd run test:browser -- tests/pending-payments.spec.js
@@ -67,7 +73,32 @@ npm.cmd run test:browser -- tests/dashboard-analytics.spec.js
 npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js
 ```
 
-Run Playwright specs one at a time. The browser tests share the same local test server port and can collide if launched in parallel from separate commands.
+Playwright is configured to use one worker because the specs share `.tmp/playwright-data`. Run specs one at a time or through the single-worker suite so shared-state races do not obscure real failures.
+
+## 2a. Audit Environment Requirements
+
+Before a Claude UX audit or v0 UI audit, configure the audit environment with:
+
+```text
+MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
+```
+
+Scheduling needs one of these two setups:
+
+- Connect a dedicated Google test calendar for the tester account.
+- Or enable calendarless audit mode:
+
+```text
+PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+```
+
+For local/browser smoke tests that must never send real email, keep:
+
+```text
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+```
+
+Do not use live customer email, payment, accounting, or calendar credentials for audit runs. Use sandbox/test credentials or a dedicated throwaway account.
 
 ## 3. Test Data To Create
 

@@ -4,7 +4,7 @@ const { createAuthHelpers, SESSION_COOKIE } = require("../auth");
 const { sendCustomerEmail } = require("../email-delivery");
 const { buildCompletionCertificateEmailMessage } = require("../email-content");
 const { formatEmailAddressHeader } = require("../integrations/email");
-const { createJobActionHandler } = require("../job-actions");
+const { createJobActionHandler, shouldCreateGoogleCalendarEvent } = require("../job-actions");
 const { createPublicWorkflowHandlers } = require("../public-workflows");
 const { createRecordRoutes } = require("../record-routes");
 const {
@@ -26,6 +26,7 @@ const { getDayOfServiceInstructions } = require("../scheduling");
 const { createWorkspaceAccess } = require("../workspace");
 const { verifySquareSignature } = require("../integrations/square");
 const { verifyStripeSignature } = require("../integrations/stripe");
+const { mergeUserSettingsWithPlatform } = require("../db");
 
 function responseStub() {
   return {
@@ -511,6 +512,76 @@ function testSettingsVisibilityAndValidation() {
   assert.equal(publicValues.hasMapboxPublicToken, true);
 }
 
+function testNewAccountMapboxTokenPropagation() {
+  const previousMapboxToken = process.env.MAPBOX_PUBLIC_TOKEN;
+  process.env.MAPBOX_PUBLIC_TOKEN = "pk.platform-test";
+  try {
+    const testerSettings = mergeUserSettingsWithPlatform({}, {});
+    assert.equal(testerSettings.mapboxPublicToken, "pk.platform-test");
+    assert.equal(publicSettings(testerSettings, { hidePlatformCredentials: true }).mapboxPublicToken, "pk.platform-test");
+
+    const savedTesterSettings = mergeUserSettingsWithPlatform({ mapboxPublicToken: "pk.saved-test" }, {});
+    assert.equal(savedTesterSettings.mapboxPublicToken, "pk.saved-test");
+  } finally {
+    if (previousMapboxToken === undefined) {
+      delete process.env.MAPBOX_PUBLIC_TOKEN;
+    } else {
+      process.env.MAPBOX_PUBLIC_TOKEN = previousMapboxToken;
+    }
+  }
+}
+
+async function testCalendarlessSchedulingInTestMode() {
+  assert.equal(shouldCreateGoogleCalendarEvent({}), true);
+  assert.equal(shouldCreateGoogleCalendarEvent({ googleRefreshToken: "refresh-token" }), true);
+
+  const previousSkipEmail = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+  process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
+  try {
+    assert.equal(shouldCreateGoogleCalendarEvent({}), false);
+    let calendarCalls = 0;
+    let scheduleEmails = 0;
+    const actions = createJobActionHandler({
+      createGoogleCalendarEvent: async () => {
+        calendarCalls += 1;
+        throw new Error("Calendar should not be called in test-safe disconnected mode.");
+      },
+      readSettings: async () => ({ businessName: "Test Business", defaultJobDurationMinutes: 180 }),
+      sendAdminTextAlertSafe: async () => {},
+      sendScheduleConfirmationEmail: async () => { scheduleEmails += 1; }
+    });
+    const job = {
+      id: "calendarless-schedule",
+      accountId: "acct-calendarless",
+      customerName: "Schedule Customer",
+      email: "schedule@example.com",
+      phone: "555-0100",
+      address: "20 Calendar Way",
+      serviceType: "Window cleaning",
+      estimate: 300,
+      status: "Deposit Paid"
+    };
+
+    await actions.applyAction(job, "schedule", {
+      scheduledAt: "2026-06-10T09:00",
+      jobDurationMinutes: 120,
+      _baseUrl: "https://pressureflow.test"
+    });
+
+    assert.equal(calendarCalls, 0);
+    assert.equal(scheduleEmails, 1);
+    assert.equal(job.status, "Scheduled");
+    assert.equal(job.scheduledAt, "2026-06-10T09:00");
+    assert.equal(job.googleCalendarEventId, undefined);
+  } finally {
+    if (previousSkipEmail === undefined) {
+      delete process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+    } else {
+      process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = previousSkipEmail;
+    }
+  }
+}
+
 function testCustomerFacingSenderName() {
   assert.equal(
     formatEmailAddressHeader("sender@example.com", "Johnson Exterior Cleaning"),
@@ -708,6 +779,8 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   await testExpenseJobLinkTenantGuard();
   testValidationReadiness();
   testSettingsVisibilityAndValidation();
+  testNewAccountMapboxTokenPropagation();
+  await testCalendarlessSchedulingInTestMode();
   testCustomerFacingSenderName();
   testCompletionCertificateUsesGenericServiceWording();
   await testEstimateAndInvoicePublicFlow();

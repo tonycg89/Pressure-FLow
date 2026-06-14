@@ -32,8 +32,21 @@ test("pending payments can be manually confirmed with method and reference", asy
   await expect(page.locator("#jobDetail")).toContainText("Venmo");
   await expect(page.locator("#jobDetail")).toContainText("4829301A");
 
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Alex Rivera/ }).click();
+  await page.getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-10");
+  await page.locator("#scheduleForm [name='scheduleTime']").fill("09:00");
+  await page.locator("#scheduleForm [name='durationHours']").fill("2");
+  await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeHidden();
+  await expect(page.locator("#jobDetail")).toContainText("Scheduled");
+
   const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
-  expect(jobs[0].status).toBe("Deposit Paid");
+  expect(jobs[0].status).toBe("Scheduled");
+  expect(jobs[0].scheduledAt).toBe("2026-06-10T09:00");
+  expect(jobs[0].jobDurationMinutes).toBe(120);
   expect(jobs[0].paymentRecords[0]).toMatchObject({
     invoiceType: "deposit",
     source: "manual",

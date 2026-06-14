@@ -456,7 +456,12 @@ async function readUserSettings(userId) {
     readUsers()
   ]);
   const user = findUserForSettings(users, userId);
-  const settings = { ...defaultSettings, ...(user?.settings || {}) };
+  const settings = mergeUserSettingsWithPlatform(user?.settings || {}, ownerSettings);
+  return settings;
+}
+
+function mergeUserSettingsWithPlatform(userSettings = {}, ownerSettings = {}) {
+  const settings = { ...defaultSettings, ...userSettings };
   settings.googleClientId = settings.googleClientId || ownerSettings.googleClientId || "";
   settings.googleClientSecret = settings.googleClientSecret || ownerSettings.googleClientSecret || "";
   settings.googleRedirectUri = settings.googleRedirectUri || ownerSettings.googleRedirectUri || "";
@@ -465,7 +470,10 @@ async function readUserSettings(userId) {
       settings[key] = "";
     }
   });
-  settings.mapboxPublicToken = ownerSettings.mapboxPublicToken || settings.mapboxPublicToken || "";
+  settings.mapboxPublicToken = settings.mapboxPublicToken ||
+    ownerSettings.mapboxPublicToken ||
+    process.env.MAPBOX_PUBLIC_TOKEN ||
+    "";
   return settings;
 }
 
@@ -1642,6 +1650,7 @@ module.exports = {
   writeAccounts,
   readUsers,
   writeUsers,
+  mergeUserSettingsWithPlatform,
   readUserSettings,
   writeUserSettings,
   readSettings,

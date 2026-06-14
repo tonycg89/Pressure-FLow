@@ -107,6 +107,11 @@ async function loginAndCompleteOnboarding(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   await expect(page.locator("#sidebarBusinessName")).not.toHaveText("Your Company");
+  const settingsResponse = await page.request.get("/api/settings");
+  expect(settingsResponse.ok()).toBeTruthy();
+  const { settings } = await settingsResponse.json();
+  expect(settings.mapboxPublicToken).toBe("pk.playwright-mapbox");
+  expect(settings.hasMapboxPublicToken).toBe(true);
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
 
