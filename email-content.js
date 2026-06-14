@@ -12,6 +12,16 @@ const {
   renderLogoHtml
 } = require("./rendering");
 
+const emailTheme = Object.freeze({
+  green: "#1F7A4D",
+  white: "#FFFFFF",
+  text: "#1A1D1B",
+  muted: "#5C635E",
+  border: "#E2E6E3",
+  background: "#F7F8F7",
+  surface: "#FFFFFF"
+});
+
 function buildEstimateMailto(job, settings = {}) {
   const businessName = getBusinessName(settings);
   const validUntil = getEstimateValidUntil(job);
@@ -317,26 +327,68 @@ function renderEmailPhotoGrid(photos) {
   `;
 }
 
+function renderEmailShell({ settings = {}, baseUrl = "", preheader = "", title = "", body = "" }) {
+  const businessName = getBusinessName(settings);
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" data-email-shell="pressureflow" style="width:100%;border-collapse:collapse;background:${emailTheme.background};margin:0;padding:0">
+      <tr>
+        <td align="center" style="padding:28px 12px">
+          <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escapeHtml(preheader)}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;border-collapse:collapse;background:${emailTheme.surface};border:1px solid ${emailTheme.border};border-radius:12px;overflow:hidden">
+            <tr>
+              <td style="padding:24px 24px 18px;border-bottom:1px solid ${emailTheme.border}">
+                ${renderLogoHtml(settings, baseUrl, 180)}
+                <div style="font-family:Arial,sans-serif;color:${emailTheme.text};font-size:16px;font-weight:700;line-height:22px">${escapeHtml(businessName)}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;font-family:Arial,sans-serif;color:${emailTheme.text};font-size:15px;line-height:22px">
+                ${title ? `<h2 style="margin:0 0 14px;color:${emailTheme.text};font-family:Arial,sans-serif;font-size:22px;line-height:28px;font-weight:700">${escapeHtml(title)}</h2>` : ""}
+                ${body}
+              </td>
+            </tr>
+          </table>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;border-collapse:collapse">
+            <tr>
+              <td style="padding:14px 8px 0;text-align:center;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:12px;line-height:18px">
+                Sent by ${escapeHtml(businessName)} using PressureFlow.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
 function renderEstimateEmailHtml(job, settings) {
   const businessName = getBusinessName(settings);
   const validUntil = getEstimateValidUntil(job);
-  return `
-    <div style="font-family:Arial,sans-serif;color:#202124;line-height:1.5">
-      ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
-      <h2 style="margin:0 0 12px">Your service estimate is ready</h2>
-      <p>Hi ${escapeHtml(job.customerName)},</p>
-      <p>Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
-      <p style="font-size:18px"><strong>Total: $${Number(job.estimate || 0).toFixed(2)}</strong></p>
-      <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
-      <p>
-        <a href="${escapeHtml(job.estimateApprovalUrl)}" style="display:inline-block;padding:12px 18px;background:#1c7c54;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold">
+  const approvalUrl = escapeHtml(job.estimateApprovalUrl);
+  return renderEmailShell({
+    settings,
+    baseUrl: getBaseUrlFromLink(job.estimateApprovalUrl),
+    preheader: `Your estimate from ${businessName} is ready for review.`,
+    title: "Your service estimate is ready",
+    body: `
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
+      <p style="margin:0 0 14px;color:${emailTheme.text}">Your estimate from ${escapeHtml(businessName)} for <strong>${escapeHtml(job.serviceType)}</strong> at ${escapeHtml(job.address)} is ready for review.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:18px 0;background:${emailTheme.background};border:1px solid ${emailTheme.border};border-radius:10px">
+        <tr>
+          <td style="padding:16px;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Estimate total</td>
+          <td align="right" style="padding:16px;font-family:Arial,sans-serif;color:${emailTheme.text};font-size:20px;line-height:24px;font-weight:700">$${Number(job.estimate || 0).toFixed(2)}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 18px;color:${emailTheme.muted}">This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
+      <p style="margin:0 0 18px">
+        <a href="${approvalUrl}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
           Review and approve estimate
         </a>
       </p>
-      <p>If the button does not work, copy and paste this link into your browser:<br>${escapeHtml(job.estimateApprovalUrl)}</p>
-      <p>Thank you,<br>${escapeHtml(businessName)}</p>
-    </div>
-  `;
+      <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${approvalUrl}</p>
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
+    `
+  });
 }
 
 function renderContractEmailHtml(job, settings) {
