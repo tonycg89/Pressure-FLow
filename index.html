@@ -335,148 +335,150 @@
       </section>
     </main>
 
-    <dialog id="jobDialog">
+    <dialog id="jobDialog" class="modal modal--lg">
       <form method="dialog" id="jobForm" class="form-section">
-        <div class="dialog-header">
-          <h2>New job</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">New job</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <input name="customerId" type="hidden">
+        <div class="modal__body">
+          <input name="customerId" type="hidden">
 
-        <label class="field">
-          Customer lookup
-          <input id="jobCustomerSearch" class="input" list="jobCustomerOptions" placeholder="Start typing a customer name">
-          <datalist id="jobCustomerOptions"></datalist>
-        </label>
-        <label class="field">
-          Customer name
-          <input name="customerName" class="input" required placeholder="Maria Johnson">
-        </label>
-        <label class="field">
-          Email
-          <input name="email" class="input" required type="email" placeholder="maria@example.com">
-        </label>
-        <label class="field">
-          Phone
-          <input name="phone" class="input" required placeholder="(555) 123-4567">
-        </label>
-        <label class="field">
-          Street address
-          <input name="streetAddress" class="input" required placeholder="214 Oak Ridge Dr">
-        </label>
-        <div class="field-row">
           <label class="field">
-            Apt / Suite #
-            <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
+            Customer lookup
+            <input id="jobCustomerSearch" class="input" list="jobCustomerOptions" placeholder="Start typing a customer name">
+            <datalist id="jobCustomerOptions"></datalist>
           </label>
           <label class="field">
-            City
-            <input name="city" class="input" required placeholder="City">
-          </label>
-        </div>
-        <div class="field-row">
-          <label class="field">
-            State
-            <input name="state" class="input" required maxlength="2" placeholder="CA">
+            Customer name
+            <input name="customerName" class="input" required placeholder="Maria Johnson">
           </label>
           <label class="field">
-            ZIP
-            <input name="zip" class="input" required inputmode="numeric" placeholder="ZIP code">
+            Email
+            <input name="email" class="input" required type="email" placeholder="maria@example.com">
           </label>
-        </div>
-        <input name="address" type="hidden">
-        <label class="field">
-          Lead source
-          <select name="leadSource" class="select">
-            <option value="referral">Referral</option>
-            <option value="door-hanger">Door hanger</option>
-            <option value="door-to-door">Door to door</option>
-            <option value="meta-ad">Meta ad</option>
-            <option value="nextdoor-ad">Nextdoor ad</option>
-          </select>
-        </label>
-        <label class="field">
-          Job title
-          <input name="serviceType" class="input" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
-        </label>
-        <datalist id="jobTitleSuggestions">
-          <option value="Exterior Cleaning"></option>
-          <option value="Landscape Maintenance"></option>
-          <option value="Handyman Work"></option>
-          <option value="Construction Services"></option>
-          <option value="Property Maintenance"></option>
-          <option value="Multiple Services"></option>
-          <option value="Commercial Service"></option>
-          <option value="Residential Service"></option>
-          <option value="Project Estimate"></option>
-          <option value="Maintenance Visit"></option>
-        </datalist>
-
-        <section class="estimate-builder" aria-label="Estimate builder">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow">Estimate</p>
-              <h3>Services and rates</h3>
-            </div>
-            <div class="section-header-actions">
-              <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
-              <button id="customServiceButton" class="secondary-small-button" type="button">Custom Service</button>
-            </div>
-          </div>
-          <div id="lineItems" class="line-items"></div>
-          <details class="discount-panel">
-            <summary>Discounts</summary>
+          <label class="field">
+            Phone
+            <input name="phone" class="input" required placeholder="(555) 123-4567">
+          </label>
+          <label class="field">
+            Street address
+            <input name="streetAddress" class="input" required placeholder="214 Oak Ridge Dr">
+          </label>
+          <div class="field-row">
             <label class="field">
-              Estimate discount
-              <select id="discountSelect" name="discountPercent" class="select">
-                <option value="0">No discount</option>
-                <option value="10">10% discount</option>
-                <option value="15">15% discount</option>
-                <option value="20">20% discount</option>
-              </select>
+              Apt / Suite #
+              <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
             </label>
-          </details>
-          <div class="estimate-summary">
-            <div><span>Subtotal</span><strong id="estimateSubtotal">$0</strong></div>
-            <div id="estimateDiscountRow" hidden><span>Discount</span><strong id="estimateDiscount">$0</strong></div>
-            <div><span>Total</span><strong id="estimateTotal">$0</strong></div>
+            <label class="field">
+              City
+              <input name="city" class="input" required placeholder="City">
+            </label>
           </div>
-        </section>
+          <div class="field-row">
+            <label class="field">
+              State
+              <input name="state" class="input" required maxlength="2" placeholder="CA">
+            </label>
+            <label class="field">
+              ZIP
+              <input name="zip" class="input" required inputmode="numeric" placeholder="ZIP code">
+            </label>
+          </div>
+          <input name="address" type="hidden">
+          <label class="field">
+            Lead source
+            <select name="leadSource" class="select">
+              <option value="referral">Referral</option>
+              <option value="door-hanger">Door hanger</option>
+              <option value="door-to-door">Door to door</option>
+              <option value="meta-ad">Meta ad</option>
+              <option value="nextdoor-ad">Nextdoor ad</option>
+            </select>
+          </label>
+          <label class="field">
+            Job title
+            <input name="serviceType" class="input" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
+          </label>
+          <datalist id="jobTitleSuggestions">
+            <option value="Exterior Cleaning"></option>
+            <option value="Landscape Maintenance"></option>
+            <option value="Handyman Work"></option>
+            <option value="Construction Services"></option>
+            <option value="Property Maintenance"></option>
+            <option value="Multiple Services"></option>
+            <option value="Commercial Service"></option>
+            <option value="Residential Service"></option>
+            <option value="Project Estimate"></option>
+            <option value="Maintenance Visit"></option>
+          </datalist>
 
-        <input name="estimate" type="hidden" value="450">
-        <label class="field">
-          Deposit %
-          <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
-        </label>
-        <label class="field">
-          Notes
-          <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
-        </label>
-        <label class="field">
-          Access notes
-          <textarea name="accessNotes" class="textarea" rows="2" placeholder="Gate code, parking, water spigot, pets"></textarea>
-        </label>
-        <label class="field">
-          Sensitive areas
-          <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
-        </label>
-
-        <section class="photo-uploader" aria-label="Before job photos">
-          <div class="section-header compact-header">
-            <div>
-              <p class="eyebrow">Before Photos</p>
-              <h3>Property areas</h3>
+          <section class="estimate-builder" aria-label="Estimate builder">
+            <div class="section-header">
+              <div>
+                <p class="eyebrow">Estimate</p>
+                <h3>Services and rates</h3>
+              </div>
+              <div class="section-header-actions">
+                <button id="addLineItemButton" class="secondary-small-button" type="button">Add Service</button>
+                <button id="customServiceButton" class="secondary-small-button" type="button">Custom Service</button>
+              </div>
             </div>
-          </div>
-          <div class="before-photo-picker">
-            <div id="beforePhotoRows" class="before-photo-rows"></div>
-            <button id="addBeforePhotoButton" class="secondary-small-button" type="button">Add Another Photo</button>
-            <div id="beforePhotoPreview" class="before-photo-preview"></div>
-          </div>
-        </section>
+            <div id="lineItems" class="line-items"></div>
+            <details class="discount-panel">
+              <summary>Discounts</summary>
+              <label class="field">
+                Estimate discount
+                <select id="discountSelect" name="discountPercent" class="select">
+                  <option value="0">No discount</option>
+                  <option value="10">10% discount</option>
+                  <option value="15">15% discount</option>
+                  <option value="20">20% discount</option>
+                </select>
+              </label>
+            </details>
+            <div class="estimate-summary">
+              <div><span>Subtotal</span><strong id="estimateSubtotal">$0</strong></div>
+              <div id="estimateDiscountRow" hidden><span>Discount</span><strong id="estimateDiscount">$0</strong></div>
+              <div><span>Total</span><strong id="estimateTotal">$0</strong></div>
+            </div>
+          </section>
 
-        <menu class="dialog-actions form-actions">
+          <input name="estimate" type="hidden" value="450">
+          <label class="field">
+            Deposit %
+            <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
+          </label>
+          <label class="field">
+            Notes
+            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
+          </label>
+          <label class="field">
+            Access notes
+            <textarea name="accessNotes" class="textarea" rows="2" placeholder="Gate code, parking, water spigot, pets"></textarea>
+          </label>
+          <label class="field">
+            Sensitive areas
+            <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
+          </label>
+
+          <section class="photo-uploader" aria-label="Before job photos">
+            <div class="section-header compact-header">
+              <div>
+                <p class="eyebrow">Before Photos</p>
+                <h3>Property areas</h3>
+              </div>
+            </div>
+            <div class="before-photo-picker">
+              <div id="beforePhotoRows" class="before-photo-rows"></div>
+              <button id="addBeforePhotoButton" class="secondary-small-button" type="button">Add Another Photo</button>
+              <div id="beforePhotoPreview" class="before-photo-preview"></div>
+            </div>
+          </section>
+        </div>
+
+        <menu class="dialog-actions form-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Create Job</button>
         </menu>

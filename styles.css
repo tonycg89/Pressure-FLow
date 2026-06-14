@@ -1469,10 +1469,6 @@ dialog::backdrop,
   margin-right: auto;
 }
 
-#jobDialog {
-  width: min(1040px, calc(100vw - 24px));
-}
-
 .onboarding-dialog {
   width: min(980px, calc(100vw - 24px));
 }
