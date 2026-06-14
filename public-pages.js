@@ -38,54 +38,63 @@ function renderEstimateApprovalPage(job, settings = {}) {
     ${estimatePageStyles()}
   </head>
   <body>
-    <main>
-      ${renderLogoHtml(settings, getBaseUrlFromLink(job.estimateApprovalUrl), 190)}
-      <p class="eyebrow">Estimate Only, not an actual Invoice.</p>
-      <h1>${escapeHtml(job.serviceType)} for ${escapeHtml(job.customerName)}</h1>
-      <p>${escapeHtml(job.address)}</p>
-      <section>
-        <table>
-          <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
-          <tbody>${lineRows}</tbody>
-        </table>
-      </section>
-      <section class="totals">
-        <div><span>Subtotal</span><strong>$${subtotal.toFixed(2)}</strong></div>
-        ${discountAmount > 0 ? `<div><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
-        <div><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
-      </section>
-      <section class="notice">
-        <strong>Estimate valid for 30 days</strong>
-        <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
-      </section>
-      ${renderMeasurementPreview(job)}
-      <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
-        <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
-        <button type="submit">Approve Estimate</button>
-      </form>
-      <details class="reject-estimate">
-        <summary>Decline estimate</summary>
-        <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/reject">
+    <main class="doc">
+      ${renderDocumentBrand(settings, getBaseUrlFromLink(job.estimateApprovalUrl))}
+      <header class="doc__intro">
+        <p class="eyebrow doc__type">Estimate Only, not an actual Invoice.</p>
+        <h1>${escapeHtml(job.serviceType)} for ${escapeHtml(job.customerName)}</h1>
+        <div class="doc__meta">
+          <span>${escapeHtml(job.customerName)}</span>
+          <span>${escapeHtml(job.address)}</span>
+        </div>
+      </header>
+      <div class="doc__content">
+        <section>
+          <table>
+            <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
+            <tbody>${lineRows}</tbody>
+          </table>
+        </section>
+        <section class="totals doc__totals">
+          <div class="doc__total-row"><span>Subtotal</span><strong>$${subtotal.toFixed(2)}</strong></div>
+          ${discountAmount > 0 ? `<div class="doc__total-row"><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
+          <div class="doc__total-row"><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
+        </section>
+        <section class="notice">
+          <strong>Estimate valid for 30 days</strong>
+          <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
+        </section>
+        ${renderMeasurementPreview(job)}
+      </div>
+      <div class="doc__actions">
+        <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
           <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
-          <label>
-            Reason for declining
-            <select name="reason" id="estimateRejectReason">
-              <option value="">Prefer not to say</option>
-              <option value="price-too-high">Price was too high</option>
-              <option value="timing-not-right">Timing is not right</option>
-              <option value="went-with-another-company">Went with another company</option>
-              <option value="scope-changed">Scope changed</option>
-              <option value="just-researching">Just researching</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label id="estimateRejectOtherWrap" hidden>
-            Other reason
-            <textarea name="otherReason" rows="3" placeholder="Optional"></textarea>
-          </label>
-          <button type="submit" class="secondary-action">Decline Estimate</button>
+          <button type="submit">Approve Estimate</button>
         </form>
-      </details>
+        <details class="reject-estimate">
+          <summary>Decline estimate</summary>
+          <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/reject">
+            <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
+            <label>
+              Reason for declining
+              <select name="reason" id="estimateRejectReason">
+                <option value="">Prefer not to say</option>
+                <option value="price-too-high">Price was too high</option>
+                <option value="timing-not-right">Timing is not right</option>
+                <option value="went-with-another-company">Went with another company</option>
+                <option value="scope-changed">Scope changed</option>
+                <option value="just-researching">Just researching</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label id="estimateRejectOtherWrap" hidden>
+              Other reason
+              <textarea name="otherReason" rows="3" placeholder="Optional"></textarea>
+            </label>
+            <button type="submit" class="secondary-action">Decline Estimate</button>
+          </form>
+        </details>
+      </div>
       <script>
         const rejectReason = document.querySelector("#estimateRejectReason");
         const otherWrap = document.querySelector("#estimateRejectOtherWrap");
@@ -96,6 +105,21 @@ function renderEstimateApprovalPage(job, settings = {}) {
     </main>
   </body>
 </html>`;
+}
+
+function renderDocumentBrand(settings = {}, baseUrl = "") {
+  const businessName = getBusinessName(settings);
+  const contact = [
+    settings.businessEmail,
+    settings.businessPhone
+  ].filter(Boolean).join(" | ");
+  return `<div class="doc__brand">
+    ${renderLogoHtml(settings, baseUrl, 190)}
+    <div class="doc__brand-meta">
+      <div class="doc__biz">${escapeHtml(businessName)}</div>
+      ${contact ? `<div class="doc__contact">${escapeHtml(contact)}</div>` : ""}
+    </div>
+  </div>`;
 }
 
 function renderEstimateApprovalWordTemplate(settings) {
@@ -247,32 +271,42 @@ function renderCompletionProofPage(job, settings = {}) {
     </style>
   </head>
   <body>
-    <main>
-      ${renderLogoHtml(settings, getBaseUrlFromLink(job.completionProofUrl), 190)}
-      <p class="eyebrow">Completion Proof</p>
-      <h1>${escapeHtml(job.serviceType)} Completed</h1>
-      <div class="proof-meta">
-        <span>${escapeHtml(job.customerName)}</span>
-        <span>${escapeHtml(job.address)}</span>
-        <span>${escapeHtml(new Date(job.completionNoticeSentAt || Date.now()).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</span>
+    <main class="doc">
+      ${renderDocumentBrand(settings, getBaseUrlFromLink(job.completionProofUrl))}
+      <header class="doc__intro">
+        <p class="eyebrow doc__type">Completion Proof</p>
+        <h1>${escapeHtml(job.serviceType)} Completed</h1>
+        <div class="proof-meta doc__meta">
+          <span>${escapeHtml(job.customerName)}</span>
+          <span>${escapeHtml(job.address)}</span>
+          <span>${escapeHtml(new Date(job.completionNoticeSentAt || Date.now()).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</span>
+        </div>
+      </header>
+      <div class="doc__content">
+        <section>
+          <h2>Completion and Invoice Details</h2>
+          <table class="proof-details">
+            <tbody>
+              <tr><th>Service</th><td>${escapeHtml(job.serviceType || "Pressure washing")}</td></tr>
+              <tr><th>Invoice</th><td>${escapeHtml(invoiceNumber)}</td></tr>
+              <tr><th>Estimate total</th><td>${escapeHtml(formatAlertMoney(total))}</td></tr>
+              <tr><th>Deposit</th><td>${escapeHtml(formatAlertMoney(deposit))}</td></tr>
+              <tr><th>Final balance</th><td>${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
+              <tr><th>Status</th><td>${escapeHtml(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent")}</td></tr>
+            </tbody>
+          </table>
+        </section>
+        ${renderCompletionServiceAreas(job)}
+        <section>
+          <h2>Before Photos</h2>
+          ${renderProofPhotoGrid(before)}
+        </section>
+        <section>
+          <h2>Completed Work Photos</h2>
+          ${renderProofPhotoGrid(after)}
+        </section>
       </div>
-      <h2>Completion and Invoice Details</h2>
-      <table class="proof-details">
-        <tbody>
-          <tr><th>Service</th><td>${escapeHtml(job.serviceType || "Pressure washing")}</td></tr>
-          <tr><th>Invoice</th><td>${escapeHtml(invoiceNumber)}</td></tr>
-          <tr><th>Estimate total</th><td>${escapeHtml(formatAlertMoney(total))}</td></tr>
-          <tr><th>Deposit</th><td>${escapeHtml(formatAlertMoney(deposit))}</td></tr>
-          <tr><th>Final balance</th><td>${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
-          <tr><th>Status</th><td>${escapeHtml(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent")}</td></tr>
-        </tbody>
-      </table>
-      ${renderCompletionServiceAreas(job)}
-      <h2>Before Photos</h2>
-      ${renderProofPhotoGrid(before)}
-      <h2>Completed Work Photos</h2>
-      ${renderProofPhotoGrid(after)}
-      <div class="print-actions">
+      <div class="print-actions doc__actions">
         <button type="button" onclick="window.print()">Print or Save as PDF</button>
       </div>
     </main>
@@ -293,7 +327,7 @@ function renderCompletionServiceAreas(job) {
       `).join("")}
     </ul>`
     : "";
-  return `<h2>Service Area</h2><p>Total serviced area: ${total} SqFt</p>${areas}`;
+  return `<section><h2>Service Area</h2><p>Total serviced area: ${total} SqFt</p>${areas}</section>`;
 }
 
 function renderProofPhotoGrid(photos) {
@@ -337,34 +371,48 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
     </style>
   </head>
   <body>
-    <main>
-      ${renderLogoHtml(settings, getBaseUrlFromLink(job.squareDepositInvoiceUrl || job.squareFinalInvoiceUrl), 190)}
-      <p class="eyebrow">${isDeposit ? "Deposit Invoice" : "Final Invoice"}</p>
-      <h1>${title}</h1>
-      <p>${escapeHtml(invoiceNumber)} | ${escapeHtml(businessName)} for ${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
-      <section class="invoice-total">
-        <span>Amount Due</span>
-        <strong>$${amount.toFixed(2)}</strong>
-      </section>
-      <h2>Service</h2>
-      <table>
-        <tbody>
-          ${(job.lineItems || []).map((item) => `
-            <tr>
-              <td>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</td>
-              <td>$${Number(item.total || 0).toFixed(2)}</td>
-            </tr>
-          `).join("")}
-          <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td>$${amount.toFixed(2)}</td></tr>
-        </tbody>
-      </table>
-      <h2>Payment Options</h2>
-      ${renderPaymentMethods(settings)}
-      ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
-      ${renderCardPaymentForm(job, settings, invoiceType)}
-      ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
-      ${!isDeposit ? `<h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}<h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}` : ""}
-      <button type="button" onclick="window.print()">Print or Save as PDF</button>
+    <main class="doc">
+      ${renderDocumentBrand(settings, getBaseUrlFromLink(job.squareDepositInvoiceUrl || job.squareFinalInvoiceUrl))}
+      <header class="doc__intro">
+        <p class="eyebrow doc__type">${isDeposit ? "Deposit Invoice" : "Final Invoice"}</p>
+        <h1>${title}</h1>
+        <div class="doc__meta">
+          <span>${escapeHtml(invoiceNumber)}</span>
+          <span>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)}</span>
+          <span>${escapeHtml(job.address)}</span>
+        </div>
+      </header>
+      <div class="doc__content">
+        <section class="invoice-total doc__totals">
+          <span>Amount Due</span>
+          <strong>$${amount.toFixed(2)}</strong>
+        </section>
+        <section>
+          <h2>Service</h2>
+          <table>
+            <tbody>
+              ${(job.lineItems || []).map((item) => `
+                <tr>
+                  <td>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</td>
+                  <td>$${Number(item.total || 0).toFixed(2)}</td>
+                </tr>
+              `).join("")}
+              <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td>$${amount.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section>
+          <h2>Payment Options</h2>
+          ${renderPaymentMethods(settings)}
+          ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
+          ${renderCardPaymentForm(job, settings, invoiceType)}
+        </section>
+        ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
+        ${!isDeposit ? `<section><h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}</section><section><h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}</section>` : ""}
+      </div>
+      <div class="doc__actions">
+        <button type="button" onclick="window.print()">Print or Save as PDF</button>
+      </div>
     </main>
   </body>
 </html>`;
@@ -423,58 +471,69 @@ function renderContractSigningPage(job, options = {}) {
     ${estimatePageStyles()}
   </head>
   <body>
-    <main>
-      ${renderLogoHtml(options.settings || {}, getBaseUrlFromLink(job.contractApprovalUrl), 190)}
-      <p class="eyebrow">Service Agreement</p>
-      <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
-      <p>${escapeHtml(job.customerName)} | ${escapeHtml(job.address)}</p>
+    <main class="doc">
+      ${renderDocumentBrand(options.settings || {}, getBaseUrlFromLink(job.contractApprovalUrl))}
+      <header class="doc__intro">
+        <p class="eyebrow doc__type">Service Agreement</p>
+        <h1>${escapeHtml(serviceAgreementTemplate.title)}</h1>
+        <div class="doc__meta">
+          <span>${escapeHtml(job.customerName)}</span>
+          <span>${escapeHtml(job.address)}</span>
+        </div>
+      </header>
 
-      ${renderContractProjectDetails(job, depositAmount, options.settings || {})}
+      <div class="doc__content">
+        ${renderContractProjectDetails(job, depositAmount, options.settings || {})}
 
-      <section>
-        <h2>Scope of Work</h2>
-        <table>
-          <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
-          <tbody>${lineRows}</tbody>
-        </table>
-      </section>
-
-      <section class="totals">
-        <div><span>Estimate Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
-        <div><span>Deposit Due Before Scheduling</span><strong>$${depositAmount.toFixed(2)}</strong></div>
-        <div><span>Final Balance After Completion</span><strong>$${finalAmount.toFixed(2)}</strong></div>
-      </section>
-
-      ${renderContractTerms(job, { executed: alreadySigned || options.executedOnly, initials })}
-
-      ${alreadySigned ? `
-        <section class="notice">
-          <strong>Signed</strong>
-          <p>This service agreement was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
-        </section>
         <section>
-          <h2>Signature</h2>
+          <h2>Scope of Work</h2>
           <table>
-            <tbody>
-              <tr><th>Signer</th><td>${escapeHtml(job.contractSignerName || job.customerName)}</td></tr>
-              <tr><th>Date signed</th><td>${escapeHtml(job.contractSignedDate || new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</td></tr>
-            </tbody>
+            <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
+            <tbody>${lineRows}</tbody>
           </table>
         </section>
-      ` : `
-        <form id="contractSignForm" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
-          <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
-          <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
-          <label>
-            Signature date and time
-            <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add current date and time">
-          </label>
-          <label>
-            Type your full name to sign
-            <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
-          </label>
-          <button type="submit">Sign Agreement</button>
-        </form>
+
+        <section class="totals doc__totals">
+          <div class="doc__total-row"><span>Estimate Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
+          <div class="doc__total-row"><span>Deposit Due Before Scheduling</span><strong>$${depositAmount.toFixed(2)}</strong></div>
+          <div class="doc__total-row"><span>Final Balance After Completion</span><strong>$${finalAmount.toFixed(2)}</strong></div>
+        </section>
+
+        ${renderContractTerms(job, { executed: alreadySigned || options.executedOnly, initials })}
+
+        ${alreadySigned ? `
+          <section class="notice">
+            <strong>Signed</strong>
+            <p>This service agreement was signed by ${escapeHtml(job.contractSignerName || job.customerName)} on ${escapeHtml(new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}.</p>
+          </section>
+          <section>
+            <h2>Signature</h2>
+            <table>
+              <tbody>
+                <tr><th>Signer</th><td>${escapeHtml(job.contractSignerName || job.customerName)}</td></tr>
+                <tr><th>Date signed</th><td>${escapeHtml(job.contractSignedDate || new Date(job.contractSignedAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</td></tr>
+              </tbody>
+            </table>
+          </section>
+        ` : ""}
+      </div>
+
+      ${alreadySigned ? "" : `
+        <div class="doc__actions">
+          <form id="contractSignForm" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
+            <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
+            <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
+            <label>
+              Signature date and time
+              <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add current date and time">
+            </label>
+            <label>
+              Type your full name to sign
+              <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
+            </label>
+            <button type="submit">Sign Agreement</button>
+          </form>
+        </div>
         ${contractSigningScript()}
       `}
     </main>
