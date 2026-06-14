@@ -1108,103 +1108,109 @@
       </form>
     </dialog>
 
-    <dialog id="scheduleDialog">
+    <dialog id="scheduleDialog" class="modal modal--md">
       <form method="dialog" id="scheduleForm">
-        <div class="dialog-header">
-          <h2>Schedule job</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">Schedule job</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <label>
-          Duration in hours
-          <div class="stepper-control">
-            <button type="button" class="stepper-button" data-duration-step="-0.25" aria-label="Decrease duration">-</button>
-            <input name="durationHours" type="number" min="0.25" max="12" step="0.25" value="3">
-            <button type="button" class="stepper-button" data-duration-step="0.25" aria-label="Increase duration">+</button>
+        <div class="modal__body">
+          <label>
+            Duration in hours
+            <div class="stepper-control">
+              <button type="button" class="stepper-button" data-duration-step="-0.25" aria-label="Decrease duration">-</button>
+              <input name="durationHours" type="number" min="0.25" max="12" step="0.25" value="3">
+              <button type="button" class="stepper-button" data-duration-step="0.25" aria-label="Increase duration">+</button>
+            </div>
+          </label>
+
+          <div class="field-row">
+            <label>
+              Date
+              <input name="scheduleDate" type="date" required>
+            </label>
+            <label>
+              Start time
+              <input name="scheduleTime" type="time" required step="900">
+            </label>
           </div>
-        </label>
-
-        <div class="field-row">
-          <label>
-            Date
-            <input name="scheduleDate" type="date" required>
-          </label>
-          <label>
-            Start time
-            <input name="scheduleTime" type="time" required step="900">
-          </label>
         </div>
 
-        <menu class="dialog-actions">
+        <menu class="dialog-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Schedule Job</button>
         </menu>
       </form>
     </dialog>
 
-    <dialog id="completionDialog">
+    <dialog id="completionDialog" class="modal modal--lg">
       <form method="dialog" id="completionForm">
-        <div class="dialog-header">
-          <h2>Complete job</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">Complete job</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <p class="form-note">Add before and after photos before sending the final invoice.</p>
+        <div class="modal__body">
+          <p class="form-note">Add before and after photos before sending the final invoice.</p>
 
-        <div class="field-row">
-          <section class="photo-section">
-            <p class="photo-label">Before photos</p>
-            <div class="photo-actions">
-              <label class="photo-action-button primary">Upload
-                <input data-completion-before-photo-input type="file" accept="image/*" multiple>
-              </label>
-              <label class="photo-action-button">Take Picture
-                <input data-completion-before-photo-input type="file" accept="image/*" capture="environment">
-              </label>
-            </div>
-          </section>
-          <section class="photo-section">
-            <p class="photo-label">Completed work photos</p>
-            <div class="photo-actions">
-              <label class="photo-action-button primary">Upload
-                <input data-completion-after-photo-input type="file" accept="image/*" multiple>
-              </label>
-              <label class="photo-action-button">Take Picture
-                <input data-completion-after-photo-input type="file" accept="image/*" capture="environment">
-              </label>
-            </div>
-          </section>
-        </div>
-
-        <div class="field-row">
-          <div>
-            <p class="photo-label">Before</p>
-            <div id="completionBeforePhotoPreview" class="photo-grid"></div>
+          <div class="field-row">
+            <section class="photo-section">
+              <p class="photo-label">Before photos</p>
+              <div class="photo-actions">
+                <label class="photo-action-button primary">Upload
+                  <input data-completion-before-photo-input type="file" accept="image/*" multiple>
+                </label>
+                <label class="photo-action-button">Take Picture
+                  <input data-completion-before-photo-input type="file" accept="image/*" capture="environment">
+                </label>
+              </div>
+            </section>
+            <section class="photo-section">
+              <p class="photo-label">Completed work photos</p>
+              <div class="photo-actions">
+                <label class="photo-action-button primary">Upload
+                  <input data-completion-after-photo-input type="file" accept="image/*" multiple>
+                </label>
+                <label class="photo-action-button">Take Picture
+                  <input data-completion-after-photo-input type="file" accept="image/*" capture="environment">
+                </label>
+              </div>
+            </section>
           </div>
-          <div>
-            <p class="photo-label">Completed</p>
-            <div id="completionAfterPhotoPreview" class="photo-grid"></div>
+
+          <div class="field-row">
+            <div>
+              <p class="photo-label">Before</p>
+              <div id="completionBeforePhotoPreview" class="photo-grid"></div>
+            </div>
+            <div>
+              <p class="photo-label">Completed</p>
+              <div id="completionAfterPhotoPreview" class="photo-grid"></div>
+            </div>
           </div>
         </div>
 
-        <menu class="dialog-actions">
+        <menu class="dialog-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Send Final Invoice</button>
         </menu>
       </form>
     </dialog>
 
-    <dialog id="followUpDialog">
+    <dialog id="followUpDialog" class="modal modal--md">
       <form method="dialog" id="followUpForm">
-        <div class="dialog-header">
-          <h2>Send follow-up email</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">Send follow-up email</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
-        <section class="detail-section">
-          <h4 id="followUpPreviewSubject"></h4>
-          <div id="followUpPreviewBody" class="email-preview-body"></div>
-        </section>
-        <menu class="dialog-actions">
+        <div class="modal__body">
+          <section class="detail-section">
+            <h4 id="followUpPreviewSubject"></h4>
+            <div id="followUpPreviewBody" class="email-preview-body"></div>
+          </section>
+        </div>
+        <menu class="dialog-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Send now</button>
         </menu>
