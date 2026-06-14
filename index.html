@@ -751,131 +751,132 @@
       </form>
     </dialog>
 
-    <dialog id="settingsDialog">
+    <dialog id="settingsDialog" class="modal modal--xl">
       <form method="dialog" id="settingsForm" class="form-section">
-        <div class="dialog-header">
-          <h2>Business settings</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title">Business settings</h2>
+          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
         </div>
 
-        <div class="settings-grid form-section">
-          <label class="field">
-            Business name
-            <input name="businessName" class="input" placeholder="Your Pressure Washing LLC">
-          </label>
-          <label class="field">
-            Business email
-            <input name="businessEmail" class="input" type="email" placeholder="you@example.com">
-          </label>
-          <label class="field">
-            Business phone
-            <input name="businessPhone" class="input" placeholder="(555) 123-4567">
-          </label>
-          <label class="field">
-            Service industry
-            <select name="serviceIndustry" class="select">
-              <option value="">Choose industry</option>
-              <option value="Pressure Washing">Pressure Washing</option>
-              <option value="Landscaping">Landscaping</option>
-              <option value="Handyman">Handyman</option>
-              <option value="Construction">Construction</option>
-              <option value="Misc">Misc</option>
-            </select>
-          </label>
-          <label class="field full-field">
-            Company logo
-            <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
-          </label>
-          <div class="full-field logo-settings-row">
-            <img id="businessLogoPreview" alt="Company logo preview" hidden>
-            <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
+        <div class="modal__body">
+          <div class="settings-grid form-section">
+            <label class="field">
+              Business name
+              <input name="businessName" class="input" placeholder="Your Pressure Washing LLC">
+            </label>
+            <label class="field">
+              Business email
+              <input name="businessEmail" class="input" type="email" placeholder="you@example.com">
+            </label>
+            <label class="field">
+              Business phone
+              <input name="businessPhone" class="input" placeholder="(555) 123-4567">
+            </label>
+            <label class="field">
+              Service industry
+              <select name="serviceIndustry" class="select">
+                <option value="">Choose industry</option>
+                <option value="Pressure Washing">Pressure Washing</option>
+                <option value="Landscaping">Landscaping</option>
+                <option value="Handyman">Handyman</option>
+                <option value="Construction">Construction</option>
+                <option value="Misc">Misc</option>
+              </select>
+            </label>
+            <label class="field full-field">
+              Company logo
+              <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
+            </label>
+            <div class="full-field logo-settings-row">
+              <img id="businessLogoPreview" alt="Company logo preview" hidden>
+              <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
+            </div>
+            <label class="field">
+              Default deposit %
+              <input name="defaultDepositPercent" class="input" type="number" min="0" max="100" step="5" value="25">
+            </label>
+            <label class="field">
+              Default job duration
+              <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
+            </label>
+            <label class="field">
+              Zelle
+              <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
+            </label>
+            <label class="field">
+              Cash App
+              <input name="cashAppPayment" class="input" placeholder="$YourCashtag">
+            </label>
+            <label class="field">
+              Venmo
+              <input name="venmoPayment" class="input" placeholder="@YourVenmo">
+            </label>
+            <label class="field full-field">
+              Payment instructions
+              <textarea name="paymentInstructions" class="textarea" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
+            </label>
+            <label class="field">
+              Payment follow-up reminder
+              <select name="paymentFollowUpHours" class="select">
+                <option value="0">Off</option>
+                <option value="24">24 hours</option>
+                <option value="48">48 hours</option>
+                <option value="72">72 hours</option>
+                <option value="168">1 week</option>
+              </select>
+            </label>
+            <label class="field">
+              Auto estimate follow-up
+              <select name="estimateFollowUpEnabled" class="select">
+                <option value="true">On</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            <label class="field">
+              Estimate follow-up delay
+              <select name="estimateFollowUpDelayHours" class="select">
+                <option value="24">24 hours</option>
+                <option value="48">48 hours</option>
+                <option value="72">72 hours</option>
+                <option value="168">1 week</option>
+              </select>
+            </label>
+            <label class="field full-field">
+              Estimate follow-up subject
+              <input name="estimateFollowUpSubject" class="input" placeholder="Following up on your estimate - {jobTitle} at {address}">
+            </label>
+            <label class="field full-field">
+              Estimate follow-up message
+              <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
+              <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
+            </label>
+            <label class="field full-field">
+              Day of Service Instructions
+              <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
+            </label>
+            <label class="field full-field">
+              Google calendar ID
+              <input name="googleCalendarId" class="input" placeholder="Your Google Calendar ID">
+            </label>
+            <label id="googleClientIdField" class="field full-field">
+              Google client ID
+              <input name="googleClientId" class="input" autocomplete="off" placeholder="Google OAuth client ID">
+            </label>
+            <label id="googleClientSecretField" class="field full-field">
+              Google client secret
+              <input name="googleClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter Google client secret">
+            </label>
+            <label id="googleRedirectUriField" class="field full-field">
+              Google redirect URI
+              <input name="googleRedirectUri" class="input" placeholder="Your PressureFlow Google OAuth callback URL">
+            </label>
+            <label id="mapboxTokenField" class="field full-field">
+              Mapbox public token
+              <input name="mapboxPublicToken" class="input" autocomplete="off" placeholder="Required for map measurements">
+            </label>
           </div>
-          <label class="field">
-            Default deposit %
-            <input name="defaultDepositPercent" class="input" type="number" min="0" max="100" step="5" value="25">
-          </label>
-          <label class="field">
-            Default job duration
-            <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
-          </label>
-          <label class="field">
-            Zelle
-            <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
-          </label>
-          <label class="field">
-            Cash App
-            <input name="cashAppPayment" class="input" placeholder="$YourCashtag">
-          </label>
-          <label class="field">
-            Venmo
-            <input name="venmoPayment" class="input" placeholder="@YourVenmo">
-          </label>
-          <label class="field full-field">
-            Payment instructions
-            <textarea name="paymentInstructions" class="textarea" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
-          </label>
-          <label class="field">
-            Payment follow-up reminder
-            <select name="paymentFollowUpHours" class="select">
-              <option value="0">Off</option>
-              <option value="24">24 hours</option>
-              <option value="48">48 hours</option>
-              <option value="72">72 hours</option>
-              <option value="168">1 week</option>
-            </select>
-          </label>
-          <label class="field">
-            Auto estimate follow-up
-            <select name="estimateFollowUpEnabled" class="select">
-              <option value="true">On</option>
-              <option value="false">Off</option>
-            </select>
-          </label>
-          <label class="field">
-            Estimate follow-up delay
-            <select name="estimateFollowUpDelayHours" class="select">
-              <option value="24">24 hours</option>
-              <option value="48">48 hours</option>
-              <option value="72">72 hours</option>
-              <option value="168">1 week</option>
-            </select>
-          </label>
-          <label class="field full-field">
-            Estimate follow-up subject
-            <input name="estimateFollowUpSubject" class="input" placeholder="Following up on your estimate - {jobTitle} at {address}">
-          </label>
-          <label class="field full-field">
-            Estimate follow-up message
-            <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
-            <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
-          </label>
-          <label class="field full-field">
-            Day of Service Instructions
-            <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
-          </label>
-          <label class="field full-field">
-            Google calendar ID
-            <input name="googleCalendarId" class="input" placeholder="Your Google Calendar ID">
-          </label>
-          <label id="googleClientIdField" class="field full-field">
-            Google client ID
-            <input name="googleClientId" class="input" autocomplete="off" placeholder="Google OAuth client ID">
-          </label>
-          <label id="googleClientSecretField" class="field full-field">
-            Google client secret
-            <input name="googleClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter Google client secret">
-          </label>
-          <label id="googleRedirectUriField" class="field full-field">
-            Google redirect URI
-            <input name="googleRedirectUri" class="input" placeholder="Your PressureFlow Google OAuth callback URL">
-          </label>
-          <label id="mapboxTokenField" class="field full-field">
-            Mapbox public token
-            <input name="mapboxPublicToken" class="input" autocomplete="off" placeholder="Required for map measurements">
-          </label>
-        </div>
 
-        <section class="settings-section calendar-instructions">
+          <section class="settings-section calendar-instructions">
           <div class="section-header compact-header">
             <div>
               <h3>Google Calendar setup</h3>
@@ -889,9 +890,9 @@
             <li>Sign in with the account that should send emails and receive calendar events.</li>
             <li>If Google says access is blocked while the app is in testing, add that Gmail address as an approved Google OAuth test user.</li>
           </ol>
-        </section>
+          </section>
 
-        <details class="settings-section onboarding-settings" aria-label="Saved services">
+          <details class="settings-section onboarding-settings" aria-label="Saved services">
           <summary>
             <span>
               <strong>Saved services</strong>
@@ -910,9 +911,9 @@
           </div>
           <div id="onboardingServiceList" class="onboarding-service-list"></div>
           <p id="onboardingStatus" class="form-note"></p>
-        </details>
+          </details>
 
-        <section class="settings-section" aria-label="Payment and accounting integrations">
+          <section class="settings-section" aria-label="Payment and accounting integrations">
           <div class="section-header">
             <div>
               <h3>Payment and accounting</h3>
@@ -1018,9 +1019,9 @@
               <p id="quickBooksIntegrationStatus" class="form-note"></p>
             </section>
           </div>
-        </section>
+          </section>
 
-        <section id="teamAccessSection" class="settings-section" aria-label="Team access">
+          <section id="teamAccessSection" class="settings-section" aria-label="Team access">
           <div class="section-header">
             <div>
               <h3>Team access</h3>
@@ -1052,16 +1053,17 @@
           </div>
           <div id="settingsUserList" class="settings-user-list"></div>
           <p id="settingsUserStatus" class="form-note"></p>
-        </section>
+          </section>
 
-        <p id="settingsStatus" class="form-note"></p>
+          <p id="settingsStatus" class="form-note"></p>
 
-        <section id="exportActions" class="export-actions" aria-label="Export data">
-          <a class="secondary-link-button" href="/api/export/jobs.csv">Export Jobs CSV</a>
-          <a id="backupExportLink" class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
-        </section>
+          <section id="exportActions" class="export-actions" aria-label="Export data">
+            <a class="secondary-link-button" href="/api/export/jobs.csv">Export Jobs CSV</a>
+            <a id="backupExportLink" class="secondary-link-button" href="/api/export/backup.json">Download Backup</a>
+          </section>
+        </div>
 
-        <menu class="dialog-actions form-actions">
+        <menu class="dialog-actions form-actions modal__footer">
           <button value="cancel" type="button" data-close-dialog>Cancel</button>
           <button value="default" class="primary-button" type="submit">Save Settings</button>
         </menu>
