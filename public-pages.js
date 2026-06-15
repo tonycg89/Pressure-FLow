@@ -524,8 +524,8 @@ function renderContractSigningPage(job, options = {}) {
             <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
             <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
             <label>
-              Signature date and time
-              <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add current date and time">
+              Signature date
+              <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add today's date">
             </label>
             <label>
               Type your full name to sign
@@ -616,14 +616,16 @@ function contractSigningScript() {
 
     if (signedDateInput) {
       const fillSignedDate = () => {
-        signedDateInput.value = new Date().toLocaleString("en-US", {
+        const parts = new Intl.DateTimeFormat("en-US", {
           timeZone: "America/Los_Angeles",
           year: "numeric",
           month: "2-digit",
-          day: "2-digit",
-          hour: "numeric",
-          minute: "2-digit"
-        });
+          day: "2-digit"
+        }).formatToParts(new Date()).reduce((values, part) => {
+          if (part.type !== "literal") values[part.type] = part.value;
+          return values;
+        }, {});
+        signedDateInput.value = [parts.year, parts.month, parts.day].join("-");
       };
       signedDateInput.addEventListener("click", fillSignedDate);
       signedDateInput.addEventListener("focus", fillSignedDate);
@@ -639,7 +641,7 @@ function contractSigningScript() {
 
       if (!signedDateInput?.value.trim()) {
         event.preventDefault();
-        alert("Please click the signature date and time box before signing.");
+        alert("Please click the signature date box before signing.");
       }
     });
   </script>`;

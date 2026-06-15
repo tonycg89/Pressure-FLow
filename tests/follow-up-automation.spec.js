@@ -120,6 +120,46 @@ test("contract signing cancels contract follow-up and schedules deposit follow-u
   expect(depositTask).toMatchObject({ status: "pending", source: "auto" });
 });
 
+test("public contract click-to-fill date signs agreement and sends deposit invoice", async ({ page }) => {
+  const approveResponse = await page.request.post("/api/public/estimates/approve-job/approve", {
+    form: { token: "approve-token" }
+  });
+  expect(approveResponse.ok()).toBeTruthy();
+
+  let jobs = await readJobs();
+  const approvedJob = jobs.find((item) => item.id === "approve-job");
+  await page.goto(approvedJob.contractApprovalUrl);
+  await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
+
+  const expectedInitials = await page.locator("#expectedInitials").inputValue();
+  const initialInputs = page.locator(".initials-input");
+  const initialCount = await initialInputs.count();
+  expect(initialCount).toBeGreaterThan(0);
+  for (let index = 0; index < initialCount; index += 1) {
+    await initialInputs.nth(index).click();
+    await expect(initialInputs.nth(index)).toHaveValue(expectedInitials);
+  }
+
+  await page.locator("#signedDateInput").click();
+  await expect(page.locator("#signedDateInput")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+  await page.locator("#signatureInput").fill("Approve Parker");
+  await page.locator("#contractSignForm").getByRole("button", { name: "Sign Agreement" }).click();
+  await expect(page.getByRole("heading", { name: "Agreement signed" })).toBeVisible();
+
+  jobs = await readJobs();
+  const signedJob = jobs.find((item) => item.id === "approve-job");
+  expect(signedJob.status).toBe("Deposit Sent");
+  expect(signedJob.contractSignedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  expect(signedJob.squareDepositInvoiceId).toBeTruthy();
+  expect(signedJob.squareDepositInvoiceUrl).toContain(`/invoice/${signedJob.id}?type=deposit&token=`);
+
+  const tasks = await readTasks();
+  const cancelledContractTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "contract_followup");
+  const depositTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "deposit_followup");
+  expect(cancelledContractTask).toMatchObject({ status: "cancelled", cancelledReason: "signed" });
+  expect(depositTask).toMatchObject({ status: "pending", source: "auto" });
+});
+
 test("deposit and final invoice follow-ups cancel on payment", async ({ page }) => {
   await login(page);
 
