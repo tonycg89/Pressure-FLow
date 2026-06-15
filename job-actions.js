@@ -17,6 +17,7 @@ const {
 } = require("./public-workflows");
 const { getNextStatus, isValidLocalDateTime, normalizeJobPhotos } = require("./records");
 const { formatScheduledWindow } = require("./scheduling");
+const { isAuditGoogleMockEnabled } = require("./email-delivery");
 
 function createJobActionHandler({
   cancelManualFollowUp = async () => {},
@@ -312,8 +313,7 @@ function shouldCreateGoogleCalendarEvent(settings = {}) {
     return true;
   }
 
-  return process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY !== "true" &&
-    process.env.PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING !== "true";
+  return !isAuditGoogleMockEnabled();
 }
 
 module.exports = {

@@ -29,7 +29,7 @@ Phase 06 email/document/UI foundation work is complete. Pre-audit readiness is c
 - Phase 06 shared customer-facing document shell and transactional email shell completed.
 - Pre-audit readiness completed:
   - Fresh tester Mapbox token propagation is covered when `MAPBOX_PUBLIC_TOKEN` is configured.
-  - Calendarless audit scheduling is available for disconnected test accounts when explicitly enabled.
+  - Explicit audit Google mock mode is available for disconnected test accounts when paired with skipped delivery.
   - Playwright is configured for one worker to avoid shared `.tmp/playwright-data` races.
 - Central AI handoff created: `PRESSUREFLOW_AI_HANDOFF.md`.
 
@@ -41,13 +41,14 @@ Configure the audit environment with:
 MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 ```
 
-Scheduling needs one of these:
+Google Calendar / Gmail connection is required by design for client communication workflows. Audit accounts need a dedicated connected Google test account/calendar or:
 
 ```text
-PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
 ```
 
-or a dedicated connected Google test calendar for the tester account.
+Skipped email delivery alone does not represent a connected Google account.
 
 For local/browser smoke tests that must never send real email:
 
@@ -95,7 +96,7 @@ After approved UX fixes are implemented and smoke-tested, give v0 the updated ap
 ## Watch Items
 
 - Confirm the real audit environment has `MAPBOX_PUBLIC_TOKEN`; without it, map tiles/geocoding will not work for fresh testers.
-- Decide whether the audit uses a dedicated Google test calendar or calendarless audit mode.
+- Decide whether the audit uses a dedicated Google test account/calendar or explicit audit Google mock mode.
 - Keep all Claude/v0 recommendations as spec input only. Codex remains responsible for implementation.
 - Do not start broad redesign or stack migration work.
 

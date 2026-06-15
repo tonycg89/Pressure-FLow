@@ -25,6 +25,7 @@ module.exports = defineConfig({
       SESSION_SECRET: "playwright-local-session-secret",
       MAPBOX_PUBLIC_TOKEN: "pk.playwright-mapbox",
       PRESSUREFLOW_DATA_DIR: ".tmp/playwright-data",
+      PRESSUREFLOW_AUDIT_GOOGLE_MOCK: "true",
       PRESSUREFLOW_SKIP_EMAIL_DELIVERY: "true"
     }
   }

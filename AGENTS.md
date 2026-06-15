@@ -6,7 +6,7 @@
 - Before UI/UX implementation, summarize the planned changes, affected files/components, risks, and what can be deferred.
 - Implement in small, safe chunks. After each change, report files changed, functionality preserved, tests/smoke checks performed, and remaining risks.
 - If a UI change conflicts with stability, security, or existing functionality, pause and explain before implementing.
-- After every major project milestone, update the project-root coordination files: `Current Status.txt`, `# PressureFlow AI Handoff.txt`, and `# PressureFlow Project Governance.txt` when their contents are affected.
+- After every major project milestone, update the project-root coordination files when their contents are affected: `PRESSUREFLOW_GOVERNANCE.md`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`, and `# PressureFlow Project Governance.txt`.
 
 Priority order:
 

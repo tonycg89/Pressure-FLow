@@ -71,7 +71,15 @@ function createEmailDelivery({ warn = console.warn } = {}) {
 
 async function sendCustomerEmail(settings, message) {
   if (process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY === "true") {
-    return { id: `skipped-email-${Date.now()}`, skipped: true, to: message.to };
+    if (settings.emailSendProvider !== "smtp" && !settings.googleRefreshToken && !isAuditGoogleMockEnabled()) {
+      throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+    }
+    const result = { id: `skipped-email-${Date.now()}`, skipped: true, to: message.to };
+    if (isAuditGoogleMockEnabled()) {
+      result.auditGoogleMock = true;
+      console.info(`PressureFlow audit Google mock: skipped email to ${message.to} (${message.subject}).`);
+    }
+    return result;
   }
 
   if (settings.emailSendProvider === "smtp") {
@@ -81,7 +89,12 @@ async function sendCustomerEmail(settings, message) {
   return sendGmailEmail(settings, message);
 }
 
+function isAuditGoogleMockEnabled() {
+  return process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK === "true";
+}
+
 module.exports = {
   createEmailDelivery,
+  isAuditGoogleMockEnabled,
   sendCustomerEmail
 };

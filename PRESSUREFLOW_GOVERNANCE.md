@@ -2,8 +2,11 @@
 
 ## Source Of Truth
 
-This project folder now contains the central coordination files for PressureFlow:
+This project folder contains the central coordination files for PressureFlow:
 
+- `PRESSUREFLOW_GOVERNANCE.md`
+- `PRESSUREFLOW_MASTER_STATUS.md`
+- `PRESSUREFLOW_AI_HANDOFF.md`
 - `# PressureFlow Project Governance.txt`
 - `# PressureFlow AI Handoff.txt`
 - `# PressureFlow Master Status.txt`
@@ -98,6 +101,7 @@ Completed:
 - Phase 06 email shell work
 - Pre-audit readiness
 - Audit environment finalization
+- Test account Google connection readiness
 - Central AI Handoff file
 
 Current Phase:

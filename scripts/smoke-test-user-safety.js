@@ -536,7 +536,9 @@ async function testCalendarlessSchedulingInTestMode() {
   assert.equal(shouldCreateGoogleCalendarEvent({ googleRefreshToken: "refresh-token" }), true);
 
   const previousSkipEmail = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+  const previousAuditGoogleMock = process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK;
   process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
+  process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = "true";
   try {
     assert.equal(shouldCreateGoogleCalendarEvent({}), false);
     let calendarCalls = 0;
@@ -578,6 +580,11 @@ async function testCalendarlessSchedulingInTestMode() {
       delete process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
     } else {
       process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = previousSkipEmail;
+    }
+    if (previousAuditGoogleMock === undefined) {
+      delete process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK;
+    } else {
+      process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = previousAuditGoogleMock;
     }
   }
 }
@@ -750,8 +757,29 @@ async function testManualPaymentMarkingStillWorks() {
 
 async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   const previous = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+  const previousAuditGoogleMock = process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK;
   process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
   try {
+    await assert.rejects(
+      () => sendCustomerEmail({ emailSendProvider: "google" }, {
+        to: "customer@example.com",
+        subject: "Smoke",
+        textBody: "Smoke",
+        htmlBody: "<p>Smoke</p>"
+      }),
+      /Google Calendar is not connected/
+    );
+
+    process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = "true";
+    const googleResult = await sendCustomerEmail({ emailSendProvider: "google" }, {
+      to: "customer@example.com",
+      subject: "Smoke",
+      textBody: "Smoke",
+      htmlBody: "<p>Smoke</p>"
+    });
+    assert.equal(googleResult.skipped, true);
+    assert.equal(googleResult.auditGoogleMock, true);
+
     const result = await sendCustomerEmail({ emailSendProvider: "smtp" }, {
       to: "customer@example.com",
       subject: "Smoke",
@@ -765,6 +793,11 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
       delete process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
     } else {
       process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = previous;
+    }
+    if (previousAuditGoogleMock === undefined) {
+      delete process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK;
+    } else {
+      process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = previousAuditGoogleMock;
     }
   }
 }

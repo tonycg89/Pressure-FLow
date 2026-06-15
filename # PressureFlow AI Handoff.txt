@@ -62,6 +62,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
   - Dashboard, customer-facing documents, contract/print, and transactional email shells
 - Phase 06 email shell work is complete.
 - Pre-audit readiness is complete.
+- Test account Google connection readiness is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 ## 5. Current Status
@@ -78,19 +79,22 @@ Required for audits:
 MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 ```
 
-Scheduling requires one of these options:
+Google Calendar / Gmail connection is required by design for client communication workflows. The audit environment must use one of these options:
 
 ```text
-PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
 ```
 
-or connect a dedicated Google test calendar for the tester account.
+or connect a dedicated Google test account/calendar for the tester account.
 
 For local/browser smoke testing that must not send real emails:
 
 ```text
 PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
 ```
+
+Skipped email delivery alone does not represent a connected Google account. Use the explicit audit Google mock flag when disconnected test accounts need to complete send/schedule workflows.
 
 Use sandbox/test credentials only. Do not use live customer email, payment, accounting, or calendar credentials during audits.
 
@@ -139,7 +143,8 @@ Give Claude:
 
 - a test login
 - the audit environment URL
-- this `PRESSUREFLOW_AI_HANDOFF.md` file
+- this `# PressureFlow AI Handoff.txt` file
+- the `# PressureFlow Master Status.txt` file
 - the instruction that Claude is performing UX audit only
 
 After Claude findings are reviewed and approved, Codex should implement the smallest safe UX fixes in chunks. Then give v0 the updated app and this handoff file for the visual/UI audit.

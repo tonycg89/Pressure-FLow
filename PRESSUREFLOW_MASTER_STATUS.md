@@ -1,13 +1,15 @@
-﻿Current Status
+# PressureFlow Master Status
 
-Last Updated: June 14, 2026
+Last Updated: June 15, 2026
 
-Current Phase:
-- PressureFlow is ready for the live Claude UX Audit.
+## Current Phase
+
+- PressureFlow is ready for the live Claude UX Audit after test account Google readiness is configured.
 - v0 UI Audit comes after Claude UX findings are reviewed, approved, and safely implemented by Codex.
 - Do not start broad UI redesign before the UX audit is complete and approved.
 
-Completed Safety / Readiness Work:
+## Completed Safety / Readiness Work
+
 - Security Audit
 - Tenant Isolation Audit and priority fix
 - Validation Audit and priority backend validation fixes
@@ -17,9 +19,11 @@ Completed Safety / Readiness Work:
 - Test-user readiness checks
 - Pre-audit readiness pass
 - Audit environment finalization
+- Test account Google connection readiness
 - Central AI Handoff file
 
-UI Packages Complete:
+## UI Packages Complete
+
 - 01 Design System Foundation
 - 02 Cards / KPI / Empty States
 - 03A Forms Foundation
@@ -40,34 +44,40 @@ UI Packages Complete:
 - 06C-4 Follow-up + Completion Email Shells
 - 06C-5 Schedule Confirmation Email Shell + Mailto Audit
 
-Current Stack:
+## Current Stack
+
 - HTML
 - CSS
 - Vanilla JavaScript
 - Node.js backend
 - No React / Next.js / Tailwind / shadcn / Radix
 
-Audit Environment Requirements:
-- MAPBOX_PUBLIC_TOKEN must be configured for map/geocoding flows.
-- For disconnected test accounts, set PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true, or connect a dedicated Google test calendar.
-- For local/browser smoke testing that must not send real email, use PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true.
+## Audit Environment Requirements
+
+- `MAPBOX_PUBLIC_TOKEN` must be configured for map/geocoding flows.
+- Google Calendar / Gmail connection is required by design for client communication workflows.
+- For audit accounts, either connect a dedicated Google test account/calendar or set `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` with `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`.
+- `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` by itself does not represent a connected Google account.
 - Use sandbox/test credentials only for Stripe, Square, Google, SMTP, QuickBooks, and other integrations.
 
-Testing Status:
-- npm.cmd run check: passing
-- npm.cmd run smoke:test-user-safety: passing
-- npm.cmd run test:browser -- --workers=1: passing
-- Playwright is configured for one worker because browser specs share .tmp/playwright-data.
+## Testing Status
 
-Next:
-- Give Claude a fresh test login, audit environment URL, # PressureFlow AI Handoff.txt, and this Current Status file.
+- `npm.cmd run check`: passing
+- `npm.cmd run smoke:test-user-safety`: passing
+- `npm.cmd run test:browser -- --workers=1`: passing
+- Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Next
+
+- Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.
 - Claude should return findings grouped by blocker / high / medium / polish.
 - ChatGPT/project chat reviews and approves the scope.
 - Codex implements approved UX fixes in small safe chunks.
 - After approved UX fixes pass smoke checks, give v0 the updated app for visual/UI audit.
 
-Future:
+## Future
+
 - v0 UI Audit after UX fixes
 - Internal beta users
 - External beta users

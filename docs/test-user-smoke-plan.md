@@ -83,13 +83,13 @@ Before a Claude UX audit or v0 UI audit, configure the audit environment with:
 MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 ```
 
-Scheduling needs one of these two setups:
+Google-dependent communication and scheduling workflows need one of these two setups:
 
 - Connect a dedicated Google test calendar for the tester account.
-- Or enable calendarless audit mode:
+- Or enable explicit audit Google mock mode:
 
 ```text
-PRESSUREFLOW_ALLOW_CALENDARLESS_SCHEDULING=true
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
 ```
 
 For local/browser smoke tests that must never send real email, keep:
@@ -97,6 +97,8 @@ For local/browser smoke tests that must never send real email, keep:
 ```text
 PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
 ```
+
+Use `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` together with `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` when an audit/test account must complete send/schedule workflows without real Google OAuth. `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` by itself does not represent a connected Google account.
 
 Do not use live customer email, payment, accounting, or calendar credentials for audit runs. Use sandbox/test credentials or a dedicated throwaway account.
 
