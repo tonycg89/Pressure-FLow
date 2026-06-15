@@ -69,6 +69,7 @@ Last Updated: June 15, 2026
 
 ## Next
 
+- Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.
 - Claude should return findings grouped by blocker / high / medium / polish.

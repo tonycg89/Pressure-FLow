@@ -60,6 +60,15 @@ Mapbox:
 MAPBOX_PUBLIC_TOKEN=
 ```
 
+Claude/v0 audit mode:
+
+```text
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+```
+
+Use these only for the audit/test deployment when the tester account is not connected to a dedicated Google test account. This lets Google-dependent send/schedule workflows run without sending real email or creating real calendar events. `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` by itself does not represent a connected Google account.
+
 ## Deferred Production Environment Variables
 
 Deferred Twilio owner text alerts:

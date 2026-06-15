@@ -19,6 +19,12 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
+      - key: MAPBOX_PUBLIC_TOKEN
+        sync: false
+      - key: PRESSUREFLOW_AUDIT_GOOGLE_MOCK
+        sync: false
+      - key: PRESSUREFLOW_SKIP_EMAIL_DELIVERY
+        sync: false
       - key: SQUARE_ENV
         sync: false
       - key: SQUARE_ACCESS_TOKEN
