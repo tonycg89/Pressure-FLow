@@ -538,6 +538,15 @@ label.compact-select {
   font-size: 13px;
 }
 
+.payment-warning {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--status-warning-text) 22%, var(--status-warning-bg));
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .inline-toggle {
   display: inline-flex;
   align-items: center;
@@ -627,10 +636,19 @@ label.compact-select {
 }
 
 .notification-toggle {
+  display: inline-grid;
+  place-items: center;
   position: relative;
   min-width: 40px;
   border-radius: 999px;
+  color: var(--foreground);
   font-weight: 900;
+}
+
+.notification-toggle .button-icon {
+  display: block;
+  color: currentColor;
+  stroke: currentColor;
 }
 
 .button-icon {
@@ -658,6 +676,34 @@ label.compact-select {
   color: white;
   font-size: 11px;
   line-height: 1;
+}
+
+.toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1200;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  padding: 13px 15px;
+  border: 1px solid var(--status-success-bg);
+  border-radius: 8px;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+  box-shadow: 0 8px 24px rgba(16, 24, 20, 0.12);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.toast--info {
+  border-color: var(--status-info-bg);
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
 }
 
 .notification-dropdown {

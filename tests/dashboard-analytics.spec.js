@@ -30,6 +30,17 @@ test("lead-source conversion excludes jobs with blank lead source", async ({ pag
   await expect(page.locator("#leadSourceBreakdown")).not.toContainText("Unknown");
 });
 
+test("dashboard open jobs excludes paid work and notification bell icon is visible", async ({ page }) => {
+  await login(page);
+
+  await expect(page.locator("#openJobs")).toHaveText("2");
+  await expect(page.locator("#notificationToggle .button-icon")).toBeVisible();
+  await expect(page.locator("#notificationCount")).toBeVisible();
+  const iconBox = await page.locator("#notificationToggle .button-icon").boundingBox();
+  expect(iconBox?.width).toBeGreaterThan(0);
+  expect(iconBox?.height).toBeGreaterThan(0);
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);
@@ -88,7 +99,8 @@ async function resetTestData() {
     job("explicit-referral-3", "Referral Won 3", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
     job("blank-sent", "Blank Sent", "", "Estimate Sent", 300),
     job("blank-accepted", "Blank Accepted", "", "Estimate Signed", 400),
-    job("blank-paid", "Blank Paid", "", "Paid", 500, { squareFinalPaidAt: new Date().toISOString() })
+    job("blank-paid", "Blank Paid", "", "Paid", 500, { squareFinalPaidAt: new Date().toISOString() }),
+    job("paid-timestamp", "Paid Timestamp", "", "Final Invoice Sent", 250, { squareFinalPaidAt: new Date().toISOString() })
   ], null, 2));
 }
 

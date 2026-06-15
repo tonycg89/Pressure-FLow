@@ -454,12 +454,31 @@ function renderPaymentMethods(settings) {
   ].filter(([, value]) => value);
 
   if (!methods.length) {
-    return "<p>Payment instructions will be provided by the business.</p>";
+    if (hasConfiguredInvoicePaymentMethod(settings)) {
+      return "";
+    }
+
+    const businessName = getBusinessName(settings);
+    const contactOptions = [settings.businessEmail, settings.businessPhone].filter(Boolean).join(" or ");
+    const contactCopy = contactOptions ? ` at ${contactOptions}` : "";
+    return `<div class="doc__callout">
+      <p>Payment options have not been configured yet. Please contact ${escapeHtml(businessName)}${escapeHtml(contactCopy)} for payment instructions.</p>
+    </div>`;
   }
 
   return `<div class="payment-methods doc__pay-methods">
     ${methods.map(([label, value]) => `<div class="doc__pay-method"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
   </div>`;
+}
+
+function hasConfiguredInvoicePaymentMethod(settings = {}) {
+  return Boolean(
+    settings.stripeSecretKey ||
+    settings.zellePayment ||
+    settings.cashAppPayment ||
+    settings.venmoPayment ||
+    settings.paymentInstructions
+  );
 }
 
 function renderContractSigningPage(job, options = {}) {

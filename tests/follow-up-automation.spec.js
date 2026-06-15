@@ -44,12 +44,20 @@ test("public estimate approval lands on branded success page", async ({ page }) 
 });
 
 test("sending an estimate schedules an automatic follow-up", async ({ page }) => {
+  const dialogs = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.message());
+    return dialog.dismiss();
+  });
+
   await login(page);
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Lead Lane/ }).click();
   await page.getByRole("button", { name: "Send Estimate" }).click();
+  await expect(page.locator(".toast")).toContainText("Estimate sent to lead.lane@example.com.");
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
+  expect(dialogs).toEqual([]);
 
   const tasks = await readTasks();
   const task = tasks.find((item) => item.jobId === "lead-job");
@@ -218,6 +226,12 @@ test("public contract signing error lands on branded retry page", async ({ page 
 });
 
 test("deposit and final invoice follow-ups cancel on payment", async ({ page }) => {
+  const dialogs = [];
+  page.on("dialog", (dialog) => {
+    dialogs.push(dialog.message());
+    return dialog.dismiss();
+  });
+
   await login(page);
 
   await page.getByRole("button", { name: "Pipeline" }).click();
@@ -232,7 +246,9 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
 
   await page.getByRole("button", { name: /Completed Finn/ }).click();
   await page.getByRole("button", { name: "Send Final Invoice" }).click();
+  await expect(page.locator(".toast")).toContainText("Final invoice sent to completed.finn@example.com. Completion photos were saved.");
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
+  expect(dialogs).toEqual([]);
   tasks = await readTasks();
   const invoiceTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "invoice_followup");
   expect(invoiceTask).toMatchObject({ status: "pending", source: "auto" });

@@ -128,6 +128,7 @@ const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationClearAll = document.querySelector("#notificationClearAll");
+let toastContainer = null;
 
 function renderEmptyState(title, hint = "") {
   return `
@@ -1347,7 +1348,7 @@ async function createJob(event) {
     await loadJobs();
     await loadCustomers();
     if (editingId && saved.job.status === "Lead") {
-      alert("Pricing changed, so the previous estimate/contract/invoice links were reset. Send the updated estimate again.");
+      showToast("Pricing changed, so the previous estimate/contract/invoice links were reset. Send the updated estimate again.", "info");
     }
   } catch (error) {
     alert(error.message);
@@ -2757,7 +2758,7 @@ function buildJobNotifications(job) {
       kind: "calendar",
       title: "Job scheduled",
       customer: job.customerName,
-      detail: `Scheduled for ${formatShortDate(job.scheduledAt)}`
+      detail: `Scheduled for ${formatDisplayDateTime(job.scheduledAt)}`
     } : null,
     job.squareFinalPaidAt ? {
       id: `final-paid-${job.id}-${job.squareFinalPaidAt}`,
@@ -2786,8 +2787,23 @@ function formatNotificationDate(value) {
   });
 }
 
+function formatDisplayDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value || "");
+  }
+
+  return date.toLocaleString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function renderMetrics() {
-  const openJobs = jobs.filter((job) => job.status !== "Paid").length;
+  const openJobs = jobs.filter((job) => job.status !== "Paid" && !job.squareFinalPaidAt).length;
   const awaitingDeposit = jobs
     .filter((job) => job.status === "Deposit Sent")
     .reduce((sum, job) => sum + getDeposit(job), 0);
@@ -3005,7 +3021,7 @@ function renderJobDetail() {
       <div class="detail-row"><span>Deposit</span><strong>${currency.format(getDeposit(job))}</strong></div>
       <div class="detail-row"><span>Final balance</span><strong>${currency.format(getFinalBalance(job))}</strong></div>
       ${renderMeasurementDetail(job)}
-      <div class="detail-row"><span>Scheduled</span><strong>${escapeHtml(job.scheduledAt || "Not scheduled")}</strong></div>
+      <div class="detail-row"><span>Scheduled</span><strong>${escapeHtml(job.scheduledAt ? formatDisplayDateTime(job.scheduledAt) : "Not scheduled")}</strong></div>
       <div class="detail-row"><span>Completion notice</span><strong>${renderCompletionNotice(job)}</strong></div>
     </section>
 
@@ -3031,6 +3047,7 @@ function renderJobDetail() {
     <section class="detail-section">
       <h4>Automation</h4>
       <div class="action-list">
+        ${renderInvoicePaymentWarning(nextAction)}
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}">${nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}">${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
@@ -3614,6 +3631,27 @@ function getFallbackAction(job) {
   return actions[job.status] ?? null;
 }
 
+function renderInvoicePaymentWarning(nextAction) {
+  const invoiceActions = new Set(["send-deposit-invoice", "send-final-invoice", "complete"]);
+  if (!nextAction || !invoiceActions.has(nextAction.action) || hasConfiguredInvoicePaymentMethod()) {
+    return "";
+  }
+
+  return `<div class="payment-warning status-warning" role="status">
+    No payment methods are configured. Customers will need to contact you for payment instructions. Add payment options in Settings.
+  </div>`;
+}
+
+function hasConfiguredInvoicePaymentMethod() {
+  return Boolean(
+    settings.hasStripeSecretKey ||
+    settings.zellePayment ||
+    settings.cashAppPayment ||
+    settings.venmoPayment ||
+    settings.paymentInstructions
+  );
+}
+
 async function runAction(jobId, action, actionPayload = {}) {
   if (action === "delete-job") {
     await deleteJob(jobId);
@@ -3622,7 +3660,7 @@ async function runAction(jobId, action, actionPayload = {}) {
 
   if (action === "reminder") {
     const job = jobs.find((item) => item.id === jobId);
-    alert(buildReminderMessage(job));
+    showToast(buildReminderMessage(job), "info");
     return;
   }
 
@@ -3656,13 +3694,13 @@ async function runAction(jobId, action, actionPayload = {}) {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
     if (action === "send-square-estimate") {
-      alert(`Estimate sent to ${updated.job.email}.`);
+      showToast(`Estimate sent to ${updated.job.email}.`);
     }
     if (action === "send-contract") {
-      alert(`Contract sent to ${updated.job.email}.`);
+      showToast(`Contract sent to ${updated.job.email}.`);
     }
     if (action === "complete") {
-      alert(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);
+      showToast(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);
     }
     await loadFollowUpTasks();
     await loadJobs();
@@ -3687,6 +3725,31 @@ async function deleteJob(jobId) {
   } catch (error) {
     alert(error.message);
   }
+}
+
+function showToast(message, tone = "success") {
+  if (!message) return;
+
+  if (!toastContainer) {
+    toastContainer = document.createElement("div");
+    toastContainer.className = "toast-stack";
+    toastContainer.setAttribute("aria-live", "polite");
+    toastContainer.setAttribute("aria-atomic", "true");
+    document.body.append(toastContainer);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${tone}`;
+  toast.textContent = message;
+  toastContainer.append(toast);
+
+  window.setTimeout(() => {
+    toast.remove();
+    if (toastContainer && !toastContainer.children.length) {
+      toastContainer.remove();
+      toastContainer = null;
+    }
+  }, 4500);
 }
 
 async function apiRequest(url, payload, method = "POST") {

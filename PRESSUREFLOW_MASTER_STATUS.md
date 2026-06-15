@@ -22,6 +22,7 @@ Last Updated: June 15, 2026
 - Test account Google connection readiness
 - Critical contract signing date fix
 - P1 public estimate / contract success and error page fix
+- Package 07B-3 payment method verification / invoice empty-state fix
 - Central AI Handoff file
 
 ## UI Packages Complete
@@ -69,9 +70,16 @@ Last Updated: June 15, 2026
 - `npm.cmd run test:browser -- --workers=1`: passing
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
 
+## Payment Method Behavior
+
+- Public deposit and final invoices show configured Stripe card checkout, Zelle, Cash App, Venmo, and manual payment instructions.
+- Unconfigured payment methods are hidden from public invoice pages.
+- Accounts with no configured payment methods show customer-safe contact fallback copy using business name, email, and phone when available.
+- The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
+
 ## Next
 
-- Deploy the latest P1 public workflow fixes before Claude resumes testing.
+- Deploy the latest P1 public workflow and invoice payment empty-state fixes before Claude resumes testing.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.

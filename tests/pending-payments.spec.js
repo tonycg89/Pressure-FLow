@@ -22,10 +22,11 @@ test("pending payments can be manually confirmed with method and reference", asy
   await expect(page.locator("#pendingPaymentsPanel")).toBeVisible();
   await expect(page.locator("#pendingPaymentsList")).toContainText("Alex Rivera");
   await expect(page.locator("#pendingPaymentsList")).toContainText("Overdue");
-  await page.locator("#pendingPaymentsList").getByRole("button", { name: "Mark as paid" }).click();
-  await page.locator("#pendingPaymentsList select[name='paymentMethod']").selectOption("Venmo");
-  await page.locator("#pendingPaymentsList input[name='paymentReference']").fill("4829301A");
-  await page.locator("#pendingPaymentsList").getByRole("button", { name: "Confirm" }).click();
+  const alexPayment = page.locator(".pending-payment-row").filter({ hasText: "Alex Rivera" });
+  await alexPayment.getByRole("button", { name: "Mark as paid" }).click();
+  await alexPayment.locator("select[name='paymentMethod']").selectOption("Venmo");
+  await alexPayment.locator("input[name='paymentReference']").fill("4829301A");
+  await alexPayment.getByRole("button", { name: "Confirm" }).click();
 
   await expect(page.locator("#jobDetail")).toContainText("Deposit Paid");
   await expect(page.locator("#jobDetail")).toContainText("marked paid");
@@ -42,6 +43,8 @@ test("pending payments can be manually confirmed with method and reference", asy
   await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeHidden();
   await expect(page.locator("#jobDetail")).toContainText("Scheduled");
+  await expect(page.locator("#jobDetail")).toContainText("June 10, 2026, 9:00 AM");
+  await expect(page.locator("#jobDetail")).not.toContainText("2026-06-10T09:00");
 
   const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
   expect(jobs[0].status).toBe("Scheduled");
@@ -56,12 +59,75 @@ test("pending payments can be manually confirmed with method and reference", asy
   });
 });
 
+test("public deposit and final invoices show configured payment methods", async ({ page }) => {
+  await updateTestSettings({
+    stripeSecretKey: "sk_test_invoice_display_only",
+    zellePayment: "owner@johnson.test",
+    cashAppPayment: "$JohnsonExterior",
+    venmoPayment: "@JohnsonExterior",
+    paymentInstructions: "Please include the invoice number in the payment note."
+  });
+
+  await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
+  await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Zelle");
+  await expect(page.locator("body")).toContainText("owner@johnson.test");
+  await expect(page.locator("body")).toContainText("Cash App");
+  await expect(page.locator("body")).toContainText("$JohnsonExterior");
+  await expect(page.locator("body")).toContainText("Venmo");
+  await expect(page.locator("body")).toContainText("@JohnsonExterior");
+  await expect(page.locator("body")).toContainText("Please include the invoice number in the payment note.");
+  await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Payment options have not been configured yet.");
+
+  await page.goto("/invoice/55555555-5555-4555-8555-555555555555?type=final&token=pf-final-test");
+  await expect(page.getByRole("heading", { name: "Final Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Zelle");
+  await expect(page.locator("body")).toContainText("Cash App");
+  await expect(page.locator("body")).toContainText("Venmo");
+  await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Payment options have not been configured yet.");
+});
+
+test("public deposit and final invoices show contact fallback when no payment methods are configured", async ({ page }) => {
+  await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
+  await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Payment options have not been configured yet. Please contact Johnson Exterior Cleaning at owner@johnson.test or (555) 222-3333 for payment instructions.");
+  await expect(page.locator("body")).not.toContainText("Payment instructions will be provided by the business.");
+  await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
+
+  await page.goto("/invoice/55555555-5555-4555-8555-555555555555?type=final&token=pf-final-test");
+  await expect(page.getByRole("heading", { name: "Final Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Payment options have not been configured yet. Please contact Johnson Exterior Cleaning at owner@johnson.test or (555) 222-3333 for payment instructions.");
+  await expect(page.locator("body")).not.toContainText("Payment instructions will be provided by the business.");
+  await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
+});
+
+test("contractor sees warning before sending invoice when no payment methods are configured", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Contract Carla/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Send Deposit Invoice");
+  await expect(page.locator("#jobDetail")).toContainText("No payment methods are configured. Customers will need to contact you for payment instructions. Add payment options in Settings.");
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);
   await page.getByLabel("Password").fill(TEST_USER.password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await expect(page.locator("#sidebarBusinessName")).toHaveText("Johnson Exterior Cleaning");
+}
+
+async function updateTestSettings(partial) {
+  const usersPath = path.join(DATA_DIR, "users.json");
+  const users = JSON.parse(await fs.readFile(usersPath, "utf8"));
+  users[0].settings = {
+    ...users[0].settings,
+    ...partial
+  };
+  await fs.writeFile(usersPath, JSON.stringify(users, null, 2));
 }
 
 async function resetTestData() {
@@ -126,6 +192,46 @@ async function resetTestData() {
     status: "Deposit Sent",
     squareDepositInvoiceId: "pf-deposit-test",
     squareDepositInvoiceUrl: "http://127.0.0.1:3173/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test",
+    paymentRecords: [],
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  }, {
+    id: "55555555-5555-4555-8555-555555555555",
+    accountId: TEST_USER.accountId,
+    customerName: "Final Finn",
+    email: "finn@example.com",
+    phone: "(555) 555-1212",
+    streetAddress: "200 Oak Street",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    address: "200 Oak Street, Riverside, CA 92501",
+    serviceType: "Patio cleaning",
+    estimate: 300,
+    depositPercent: 25,
+    lineItems: [{ name: "Patio cleaning", quantity: 1, unit: "QTY", total: 300 }],
+    status: "Final Invoice Sent",
+    squareFinalInvoiceId: "pf-final-test",
+    squareFinalInvoiceUrl: "http://127.0.0.1:3173/invoice/55555555-5555-4555-8555-555555555555?type=final&token=pf-final-test",
+    paymentRecords: [],
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  }, {
+    id: "66666666-6666-4666-8666-666666666666",
+    accountId: TEST_USER.accountId,
+    customerName: "Contract Carla",
+    email: "carla@example.com",
+    phone: "(555) 666-1212",
+    streetAddress: "300 Pine Street",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    address: "300 Pine Street, Riverside, CA 92501",
+    serviceType: "House wash",
+    estimate: 400,
+    depositPercent: 25,
+    lineItems: [{ name: "House wash", quantity: 1, unit: "QTY", total: 400 }],
+    status: "Contract Signed",
     paymentRecords: [],
     createdAt: "2026-06-01T12:00:00.000Z",
     updatedAt: "2026-06-01T12:00:00.000Z"
