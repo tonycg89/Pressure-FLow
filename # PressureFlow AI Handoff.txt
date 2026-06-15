@@ -66,6 +66,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Critical contract signing date fix is complete.
 - P1 public estimate / contract success and error page fix is complete.
 - Package 07B-3 payment method verification / invoice empty-state fix is complete.
+- Package 07B-4 small UX cleanup bundle is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 Invoice payment behavior:
@@ -75,9 +76,17 @@ Invoice payment behavior:
 - Accounts with no configured payment methods show a customer-safe fallback asking customers to contact the business.
 - The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
 
+07B UX cleanup behavior:
+
+- Core workflow success/info messages use non-blocking in-app toast feedback.
+- Notification bell icon renders visibly next to the unread count badge.
+- Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
+- Scheduled date/time displays as readable text, while stored values remain unchanged.
+- Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+
 ## 5. Current Status
 
-- Claude UX Audit can resume after the latest P1 public workflow and invoice payment empty-state fixes are deployed.
+- Claude UX Audit can resume after the latest P1/P2 public workflow, invoice payment, and small UX cleanup fixes are deployed.
 - v0 UI Audit comes after approved UX fixes from Claude are reviewed and implemented.
 - Do not start broad UI redesign before the UX audit findings are reviewed and approved.
 

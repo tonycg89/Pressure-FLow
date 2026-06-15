@@ -2793,13 +2793,16 @@ function formatDisplayDateTime(value) {
     return String(value || "");
   }
 
-  return date.toLocaleString("en-US", {
+  const datePart = date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
-    year: "numeric",
+    year: "numeric"
+  });
+  const timePart = date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit"
   });
+  return `${datePart}, ${timePart}`;
 }
 
 function renderMetrics() {
@@ -3698,6 +3701,12 @@ async function runAction(jobId, action, actionPayload = {}) {
     }
     if (action === "send-contract") {
       showToast(`Contract sent to ${updated.job.email}.`);
+    }
+    if (action === "send-deposit-invoice") {
+      showToast(`Deposit invoice sent to ${updated.job.email}.`);
+    }
+    if (action === "send-final-invoice") {
+      showToast(`Final invoice sent to ${updated.job.email}.`);
     }
     if (action === "complete") {
       showToast(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);

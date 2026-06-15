@@ -23,6 +23,7 @@ Last Updated: June 15, 2026
 - Critical contract signing date fix
 - P1 public estimate / contract success and error page fix
 - Package 07B-3 payment method verification / invoice empty-state fix
+- Package 07B-4 small UX cleanup bundle
 - Central AI Handoff file
 
 ## UI Packages Complete
@@ -77,9 +78,17 @@ Last Updated: June 15, 2026
 - Accounts with no configured payment methods show customer-safe contact fallback copy using business name, email, and phone when available.
 - The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
 
+## 07B UX Cleanup Status
+
+- Core workflow success/info alerts now use non-blocking in-app toast feedback.
+- Notification bell icon has explicit visible SVG styling and remains anchored to the unread count badge.
+- Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
+- Scheduled date/time displays in a human-readable format without changing stored values.
+- Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+
 ## Next
 
-- Deploy the latest P1 public workflow and invoice payment empty-state fixes before Claude resumes testing.
+- Deploy the latest P1/P2 public workflow, invoice payment, and small UX cleanup fixes before Claude resumes testing.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.

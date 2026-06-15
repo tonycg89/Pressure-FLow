@@ -246,7 +246,7 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
 
   await page.getByRole("button", { name: /Completed Finn/ }).click();
   await page.getByRole("button", { name: "Send Final Invoice" }).click();
-  await expect(page.locator(".toast")).toContainText("Final invoice sent to completed.finn@example.com. Completion photos were saved.");
+  await expect(page.locator(".toast")).toContainText("Final invoice sent to completed.finn@example.com.");
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
   expect(dialogs).toEqual([]);
   tasks = await readTasks();
