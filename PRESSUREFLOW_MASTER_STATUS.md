@@ -24,6 +24,7 @@ Last Updated: June 15, 2026
 - P1 public estimate / contract success and error page fix
 - Package 07B-3 payment method verification / invoice empty-state fix
 - Package 07B-4 small UX cleanup bundle
+- Package 07B-5 Measure From Map stability fixes
 - Central AI Handoff file
 
 ## UI Packages Complete
@@ -86,9 +87,17 @@ Last Updated: June 15, 2026
 - Scheduled date/time displays in a human-readable format without changing stored values.
 - Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
 
+## Measure From Map Stability
+
+- After adding a drawn area, polygon drawing is re-armed so another area can be drawn immediately without clicking Clear or toggling tools.
+- After updating an existing shape, Draw returns to a ready polygon mode instead of getting stuck.
+- Polygon closure now requires a precise click near the starting vertex, reducing accidental premature closure near the start point.
+- Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
+- Manual verification still recommended on the deployed Mapbox map before beta: draw near the start point, intentionally close on the start point, add a second area immediately, save, and reopen.
+
 ## Next
 
-- Deploy the latest P1/P2 public workflow, invoice payment, and small UX cleanup fixes before Claude resumes testing.
+- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, and Measure From Map stability fixes before Claude resumes testing.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.

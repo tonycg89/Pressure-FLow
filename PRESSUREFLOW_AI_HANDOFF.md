@@ -67,6 +67,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - P1 public estimate / contract success and error page fix is complete.
 - Package 07B-3 payment method verification / invoice empty-state fix is complete.
 - Package 07B-4 small UX cleanup bundle is complete.
+- Package 07B-5 Measure From Map stability fixes are complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 Invoice payment behavior:
@@ -84,9 +85,17 @@ Invoice payment behavior:
 - Scheduled date/time displays as readable text, while stored values remain unchanged.
 - Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
 
+Measure From Map stability behavior:
+
+- After adding a drawn area, polygon drawing is re-armed so another area can be drawn immediately.
+- After updating an existing shape, Draw returns to a ready polygon mode.
+- Polygon closure requires a precise click near the starting vertex to reduce accidental closure.
+- Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
+- Manual deployed-map verification is still recommended before beta.
+
 ## 5. Current Status
 
-- Claude UX Audit can resume after the latest P1/P2 public workflow, invoice payment, and small UX cleanup fixes are deployed.
+- Claude UX Audit can resume after the latest P1/P2 public workflow, invoice payment, UX cleanup, and Measure From Map stability fixes are deployed.
 - v0 UI Audit comes after approved UX fixes from Claude are reviewed and implemented.
 - Do not start broad UI redesign before the UX audit findings are reviewed and approved.
 

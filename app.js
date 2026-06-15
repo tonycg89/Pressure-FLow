@@ -270,6 +270,7 @@ let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
+const MEASUREMENT_CLOSE_VERTEX_PIXEL_TOLERANCE = 6;
 let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
 let onboardingCurrentStep = 0;
@@ -1970,7 +1971,8 @@ function initializeMeasurementMap() {
     mapboxDraw = new MapboxDraw({
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
-      defaultMode: "draw_polygon"
+      defaultMode: "draw_polygon",
+      modes: createPressureFlowDrawModes()
     });
     mapboxMap.addControl(mapboxDraw, "top-left");
     mapboxMap.on("draw.create", updateMeasurementFromDraw);
@@ -1984,6 +1986,61 @@ function initializeMeasurementMap() {
   }
 
   loadActiveMeasurementAreaIntoDraw();
+}
+
+function createPressureFlowDrawModes() {
+  if (!window.MapboxDraw?.modes?.draw_polygon) {
+    return undefined;
+  }
+
+  const drawPolygonMode = window.MapboxDraw.modes.draw_polygon;
+  const defaultClickOnVertex = drawPolygonMode.clickOnVertex;
+  const defaultClickAnywhere = drawPolygonMode.clickAnywhere;
+  return {
+    ...window.MapboxDraw.modes,
+    draw_polygon: {
+      ...drawPolygonMode,
+      clickOnVertex(state, event) {
+        if (!isIntentionalPolygonClose(this, state, event)) {
+          return typeof defaultClickAnywhere === "function"
+            ? defaultClickAnywhere.call(this, state, event)
+            : undefined;
+        }
+
+        return typeof defaultClickOnVertex === "function"
+          ? defaultClickOnVertex.call(this, state, event)
+          : undefined;
+      }
+    }
+  };
+}
+
+function isIntentionalPolygonClose(modeContext, state, event) {
+  const coordPath = String(event?.featureTarget?.properties?.coord_path || "");
+  if (coordPath && coordPath !== "0.0") {
+    return false;
+  }
+
+  const point = event?.point;
+  const firstCoordinate = getFirstDrawPolygonCoordinate(state);
+  if (!point || !firstCoordinate || typeof modeContext?.map?.project !== "function") {
+    return true;
+  }
+
+  const firstPoint = modeContext.map.project(firstCoordinate);
+  if (!firstPoint) {
+    return true;
+  }
+
+  const distance = Math.hypot(Number(point.x) - Number(firstPoint.x), Number(point.y) - Number(firstPoint.y));
+  return distance <= MEASUREMENT_CLOSE_VERTEX_PIXEL_TOLERANCE;
+}
+
+function getFirstDrawPolygonCoordinate(state) {
+  const coordinates = typeof state?.polygon?.getCoordinates === "function"
+    ? state.polygon.getCoordinates()
+    : state?.polygon?.coordinates;
+  return coordinates?.[0]?.[0] || null;
 }
 
 async function geocodeMeasurementAddress() {
@@ -2179,6 +2236,7 @@ function saveMeasurementArea() {
     return;
   }
 
+  const wasEditingArea = Boolean(activeMeasurementAreaId);
   const squareFeet = Math.round(turf.area(feature) * 10.7639);
   const perimeterFeet = calculatePerimeterFeet(feature);
   const center = mapboxMap.getCenter();
@@ -2209,7 +2267,10 @@ function saveMeasurementArea() {
   updateMeasurementTotal();
   renderMeasurementAreas();
   refreshMeasurementMapDisplay();
-  measurementStatus.textContent = `${name} saved. Draw another area if needed.`;
+  resetMeasurementDrawForNextArea();
+  measurementStatus.textContent = wasEditingArea
+    ? `${name} updated. Draw another area if needed.`
+    : `${name} saved. Draw another area if needed.`;
 }
 
 function renderMeasurementAreas() {
@@ -2356,6 +2417,22 @@ function loadEditableMeasurementAreaIntoDraw() {
   }
   setTimeout(() => {
     syncingMeasurementDraw = false;
+  }, 0);
+}
+
+function resetMeasurementDrawForNextArea() {
+  if (!mapboxDraw) return;
+
+  window.setTimeout(() => {
+    try {
+      mapboxDraw.changeMode("draw_polygon");
+    } catch {
+      try {
+        mapboxDraw.changeMode("simple_select");
+      } catch {
+        // Mapbox Draw may ignore mode changes while the style is reloading.
+      }
+    }
   }, 0);
 }
 
