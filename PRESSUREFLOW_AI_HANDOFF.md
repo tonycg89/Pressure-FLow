@@ -64,11 +64,12 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Pre-audit readiness is complete.
 - Test account Google connection readiness is complete.
 - Critical contract signing date fix is complete.
+- P1 public estimate / contract success and error page fix is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 ## 5. Current Status
 
-- Claude UX Audit is next.
+- Claude UX Audit can resume after the latest P1 public workflow fixes are deployed.
 - v0 UI Audit comes after approved UX fixes from Claude are reviewed and implemented.
 - Do not start broad UI redesign before the UX audit findings are reviewed and approved.
 

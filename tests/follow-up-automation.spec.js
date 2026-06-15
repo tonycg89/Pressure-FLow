@@ -28,6 +28,21 @@ test("estimate approval cancels the pending estimate follow-up", async ({ page }
   expect(task.cancelledReason).toBe("approved");
 });
 
+test("public estimate approval lands on branded success page", async ({ page }) => {
+  await page.goto("/estimate/approve-job?token=approve-token");
+  await page.getByRole("button", { name: "Approve Estimate" }).click();
+
+  await expect(page).toHaveURL(/\/estimate\/approve-job\/approved\?token=approve-token$/);
+  await expect(page.getByRole("heading", { name: "Estimate approved" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Estimate approved. We'll send your agreement next.");
+  expect(page.url()).not.toContain("/api/public/");
+
+  const jobs = await readJobs();
+  const approvedJob = jobs.find((item) => item.id === "approve-job");
+  expect(approvedJob.status).toBe("Contract Sent");
+  expect(approvedJob.contractApprovalUrl).toBeTruthy();
+});
+
 test("sending an estimate schedules an automatic follow-up", async ({ page }) => {
   await login(page);
 
@@ -144,7 +159,10 @@ test("public contract click-to-fill date signs agreement and sends deposit invoi
   await expect(page.locator("#signedDateInput")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   await page.locator("#signatureInput").fill("Approve Parker");
   await page.locator("#contractSignForm").getByRole("button", { name: "Sign Agreement" }).click();
+  await expect(page).toHaveURL(/\/contract\/approve-job\/signed\?token=/);
   await expect(page.getByRole("heading", { name: "Agreement signed" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Agreement signed. Your deposit invoice has been sent.");
+  expect(page.url()).not.toContain("/api/public/");
 
   jobs = await readJobs();
   const signedJob = jobs.find((item) => item.id === "approve-job");
@@ -158,6 +176,45 @@ test("public contract click-to-fill date signs agreement and sends deposit invoi
   const depositTask = tasks.find((item) => item.jobId === "approve-job" && item.type === "deposit_followup");
   expect(cancelledContractTask).toMatchObject({ status: "cancelled", cancelledReason: "signed" });
   expect(depositTask).toMatchObject({ status: "pending", source: "auto" });
+});
+
+test("public contract signing error lands on branded retry page", async ({ page }) => {
+  const approveResponse = await page.request.post("/api/public/estimates/approve-job/approve", {
+    form: { token: "approve-token" }
+  });
+  expect(approveResponse.ok()).toBeTruthy();
+
+  let jobs = await readJobs();
+  const approvedJob = jobs.find((item) => item.id === "approve-job");
+  await page.goto(approvedJob.contractApprovalUrl);
+  await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
+
+  const expectedInitials = await page.locator("#expectedInitials").inputValue();
+  const initialInputs = page.locator(".initials-input");
+  const initialCount = await initialInputs.count();
+  expect(initialCount).toBeGreaterThan(0);
+  for (let index = 0; index < initialCount; index += 1) {
+    await initialInputs.nth(index).evaluate((input, value) => {
+      input.value = value;
+    }, expectedInitials);
+  }
+
+  await page.locator("#signedDateInput").evaluate((input) => {
+    input.value = "06/15/2026, 1:08 PM";
+  });
+  await page.locator("#signatureInput").fill("Approve Parker");
+  await page.locator("#contractSignForm").getByRole("button", { name: "Sign Agreement" }).click();
+
+  await expect(page).toHaveURL(/\/contract\/approve-job\/sign-error\?token=/);
+  await expect(page.getByRole("heading", { name: "We couldn't save your signature" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Please go back and try again, or contact the business.");
+  await expect(page.locator("body")).not.toContainText("Signed date must be a real date in YYYY-MM-DD format.");
+  expect(page.url()).not.toContain("/api/public/");
+
+  jobs = await readJobs();
+  const unsignedJob = jobs.find((item) => item.id === "approve-job");
+  expect(unsignedJob.status).toBe("Contract Sent");
+  expect(unsignedJob.squareDepositInvoiceId || "").toBe("");
 });
 
 test("deposit and final invoice follow-ups cancel on payment", async ({ page }) => {

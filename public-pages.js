@@ -229,7 +229,8 @@ function renderMeasurementPreview(job) {
   </section>`;
 }
 
-function renderEstimateMessagePage(title, message) {
+function renderEstimateMessagePage(title, message, options = {}) {
+  const actions = Array.isArray(options.actions) ? options.actions : [];
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -239,10 +240,22 @@ function renderEstimateMessagePage(title, message) {
     ${estimatePageStyles()}
   </head>
   <body>
-    <main>
-      ${renderLogoHtml({}, "", 190)}
-      <h1>${escapeHtml(title)}</h1>
-      <p>${escapeHtml(message)}</p>
+    <main class="doc">
+      ${renderDocumentBrand(options.settings || {}, options.baseUrl || "")}
+      <header class="doc__intro">
+        <p class="eyebrow doc__type">${escapeHtml(options.type || "PressureFlow")}</p>
+        <h1>${escapeHtml(title)}</h1>
+      </header>
+      <div class="doc__content">
+        <section class="notice doc__callout">
+          <p>${escapeHtml(message)}</p>
+        </section>
+      </div>
+      ${actions.length ? `
+        <div class="doc__actions">
+          ${actions.map((action) => `<a class="${escapeHtml(action.className || "btn")}" href="${escapeHtml(action.href || "#")}">${escapeHtml(action.label || "Continue")}</a>`).join("")}
+        </div>
+      ` : ""}
     </main>
   </body>
 </html>`;

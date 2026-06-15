@@ -21,6 +21,7 @@ Last Updated: June 15, 2026
 - Audit environment finalization
 - Test account Google connection readiness
 - Critical contract signing date fix
+- P1 public estimate / contract success and error page fix
 - Central AI Handoff file
 
 ## UI Packages Complete
@@ -70,6 +71,7 @@ Last Updated: June 15, 2026
 
 ## Next
 
+- Deploy the latest P1 public workflow fixes before Claude resumes testing.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
 - Claude performs UX audit only.

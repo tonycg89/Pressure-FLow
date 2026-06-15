@@ -342,6 +342,24 @@ function dateStamp() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function redirectSeeOther(response, location) {
+  response.writeHead(303, { location });
+  response.end();
+}
+
+function publicTokenPath(pathname, token) {
+  return `${pathname}?token=${encodeURIComponent(token || "")}`;
+}
+
+function getAppBaseUrlFromJob(job) {
+  const publicUrl = job?.estimateApprovalUrl || job?.contractApprovalUrl || job?.squareDepositInvoiceUrl || job?.squareFinalInvoiceUrl || job?.completionProofUrl || "";
+  try {
+    return new URL(publicUrl).origin;
+  } catch {
+    return process.env.APP_BASE_URL || "";
+  }
+}
+
 async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/health") {
     sendJson(response, 200, { ok: true });
@@ -415,7 +433,7 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Estimate approved", "Thank you. Your approval has been recorded. Your service agreement has been sent to your email."));
+    redirectSeeOther(response, publicTokenPath(`/estimate/${encodeURIComponent(jobId)}/approved`, body.token || ""));
     return;
   }
 
@@ -430,6 +448,29 @@ async function handleApi(request, response, url) {
     }
 
     sendHtml(response, 200, renderEstimateMessagePage("Estimate declined", "Thank you for letting us know. The business has recorded your response and may follow up if needed."));
+    return;
+  }
+
+  const estimateApprovedMatch = url.pathname.match(/^\/estimate\/([^/]+)\/approved$/);
+  if (request.method === "GET" && estimateApprovedMatch) {
+    const [, jobId] = estimateApprovedMatch;
+    const job = await findPublicEstimate(jobId, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Estimate not found", "This estimate link is invalid or has expired."));
+      return;
+    }
+
+    const actions = job.contractApprovalUrl ? [{ label: "Review agreement", href: job.contractApprovalUrl }] : [];
+    sendHtml(response, 200, renderEstimateMessagePage(
+      "Estimate approved",
+      "Estimate approved. We'll send your agreement next.",
+      {
+        type: "Estimate",
+        settings: await readSettingsForJob(job),
+        baseUrl: getAppBaseUrlFromJob(job),
+        actions
+      }
+    ));
     return;
   }
 
@@ -463,13 +504,66 @@ async function handleApi(request, response, url) {
   if (request.method === "POST" && signContractMatch) {
     const [, jobId] = signContractMatch;
     const body = await readFormOrJsonBody(request);
-    const result = await signPublicContract(jobId, body.token || "", body.signerName || "", body.signedDate || "");
+    let result;
+    try {
+      result = await signPublicContract(jobId, body.token || "", body.signerName || "", body.signedDate || "");
+    } catch {
+      redirectSeeOther(response, publicTokenPath(`/contract/${encodeURIComponent(jobId)}/sign-error`, body.token || ""));
+      return;
+    }
+
     if (!result) {
       sendHtml(response, 404, renderEstimateMessagePage("Service agreement not found", "This service agreement link is invalid or has expired."));
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Agreement signed", "Thank you. Your signed agreement has been recorded. The deposit invoice has been sent to your email."));
+    redirectSeeOther(response, publicTokenPath(`/contract/${encodeURIComponent(jobId)}/signed`, body.token || ""));
+    return;
+  }
+
+  const contractSignedMatch = url.pathname.match(/^\/contract\/([^/]+)\/signed$/);
+  if (request.method === "GET" && contractSignedMatch) {
+    const [, jobId] = contractSignedMatch;
+    const job = await findPublicContract(jobId, url.searchParams.get("token") || "");
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Service agreement not found", "This service agreement link is invalid or has expired."));
+      return;
+    }
+
+    const actions = job.squareDepositInvoiceUrl ? [{ label: "View deposit invoice", href: job.squareDepositInvoiceUrl }] : [];
+    sendHtml(response, 200, renderEstimateMessagePage(
+      "Agreement signed",
+      "Agreement signed. Your deposit invoice has been sent.",
+      {
+        type: "Agreement",
+        settings: await readSettingsForJob(job),
+        baseUrl: getAppBaseUrlFromJob(job),
+        actions
+      }
+    ));
+    return;
+  }
+
+  const contractSignErrorMatch = url.pathname.match(/^\/contract\/([^/]+)\/sign-error$/);
+  if (request.method === "GET" && contractSignErrorMatch) {
+    const [, jobId] = contractSignErrorMatch;
+    const token = url.searchParams.get("token") || "";
+    const job = await findPublicContract(jobId, token);
+    if (!job) {
+      sendHtml(response, 404, renderEstimateMessagePage("Service agreement not found", "This service agreement link is invalid or has expired."));
+      return;
+    }
+
+    sendHtml(response, 200, renderEstimateMessagePage(
+      "We couldn't save your signature",
+      "Please go back and try again, or contact the business.",
+      {
+        type: "Agreement",
+        settings: await readSettingsForJob(job),
+        baseUrl: getAppBaseUrlFromJob(job),
+        actions: [{ label: "Back to agreement", href: publicTokenPath(`/contract/${encodeURIComponent(jobId)}`, token), className: "btn btn--secondary" }]
+      }
+    ));
     return;
   }
 
