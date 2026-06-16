@@ -70,6 +70,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-5 Measure From Map stability fixes are complete.
 - Package 07B-6 mobile beta hardening is complete.
 - Package 06C-2A critical v0 UX fixes are complete.
+- Package 06C-2B customer trust layer polish is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -124,10 +125,24 @@ Package 06C-2A critical UX fix behavior:
 - Tests run: npm.cmd run check; node --check tests\dashboard-analytics.spec.js, node --check tests\onboarding.spec.js, node --check tests\mobile-hardening.spec.js; npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js.
 - Known follow-up: in-app Browser visual verification could not attach in this Windows sandbox session; targeted Playwright coverage passed.
 
+Package 06C-2B customer trust layer behavior:
+
+- Customer-facing surfaces audited: public estimate approval/approved/declined/invalid pages, public contract signing/signed/executed/sign-error/invalid pages, deposit and final invoice pages, Stripe card-payment handoff form display, completion proof page, and estimate/contract/invoice/follow-up/schedule/completion email shells.
+- Shared public document shell now has consistent trust pills, summary cards, action notes, professional footer/contact copy, and mobile-safe layout styling.
+- Public pages consistently propagate business name, business logo, business email/phone, customer name, job address, totals, and clear CTAs where a valid public token resolves to a job/settings record.
+- Estimate approval copy is clearer about what the customer is reviewing and what happens after approval.
+- Contract signing keeps legal text unchanged, does not reintroduce initials, and preserves typed full-name/date behavior.
+- Invoice pages render payment options cleanly and show paid invoices as paid without payment CTAs.
+- Completion proof pages are branded, customer-safe, and mobile-covered.
+- Email shell includes business contact in header/footer, keeps plain-text fallbacks usable, and avoids empty payment-option lists.
+- Files touched: rendering.js, public-pages.js, email-content.js, scripts/smoke-email-content.js, tests/follow-up-automation.spec.js, tests/pending-payments.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: npm.cmd run check; node --check rendering.js, node --check public-pages.js, node --check email-content.js, node --check scripts\smoke-email-content.js, node --check tests\follow-up-automation.spec.js, node --check tests\pending-payments.spec.js, node --check tests\mobile-hardening.spec.js; node scripts\smoke-email-content.js; npm.cmd run test:browser -- --workers=1 tests/follow-up-automation.spec.js tests/pending-payments.spec.js tests/mobile-hardening.spec.js.
+- Known follow-up: invalid/expired links cannot show tenant-specific branding because token lookup intentionally fails before tenant settings can be trusted; they use the safe generic PressureFlow/Your Company shell.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, and Package 06C-2A critical v0 UX fixes are complete.
-- v0 visual/UI audit blockers from Package 06C-2A are resolved locally and ready for deployment verification.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, and Package 06C-2B customer trust layer polish are complete.
+- Customer-facing public pages and email shells from Package 06C-2B are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## 6. Audit Environment Requirements

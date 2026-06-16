@@ -19,6 +19,10 @@ function renderLogoHtml(settings = {}, baseUrl = "", width = 190) {
   return `<img class="doc__logo" src="${escapeHtml(logo)}" alt="${escapeHtml(getBusinessName(settings))}" style="max-width:${width}px">`;
 }
 
+function getBusinessContact(settings = {}) {
+  return [settings.businessEmail, settings.businessPhone].filter(Boolean).join(" | ");
+}
+
 function getEstimateValidUntil(job) {
   const sentDate = job.estimateSentAt ? new Date(job.estimateSentAt) : new Date();
   const base = Number.isNaN(sentDate.getTime()) ? new Date() : sentDate;
@@ -51,11 +55,15 @@ function estimatePageStyles() {
     .doc__meta { display: grid; gap: 6px; min-width: 0; margin: 14px 0 22px; color: #667085; font-size: 14px; line-height: 1.4; }
     .doc__content { display: grid; gap: 18px; min-width: 0; }
     .doc__content > section { min-width: 0; margin: 0; }
-    .doc__footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid #d8dee8; color: #667085; font-size: 12px; line-height: 1.5; }
+    .doc__footer { display: grid; gap: 6px; margin-top: 24px; padding-top: 18px; border-top: 1px solid #d8dee8; color: #667085; font-size: 12px; line-height: 1.5; }
+    .doc__footer strong { color: #202124; font-size: 13px; }
+    .doc__trust-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .doc__trust-pill { display: inline-flex; align-items: center; min-height: 28px; padding: 5px 10px; border: 1px solid #d8dee8; border-radius: 999px; background: #fbfcfe; color: #475467; font-size: 12px; font-weight: 800; }
     .doc__totals { display: grid; gap: 8px; min-width: 0; margin: 18px 0; }
     .doc__total-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #d8dee8; }
     .doc__total-row span { color: #667085; }
-    .doc__actions { display: grid; gap: 12px; min-width: 0; margin-top: 22px; }
+    .doc__actions { display: grid; gap: 12px; min-width: 0; margin-top: 22px; padding: 18px; border: 1px solid #d8dee8; border-radius: 12px; background: #fbfcfe; }
+    .doc__actions-note { margin: 0; color: #667085; font-size: 13px; line-height: 1.45; }
     .table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #d8dee8; border-radius: 10px; margin: 18px 0; background: white; }
     .table th { background: #f7f8fb; color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
     .table th,
@@ -80,6 +88,10 @@ function estimatePageStyles() {
     .doc__pay-method { display: flex; justify-content: space-between; gap: 12px; min-width: 0; padding: 12px; border-bottom: 1px solid #d8dee8; }
     .doc__pay-method:last-child { border-bottom: 0; }
     .doc__pay-method span { color: #667085; font-weight: 800; }
+    .doc__summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 16px 0 0; }
+    .doc__summary-item { display: grid; gap: 4px; padding: 12px; border: 1px solid #d8dee8; border-radius: 10px; background: #fbfcfe; }
+    .doc__summary-item span { color: #667085; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .doc__summary-item strong { color: #202124; overflow-wrap: anywhere; }
     .doc__gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 0; }
     .doc__gallery figure { margin: 0; border: 1px solid #d8dee8; border-radius: 10px; overflow: hidden; background: #f7f8fb; }
     .doc__gallery img { display: block; width: 100%; height: 150px; object-fit: cover; }
@@ -142,6 +154,7 @@ function estimatePageStyles() {
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .doc__gallery img { height: 128px; }
       .doc__pay-method { display: grid; gap: 4px; }
+      .doc__summary-grid { grid-template-columns: 1fr; }
       .contract-clause,
       .contract-signature { padding: 14px; }
     }
@@ -178,6 +191,7 @@ module.exports = {
   estimatePageStyles,
   formatPublicDate,
   getBaseUrlFromLink,
+  getBusinessContact,
   getBusinessName,
   getEstimateValidUntil,
   renderLogoHtml

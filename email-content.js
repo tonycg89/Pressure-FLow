@@ -6,6 +6,7 @@ const {
 const {
   escapeHtml,
   formatPublicDate,
+  getBusinessContact,
   getBaseUrlFromLink,
   getBusinessName,
   getEstimateValidUntil,
@@ -287,12 +288,7 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
         </a>
       </p>
       ${!isDeposit && job.completionProofUrl ? `<p style="margin:0 0 18px"><a href="${escapeHtml(job.completionProofUrl)}" style="color:${emailTheme.green};font-weight:bold">View completion photos</a></p>` : ""}
-      <p style="margin:0 0 8px;color:${emailTheme.text}"><strong>Payment options</strong></p>
-      <ul style="margin:0 0 14px 20px;padding:0;color:${emailTheme.text}">
-        ${settings.zellePayment ? `<li>Zelle: ${escapeHtml(settings.zellePayment)}</li>` : ""}
-        ${settings.cashAppPayment ? `<li>Cash App: ${escapeHtml(settings.cashAppPayment)}</li>` : ""}
-        ${settings.venmoPayment ? `<li>Venmo: ${escapeHtml(settings.venmoPayment)}</li>` : ""}
-      </ul>
+      ${renderInvoicePaymentOptionsEmail(settings)}
       ${settings.paymentInstructions ? `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(settings.paymentInstructions)}</p>` : ""}
       <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${escapedInvoiceUrl}</p>
       <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(businessName)}</p>
@@ -347,6 +343,7 @@ function renderEmailPhotoGrid(photos) {
 
 function renderEmailShell({ settings = {}, baseUrl = "", preheader = "", title = "", body = "" }) {
   const businessName = getBusinessName(settings);
+  const contact = getBusinessContact(settings);
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" data-email-shell="pressureflow" style="width:100%;border-collapse:collapse;background:${emailTheme.background};margin:0;padding:0">
       <tr>
@@ -357,6 +354,7 @@ function renderEmailShell({ settings = {}, baseUrl = "", preheader = "", title =
               <td style="padding:24px 24px 18px;border-bottom:1px solid ${emailTheme.border}">
                 ${renderLogoHtml(settings, baseUrl, 180)}
                 <div style="font-family:Arial,sans-serif;color:${emailTheme.text};font-size:16px;font-weight:700;line-height:22px">${escapeHtml(businessName)}</div>
+                ${contact ? `<div style="margin-top:4px;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px">${escapeHtml(contact)}</div>` : ""}
               </td>
             </tr>
             <tr>
@@ -369,13 +367,32 @@ function renderEmailShell({ settings = {}, baseUrl = "", preheader = "", title =
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;border-collapse:collapse">
             <tr>
               <td style="padding:14px 8px 0;text-align:center;font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:12px;line-height:18px">
-                Sent by ${escapeHtml(businessName)} using PressureFlow.
+                Sent by ${escapeHtml(businessName)} using PressureFlow.${contact ? `<br>${escapeHtml(contact)}` : ""}
               </td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
+  `;
+}
+
+function renderInvoicePaymentOptionsEmail(settings = {}) {
+  const methods = [
+    ["Zelle", settings.zellePayment],
+    ["Cash App", settings.cashAppPayment],
+    ["Venmo", settings.venmoPayment]
+  ].filter(([, value]) => value);
+
+  if (!methods.length) {
+    return `<p style="margin:0 0 14px;color:${emailTheme.text}"><strong>Payment options are shown on the invoice page.</strong></p>`;
+  }
+
+  return `
+    <p style="margin:0 0 8px;color:${emailTheme.text}"><strong>Payment options</strong></p>
+    <ul style="margin:0 0 14px 20px;padding:0;color:${emailTheme.text}">
+      ${methods.map(([label, value]) => `<li>${escapeHtml(label)}: ${escapeHtml(value)}</li>`).join("")}
+    </ul>
   `;
 }
 

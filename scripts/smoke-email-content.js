@@ -19,6 +19,8 @@ const {
 const settings = {
   businessName: "Johnson Exterior Cleaning",
   businessEmail: "owner@johnson.test",
+  businessPhone: "(555) 222-3333",
+  businessLogoDataUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
   zellePayment: "owner@johnson.test",
   cashAppPayment: "$JohnsonExterior",
   venmoPayment: "@JohnsonExterior",
@@ -151,9 +153,12 @@ assert.equal(estimate.to, "alex.rivera@example.com");
 assert.equal(estimate.subject, "Johnson Exterior Cleaning estimate for Driveway cleaning at 123 Maple St");
 assert.equal(estimate.textBody, expectedEstimateText);
 assert.match(estimate.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(estimate.htmlBody, /doc__logo/);
 assert.match(estimate.htmlBody, /Your service estimate is ready/);
 assert.match(estimate.htmlBody, /Alex Rivera/);
 assert.match(estimate.htmlBody, /Johnson Exterior Cleaning/);
+assert.match(estimate.htmlBody, /owner@johnson\.test/);
+assert.match(estimate.htmlBody, /\(555\) 222-3333/);
 assert.match(estimate.htmlBody, /Driveway cleaning/);
 assert.match(estimate.htmlBody, /123 Maple St/);
 assert.match(estimate.htmlBody, /\$425\.00/);
@@ -168,6 +173,7 @@ assert.equal(contract.to, "alex.rivera@example.com");
 assert.equal(contract.subject, "Johnson Exterior Cleaning service agreement for Driveway cleaning at 123 Maple St");
 assert.equal(contract.textBody, expectedContractText);
 assert.match(contract.htmlBody, /data-email-shell="pressureflow"/);
+assert.match(contract.htmlBody, /doc__logo/);
 assert.match(contract.htmlBody, /Your service agreement is ready/);
 assert.match(contract.htmlBody, /Alex Rivera/);
 assert.match(contract.htmlBody, /Johnson Exterior Cleaning/);
@@ -214,6 +220,15 @@ assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/invoice\/job-
 assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
 assert.match(finalInvoice.textBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&token=final-token/);
 assert.match(finalInvoice.textBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);
+
+const cardOnlyInvoice = buildPressureFlowInvoiceEmailMessage(job, {
+  businessName: "Johnson Exterior Cleaning",
+  businessEmail: "owner@johnson.test",
+  businessPhone: "(555) 222-3333",
+  stripeSecretKey: "sk_test_display_only"
+}, "deposit", job.squareDepositInvoiceUrl);
+assert.match(cardOnlyInvoice.htmlBody, /Payment options are shown on the invoice page\./);
+assert.doesNotMatch(cardOnlyInvoice.htmlBody, /<ul style="margin:0 0 14px 20px;padding:0;color:#1A1D1B">\s*<\/ul>/);
 
 const estimateFollowUp = buildFollowUpEmailMessage(job, settings, "estimate_followup");
 const contractFollowUp = buildFollowUpEmailMessage(job, settings, "contract_followup");

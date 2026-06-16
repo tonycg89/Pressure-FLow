@@ -4,8 +4,8 @@ Last Updated: June 16, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, and Package 06C-2A critical v0 UX fixes.
-- v0 visual/UI audit blockers from Package 06C-2A are resolved locally and ready for deployment verification.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, and Package 06C-2B customer trust layer polish.
+- Customer-facing public pages and email shells from Package 06C-2B are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## Completed Safety / Readiness Work
@@ -27,6 +27,7 @@ Last Updated: June 16, 2026
 - Package 07B-5 Measure From Map stability fixes
 - Package 07B-6 mobile beta hardening
 - Package 06C-2A critical v0 UX fixes
+- Package 06C-2B customer trust layer polish
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -71,6 +72,9 @@ Last Updated: June 16, 2026
 ## Testing Status
 
 - `npm.cmd run check`: passing
+- `node --check rendering.js`, `node --check public-pages.js`, `node --check email-content.js`, `node --check scripts\smoke-email-content.js`, `node --check tests\follow-up-automation.spec.js`, `node --check tests\pending-payments.spec.js`, and `node --check tests\mobile-hardening.spec.js`: passing
+- `node scripts\smoke-email-content.js`: passing
+- `npm.cmd run test:browser -- --workers=1 tests/follow-up-automation.spec.js tests/pending-payments.spec.js tests/mobile-hardening.spec.js`: passing, 20 tests
 - `node --check tests\dashboard-analytics.spec.js`, `node --check tests\onboarding.spec.js`, and `node --check tests\mobile-hardening.spec.js`: passing
 - `npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js`: passing, 9 tests
 - `npm.cmd run smoke:test-user-safety`: passing
@@ -88,6 +92,19 @@ Last Updated: June 16, 2026
 - Settings and New Job modal layout is constrained and scrollable on 375px mobile viewports without clipping close controls or form fields.
 - Files touched: `index.html`, `styles.css`, `app.js`, `tests/dashboard-analytics.spec.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`.
 - Known follow-up: in-app Browser visual verification could not attach in this Windows sandbox session; targeted Playwright coverage passed.
+
+## Package 06C-2B Customer Trust Layer Polish
+
+- Customer-facing surfaces audited: public estimate approval/approved/declined/invalid pages, public contract signing/signed/executed/sign-error/invalid pages, deposit and final invoice pages, Stripe card-payment handoff form display, completion proof page, and estimate/contract/invoice/follow-up/schedule/completion email shells.
+- Shared public document shell now has consistent trust pills, summary cards, action notes, professional footer/contact copy, and mobile-safe layout styling.
+- Public pages consistently propagate business name, logo, business email/phone where a valid customer token resolves to a job/settings record.
+- Estimate approval page now makes review context, validity, and next-step CTA clearer without changing approval/rejection workflow behavior.
+- Contract page keeps legal text unchanged, does not reintroduce initials, and adds clearer signing-context copy/trust indicators.
+- Invoice pages show paid invoices as paid and suppress payment CTAs/payment instructions when no payment is due.
+- Completion proof page includes clearer customer copy/trust indicators and shared footer.
+- Email shell now includes business contact in the branded header/footer and avoids empty payment-option lists when only card/manual invoice options are configured.
+- Files touched: `rendering.js`, `public-pages.js`, `email-content.js`, `scripts/smoke-email-content.js`, `tests/follow-up-automation.spec.js`, `tests/pending-payments.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`.
+- Known follow-up: invalid/expired links cannot show tenant-specific branding because token lookup intentionally fails before tenant settings can be trusted; they use the safe generic PressureFlow/Your Company shell.
 
 ## Payment Method Behavior
 
@@ -130,7 +147,7 @@ Last Updated: June 16, 2026
 
 ## Next
 
-- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, mobile hardening, and Package 06C-2A UX fixes.
+- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, mobile hardening, Package 06C-2A UX fixes, and Package 06C-2B customer trust polish.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give v0 the updated app, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file for visual/UI audit.
 - v0 performs visual/UI audit only and should not assume React, Next.js, Tailwind, shadcn, Radix, or a framework migration.
