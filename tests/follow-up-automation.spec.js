@@ -153,15 +153,8 @@ test("public contract click-to-fill date signs agreement and sends deposit invoi
   const approvedJob = jobs.find((item) => item.id === "approve-job");
   await page.goto(approvedJob.contractApprovalUrl);
   await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
-
-  const expectedInitials = await page.locator("#expectedInitials").inputValue();
-  const initialInputs = page.locator(".initials-input");
-  const initialCount = await initialInputs.count();
-  expect(initialCount).toBeGreaterThan(0);
-  for (let index = 0; index < initialCount; index += 1) {
-    await initialInputs.nth(index).click();
-    await expect(initialInputs.nth(index)).toHaveValue(expectedInitials);
-  }
+  await expect(page.locator(".initials-input")).toHaveCount(0);
+  await expect(page.locator("#expectedInitials")).toHaveCount(0);
 
   await page.locator("#signedDateInput").click();
   await expect(page.locator("#signedDateInput")).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
@@ -196,16 +189,8 @@ test("public contract signing error lands on branded retry page", async ({ page 
   const approvedJob = jobs.find((item) => item.id === "approve-job");
   await page.goto(approvedJob.contractApprovalUrl);
   await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
-
-  const expectedInitials = await page.locator("#expectedInitials").inputValue();
-  const initialInputs = page.locator(".initials-input");
-  const initialCount = await initialInputs.count();
-  expect(initialCount).toBeGreaterThan(0);
-  for (let index = 0; index < initialCount; index += 1) {
-    await initialInputs.nth(index).evaluate((input, value) => {
-      input.value = value;
-    }, expectedInitials);
-  }
+  await expect(page.locator(".initials-input")).toHaveCount(0);
+  await expect(page.locator("#expectedInitials")).toHaveCount(0);
 
   await page.locator("#signedDateInput").evaluate((input) => {
     input.value = "06/15/2026, 1:08 PM";

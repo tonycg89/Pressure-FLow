@@ -1,12 +1,12 @@
 # PressureFlow Master Status
 
-Last Updated: June 15, 2026
+Last Updated: June 16, 2026
 
 ## Current Phase
 
-- PressureFlow is ready for the live Claude UX Audit after test account Google readiness is configured.
-- v0 UI Audit comes after Claude UX findings are reviewed, approved, and safely implemented by Codex.
-- Do not start broad UI redesign before the UX audit is complete and approved.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes and mobile beta hardening.
+- v0 visual/UI audit can begin after the latest 07B fixes are deployed.
+- Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## Completed Safety / Readiness Work
 
@@ -25,6 +25,8 @@ Last Updated: June 15, 2026
 - Package 07B-3 payment method verification / invoice empty-state fix
 - Package 07B-4 small UX cleanup bundle
 - Package 07B-5 Measure From Map stability fixes
+- Package 07B-6 mobile beta hardening
+- Contract initials requirement removed
 - Central AI Handoff file
 
 ## UI Packages Complete
@@ -69,7 +71,7 @@ Last Updated: June 15, 2026
 
 - `npm.cmd run check`: passing
 - `npm.cmd run smoke:test-user-safety`: passing
-- `npm.cmd run test:browser -- --workers=1`: passing
+- `npm.cmd run test:browser -- --workers=1`: passing, 27 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
 
 ## Payment Method Behavior
@@ -85,7 +87,14 @@ Last Updated: June 15, 2026
 - Notification bell icon has explicit visible SVG styling and remains anchored to the unread count badge.
 - Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
 - Scheduled date/time displays in a human-readable format without changing stored values.
-- Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+- Deferred Claude findings: Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+
+## Contract Signing UX
+
+- Public contracts no longer require customers to initial each contract clause.
+- Customers still must provide a signature date and type their full name to sign.
+- Public token validation, backend signing behavior, follow-up cancellation, deposit invoice creation, and deposit follow-up scheduling remain unchanged.
+- Browser coverage verifies contract signing succeeds without initials and invalid signing dates still land on the branded retry page.
 
 ## Measure From Map Stability
 
@@ -95,16 +104,23 @@ Last Updated: June 15, 2026
 - Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
 - Manual verification still recommended on the deployed Mapbox map before beta: draw near the start point, intentionally close on the start point, add a second area immediately, save, and reopen.
 
+## Mobile Beta Hardening
+
+- Mobile form controls render at 16px on small screens to prevent iOS Safari focus zoom.
+- Major workflow actions and modal buttons meet a 44px minimum mobile touch target.
+- Measure From Map draw/delete controls and measurement actions meet a 44px minimum touch target.
+- Public invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving all visible information.
+- Completion proof links and public document actions meet mobile touch target requirements.
+- Automated mobile browser coverage verifies form sizing, workflow action sizing, map control sizing, public document overflow, completion proof link sizing, and public pay/sign actions.
+
 ## Next
 
-- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, and Measure From Map stability fixes before Claude resumes testing.
+- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, and mobile hardening fixes.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
-- Give Claude a fresh test login, audit environment URL, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file.
-- Claude performs UX audit only.
-- Claude should return findings grouped by blocker / high / medium / polish.
-- ChatGPT/project chat reviews and approves the scope.
-- Codex implements approved UX fixes in small safe chunks.
-- After approved UX fixes pass smoke checks, give v0 the updated app for visual/UI audit.
+- Give v0 the updated app, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file for visual/UI audit.
+- v0 performs visual/UI audit only and should not assume React, Next.js, Tailwind, shadcn, Radix, or a framework migration.
+- ChatGPT/project chat reviews and approves any v0 findings before Codex implements them.
+- Codex implements approved UI fixes in small safe chunks.
 
 ## Future
 

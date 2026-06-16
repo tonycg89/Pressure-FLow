@@ -492,7 +492,6 @@ function renderContractSigningPage(job, options = {}) {
   const depositAmount = Number(job.estimate || 0) * (Number(job.depositPercent || 25) / 100);
   const finalAmount = Math.max(Number(job.estimate || 0) - depositAmount, 0);
   const alreadySigned = Boolean(job.contractSignedAt);
-  const initials = getCustomerInitials(job.customerName);
 
   return `<!doctype html>
 <html lang="en">
@@ -531,7 +530,7 @@ function renderContractSigningPage(job, options = {}) {
           <div class="doc__total-row"><span>Final Balance After Completion</span><strong>$${finalAmount.toFixed(2)}</strong></div>
         </section>
 
-        ${renderContractTerms(job, { executed: alreadySigned || options.executedOnly, initials })}
+        ${renderContractTerms(job)}
 
         ${alreadySigned ? `
           <section class="notice doc__callout contract-signature">
@@ -554,7 +553,6 @@ function renderContractSigningPage(job, options = {}) {
         <div class="doc__actions">
           <form id="contractSignForm" class="contract-sign-form contract-signature" method="post" action="/api/public/contracts/${encodeURIComponent(job.id)}/sign">
             <input type="hidden" name="token" value="${escapeHtml(job.contractApprovalToken)}">
-            <input type="hidden" id="expectedInitials" value="${escapeHtml(initials)}">
             <label>
               Signature date
               <input id="signedDateInput" name="signedDate" required readonly placeholder="Click to add today's date">
@@ -581,17 +579,6 @@ function renderContractTerms(job, options = {}) {
       <article class="term contract-clause">
         <h3>${index + 1}. ${escapeHtml(section.title)}</h3>
         ${escapeHtml(section.body).split("\n\n").map((paragraph) => `<p>${paragraph}</p>`).join("")}
-        ${section.initialsRequired && options.executed ? `
-          <div class="executed-initials">
-            <span>Client initials</span>
-            <strong>${escapeHtml(options.initials || getCustomerInitials(job.customerName))}</strong>
-          </div>
-        ` : section.initialsRequired ? `
-          <label class="initials-field">
-            Initials
-            <input name="initials_${index}" class="initials-input" form="contractSignForm" required placeholder="Click to initial" autocomplete="off">
-          </label>
-        ` : ""}
       </article>
       `).join("")}
     </div>
@@ -625,26 +612,9 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
   </section>`;
 }
 
-function getCustomerInitials(name) {
-  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "";
-  const first = parts[0]?.[0] || "";
-  const last = (parts.length > 1 ? parts.at(-1)?.[0] : "") || "";
-  return `${first}${last}`.toUpperCase();
-}
-
 function contractSigningScript() {
   return `<script>
-    const expectedInitials = document.querySelector("#expectedInitials")?.value || "";
     const signedDateInput = document.querySelector("#signedDateInput");
-    document.querySelectorAll(".initials-input").forEach((input) => {
-      input.addEventListener("click", () => {
-        input.value = expectedInitials;
-      });
-      input.addEventListener("focus", () => {
-        if (!input.value) input.value = expectedInitials;
-      });
-    });
 
     if (signedDateInput) {
       const fillSignedDate = () => {
@@ -664,13 +634,6 @@ function contractSigningScript() {
     }
 
     document.querySelector("#contractSignForm")?.addEventListener("submit", (event) => {
-      const missingInitials = Array.from(document.querySelectorAll(".initials-input")).some((input) => !input.value.trim());
-      if (missingInitials) {
-        event.preventDefault();
-        alert("Please click each initials box before signing.");
-        return;
-      }
-
       if (!signedDateInput?.value.trim()) {
         event.preventDefault();
         alert("Please click the signature date box before signing.");

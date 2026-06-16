@@ -2374,6 +2374,16 @@ label {
   background: #e8eef5;
 }
 
+.measurement-map .mapboxgl-ctrl-group button,
+.measurement-map .mapbox-gl-draw_ctrl-draw-btn,
+.measurement-map .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_polygon,
+.measurement-map .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_trash {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+
 .measurement-summary {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
@@ -2403,7 +2413,7 @@ label {
 
 .measurement-area-card input {
   width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -2503,6 +2513,8 @@ label {
 
 .saved-measurement-delete {
   flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .measurement-preview {
@@ -2525,7 +2537,7 @@ label {
 
 .stepper-button {
   width: 44px;
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
@@ -2598,6 +2610,41 @@ label {
   padding: 0;
 }
 
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  [type="search"],
+  .input,
+  .select,
+  .textarea,
+  dialog input,
+  dialog select,
+  dialog textarea {
+    font-size: 16px;
+  }
+
+  .nav-item,
+  .primary-button,
+  .secondary-button,
+  .secondary-small-button,
+  .action-button,
+  .icon-button,
+  .secondary-link-button,
+  .dialog-actions button,
+  .button-sm,
+  .button-icon,
+  button[type="submit"] {
+    min-height: 44px;
+  }
+
+  .icon-button,
+  .button-icon {
+    width: 44px;
+    min-width: 44px;
+  }
+}
+
 @media (max-width: 980px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -2655,7 +2702,7 @@ label {
   }
 
   .nav-item {
-    min-height: 38px;
+    min-height: 44px;
     padding: 8px;
   }
 

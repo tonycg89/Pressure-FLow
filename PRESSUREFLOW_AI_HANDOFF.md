@@ -68,6 +68,8 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-3 payment method verification / invoice empty-state fix is complete.
 - Package 07B-4 small UX cleanup bundle is complete.
 - Package 07B-5 Measure From Map stability fixes are complete.
+- Package 07B-6 mobile beta hardening is complete.
+- Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 Invoice payment behavior:
@@ -83,7 +85,14 @@ Invoice payment behavior:
 - Notification bell icon renders visibly next to the unread count badge.
 - Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
 - Scheduled date/time displays as readable text, while stored values remain unchanged.
-- Deferred Claude findings: 9 required contract initials, Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+- Deferred Claude findings: Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
+
+Contract signing UX:
+
+- Public contracts no longer require customers to initial each clause.
+- Customers still must provide a signature date and type their full name to sign.
+- Public token validation, backend signing behavior, follow-up cancellation, deposit invoice creation, and deposit follow-up scheduling remain unchanged.
+- Browser coverage verifies contract signing succeeds without initials and invalid signing dates still land on the branded retry page.
 
 Measure From Map stability behavior:
 
@@ -93,11 +102,19 @@ Measure From Map stability behavior:
 - Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
 - Manual deployed-map verification is still recommended before beta.
 
+Mobile beta hardening behavior:
+
+- Mobile form controls render at 16px on small screens to avoid iOS Safari focus zoom.
+- Major workflow actions, modal buttons, public document actions, and completion proof links meet 44px minimum mobile touch targets.
+- Measure From Map draw/delete controls and measurement actions meet 44px minimum touch targets.
+- Public invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving all information.
+- Automated mobile browser coverage verifies these touch-target and overflow requirements.
+
 ## 5. Current Status
 
-- Claude UX Audit can resume after the latest P1/P2 public workflow, invoice payment, UX cleanup, and Measure From Map stability fixes are deployed.
-- v0 UI Audit comes after approved UX fixes from Claude are reviewed and implemented.
-- Do not start broad UI redesign before the UX audit findings are reviewed and approved.
+- Approved Claude P1/P2 UX fixes and mobile beta hardening are complete.
+- v0 visual/UI audit can begin after the latest 07B fixes are deployed.
+- Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## 6. Audit Environment Requirements
 
