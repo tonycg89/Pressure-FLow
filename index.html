@@ -1290,6 +1290,43 @@
       </form>
     </dialog>
 
+    <dialog id="paymentDialog" class="modal modal--md">
+      <form method="dialog" id="paymentForm">
+        <div class="dialog-header modal__header">
+          <h2 class="modal__title" id="paymentDialogTitle">Record payment</h2>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Record Payment" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <p class="form-note" id="paymentDialogSummary"></p>
+          <label>
+            Payment method
+            <select name="paymentMethod" class="select" required>
+              <option value="Venmo">Venmo</option>
+              <option value="Zelle">Zelle</option>
+              <option value="Cash App">Cash App</option>
+              <option value="Cash">Cash</option>
+              <option value="Check">Check</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>
+            Reference note
+            <input name="paymentReference" class="input" placeholder="Optional check number, note, or confirmation">
+          </label>
+        </div>
+
+        <menu class="dialog-actions modal__footer">
+          <button value="cancel" type="button" data-close-dialog>Cancel</button>
+          <button value="default" class="primary-button" type="submit">Confirm Payment</button>
+        </menu>
+      </form>
+    </dialog>
+
     <dialog id="photoViewerDialog" class="photo-viewer-dialog">
       <form method="dialog">
         <div class="dialog-header">

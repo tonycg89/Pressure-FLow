@@ -7,6 +7,7 @@ let selectedJobId = null;
 let selectedCustomerId = null;
 let selectedExpenseId = null;
 let selectedExpenseJobId = "";
+let activeView = "dashboard";
 let settings = {};
 let currentUser = null;
 let csrfToken = "";
@@ -215,6 +216,10 @@ const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
 const completionDialog = document.querySelector("#completionDialog");
 const completionForm = document.querySelector("#completionForm");
+const paymentDialog = document.querySelector("#paymentDialog");
+const paymentForm = document.querySelector("#paymentForm");
+const paymentDialogTitle = document.querySelector("#paymentDialogTitle");
+const paymentDialogSummary = document.querySelector("#paymentDialogSummary");
 const followUpDialog = document.querySelector("#followUpDialog");
 const followUpForm = document.querySelector("#followUpForm");
 const followUpPreviewSubject = document.querySelector("#followUpPreviewSubject");
@@ -259,6 +264,7 @@ const receiptPhotoInput = document.querySelector("#receiptPhotoInput");
 const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
+let pendingPaymentResolve = null;
 let pendingFollowUpJobId = "";
 let currentMeasurement = {};
 let activeMeasurementAreaId = "";
@@ -283,6 +289,8 @@ const onboardingStepHelperText = [
 
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
+  window.addEventListener("hashchange", handleWorkspaceHashChange);
+  restoreWorkspaceStateFromHash();
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
   dashboardBreakdown?.addEventListener("change", renderDashboard);
@@ -299,6 +307,7 @@ async function init() {
     selectedExpenseJobId = expenseJobFilter.value;
     selectedExpenseId = null;
     renderExpenses();
+    saveWorkspaceStateToHash();
   });
   settingsButton.addEventListener("click", openSettings);
   settingsDialog?.addEventListener("close", () => {
@@ -363,6 +372,8 @@ async function init() {
   });
   scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
+  paymentDialog?.addEventListener("cancel", () => resolvePaymentDialog(null));
+  paymentForm?.addEventListener("submit", submitPaymentDialog);
   followUpForm?.addEventListener("submit", submitFollowUpDialog);
   await loadSession();
   await loadSettings();
@@ -390,11 +401,59 @@ async function loadSession() {
 
 function switchView(event) {
   const view = event.currentTarget.dataset.view;
-  navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === view));
+  setActiveView(view);
+  saveWorkspaceStateToHash();
+}
+
+function setActiveView(view) {
+  const validView = Array.from(viewPanels).some((panel) => panel.dataset.viewPanel === view)
+    ? view
+    : "dashboard";
+  activeView = validView;
+  navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === validView));
   viewPanels.forEach((panel) => {
-    panel.hidden = panel.dataset.viewPanel !== view;
+    panel.hidden = panel.dataset.viewPanel !== validView;
   });
   closeNotificationDropdown();
+}
+
+function restoreWorkspaceStateFromHash() {
+  const state = readWorkspaceStateFromHash();
+  selectedJobId = state.job || selectedJobId;
+  selectedCustomerId = state.customer || selectedCustomerId;
+  selectedExpenseId = state.expense || selectedExpenseId;
+  selectedExpenseJobId = state.expenseJob || selectedExpenseJobId;
+  setActiveView(state.view || activeView || "dashboard");
+}
+
+function handleWorkspaceHashChange() {
+  restoreWorkspaceStateFromHash();
+  render();
+}
+
+function readWorkspaceStateFromHash() {
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  const params = new URLSearchParams(hash);
+  return {
+    view: params.get("view") || "",
+    job: params.get("job") || "",
+    customer: params.get("customer") || "",
+    expense: params.get("expense") || "",
+    expenseJob: params.get("expenseJob") || ""
+  };
+}
+
+function saveWorkspaceStateToHash() {
+  const params = new URLSearchParams();
+  params.set("view", activeView || "dashboard");
+  if (selectedJobId) params.set("job", selectedJobId);
+  if (selectedCustomerId) params.set("customer", selectedCustomerId);
+  if (selectedExpenseId) params.set("expense", selectedExpenseId);
+  if (selectedExpenseJobId) params.set("expenseJob", selectedExpenseJobId);
+  const nextHash = `#${params.toString()}`;
+  if (window.location.hash !== nextHash) {
+    history.replaceState(null, "", nextHash);
+  }
 }
 
 async function loadSettings() {
@@ -1780,6 +1839,10 @@ function closeDialogFromButton(event) {
     resolveCompletionDialog(null);
   }
 
+  if (dialog === paymentDialog) {
+    resolvePaymentDialog(null);
+  }
+
   dialog.close();
 }
 
@@ -2572,6 +2635,7 @@ function render() {
   renderJobDetail();
   renderCustomers();
   renderExpenses();
+  saveWorkspaceStateToHash();
 }
 
 function renderDashboard() {
@@ -2790,7 +2854,7 @@ function renderDashboardNotifications(scopedJobs) {
     button.addEventListener("click", () => {
       dismissNotification(button.dataset.notificationId);
       selectedJobId = button.dataset.jobId;
-      document.querySelector('[data-view="pipeline"]').click();
+      setActiveView("pipeline");
       closeNotificationDropdown();
       render();
     });
@@ -2985,31 +3049,13 @@ function renderPendingPayments() {
       </div>
       ${payment.isOverdue ? '<span class="status-pill overdue-pill">Overdue</span>' : ""}
       <button class="secondary-small-button" type="button" data-open-payment-confirmation="${escapeHtml(payment.job.id)}" data-invoice-type="${escapeHtml(payment.invoiceType)}">Mark as paid</button>
-      <form class="payment-confirmation-form" data-payment-confirmation="${escapeHtml(payment.job.id)}|${escapeHtml(payment.invoiceType)}" hidden>
-        <select name="paymentMethod" aria-label="Payment method">
-          <option value="Venmo">Venmo</option>
-          <option value="Zelle">Zelle</option>
-          <option value="Cash App">Cash App</option>
-          <option value="Cash">Cash</option>
-          <option value="Check">Check</option>
-          <option value="Other">Other</option>
-        </select>
-        <input name="paymentReference" placeholder="Reference note">
-        <button class="primary-button" type="submit">Confirm</button>
-      </form>
     </article>
   `).join("");
 
   pendingPaymentsList.querySelectorAll("[data-open-payment-confirmation]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const key = `${button.dataset.openPaymentConfirmation}|${button.dataset.invoiceType}`;
-      const form = pendingPaymentsList.querySelector(`[data-payment-confirmation="${CSS.escape(key)}"]`);
-      if (form) form.hidden = !form.hidden;
+    button.addEventListener("click", async () => {
+      await handleManualPayment(button.dataset.openPaymentConfirmation, button.dataset.invoiceType);
     });
-  });
-
-  pendingPaymentsList.querySelectorAll("[data-payment-confirmation]").forEach((form) => {
-    form.addEventListener("submit", confirmPendingPayment);
   });
 }
 
@@ -3052,14 +3098,14 @@ function getElapsedDays(value) {
   return Math.floor(getElapsedHours(value) / 24);
 }
 
-async function confirmPendingPayment(event) {
-  event.preventDefault();
-  const [jobId, invoiceType] = event.currentTarget.dataset.paymentConfirmation.split("|");
-  const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+async function handleManualPayment(jobId, invoiceType) {
+  const payment = await openPaymentDialog(jobs.find((item) => item.id === jobId), invoiceType);
+  if (!payment) return;
+
   const action = invoiceType === "deposit" ? "mark-deposit-paid" : "mark-paid";
   await runAction(jobId, action, {
-    paymentMethod: payload.paymentMethod,
-    paymentReference: payload.paymentReference
+    paymentMethod: payment.paymentMethod,
+    paymentReference: payment.paymentReference
   });
 }
 
@@ -3251,11 +3297,9 @@ function renderJobCosts(job) {
 function viewExpensesForJob(jobId) {
   selectedExpenseJobId = jobId;
   selectedExpenseId = null;
-  navItems.forEach((item) => item.classList.toggle("active", item.dataset.view === "expenses"));
-  viewPanels.forEach((panel) => {
-    panel.hidden = panel.dataset.viewPanel !== "expenses";
-  });
+  setActiveView("expenses");
   renderExpenses();
+  saveWorkspaceStateToHash();
 }
 
 function renderEstimateFollowUpControls(job) {
@@ -3411,6 +3455,7 @@ function renderCustomers() {
     card.addEventListener("click", () => {
       selectedCustomerId = customer.id;
       renderCustomers();
+      saveWorkspaceStateToHash();
     });
     card.innerHTML = `
       <div>
@@ -3476,7 +3521,7 @@ function renderCustomerDetail() {
   customerDetail.querySelectorAll("[data-job-id]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedJobId = button.dataset.jobId;
-      document.querySelector('[data-view="pipeline"]').click();
+      setActiveView("pipeline");
       render();
     });
   });
@@ -3564,6 +3609,7 @@ function renderExpenses() {
     card.addEventListener("click", () => {
       selectedExpenseId = expense.id;
       renderExpenses();
+      saveWorkspaceStateToHash();
     });
     card.innerHTML = `
       <div>
@@ -3815,6 +3861,15 @@ async function runAction(jobId, action, actionPayload = {}) {
 
   const payload = { ...actionPayload };
 
+  if ((action === "mark-deposit-paid" || action === "mark-paid") && !payload.paymentMethod) {
+    const invoiceType = action === "mark-deposit-paid" ? "deposit" : "final";
+    const payment = await openPaymentDialog(jobs.find((item) => item.id === jobId), invoiceType);
+    if (!payment) return;
+
+    payload.paymentMethod = payment.paymentMethod;
+    payload.paymentReference = payment.paymentReference;
+  }
+
   if (action === "schedule") {
     const schedule = await openScheduleDialog();
     if (!schedule) return;
@@ -4005,6 +4060,52 @@ function resolveScheduleDialog(value) {
   if (!pendingScheduleResolve) return;
   pendingScheduleResolve(value);
   pendingScheduleResolve = null;
+}
+
+function openPaymentDialog(job, invoiceType) {
+  if (!paymentDialog || !paymentForm) {
+    return Promise.resolve({ paymentMethod: "Other", paymentReference: "" });
+  }
+
+  const isDeposit = invoiceType === "deposit";
+  const amount = isDeposit ? getDeposit(job || {}) : getFinalBalance(job || {});
+  paymentForm.reset();
+  paymentForm.elements.paymentMethod.value = "Venmo";
+  if (paymentDialogTitle) {
+    paymentDialogTitle.textContent = isDeposit ? "Record deposit payment" : "Record final payment";
+  }
+  if (paymentDialogSummary) {
+    const customerName = job?.customerName || "this job";
+    paymentDialogSummary.textContent = `${customerName} | ${currency.format(amount)} | ${isDeposit ? "Deposit invoice" : "Final invoice"}`;
+  }
+  paymentDialog.showModal();
+
+  return new Promise((resolve) => {
+    pendingPaymentResolve = resolve;
+  });
+}
+
+function submitPaymentDialog(event) {
+  event.preventDefault();
+
+  if (event.submitter?.value === "cancel") {
+    paymentDialog.close();
+    resolvePaymentDialog(null);
+    return;
+  }
+
+  const payload = Object.fromEntries(new FormData(paymentForm).entries());
+  paymentDialog.close();
+  resolvePaymentDialog({
+    paymentMethod: payload.paymentMethod || "Other",
+    paymentReference: String(payload.paymentReference || "").trim()
+  });
+}
+
+function resolvePaymentDialog(value) {
+  if (!pendingPaymentResolve) return;
+  pendingPaymentResolve(value);
+  pendingPaymentResolve = null;
 }
 
 function openCompletionDialog(job) {
