@@ -123,6 +123,7 @@ const dashboardBreakdown = document.querySelector("#dashboardBreakdown");
 const dashboardChartTitle = document.querySelector("#dashboardChartTitle");
 const dashboardBreakdownEyebrow = document.querySelector("#dashboardBreakdownEyebrow");
 const dashboardBreakdownTitle = document.querySelector("#dashboardBreakdownTitle");
+const dashboardFirstRunPanel = document.querySelector("#dashboardFirstRunPanel");
 const sidebarBusinessName = document.querySelector("#sidebarBusinessName");
 const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
@@ -1110,6 +1111,8 @@ async function saveSettings(event) {
     settings = data.settings;
     settingsDialog.close();
     applySettingsDefaults();
+    settingsStatus.textContent = "Settings saved.";
+    showToast("Settings saved.", "success");
   } catch (error) {
     settingsStatus.textContent = error.message;
   }
@@ -1218,6 +1221,10 @@ async function updateBusinessLogoFromInput(event, statusElement = settingsStatus
 
   settings.businessLogoDataUrl = await readFileAsDataUrl(file);
   renderBusinessLogoPreview();
+  if (statusElement) {
+    statusElement.textContent = "Logo updated. Save settings to publish it.";
+  }
+  showToast("Logo updated. Save settings to publish it.", "info");
 }
 
 function clearBusinessLogo(inputToClear = businessLogoInput) {
@@ -1226,6 +1233,11 @@ function clearBusinessLogo(inputToClear = businessLogoInput) {
     inputToClear.value = "";
   }
   renderBusinessLogoPreview();
+  const statusElement = inputToClear === onboardingLogoInput ? onboardingWizardStatus : settingsStatus;
+  if (statusElement) {
+    statusElement.textContent = "Logo removed. Save settings to publish it.";
+  }
+  showToast("Logo removed. Save settings to publish it.", "info");
 }
 
 function renderBusinessLogoPreview() {
@@ -1283,6 +1295,7 @@ async function uploadTemplate(event) {
     settings.customTemplates = data.templates || [];
     templateUploadForm.reset();
     templateUploadStatus.textContent = "Template uploaded.";
+    showToast("Template uploaded.", "success");
     renderTemplates();
   } catch (error) {
     templateUploadStatus.textContent = error.message;
@@ -1297,6 +1310,8 @@ async function deleteTemplate(templateId) {
     const data = await apiRequest(`/api/templates/custom/${encodeURIComponent(templateId)}`, {}, "DELETE");
     settings.customTemplates = data.templates || [];
     renderTemplates();
+    templateUploadStatus.textContent = "Template deleted.";
+    showToast("Template deleted.", "success");
   } catch (error) {
     templateUploadStatus.textContent = error.message;
   }
@@ -2580,6 +2595,14 @@ function renderDashboard() {
   renderDashboardChart(breakdownRows);
   renderDashboardBreakdown(breakdownRows);
   renderDashboardNotifications(scopedJobs);
+  renderDashboardFirstRunPanel();
+}
+
+function renderDashboardFirstRunPanel() {
+  if (!dashboardFirstRunPanel) return;
+
+  const hasOperationalData = jobs.length > 0 || customers.length > 0 || expenses.length > 0;
+  dashboardFirstRunPanel.hidden = hasOperationalData;
 }
 
 function filterByTimeframe(items, dateField) {
@@ -2677,7 +2700,7 @@ function renderDashboardChart(rows) {
   const total = revenueRows.reduce((sum, row) => sum + row.revenue, 0);
   if (!total) {
     chart.style.background = "var(--muted)";
-    chart.innerHTML = renderEmptyState("No revenue yet", "Paid work will appear in this chart.");
+    chart.innerHTML = renderEmptyState("Revenue will chart here", "Paid jobs will populate this breakdown automatically.");
     legend.innerHTML = "";
     return;
   }
@@ -2700,7 +2723,16 @@ function renderDashboardChart(rows) {
 }
 
 function renderDashboardBreakdown(rows) {
-  document.querySelector("#leadSourceBreakdown").innerHTML = rows.map((row) => `
+  const container = document.querySelector("#leadSourceBreakdown");
+  if (!container) return;
+
+  const hasActivity = rows.some((row) => row.jobs || row.estimatesSent || row.revenue);
+  if (!hasActivity) {
+    container.innerHTML = renderEmptyState("No source activity yet", "New leads and estimates will build this comparison.");
+    return;
+  }
+
+  container.innerHTML = rows.map((row) => `
     <div class="breakdown-row">
       <div class="breakdown-row-main">
         <span class="source-dot" style="background:${row.color}"></span>

@@ -71,6 +71,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-6 mobile beta hardening is complete.
 - Package 06C-2A critical v0 UX fixes are complete.
 - Package 06C-2B customer trust layer polish is complete.
+- Package 06C-2C final visual consistency polish is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -139,10 +140,22 @@ Package 06C-2B customer trust layer behavior:
 - Tests run: npm.cmd run check; node --check rendering.js, node --check public-pages.js, node --check email-content.js, node --check scripts\smoke-email-content.js, node --check tests\follow-up-automation.spec.js, node --check tests\pending-payments.spec.js, node --check tests\mobile-hardening.spec.js; node scripts\smoke-email-content.js; npm.cmd run test:browser -- --workers=1 tests/follow-up-automation.spec.js tests/pending-payments.spec.js tests/mobile-hardening.spec.js.
 - Known follow-up: invalid/expired links cannot show tenant-specific branding because token lookup intentionally fails before tenant settings can be trusted; they use the safe generic PressureFlow/Your Company shell.
 
+Package 06C-2C final visual consistency behavior:
+
+- Dashboard metric cards are more compact and blank first-run accounts show a deliberate dashboard guidance panel.
+- Dashboard chart and breakdown empty states use consistent icon styling and clearer no-data copy.
+- The dashboard notification control is labeled Activity, visually separated from the timeframe select, and preserves the existing unread count/dropdown behavior.
+- Settings remains a modal; it now has in-dialog section jump links and a clearer Business defaults grouping while preserving all fields.
+- Save Settings, template upload/delete, and logo upload/remove use the existing toast pattern for lightweight feedback.
+- 375px mobile coverage checks dashboard chrome plus Settings and New Job modal usability/overflow.
+- Files touched: index.html, styles.css, app.js, tests/dashboard-analytics.spec.js, tests/onboarding.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: node --check app.js; node --check tests\dashboard-analytics.spec.js; node --check tests\onboarding.spec.js; node --check tests\mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js.
+- Known follow-up: in-app Browser visual verification still cannot attach in this Windows sandbox session (CreateProcessAsUserW failed: 5); targeted Playwright coverage passed.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, and Package 06C-2B customer trust layer polish are complete.
-- Customer-facing public pages and email shells from Package 06C-2B are resolved locally and ready for deployment verification.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, and Package 06C-2C final visual consistency polish are complete.
+- Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## 6. Audit Environment Requirements

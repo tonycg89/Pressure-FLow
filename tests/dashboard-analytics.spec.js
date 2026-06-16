@@ -34,11 +34,22 @@ test("dashboard open jobs excludes paid work and notification bell icon is visib
   await login(page);
 
   await expect(page.locator("#openJobs")).toHaveText("2");
+  await expect(page.locator("#notificationToggle .notification-toggle__label")).toHaveText("Activity");
   await expect(page.locator("#notificationToggle .button-icon")).toBeVisible();
   await expect(page.locator("#notificationCount")).toBeVisible();
   const iconBox = await page.locator("#notificationToggle .button-icon").boundingBox();
   expect(iconBox?.width).toBeGreaterThan(0);
   expect(iconBox?.height).toBeGreaterThan(0);
+});
+
+test("settings save shows lightweight success feedback", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.locator("#settingsDialog")).toBeVisible();
+  await page.getByRole("button", { name: "Save Settings" }).click();
+  await expect(page.locator("#settingsDialog")).toBeHidden();
+  await expect(page.locator(".toast")).toContainText("Settings saved.");
 });
 
 test("settings opens from each main view and view headings stay current", async ({ page }) => {

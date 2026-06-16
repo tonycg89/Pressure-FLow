@@ -3,8 +3,8 @@ PressureFlow Master Status
 Last Updated: June 16, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, and Package 06C-2B customer trust layer polish.
-- Customer-facing public pages and email shells from Package 06C-2B are resolved locally and ready for deployment verification.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, and Package 06C-2C final visual consistency polish.
+- Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 Completed Safety / Readiness Work:
@@ -26,6 +26,7 @@ Completed Safety / Readiness Work:
 - Package 07B-6 mobile beta hardening
 - Package 06C-2A critical v0 UX fixes
 - Package 06C-2B customer trust layer polish
+- Package 06C-2C final visual consistency polish
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -70,7 +71,8 @@ Testing Status:
 - node scripts\smoke-email-content.js: passing
 - npm.cmd run test:browser -- --workers=1 tests/follow-up-automation.spec.js tests/pending-payments.spec.js tests/mobile-hardening.spec.js: passing, 20 tests
 - node --check tests\dashboard-analytics.spec.js, node --check tests\onboarding.spec.js, and node --check tests\mobile-hardening.spec.js: passing
-- npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js: passing, 9 tests
+- npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js: passing, 10 tests
+- In-app Browser visual sanity attempt: blocked by the same Windows sandbox attach error (CreateProcessAsUserW failed: 5); targeted Playwright coverage passed.
 - npm.cmd run smoke:test-user-safety: passing
 - npm.cmd run test:browser -- --workers=1: passing, 27 tests
 - Playwright is configured for one worker because browser specs share .tmp/playwright-data.
@@ -98,6 +100,17 @@ Package 06C-2B Customer Trust Layer Polish:
 - Files touched: rendering.js, public-pages.js, email-content.js, scripts/smoke-email-content.js, tests/follow-up-automation.spec.js, tests/pending-payments.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, # PressureFlow AI Handoff.txt.
 - Known follow-up: invalid/expired links cannot show tenant-specific branding because token lookup intentionally fails before tenant settings can be trusted; they use the safe generic PressureFlow/Your Company shell.
 
+Package 06C-2C Final Visual Consistency Polish:
+- Dashboard metric cards are tighter, with a first-run guidance panel and more intentional dashboard chart/breakdown empty states.
+- Notification control is now labeled Activity, visually separated from the date filter, and keeps the existing unread count/dropdown behavior.
+- Shared empty-state/icon sizing and mobile dashboard chrome spacing were polished without adding a new icon library.
+- Settings remains a modal but now has section jump links and a clearer Business defaults group for faster scanning.
+- Save Settings, template upload/delete, and logo upload/remove now use the existing toast pattern for lightweight success/info feedback.
+- Mobile checks at 375px cover dashboard chrome plus Settings and New Job modal overflow.
+- Files touched: index.html, styles.css, app.js, tests/dashboard-analytics.spec.js, tests/onboarding.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, # PressureFlow AI Handoff.txt.
+- Tests run: node --check app.js; node --check tests\dashboard-analytics.spec.js; node --check tests\onboarding.spec.js; node --check tests\mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js.
+- Known follow-up: in-app Browser visual verification still cannot attach in this Windows sandbox session; targeted Playwright coverage passed.
+
 Payment Method Behavior:
 - Public deposit and final invoices show configured Stripe card checkout, Zelle, Cash App, Venmo, and manual payment instructions.
 - Unconfigured payment methods are hidden from public invoice pages.
@@ -105,8 +118,8 @@ Payment Method Behavior:
 - The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
 
 07B UX Cleanup Status:
-- Core workflow success/info alerts now use non-blocking in-app toast feedback.
-- Notification bell icon has explicit visible SVG styling and remains anchored to the unread count badge.
+- Core workflow success/info alerts now use non-blocking in-app toast feedback, including Settings, templates, and logo actions.
+- Notification bell/control has explicit visible SVG styling, an Activity label, and remains anchored to the unread count badge.
 - Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
 - Scheduled date/time displays in a human-readable format without changing stored values.
 - Deferred Claude findings: Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.

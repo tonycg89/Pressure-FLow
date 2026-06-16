@@ -162,6 +162,8 @@ async function loginAndCompleteOnboarding(page) {
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeHidden();
   await expect(page.locator("#sidebarBusinessName")).toHaveText("Johnson Exterior Cleaning");
+  await expect(page.locator("#dashboardFirstRunPanel")).toBeVisible();
+  await expect(page.locator("#dashboardFirstRunPanel")).toContainText("Ready for the first workflow");
 }
 
 async function checkOnboardingService(page, serviceName) {

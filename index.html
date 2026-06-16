@@ -82,11 +82,12 @@
           </div>
           <div class="dashboard-actions">
             <div class="notification-menu">
-              <button id="notificationToggle" class="icon-button notification-toggle" type="button" title="Notifications" aria-expanded="false" aria-controls="notificationDropdown">
+              <button id="notificationToggle" class="notification-toggle" type="button" title="Notifications" aria-label="Notifications and recent activity" aria-expanded="false" aria-controls="notificationDropdown">
                 <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
                   <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
                   <path d="M10 21h4"></path>
                 </svg>
+                <span class="notification-toggle__label">Activity</span>
                 <strong id="notificationCount">0</strong>
               </button>
               <div id="notificationDropdown" class="notification-dropdown" hidden>
@@ -115,6 +116,22 @@
           <article class="stat-card"><span class="stat-card__label">Revenue</span><strong id="dashRevenue" class="stat-card__value tabular-nums">$0</strong></article>
           <article class="stat-card"><span class="stat-card__label">Expenses</span><strong id="dashExpenses" class="stat-card__value tabular-nums">$0</strong></article>
           <article class="stat-card"><span class="stat-card__label">Top source</span><strong id="dashTopSource" class="stat-card__value">-</strong><small id="dashTopSourceMeta" class="stat-card__delta">Not enough data yet</small></article>
+        </section>
+
+        <section id="dashboardFirstRunPanel" class="panel dashboard-first-run-panel" aria-labelledby="dashboardFirstRunTitle" hidden>
+          <div class="empty-state empty-state--horizontal">
+            <span class="empty-state__icon-wrap" aria-hidden="true">
+              <svg class="empty-state__icon" viewBox="0 0 24 24">
+                <path d="M4 19V5"></path>
+                <path d="M4 19h16"></path>
+                <path d="M8 15l3-3 3 2 5-6"></path>
+              </svg>
+            </span>
+            <div>
+              <p id="dashboardFirstRunTitle" class="empty-state__title">Ready for the first workflow</p>
+              <p class="empty-state__hint">Create a customer or job, send an estimate, and this dashboard will fill in with revenue, expenses, and source trends.</p>
+            </div>
+          </div>
         </section>
 
         <section class="panel pending-payments-panel" id="pendingPaymentsPanel" aria-labelledby="pendingPaymentsTitle" hidden>
@@ -783,124 +800,140 @@
         </div>
 
         <div class="modal__body">
-          <div class="settings-grid form-section">
-            <label class="field">
-              Business name
-              <input name="businessName" class="input" placeholder="Your Pressure Washing LLC">
-            </label>
-            <label class="field">
-              Business email
-              <input name="businessEmail" class="input" type="email" placeholder="you@example.com">
-            </label>
-            <label class="field">
-              Business phone
-              <input name="businessPhone" class="input" placeholder="(555) 123-4567">
-            </label>
-            <label class="field">
-              Service industry
-              <select name="serviceIndustry" class="select">
-                <option value="">Choose industry</option>
-                <option value="Pressure Washing">Pressure Washing</option>
-                <option value="Landscaping">Landscaping</option>
-                <option value="Handyman">Handyman</option>
-                <option value="Construction">Construction</option>
-                <option value="Misc">Misc</option>
-              </select>
-            </label>
-            <label class="field full-field">
-              Company logo
-              <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
-            </label>
-            <div class="full-field logo-settings-row">
-              <img id="businessLogoPreview" alt="Company logo preview" hidden>
-              <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
-            </div>
-            <label class="field">
-              Default deposit %
-              <input name="defaultDepositPercent" class="input" type="number" min="0" max="100" step="5" value="25">
-            </label>
-            <label class="field">
-              Default job duration
-              <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
-            </label>
-            <label class="field">
-              Zelle
-              <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
-            </label>
-            <label class="field">
-              Cash App
-              <input name="cashAppPayment" class="input" placeholder="$YourCashtag">
-            </label>
-            <label class="field">
-              Venmo
-              <input name="venmoPayment" class="input" placeholder="@YourVenmo">
-            </label>
-            <label class="field full-field">
-              Payment instructions
-              <textarea name="paymentInstructions" class="textarea" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
-            </label>
-            <label class="field">
-              Payment follow-up reminder
-              <select name="paymentFollowUpHours" class="select">
-                <option value="0">Off</option>
-                <option value="24">24 hours</option>
-                <option value="48">48 hours</option>
-                <option value="72">72 hours</option>
-                <option value="168">1 week</option>
-              </select>
-            </label>
-            <label class="field">
-              Auto estimate follow-up
-              <select name="estimateFollowUpEnabled" class="select">
-                <option value="true">On</option>
-                <option value="false">Off</option>
-              </select>
-            </label>
-            <label class="field">
-              Estimate follow-up delay
-              <select name="estimateFollowUpDelayHours" class="select">
-                <option value="24">24 hours</option>
-                <option value="48">48 hours</option>
-                <option value="72">72 hours</option>
-                <option value="168">1 week</option>
-              </select>
-            </label>
-            <label class="field full-field">
-              Estimate follow-up subject
-              <input name="estimateFollowUpSubject" class="input" placeholder="Following up on your estimate - {jobTitle} at {address}">
-            </label>
-            <label class="field full-field">
-              Estimate follow-up message
-              <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
-              <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
-            </label>
-            <label class="field full-field">
-              Day of Service Instructions
-              <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
-            </label>
-            <label class="field full-field">
-              Google calendar ID
-              <input name="googleCalendarId" class="input" placeholder="Your Google Calendar ID">
-            </label>
-            <label id="googleClientIdField" class="field full-field">
-              Google client ID
-              <input name="googleClientId" class="input" autocomplete="off" placeholder="Google OAuth client ID">
-            </label>
-            <label id="googleClientSecretField" class="field full-field">
-              Google client secret
-              <input name="googleClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter Google client secret">
-            </label>
-            <label id="googleRedirectUriField" class="field full-field">
-              Google redirect URI
-              <input name="googleRedirectUri" class="input" placeholder="Your PressureFlow Google OAuth callback URL">
-            </label>
-            <label id="mapboxTokenField" class="field full-field">
-              Mapbox public token
-              <input name="mapboxPublicToken" class="input" autocomplete="off" placeholder="Required for map measurements">
-            </label>
-          </div>
+          <nav class="settings-jump-list" aria-label="Settings sections">
+            <a href="#settingsBusinessSection">Business</a>
+            <a href="#settingsCalendarSection">Calendar</a>
+            <a href="#settingsServicesSection">Services</a>
+            <a href="#settingsIntegrationsSection">Integrations</a>
+            <a href="#teamAccessSection">Team</a>
+          </nav>
 
-          <section class="settings-section calendar-instructions">
+          <section id="settingsBusinessSection" class="settings-section settings-section--primary" aria-label="Business defaults">
+            <div class="section-header compact-header">
+              <div>
+                <h3>Business defaults</h3>
+                <p class="form-note">Core company details, payment copy, follow-up defaults, and account tokens.</p>
+              </div>
+            </div>
+            <div class="settings-grid form-section">
+              <label class="field">
+                Business name
+                <input name="businessName" class="input" placeholder="Your Pressure Washing LLC">
+              </label>
+              <label class="field">
+                Business email
+                <input name="businessEmail" class="input" type="email" placeholder="you@example.com">
+              </label>
+              <label class="field">
+                Business phone
+                <input name="businessPhone" class="input" placeholder="(555) 123-4567">
+              </label>
+              <label class="field">
+                Service industry
+                <select name="serviceIndustry" class="select">
+                  <option value="">Choose industry</option>
+                  <option value="Pressure Washing">Pressure Washing</option>
+                  <option value="Landscaping">Landscaping</option>
+                  <option value="Handyman">Handyman</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Misc">Misc</option>
+                </select>
+              </label>
+              <label class="field full-field">
+                Company logo
+                <input id="businessLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
+              </label>
+              <div class="full-field logo-settings-row">
+                <img id="businessLogoPreview" alt="Company logo preview" hidden>
+                <button id="clearBusinessLogoButton" class="secondary-small-button" type="button">Remove Logo</button>
+              </div>
+              <label class="field">
+                Default deposit %
+                <input name="defaultDepositPercent" class="input" type="number" min="0" max="100" step="5" value="25">
+              </label>
+              <label class="field">
+                Default job duration
+                <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
+              </label>
+              <label class="field">
+                Zelle
+                <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
+              </label>
+              <label class="field">
+                Cash App
+                <input name="cashAppPayment" class="input" placeholder="$YourCashtag">
+              </label>
+              <label class="field">
+                Venmo
+                <input name="venmoPayment" class="input" placeholder="@YourVenmo">
+              </label>
+              <label class="field full-field">
+                Payment instructions
+                <textarea name="paymentInstructions" class="textarea" rows="3" placeholder="Example: Please include the invoice number or service address in the payment note."></textarea>
+              </label>
+              <label class="field">
+                Payment follow-up reminder
+                <select name="paymentFollowUpHours" class="select">
+                  <option value="0">Off</option>
+                  <option value="24">24 hours</option>
+                  <option value="48">48 hours</option>
+                  <option value="72">72 hours</option>
+                  <option value="168">1 week</option>
+                </select>
+              </label>
+              <label class="field">
+                Auto estimate follow-up
+                <select name="estimateFollowUpEnabled" class="select">
+                  <option value="true">On</option>
+                  <option value="false">Off</option>
+                </select>
+              </label>
+              <label class="field">
+                Estimate follow-up delay
+                <select name="estimateFollowUpDelayHours" class="select">
+                  <option value="24">24 hours</option>
+                  <option value="48">48 hours</option>
+                  <option value="72">72 hours</option>
+                  <option value="168">1 week</option>
+                </select>
+              </label>
+              <label class="field full-field">
+                Estimate follow-up subject
+                <input name="estimateFollowUpSubject" class="input" placeholder="Following up on your estimate - {jobTitle} at {address}">
+              </label>
+              <label class="field full-field">
+                Estimate follow-up message
+                <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
+                <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
+              </label>
+              <label class="field full-field">
+                Day of Service Instructions
+                <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>
+              </label>
+              <label class="field full-field">
+                Google calendar ID
+                <input name="googleCalendarId" class="input" placeholder="Your Google Calendar ID">
+              </label>
+              <label id="googleClientIdField" class="field full-field">
+                Google client ID
+                <input name="googleClientId" class="input" autocomplete="off" placeholder="Google OAuth client ID">
+              </label>
+              <label id="googleClientSecretField" class="field full-field">
+                Google client secret
+                <input name="googleClientSecret" class="input" type="password" autocomplete="off" placeholder="Enter Google client secret">
+              </label>
+              <label id="googleRedirectUriField" class="field full-field">
+                Google redirect URI
+                <input name="googleRedirectUri" class="input" placeholder="Your PressureFlow Google OAuth callback URL">
+              </label>
+              <label id="mapboxTokenField" class="field full-field">
+                Mapbox public token
+                <input name="mapboxPublicToken" class="input" autocomplete="off" placeholder="Required for map measurements">
+              </label>
+            </div>
+          </section>
+
+          <section id="settingsCalendarSection" class="settings-section calendar-instructions">
           <div class="section-header compact-header">
             <div>
               <h3>Google Calendar setup</h3>
@@ -916,7 +949,7 @@
           </ol>
           </section>
 
-          <details class="settings-section onboarding-settings" aria-label="Saved services">
+          <details id="settingsServicesSection" class="settings-section onboarding-settings" aria-label="Saved services">
           <summary>
             <span>
               <strong>Saved services</strong>
@@ -937,7 +970,7 @@
           <p id="onboardingStatus" class="form-note"></p>
           </details>
 
-          <section class="settings-section" aria-label="Payment and accounting integrations">
+          <section id="settingsIntegrationsSection" class="settings-section" aria-label="Payment and accounting integrations">
           <div class="section-header">
             <div>
               <h3>Payment and accounting</h3>

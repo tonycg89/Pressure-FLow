@@ -38,6 +38,9 @@ test("settings and new job modals fit a 375px mobile viewport", async ({ page })
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);
 
+  await expect(page.locator("#notificationToggle .notification-toggle__label")).toHaveText("Activity");
+  await expectNoViewportOverflow(page, "dashboard chrome at 375px");
+
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.locator("#settingsDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#settingsDialog");
