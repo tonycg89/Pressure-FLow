@@ -69,6 +69,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-4 small UX cleanup bundle is complete.
 - Package 07B-5 Measure From Map stability fixes are complete.
 - Package 07B-6 mobile beta hardening is complete.
+- Package 06C-2A critical v0 UX fixes are complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -110,10 +111,23 @@ Mobile beta hardening behavior:
 - Public invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving all information.
 - Automated mobile browser coverage verifies these touch-target and overflow requirements.
 
+Package 06C-2A critical UX fix behavior:
+
+- Settings remains a single modal entry point and opens from Dashboard, Pipeline, Customers, Templates, and Expenses with pressed/expanded state and focus placement.
+- Dashboard, Pipeline, Customers, Templates, and Expenses each display their own active page heading.
+- Estimate builder line items no longer repeat SqFt/rate-like labels; line totals use a clear Line total label.
+- New Job, Settings, Customer, Expense, Schedule, Completion, Follow-up, custom service, photo viewer, measurement, and dynamic remove controls use intentional SVG icon buttons for close/remove affordances where applicable.
+- Expenses navigation uses the existing sidebar SVG icon pattern instead of a literal $ icon.
+- Onboarding business-name placeholder is example-style copy, and onboarding helper/footer text updates by step.
+- Settings and New Job modals are constrained and usable at 375px mobile width with scrollable content and accessible close controls.
+- Files touched for this package: index.html, styles.css, app.js, tests/dashboard-analytics.spec.js, tests/onboarding.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: npm.cmd run check; node --check tests\dashboard-analytics.spec.js, node --check tests\onboarding.spec.js, node --check tests\mobile-hardening.spec.js; npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js.
+- Known follow-up: in-app Browser visual verification could not attach in this Windows sandbox session; targeted Playwright coverage passed.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes and mobile beta hardening are complete.
-- v0 visual/UI audit can begin after the latest 07B fixes are deployed.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, and Package 06C-2A critical v0 UX fixes are complete.
+- v0 visual/UI audit blockers from Package 06C-2A are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## 6. Audit Environment Requirements

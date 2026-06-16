@@ -4,8 +4,8 @@ Last Updated: June 16, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes and mobile beta hardening.
-- v0 visual/UI audit can begin after the latest 07B fixes are deployed.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, and Package 06C-2A critical v0 UX fixes.
+- v0 visual/UI audit blockers from Package 06C-2A are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
 ## Completed Safety / Readiness Work
@@ -26,6 +26,7 @@ Last Updated: June 16, 2026
 - Package 07B-4 small UX cleanup bundle
 - Package 07B-5 Measure From Map stability fixes
 - Package 07B-6 mobile beta hardening
+- Package 06C-2A critical v0 UX fixes
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -70,9 +71,23 @@ Last Updated: June 16, 2026
 ## Testing Status
 
 - `npm.cmd run check`: passing
+- `node --check tests\dashboard-analytics.spec.js`, `node --check tests\onboarding.spec.js`, and `node --check tests\mobile-hardening.spec.js`: passing
+- `npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js`: passing, 9 tests
 - `npm.cmd run smoke:test-user-safety`: passing
 - `npm.cmd run test:browser -- --workers=1`: passing, 27 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 06C-2A Critical UX Fixes
+
+- Settings remains a single modal entry point and now opens reliably from Dashboard, Pipeline, Customers, Templates, and Expenses with pressed/expanded state and focus placement.
+- Main view headings now show the active page title instead of retaining Dashboard copy on other views.
+- Estimate builder line items show one unit label and a clear Line total label instead of repeated SqFt/rate-like text.
+- Modal close controls use a consistent styled SVG icon button while preserving existing close handlers and keyboard behavior.
+- Expenses navigation uses an SVG icon consistent with the sidebar icon system instead of a literal `$` character.
+- Onboarding business-name placeholder now reads as an example, and onboarding footer/helper copy changes for Profile, Services, and Preferences steps.
+- Settings and New Job modal layout is constrained and scrollable on 375px mobile viewports without clipping close controls or form fields.
+- Files touched: `index.html`, `styles.css`, `app.js`, `tests/dashboard-analytics.spec.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`.
+- Known follow-up: in-app Browser visual verification could not attach in this Windows sandbox session; targeted Playwright coverage passed.
 
 ## Payment Method Behavior
 
@@ -115,7 +130,7 @@ Last Updated: June 16, 2026
 
 ## Next
 
-- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, and mobile hardening fixes.
+- Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, mobile hardening, and Package 06C-2A UX fixes.
 - Set the live audit Render environment to `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` and `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, confirm `MAPBOX_PUBLIC_TOKEN` is set, and redeploy.
 - Give v0 the updated app, `PRESSUREFLOW_AI_HANDOFF.md`, and this master status file for visual/UI audit.
 - v0 performs visual/UI audit only and should not assume React, Next.js, Tailwind, shadcn, Radix, or a framework migration.

@@ -274,6 +274,11 @@ const MEASUREMENT_CLOSE_VERTEX_PIXEL_TOLERANCE = 6;
 let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
 let onboardingCurrentStep = 0;
+const onboardingStepHelperText = [
+  "Add the business basics that appear on estimates, invoices, and customer messages.",
+  "Choose the services and starter rates this account should use for new estimates.",
+  "Set final preferences for deposits and email delivery before saving setup."
+];
 
 async function init() {
   navItems.forEach((item) => item.addEventListener("click", switchView));
@@ -295,6 +300,11 @@ async function init() {
     renderExpenses();
   });
   settingsButton.addEventListener("click", openSettings);
+  settingsDialog?.addEventListener("close", () => {
+    settingsButton?.classList.remove("is-pressed");
+    settingsButton?.setAttribute("aria-expanded", "false");
+    settingsButton?.setAttribute("aria-pressed", "false");
+  });
   templateUploadForm?.addEventListener("submit", uploadTemplate);
   jobForm.addEventListener("submit", createJob);
   customerForm.addEventListener("submit", saveCustomer);
@@ -383,6 +393,7 @@ function switchView(event) {
   viewPanels.forEach((panel) => {
     panel.hidden = panel.dataset.viewPanel !== view;
   });
+  closeNotificationDropdown();
 }
 
 async function loadSettings() {
@@ -812,7 +823,13 @@ function openSettings() {
   if (currentUser?.isOwner) {
     loadSettingsUsers();
   }
-  settingsDialog.showModal();
+  settingsButton?.classList.add("is-pressed");
+  settingsButton?.setAttribute("aria-expanded", "true");
+  settingsButton?.setAttribute("aria-pressed", "true");
+  if (!settingsDialog.open) {
+    settingsDialog.showModal();
+  }
+  settingsDialog.querySelector(".modal__close, input, select, textarea, button")?.focus();
 }
 
 function openOnboardingWizardFromSettings() {
@@ -840,9 +857,6 @@ function fillOnboardingForm() {
   onboardingForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
   syncOnboardingDepositVisibility();
   renderBusinessLogoPreview();
-  if (onboardingWizardStatus) {
-    onboardingWizardStatus.textContent = "Choose an industry, pick services, and save your setup.";
-  }
   setOnboardingStep(0);
 }
 
@@ -868,6 +882,13 @@ function setOnboardingStep(stepIndex) {
   if (onboardingSaveButton) {
     onboardingSaveButton.hidden = onboardingCurrentStep !== maxStep;
   }
+  updateOnboardingHelperText();
+}
+
+function updateOnboardingHelperText() {
+  if (!onboardingWizardStatus) return;
+
+  onboardingWizardStatus.textContent = onboardingStepHelperText[onboardingCurrentStep] || onboardingStepHelperText[0];
 }
 
 function requestOnboardingStep(stepIndex) {
@@ -1788,14 +1809,18 @@ function addLineItemRow(item = serviceCatalog[0]) {
       <input class="line-rate input" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
     </label>
     <div class="line-item-total">
-      <span>${escapeHtml(catalogItem.unit)}</span>
+      <span>Line total</span>
       <strong>$0</strong>
     </div>
     <button class="secondary-small-button line-measure" type="button" title="Measure service area" hidden>
       <span aria-hidden="true">&#127760;</span>
       Measure from Map
     </button>
-    <button class="icon-button line-remove" type="button" title="Remove service">X</button>
+    <button class="icon-button line-remove" type="button" title="Remove service" aria-label="Remove service">
+      <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M18 6 6 18M6 6l12 12"></path>
+      </svg>
+    </button>
   `;
 
   row.querySelector(".line-service").addEventListener("change", (event) => {
@@ -1803,7 +1828,6 @@ function addLineItemRow(item = serviceCatalog[0]) {
     if (!selected) return;
     row.querySelector(".line-rate").value = selected.price;
     row.querySelector(".line-quantity-label").textContent = selected.unit;
-    row.querySelector(".line-item-total span").textContent = selected.unit;
     updateMeasurementButtonVisibility();
     updateEstimateTotals();
   });
@@ -2289,7 +2313,11 @@ function renderMeasurementAreas() {
         <span>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</span>
       </div>
       <button class="secondary-small-button" type="button" data-edit-area="${escapeHtml(area.id)}">Edit Shape</button>
-      <button class="icon-button" type="button" title="Remove service area" data-delete-area="${escapeHtml(area.id)}">X</button>
+      <button class="icon-button" type="button" title="Remove service area" aria-label="Remove service area" data-delete-area="${escapeHtml(area.id)}">
+        <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
     </article>
   `).join("");
 

@@ -47,10 +47,13 @@
             <span>Templates</span>
           </button>
           <button class="nav-item" type="button" title="Expenses" data-view="expenses">
-            <span aria-hidden="true">$</span>
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M12 3v18"></path>
+              <path d="M17 7.5c-.8-1.1-2.1-1.7-4-1.7-2.4 0-4 1.1-4 2.8 0 3.9 8 1.8 8 5.9 0 1.9-1.7 3.2-4.4 3.2-2 0-3.6-.7-4.6-2"></path>
+            </svg>
             <span>Expenses</span>
           </button>
-          <button id="settingsButton" class="nav-item" type="button" title="Settings">
+          <button id="settingsButton" class="nav-item" type="button" title="Settings" aria-haspopup="dialog" aria-controls="settingsDialog" aria-expanded="false" aria-pressed="false">
             <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
               <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
               <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2.1 2.1 0 0 1-2.97 2.97l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66V21a2.1 2.1 0 0 1-4.2 0v-.06a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-1.98.36l-.04.04a2.1 2.1 0 1 1-2.97-2.97l.04-.04a1.8 1.8 0 0 0 .36-1.98 1.8 1.8 0 0 0-1.66-1.1H2a2.1 2.1 0 0 1 0-4.2h.06a1.8 1.8 0 0 0 1.66-1.1 1.8 1.8 0 0 0-.36-1.98l-.04-.04a2.1 2.1 0 0 1 2.97-2.97l.04.04a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.1-1.66V2a2.1 2.1 0 0 1 4.2 0v.06a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.04-.04a2.1 2.1 0 0 1 2.97 2.97l-.04.04a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.66 1.1H22a2.1 2.1 0 0 1 0 4.2h-.06a1.8 1.8 0 0 0-1.54 1Z"></path>
@@ -159,7 +162,8 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Templates</p>
-            <h2>Manage the documents PressureFlow uses for estimates, contracts, and customer communications.</h2>
+            <h2>Templates</h2>
+            <p class="dashboard-subtitle">Manage the documents PressureFlow uses for estimates, contracts, and customer communications.</p>
           </div>
         </header>
 
@@ -205,7 +209,8 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Today's Work</p>
-            <h2>Move jobs from lead to paid without losing the thread.</h2>
+            <h2>Pipeline</h2>
+            <p class="dashboard-subtitle">Move jobs from lead to paid without losing the thread.</p>
           </div>
           <button id="newJobButton" class="primary-button" type="button">New Job</button>
         </header>
@@ -260,7 +265,8 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Customer File</p>
-            <h2>Store contacts, service-area photos, and job history before the first estimate.</h2>
+            <h2>Customers</h2>
+            <p class="dashboard-subtitle">Store contacts, service-area photos, and job history before the first estimate.</p>
           </div>
           <button id="newCustomerButton" class="primary-button" type="button">New Customer</button>
         </header>
@@ -293,7 +299,8 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Expenses</p>
-            <h2>Store receipts and track operating costs.</h2>
+            <h2>Expenses</h2>
+            <p class="dashboard-subtitle">Store receipts and track operating costs.</p>
           </div>
           <div class="topbar-actions">
             <label class="compact-select field">
@@ -340,7 +347,11 @@
       <form method="dialog" id="jobForm" class="form-section">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">New job</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close New Job" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -490,7 +501,11 @@
       <form method="dialog" id="customerForm" class="form-section">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">New customer</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Customer" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -576,7 +591,11 @@
       <form method="dialog" id="expenseForm" class="form-section">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">Add expense</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Expense" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -653,7 +672,7 @@
           <div class="settings-grid">
             <label>
               Business name
-              <input name="businessName" required placeholder="Johnson Exterior Cleaning">
+              <input name="businessName" required placeholder="e.g. Johnson Exterior Cleaning">
             </label>
             <label>
               Service industry
@@ -756,7 +775,11 @@
       <form method="dialog" id="settingsForm" class="form-section">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">Business settings</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Settings" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -1075,7 +1098,11 @@
       <form method="dialog" id="customServiceForm" class="form-section">
         <div class="dialog-header">
           <h2>Add custom service</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Custom Service" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
         <label class="field">
           Service name
@@ -1113,7 +1140,11 @@
       <form method="dialog" id="scheduleForm">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">Schedule job</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Schedule Job" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -1149,7 +1180,11 @@
       <form method="dialog" id="completionForm">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">Complete job</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Complete Job" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="modal__body">
@@ -1203,7 +1238,11 @@
       <form method="dialog" id="followUpForm">
         <div class="dialog-header modal__header">
           <h2 class="modal__title">Send follow-up email</h2>
-          <button value="cancel" class="icon-button modal__close" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Follow-up Email" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
         <div class="modal__body">
           <section class="detail-section">
@@ -1222,7 +1261,11 @@
       <form method="dialog">
         <div class="dialog-header">
           <h2 id="photoViewerTitle">Photo</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Photo Viewer" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
         <img id="photoViewerImage" class="photo-viewer-image" alt="Selected job photo">
       </form>
@@ -1232,7 +1275,11 @@
       <form method="dialog" id="measurementForm">
         <div class="dialog-header">
           <h2>Measure from Map</h2>
-          <button value="cancel" class="icon-button" title="Close" type="button" data-close-dialog>X</button>
+          <button value="cancel" class="icon-button modal__close" aria-label="Close Measure from Map" title="Close" type="button" data-close-dialog>
+            <svg class="button-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M18 6 6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
         <div class="map-address-row">
           <label>

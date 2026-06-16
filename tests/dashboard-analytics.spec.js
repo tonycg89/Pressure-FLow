@@ -41,6 +41,34 @@ test("dashboard open jobs excludes paid work and notification bell icon is visib
   expect(iconBox?.height).toBeGreaterThan(0);
 });
 
+test("settings opens from each main view and view headings stay current", async ({ page }) => {
+  await login(page);
+
+  const views = [
+    ["Dashboard", "#dashboardView", "Dashboard"],
+    ["Pipeline", "#pipelineView", "Pipeline"],
+    ["Customers", "#customersView", "Customers"],
+    ["Templates", "#templatesView", "Templates"],
+    ["Expenses", "#expensesView", "Expenses"]
+  ];
+
+  for (const [navName, viewSelector, heading] of views) {
+    await page.getByRole("button", { name: navName }).click();
+    await expect(page.locator(viewSelector)).toBeVisible();
+    await expect(page.locator(`${viewSelector} > .topbar h2`)).toHaveText(heading);
+    if (heading !== "Dashboard") {
+      await expect(page.locator(`${viewSelector} > .topbar h2`)).not.toHaveText("Dashboard");
+    }
+
+    await page.getByRole("button", { name: "Settings", exact: true }).click();
+    await expect(page.locator("#settingsDialog")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Close Settings" }).click();
+    await expect(page.locator("#settingsDialog")).toBeHidden();
+    await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveAttribute("aria-pressed", "false");
+  }
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);

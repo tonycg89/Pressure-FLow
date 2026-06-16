@@ -79,6 +79,10 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Lawn Mowing");
   await lineItem.locator(".line-quantity").fill("1000");
+  await expect(lineItem.locator(".line-item-total span")).toHaveText("Line total");
+  const lineItemText = await lineItem.innerText();
+  expect(lineItemText.match(/SqFt/g) || []).toHaveLength(1);
+  expect(lineItemText.match(/\$0\.04/g) || []).toHaveLength(0);
   await expect(page.locator("#estimateTotal")).toHaveText("$40.00");
   await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
   await expect(page.locator("#jobDialog")).toBeHidden();
@@ -114,6 +118,8 @@ async function loginAndCompleteOnboarding(page) {
   expect(settings.hasMapboxPublicToken).toBe(true);
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
+  await expect(page.locator("#onboardingForm [name='businessName']")).toHaveAttribute("placeholder", "e.g. Johnson Exterior Cleaning");
+  await expect(page.locator("#onboardingWizardStatus")).toHaveText("Add the business basics that appear on estimates, invoices, and customer messages.");
 
   await page.locator("#onboardingForm [name='businessName']").fill("Johnson Exterior Cleaning");
   await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Landscaping");
@@ -130,6 +136,7 @@ async function loginAndCompleteOnboarding(page) {
   await expect(page.locator("#onboardingNextButton")).toBeVisible();
   await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeVisible();
+  await expect(page.locator("#onboardingWizardStatus")).toHaveText("Choose the services and starter rates this account should use for new estimates.");
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Sprinkler Repair'] input[type='checkbox']")).not.toBeChecked();
@@ -142,6 +149,7 @@ async function loginAndCompleteOnboarding(page) {
   await checkOnboardingService(page, "Hedge Trimming");
   await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='2']")).toBeVisible();
+  await expect(page.locator("#onboardingWizardStatus")).toHaveText("Set final preferences for deposits and email delivery before saving setup.");
   await expect(page.locator("#onboardingSaveButton")).toBeVisible();
   await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
   await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");

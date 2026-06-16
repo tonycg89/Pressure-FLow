@@ -34,6 +34,26 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
   await expectMinHeight(page.locator("#jobForm").getByRole("button", { name: "Create Job" }), 44);
 });
 
+test("settings and new job modals fit a 375px mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await login(page);
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.locator("#settingsDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#settingsDialog");
+  await expect(page.getByRole("button", { name: "Close Settings" })).toBeInViewport();
+  await expectNoViewportOverflow(page, "settings modal at 375px");
+  await page.getByRole("button", { name: "Close Settings" }).click();
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#jobDialog");
+  await expect(page.getByRole("button", { name: "Close New Job" })).toBeInViewport();
+  await expect(page.locator("#jobForm [name='customerName']")).toBeEditable();
+  await expectNoViewportOverflow(page, "new job modal at 375px");
+});
+
 test("measure from map controls meet mobile touch target requirements", async ({ page }) => {
   await login(page);
 
@@ -103,6 +123,25 @@ async function expectMinSize(locator, minimumWidth, minimumHeight) {
   const box = await locator.boundingBox();
   expect(box?.width || 0).toBeGreaterThanOrEqual(minimumWidth);
   expect(box?.height || 0).toBeGreaterThanOrEqual(minimumHeight);
+}
+
+async function expectDialogFitsViewport(page, selector) {
+  const result = await page.locator(selector).evaluate((dialog) => {
+    const rect = dialog.getBoundingClientRect();
+    return {
+      left: Math.round(rect.left),
+      right: Math.round(rect.right),
+      top: Math.round(rect.top),
+      bottom: Math.round(rect.bottom),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight
+    };
+  });
+
+  expect(result.left).toBeGreaterThanOrEqual(0);
+  expect(result.right).toBeLessThanOrEqual(result.viewportWidth);
+  expect(result.top).toBeGreaterThanOrEqual(0);
+  expect(result.bottom).toBeLessThanOrEqual(result.viewportHeight);
 }
 
 async function expectNoViewportOverflow(page, label) {
