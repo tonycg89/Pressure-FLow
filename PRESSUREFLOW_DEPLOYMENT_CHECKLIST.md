@@ -1,0 +1,124 @@
+# PressureFlow Deployment Checklist
+
+Last Updated: June 17, 2026
+
+Use this checklist before promoting PressureFlow to a production or beta production environment. Do not paste secret values into this file, tickets, screenshots, or chat logs.
+
+## Required Production Variables
+
+| Variable | Required in production | Sensitive | Default if missing | Depends on it |
+| --- | --- | --- | --- | --- |
+| `NODE_ENV=production` | Yes | No | Development behavior | Enables production startup validation and secure cookies |
+| `PORT` | Render provides | No | `3000` | HTTP server binding |
+| `APP_BASE_URL` | Yes | No | Request host fallback for some links | Public estimate, contract, proof, invoice, and webhook URL generation |
+| `SESSION_SECRET` | Yes | Yes | Local development fallback only | Login session and CSRF signing |
+| `DATABASE_URL` | Yes | Yes | Local JSON storage, blocked in production unless `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` | Production account/customer/job/settings storage |
+| `DATABASE_SSL` | Optional | No | SSL enabled for Postgres | Supabase/Postgres connection mode |
+| `ADMIN_EMAIL` | Recommended | No | Any email accepted for env-admin password login | Owner fallback login when admin password is set |
+| `ADMIN_PASSWORD` or `ADMIN_PASSWORD_SHA256` | Required if no active DB users exist | Yes | No env-admin fallback | Owner fallback login |
+
+Production startup fails if `SESSION_SECRET`, `APP_BASE_URL`, or `DATABASE_URL` are missing, if `APP_BASE_URL` is not `https://`, or if test-only bypass flags are enabled.
+
+## Test/Audit Flags
+
+| Variable | Production use | Sensitive | Default if missing | Notes |
+| --- | --- | --- | --- | --- |
+| `ALLOW_AUTH_DISABLED` | Not allowed | No | `false` | Production startup fails when true |
+| `PRESSUREFLOW_SKIP_EMAIL_DELIVERY` | Not allowed | No | `false` | Production startup fails when true |
+| `PRESSUREFLOW_AUDIT_GOOGLE_MOCK` | Not allowed | No | `false` | Production startup fails when true |
+| `PRESSUREFLOW_DATA_DIR` | Optional for local/test only | No | `data/` | Do not use local JSON as production storage |
+| `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION` | Emergency only | No | `false` | Allows production without `DATABASE_URL`; document any temporary use |
+
+## Google / Email
+
+| Variable | Required in production | Sensitive | Default if missing | Depends on it |
+| --- | --- | --- | --- | --- |
+| `GOOGLE_CLIENT_ID` | Required for Google connect/send | No | Account setting or blank | Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | Required for Google connect/send | Yes | Account setting or blank | Google OAuth/token refresh |
+| `GOOGLE_REDIRECT_URI` | Required for Google connect/send | No | Account setting or blank | OAuth callback |
+| `GOOGLE_REFRESH_TOKEN` | Optional fallback | Yes | Per-account setting | Gmail/Calendar send/schedule |
+| `GOOGLE_CALENDAR_ID` | Optional fallback | No | Per-account setting or primary | Calendar events |
+
+SMTP credentials are stored per account in Settings, not as environment variables. If an account selects SMTP, Settings must include host, port, username, password, and from email.
+
+## Maps
+
+| Variable | Required in production | Sensitive | Default if missing | Depends on it |
+| --- | --- | --- | --- | --- |
+| `MAPBOX_PUBLIC_TOKEN` | Required for map/geocoding workflows | Public token | Account/platform setting or blank | Measure From Map and address/map features |
+
+Startup warns when `MAPBOX_PUBLIC_TOKEN` is missing.
+
+## Payments And Webhooks
+
+| Variable | Required in production | Sensitive | Default if missing | Depends on it |
+| --- | --- | --- | --- | --- |
+| `STRIPE_SECRET_KEY` | Optional platform fallback | Yes | Per-account setting or blank | Stripe Checkout |
+| `STRIPE_WEBHOOK_SECRET` | Required if using env Stripe key/webhook fallback | Yes | Per-account setting or blank | Stripe webhook verification |
+| `SQUARE_ENV` | Optional | No | `sandbox` | Square API host |
+| `SQUARE_ACCESS_TOKEN` | Optional platform fallback | Yes | Per-account setting or blank | Square invoice API |
+| `SQUARE_LOCATION_ID` | Optional platform fallback | No | Per-account setting or blank | Square invoice API |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | Required if using env Square webhook fallback | Yes | Per-account setting or blank | Square webhook verification |
+
+Stripe and Square webhooks fail closed without a valid stored or environment webhook secret. Configure webhook URLs:
+
+```text
+https://<production-host>/webhooks/stripe
+https://<production-host>/webhooks/square
+```
+
+## Optional Admin Text Alerts
+
+| Variable | Required in production | Sensitive | Default if missing | Depends on it |
+| --- | --- | --- | --- | --- |
+| `ENABLE_TWILIO_ALERTS` | Optional | No | Disabled | Admin SMS alerts |
+| `TWILIO_ACCOUNT_SID` | Required only when Twilio enabled | Yes | Alerts skipped | Twilio API |
+| `TWILIO_AUTH_TOKEN` | Required only when Twilio enabled | Yes | Alerts skipped | Twilio API |
+| `TWILIO_FROM_PHONE` | Required only when Twilio enabled | No | Alerts skipped | Twilio sender |
+| `ADMIN_ALERT_PHONE` | Required only when Twilio enabled | Personal data | Alerts skipped | Alert recipient |
+
+Startup warns when Twilio is enabled but any Twilio variable is missing.
+
+## Database Setup
+
+1. Create or confirm the Supabase/Postgres database.
+2. Set `DATABASE_URL` in the deployment platform.
+3. Leave `DATABASE_SSL` unset unless the provider requires `DATABASE_SSL=false`.
+4. Start PressureFlow once; `db.js` initializes and migrates required tables/columns.
+5. Confirm no production data is being written to local JSON files.
+
+## Pre-Deploy Checklist
+
+1. Confirm all required production variables above are set.
+2. Confirm test/audit flags are absent or false.
+3. Confirm owner fallback login exists through `ADMIN_PASSWORD_SHA256` or a known active app user.
+4. Confirm `APP_BASE_URL` is the exact deployed HTTPS origin.
+5. Confirm Google OAuth redirect URI matches `<APP_BASE_URL>/auth/google/callback`.
+6. Confirm Stripe/Square webhook endpoints and secrets are configured.
+7. Confirm `MAPBOX_PUBLIC_TOKEN` is available for field map workflows.
+8. Confirm backup access for Supabase/Postgres before beta testing.
+
+## Post-Deploy Smoke Tests
+
+Run these after every production deploy:
+
+1. Open `/health`; expect `{ "ok": true, "service": "pressureflow" }`.
+2. Log in with an owner/test account.
+3. Create a customer.
+4. Create a job.
+5. Send an estimate using a test email path.
+6. Open the public estimate page and approve it.
+7. Sign a contract.
+8. Send or create a deposit invoice.
+9. Confirm Stripe/Square sandbox webhook updates only the intended invoice.
+10. Schedule a job and confirm Google Calendar behavior.
+11. Complete a job with before/after photos.
+12. Confirm final invoice and completion proof render.
+13. Confirm exports only include the logged-in account's jobs.
+
+## Backup And Rollback
+
+- Confirm Supabase/Postgres point-in-time recovery or backup export before beta traffic.
+- Keep the previous known-good deployment available for rollback.
+- If a deployment fails startup validation, fix environment variables instead of disabling production validation.
+- If webhook signatures fail after deploy, check provider endpoint URLs and proxy headers before rotating secrets.

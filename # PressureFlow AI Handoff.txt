@@ -79,8 +79,21 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07A-4D customer clarity and Pool Service expansion is complete.
 - Package 07B-1 multi-tenant security audit is complete.
 - Package 07B-2 webhook and external integration security audit is complete.
+- Package 07C-1 environment and deployment readiness audit is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
+
+07C-1 environment and deployment readiness behavior:
+
+- Audited environment usage for PORT, NODE_ENV, auth/session secrets, database configuration, APP_BASE_URL, Google/Gmail/Calendar, account SMTP settings, Mapbox, Stripe, Square, Twilio, local/test data paths, and audit/test bypass flags.
+- Added environment.js with production startup validation. In NODE_ENV=production, startup fails closed when SESSION_SECRET, DATABASE_URL, or APP_BASE_URL are missing; when APP_BASE_URL is not https://; or when ALLOW_AUTH_DISABLED, PRESSUREFLOW_SKIP_EMAIL_DELIVERY, or PRESSUREFLOW_AUDIT_GOOGLE_MOCK are enabled.
+- Optional integration gaps log warnings without secret values: partial Google OAuth env, Stripe key without webhook secret, Square credentials without webhook signature key, Twilio alerts missing SMS variables, and missing Mapbox token.
+- /health returns safe JSON { ok: true, service: "pressureflow" } and does not expose configuration details.
+- Unexpected production 500s return generic Unexpected server error. to clients while logging method/path and server-side message.
+- Added PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md with required/optional env variables, sensitivity, defaults, feature dependencies, database setup, Google/Mapbox/payment/webhook/Twilio setup, post-deploy smoke tests, backup, and rollback notes. DEPLOYMENT.md now points to the checklist and documents startup validation.
+- Added tests/environment-readiness.spec.js for health check output, production missing-critical-env failures, production HTTPS base URL validation, and optional integration warnings.
+- Tests run: node --check environment.js; node --check server.js; node --check tests\environment-readiness.spec.js; npm.cmd run test:browser -- tests/environment-readiness.spec.js; npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (52 passed).
+- Remaining deployment checks: set real production variables in Render/Supabase, verify /health, confirm production rejects test flags, verify deployed Stripe/Square webhook signatures, test Google OAuth callback, and confirm backups/rollback access before beta traffic.
 
 07B-2 webhook and external integration security behavior:
 

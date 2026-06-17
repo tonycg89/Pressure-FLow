@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, and Package 07B-2 webhook/external integration security audit.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, and Package 07C-1 environment/deployment readiness audit.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -36,6 +36,7 @@ Last Updated: June 17, 2026
 - Package 07A-4D customer clarity and Pool Service expansion
 - Package 07B-1 multi-tenant security audit
 - Package 07B-2 webhook and external integration security audit
+- Package 07C-1 environment and deployment readiness audit
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -100,7 +101,22 @@ Last Updated: June 17, 2026
 - `npm.cmd run test:browser`: passing, 44 tests
 - `npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js tests/webhook-security.spec.js`: passing, 6 tests
 - `npm.cmd run test:browser`: passing, 48 tests
+- `npm.cmd run test:browser -- tests/environment-readiness.spec.js`: passing, 4 tests
+- `npm.cmd run test:browser`: passing, 52 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 07C-1 Environment + Deployment Readiness Audit
+
+- Environment audit completed for server port, Node mode, auth/session secrets, database settings, app base URL, Google/Gmail/Calendar, SMTP account settings, Mapbox, Stripe, Square, Twilio, local/test data paths, and audit/test bypass flags.
+- Production startup validation added in `environment.js` and wired into `server.js`. In `NODE_ENV=production`, startup now fails closed when `SESSION_SECRET`, `DATABASE_URL`, or `APP_BASE_URL` are missing; when `APP_BASE_URL` is not `https://`; or when `ALLOW_AUTH_DISABLED`, `PRESSUREFLOW_SKIP_EMAIL_DELIVERY`, or `PRESSUREFLOW_AUDIT_GOOGLE_MOCK` are enabled.
+- Optional integration gaps now log clear warnings without printing secret values: partial Google OAuth env, Stripe key without webhook secret, Square credentials without webhook signature key, Twilio alerts missing SMS variables, and missing Mapbox token.
+- Health check now returns safe JSON: `{ "ok": true, "service": "pressureflow" }`, with no config or secret details.
+- Unexpected production 500s now log request method/path and the server-side message, while returning generic `Unexpected server error.` to clients.
+- Deployment documentation added/updated: `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` now lists required/optional variables, sensitivity, defaults, dependent features, database setup, Google/Mapbox/payment/webhook/Twilio setup, smoke tests, backup, and rollback notes. `DEPLOYMENT.md` now points to the checklist and documents startup validation.
+- Tests added: `tests/environment-readiness.spec.js` covers the health check payload, production missing-critical-env failures, production HTTPS `APP_BASE_URL` validation, and optional integration warnings.
+- Files changed: `environment.js`, `server.js`, `tests/environment-readiness.spec.js`, `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`, `DEPLOYMENT.md`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `PRESSUREFLOW_GOVERNANCE.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`, and `# PressureFlow Project Governance.txt`.
+- Tests run: `node --check environment.js`; `node --check server.js`; `node --check tests\environment-readiness.spec.js`; `npm.cmd run test:browser -- tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser`.
+- Remaining deployment checks: set real production environment variables in Render/Supabase, verify `/health` after deploy, confirm production startup rejects test flags, verify deployed Stripe/Square webhook signatures, test Google OAuth callback, and confirm database backups/rollback access before beta traffic.
 
 ## Package 07B-2 Webhook + External Integration Security Audit
 

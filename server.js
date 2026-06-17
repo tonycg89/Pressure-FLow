@@ -74,6 +74,7 @@ const { createEmailDelivery } = require("./email-delivery");
 const { createExportTemplateRoutes } = require("./export-template-routes");
 const { createSettingsUserRoutes } = require("./settings-user-routes");
 const { createRecordRoutes } = require("./record-routes");
+const { assertDeploymentEnvironment } = require("./environment");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -365,7 +366,7 @@ function getAppBaseUrlFromJob(job) {
 
 async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/health") {
-    sendJson(response, 200, { ok: true });
+    sendJson(response, 200, { ok: true, service: "pressureflow" });
     return;
   }
 
@@ -795,11 +796,20 @@ const server = http.createServer(async (request, response) => {
       await serveStatic(response, url, ROOT);
     });
   } catch (error) {
-    sendError(response, error.statusCode || 500, error.message || "Unexpected server error.");
+    const statusCode = error.statusCode || 500;
+    if (statusCode >= 500) {
+      console.error(`PressureFlow request error: ${request.method} ${request.url} - ${error.message}`);
+    }
+    const message = statusCode >= 500 && process.env.NODE_ENV === "production"
+      ? "Unexpected server error."
+      : error.message || "Unexpected server error.";
+    sendError(response, statusCode, message);
   }
 });
 
-ensureDataFile()
+Promise.resolve()
+  .then(() => assertDeploymentEnvironment())
+  .then(ensureDataFile)
   .then(validateStartupSecurity)
   .then(() => {
     server.listen(PORT, () => {

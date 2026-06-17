@@ -2,6 +2,8 @@
 
 PressureFlow is deployed as a Node web service on Render with Supabase/Postgres as the production database.
 
+For the full production environment matrix, webhook setup, smoke test list, backup reminders, and rollback notes, use `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`.
+
 ## Production URL
 
 ```text
@@ -44,6 +46,13 @@ Keep `ADMIN_EMAIL` and `ADMIN_PASSWORD` set as the owner fallback login. Additio
 
 When `NODE_ENV=production`, PressureFlow will not start unless `SESSION_SECRET` is set and authentication is available through `ADMIN_PASSWORD`, `ADMIN_PASSWORD_SHA256`, or at least one active app user. This prevents accidentally deploying the app with login disabled.
 
+Production startup also validates:
+
+- `DATABASE_URL` must be set unless `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` is explicitly used for a temporary maintenance deployment.
+- `APP_BASE_URL` must be set to a valid `https://` URL.
+- `ALLOW_AUTH_DISABLED`, `PRESSUREFLOW_SKIP_EMAIL_DELIVERY`, and `PRESSUREFLOW_AUDIT_GOOGLE_MOCK` must not be enabled in production.
+- Optional integration gaps are logged as warnings without printing secret values.
+
 Google:
 
 ```text
@@ -68,6 +77,8 @@ PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
 ```
 
 Use these only for the audit/test deployment when the tester account is not connected to a dedicated Google test account. This lets Google-dependent send/schedule workflows run without sending real email or creating real calendar events. `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` by itself does not represent a connected Google account.
+
+Do not enable these flags with `NODE_ENV=production`; production startup validation fails closed when they are present.
 
 ## Deferred Production Environment Variables
 
@@ -95,6 +106,8 @@ STRIPE_WEBHOOK_SECRET=
 ```
 
 For tester/customer accounts, enter Square, Stripe, and QuickBooks credentials inside PressureFlow Settings instead of adding them to Render.
+
+QuickBooks credentials are currently stored per account in Settings; there are no QuickBooks environment variables used by the app.
 
 ## Google Console Requirements
 
@@ -128,6 +141,8 @@ Add the business Gmail account as a test user while the Google app is in testing
    - scheduling
    - completion photos/final invoice
    - notification dropdown
+8. Open `/health` and confirm it returns `{"ok":true,"service":"pressureflow"}` without configuration details.
+9. Run the expanded post-deploy checklist in `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`.
 
 ## Local vs Production Storage
 
