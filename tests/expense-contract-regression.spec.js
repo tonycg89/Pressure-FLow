@@ -85,6 +85,15 @@ test("contract project details show the saved business name", async ({ page }) =
   await expect(businessRow).toBeVisible();
 });
 
+test("contractor public link labels use plain language", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Alex Rivera/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("View contract page");
+  await expect(page.locator("#jobDetail")).not.toContainText("Signing link");
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);

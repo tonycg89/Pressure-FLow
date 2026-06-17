@@ -208,7 +208,7 @@
 
     function renderContractLink(job) {
       const url = job.contractSignedAt ? getExecutedContractUrl(job) : (job.contractApprovalUrl || job.squareContractUrl);
-      const label = job.contractSignedAt ? "Executed contract" : "Signing link";
+      const label = job.contractSignedAt ? "View signed contract" : "View contract page";
       return renderLinkedValue(label, url);
     }
 
@@ -217,7 +217,7 @@
         return "Not sent";
       }
 
-      return `<a href="${escapeHtml(job.completionProofUrl)}" target="_blank" rel="noreferrer">Completion PDF</a>`;
+      return `<a href="${escapeHtml(job.completionProofUrl)}" target="_blank" rel="noreferrer">View completion proof</a>`;
     }
 
     return {

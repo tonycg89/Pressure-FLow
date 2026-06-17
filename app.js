@@ -125,6 +125,8 @@ const dashboardChartTitle = document.querySelector("#dashboardChartTitle");
 const dashboardBreakdownEyebrow = document.querySelector("#dashboardBreakdownEyebrow");
 const dashboardBreakdownTitle = document.querySelector("#dashboardBreakdownTitle");
 const dashboardFirstRunPanel = document.querySelector("#dashboardFirstRunPanel");
+const dashboardFirstRunTitle = document.querySelector("#dashboardFirstRunTitle");
+const dashboardFirstRunHint = document.querySelector("#dashboardFirstRunHint");
 const dashboardPaymentSetupPanel = document.querySelector("#dashboardPaymentSetupPanel");
 const sidebarBusinessName = document.querySelector("#sidebarBusinessName");
 const notificationToggle = document.querySelector("#notificationToggle");
@@ -282,6 +284,7 @@ const MEASUREMENT_CLOSE_VERTEX_PIXEL_TOLERANCE = 6;
 let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
 let onboardingCurrentStep = 0;
+let showPostOnboardingGuidance = false;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -299,6 +302,7 @@ async function init() {
   notificationClearAll?.addEventListener("click", clearAllDashboardNotifications);
   document.addEventListener("click", closeNotificationDropdownFromOutside);
   document.addEventListener("click", handleSettingsPaymentClick);
+  document.addEventListener("click", handleFirstCustomerClick);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
   jobCustomerSearch?.addEventListener("input", selectJobCustomer);
@@ -908,6 +912,34 @@ function handleSettingsPaymentClick(event) {
   openSettings({ section: "payment" });
 }
 
+function handleFirstCustomerClick(event) {
+  const trigger = event.target.closest("[data-open-first-customer]");
+  if (!trigger) return;
+
+  event.preventDefault();
+  openFirstCustomerFlow();
+}
+
+function openFirstCustomerFlow() {
+  setActiveView("customers");
+  renderCustomers();
+  saveWorkspaceStateToHash();
+  openNewCustomer();
+}
+
+function viewJobInPipeline(jobId) {
+  selectedJobId = jobId || selectedJobId;
+  setActiveView("pipeline");
+  render();
+}
+
+function openNewJobForCustomerId(customerId) {
+  const customer = customers.find((item) => item.id === customerId);
+  if (customer) {
+    openNewJobForCustomer(customer);
+  }
+}
+
 function openOnboardingWizardFromSettings() {
   if (!onboardingDialog) return;
 
@@ -1040,6 +1072,14 @@ async function saveOnboardingSetup(event) {
     applySettingsDefaults();
     fillSettingsForm();
     onboardingDialog.close();
+    showPostOnboardingGuidance = true;
+    setActiveView("dashboard");
+    renderDashboard();
+    saveWorkspaceStateToHash();
+    showToast("Workspace setup complete.", "success", {
+      label: "Create your first customer",
+      onClick: openFirstCustomerFlow
+    });
   } catch (error) {
     onboardingWizardStatus.textContent = error.message;
   }
@@ -1054,6 +1094,14 @@ async function finishOnboardingLater() {
     syncServiceCatalog();
     applySettingsDefaults();
     onboardingDialog.close();
+    showPostOnboardingGuidance = true;
+    setActiveView("dashboard");
+    renderDashboard();
+    saveWorkspaceStateToHash();
+    showToast("Workspace setup saved.", "success", {
+      label: "Create your first customer",
+      onClick: openFirstCustomerFlow
+    });
   } catch (error) {
     onboardingWizardStatus.textContent = error.message;
   }
@@ -1461,6 +1509,11 @@ async function createJob(event) {
     await loadCustomers();
     if (editingId && saved.job.status === "Lead") {
       showToast("Pricing changed, so the previous estimate/contract/invoice links were reset. Send the updated estimate again.", "info");
+    } else if (!editingId) {
+      showToast("Job created successfully.", "success", {
+        label: "View in Pipeline",
+        onClick: () => viewJobInPipeline(saved.job.id)
+      });
     }
   } catch (error) {
     alert(error.message);
@@ -1534,6 +1587,12 @@ async function saveCustomer(event) {
     customerDialog.close();
     await loadCustomers();
     renderDashboard();
+    if (!editingId) {
+      showToast("Customer created successfully.", "success", {
+        label: "Create a job for this customer",
+        onClick: () => openNewJobForCustomerId(saved.customer.id)
+      });
+    }
   } catch (error) {
     alert(error.message);
   }
@@ -2682,8 +2741,16 @@ function renderDashboard() {
 function renderDashboardFirstRunPanel() {
   if (!dashboardFirstRunPanel) return;
 
-  const hasOperationalData = jobs.length > 0 || customers.length > 0 || expenses.length > 0;
-  dashboardFirstRunPanel.hidden = hasOperationalData;
+  const hasCustomerOrJobData = jobs.length > 0 || customers.length > 0;
+  dashboardFirstRunPanel.hidden = hasCustomerOrJobData;
+  if (dashboardFirstRunTitle) {
+    dashboardFirstRunTitle.textContent = showPostOnboardingGuidance
+      ? "Workspace setup complete"
+      : "Ready for the first workflow";
+  }
+  if (dashboardFirstRunHint) {
+    dashboardFirstRunHint.textContent = "Start by adding a customer, then create a job and send your first estimate.";
+  }
 }
 
 function renderDashboardPaymentSetupPanel() {
@@ -3238,7 +3305,7 @@ function renderJobDetail() {
 
     <section class="detail-section">
       <h4>Links</h4>
-      <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("approval link", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
+      <div class="detail-row"><span>PressureFlow estimate</span><strong>${renderLinkedValue("View customer estimate", job.estimateApprovalUrl || job.squareEstimateUrl)}</strong></div>
       <div class="detail-row"><span>Deposit invoice</span><strong>${renderInvoiceValue(job, "deposit")}</strong></div>
       <div class="detail-row"><span>Final invoice</span><strong>${renderInvoiceValue(job, "final")}</strong></div>
       <div class="detail-row"><span>PressureFlow contract</span><strong>${renderContractLink(job)}</strong></div>
@@ -3915,7 +3982,8 @@ async function runAction(jobId, action, actionPayload = {}) {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
     if (action === "send-square-estimate") {
-      showToast(`Estimate sent to ${updated.job.email}.`);
+      const followUpText = settings.estimateFollowUpEnabled === false ? "" : " Automatic follow-up scheduled.";
+      showToast(`Estimate sent to ${updated.job.email}.${followUpText}`);
     }
     if (action === "send-contract") {
       showToast(`Contract sent to ${updated.job.email}.`);
@@ -3954,7 +4022,7 @@ async function deleteJob(jobId) {
   }
 }
 
-function showToast(message, tone = "success") {
+function showToast(message, tone = "success", action = null) {
   if (!message) return;
 
   if (!toastContainer) {
@@ -3967,7 +4035,20 @@ function showToast(message, tone = "success") {
 
   const toast = document.createElement("div");
   toast.className = `toast toast--${tone}`;
-  toast.textContent = message;
+  const text = document.createElement("span");
+  text.textContent = message;
+  toast.append(text);
+  if (action?.label && typeof action.onClick === "function") {
+    const button = document.createElement("button");
+    button.className = "toast__action";
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      action.onClick();
+      toast.remove();
+    });
+    toast.append(button);
+  }
   toastContainer.append(toast);
 
   window.setTimeout(() => {

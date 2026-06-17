@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Package 07A-4A payment configuration enforcement.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, and Package 07A-4B first-run/post-action guidance.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -31,6 +31,7 @@ Last Updated: June 17, 2026
 - Package 06C-2C final visual consistency polish
 - Package 07A-1 automated end-to-end destructive testing
 - Package 07A-4A payment configuration enforcement
+- Package 07A-4B first-run and post-action guidance
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -87,7 +88,23 @@ Last Updated: June 17, 2026
 - `node --check settings.js`, `node --check job-actions.js`, `node --check public-workflows.js`, `node --check public-pages.js`, `node --check app.js`, `node --check tests\pending-payments.spec.js`, `node --check tests\onboarding.spec.js`, `node --check tests\follow-up-automation.spec.js`, and `node --check tests\mobile-hardening.spec.js`: passing
 - `npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js`: passing, 25 tests
 - `npm.cmd run test:browser -- --workers=1`: passing, 39 tests
+- `node --check app.js`, `node --check assets\detail-rendering.js`, `node --check tests\onboarding.spec.js`, and `node --check tests\expense-contract-regression.spec.js`: passing
+- `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`: passing, 21 tests
+- `npm.cmd run test:browser -- --workers=1`: passing, 40 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 07A-4B First-Run and Post-Action Guidance
+
+- Dashboard first-run guidance now includes a clear `Create your first customer` CTA and explains: `Start by adding a customer, then create a job and send your first estimate.`
+- Completing onboarding now returns users to Dashboard with a `Workspace setup complete` success state and an actionable toast CTA to create the first customer.
+- Customer creation now shows success feedback with a `Create a job for this customer` CTA that opens the existing New Job flow prefilled from the customer.
+- Job creation now shows `Job created successfully.` with a `View in Pipeline` CTA that selects the new job in Pipeline.
+- Estimate send feedback now says `Estimate sent to [email].` and appends `Automatic follow-up scheduled.` only when estimate follow-up automation is enabled.
+- Contractor-side public link labels are plain-language: estimate links use `View customer estimate`, contract links use `View contract page` or `View signed contract`, and completion links use `View completion proof`.
+- Files touched: `index.html`, `app.js`, `styles.css`, `assets/detail-rendering.js`, `tests/onboarding.spec.js`, `tests/expense-contract-regression.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests added/updated: first-run dashboard CTA opens New Customer, post-onboarding success guidance appears, customer creation CTA opens prefilled job creation, job creation CTA navigates to Pipeline, estimate send success includes follow-up scheduling when enabled, and public link labels are plain-language.
+- Tests run: `node --check app.js`; `node --check assets\detail-rendering.js`; `node --check tests\onboarding.spec.js`; `node --check tests\expense-contract-regression.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`; `npm.cmd run test:browser -- --workers=1`.
+- Known follow-up: in-app Browser visual verification remains blocked in this Windows sandbox, so visual confidence comes from targeted Playwright assertions.
 
 ## Package 07A-4A Payment Configuration Enforcement
 

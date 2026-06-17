@@ -740,6 +740,8 @@ label.compact-select {
 }
 
 .toast {
+  display: grid;
+  gap: 10px;
   padding: 13px 15px;
   border: 1px solid var(--status-success-bg);
   border-radius: 8px;
@@ -749,6 +751,17 @@ label.compact-select {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.toast__action {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0 10px;
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .toast--info {

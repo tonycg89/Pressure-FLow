@@ -74,6 +74,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 06C-2C final visual consistency polish is complete.
 - Package 07A-1 automated end-to-end destructive testing is complete.
 - Package 07A-4A payment configuration enforcement is complete.
+- Package 07A-4B first-run and post-action guidance is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -178,9 +179,21 @@ Package 07A-4A payment configuration enforcement behavior:
 - Tests run: node --check settings.js; node --check job-actions.js; node --check public-workflows.js; node --check public-pages.js; node --check app.js; node --check tests\pending-payments.spec.js; node --check tests\onboarding.spec.js; node --check tests\follow-up-automation.spec.js; node --check tests\mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js; npm.cmd run test:browser -- --workers=1.
 - Known follow-up: deployed sandbox verification remains recommended for real Stripe/Square handoff behavior and Gmail/SMTP delivery.
 
+Package 07A-4B first-run and post-action guidance behavior:
+
+- Dashboard first-run guidance includes a Create your first customer CTA and the copy: Start by adding a customer, then create a job and send your first estimate.
+- Completing onboarding shows a Workspace setup complete first-run state and an actionable toast CTA to create the first customer.
+- Creating a customer shows success feedback with a Create a job for this customer CTA that opens the existing New Job flow prefilled from that customer.
+- Creating a job shows Job created successfully. with a View in Pipeline CTA that selects the new job in Pipeline.
+- Sending an estimate shows Estimate sent to [email].; when estimate follow-up automation is enabled, it also says Automatic follow-up scheduled.
+- Contractor-side public link labels now use plain language: View customer estimate, View contract page, View signed contract, and View completion proof.
+- Files touched: index.html, app.js, styles.css, assets/detail-rendering.js, tests/onboarding.spec.js, tests/expense-contract-regression.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: node --check app.js; node --check assets\detail-rendering.js; node --check tests\onboarding.spec.js; node --check tests\expense-contract-regression.spec.js; npm.cmd run check; npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js; npm.cmd run test:browser -- --workers=1.
+- Known follow-up: in-app Browser visual verification remains blocked in this Windows sandbox; targeted Playwright coverage passed.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Package 07A-4A payment configuration enforcement are complete.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, and Package 07A-4B first-run/post-action guidance are complete.
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 

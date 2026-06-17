@@ -19,6 +19,12 @@ test.beforeEach(async () => {
 test("new tester completes onboarding and saves service defaults", async ({ page }) => {
   await loginAndCompleteOnboarding(page);
 
+  await page.locator("#dashboardFirstRunPanel").getByRole("button", { name: "Create your first customer" }).click();
+  await expect(page.locator("#customersView")).toBeVisible();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await page.getByRole("button", { name: "Close Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeHidden();
+
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.locator("#settingsDialog")).toBeVisible();
   await expect(page.locator("#settingsForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
@@ -64,17 +70,13 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await page.locator("#customerForm").getByRole("button", { name: "Save Customer" }).click();
   await expect(page.locator("#customerDialog")).toBeHidden();
   await expect(page.locator("#customerList")).toContainText("Alex Rivera");
+  const customerToast = page.locator(".toast").filter({ hasText: "Customer created successfully." });
+  await expect(customerToast).toBeVisible();
+  await customerToast.getByRole("button", { name: "Create a job for this customer" }).click();
 
-  await page.getByRole("button", { name: "Pipeline" }).click();
-  await page.getByRole("button", { name: "New Job" }).click();
   await expect(page.locator("#jobDialog")).toBeVisible();
-  await page.locator("#jobForm [name='customerName']").fill("Alex Rivera");
-  await page.locator("#jobForm [name='email']").fill("alex.rivera@example.com");
-  await page.locator("#jobForm [name='phone']").fill("(555) 444-1212");
-  await page.locator("#jobForm [name='streetAddress']").fill("100 Main Street");
-  await page.locator("#jobForm [name='city']").fill("Riverside");
-  await page.locator("#jobForm [name='state']").fill("CA");
-  await page.locator("#jobForm [name='zip']").fill("92501");
+  await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Alex Rivera");
+  await expect(page.locator("#jobForm [name='email']")).toHaveValue("alex.rivera@example.com");
   await page.locator("#jobForm [name='serviceType']").fill("Landscape maintenance");
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Lawn Mowing");
@@ -86,6 +88,9 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await expect(page.locator("#estimateTotal")).toHaveText("$40.00");
   await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
   await expect(page.locator("#jobDialog")).toBeHidden();
+  const jobToast = page.locator(".toast").filter({ hasText: "Job created successfully." });
+  await expect(jobToast).toBeVisible();
+  await jobToast.getByRole("button", { name: "View in Pipeline" }).click();
   await expect(page.locator("#jobList")).toContainText("Alex Rivera");
 
   const responsePromise = page.waitForResponse((response) => response.url().includes("/api/jobs/") && response.url().endsWith("/send-square-estimate"));
@@ -95,6 +100,9 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   expect(response.ok()).toBeTruthy();
   const { job } = await response.json();
   expect(job.estimateApprovalUrl).toContain(`/estimate/${job.id}?token=`);
+  await expect(page.locator(".toast").filter({ hasText: "Estimate sent to alex.rivera@example.com. Automatic follow-up scheduled." })).toBeVisible();
+  await expect(page.locator("#jobDetail")).toContainText("View customer estimate");
+  await expect(page.locator("#jobDetail")).not.toContainText("approval link");
 
   const publicPage = await context.newPage();
   await publicPage.goto(job.estimateApprovalUrl);
@@ -164,7 +172,9 @@ async function loginAndCompleteOnboarding(page) {
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeHidden();
   await expect(page.locator("#sidebarBusinessName")).toHaveText("Johnson Exterior Cleaning");
   await expect(page.locator("#dashboardFirstRunPanel")).toBeVisible();
-  await expect(page.locator("#dashboardFirstRunPanel")).toContainText("Ready for the first workflow");
+  await expect(page.locator("#dashboardFirstRunPanel")).toContainText("Workspace setup complete");
+  await expect(page.locator("#dashboardFirstRunPanel")).toContainText("Start by adding a customer, then create a job and send your first estimate.");
+  await expect(page.locator("#dashboardFirstRunPanel").getByRole("button", { name: "Create your first customer" })).toBeVisible();
   await expect(page.locator("#dashboardPaymentSetupPanel")).toBeVisible();
   await expect(page.locator("#dashboardPaymentSetupPanel")).toContainText("Set up payment options before sending invoices.");
 }
