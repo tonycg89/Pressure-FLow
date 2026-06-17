@@ -1,9 +1,9 @@
 PressureFlow Master Status
 
-Last Updated: June 16, 2026
+Last Updated: June 17, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, and Package 06C-2C final visual consistency polish.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, and Package 07A-1 automated destructive testing.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -27,6 +27,7 @@ Completed Safety / Readiness Work:
 - Package 06C-2A critical v0 UX fixes
 - Package 06C-2B customer trust layer polish
 - Package 06C-2C final visual consistency polish
+- Package 07A-1 automated end-to-end destructive testing
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -73,9 +74,20 @@ Testing Status:
 - node --check tests\dashboard-analytics.spec.js, node --check tests\onboarding.spec.js, and node --check tests\mobile-hardening.spec.js: passing
 - npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js: passing, 10 tests
 - In-app Browser visual sanity attempt: blocked by the same Windows sandbox attach error (CreateProcessAsUserW failed: 5); targeted Playwright coverage passed.
+- npm.cmd run test:browser -- --workers=1 tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js: passing, 20 tests
 - npm.cmd run smoke:test-user-safety: passing
-- npm.cmd run test:browser -- --workers=1: passing, 27 tests
+- npm.cmd run test:browser -- --workers=1: passing, 36 tests
 - Playwright is configured for one worker because browser specs share .tmp/playwright-data.
+
+## Package 07A-1 Automated Destructive Testing
+
+- Added focused destructive Playwright coverage for customer edge data, duplicate customer rendering, public estimate token tampering, duplicate estimate approvals, public contract malformed submissions, duplicate contract signing, invalid invoice/proof links, paid invoice state, and manual payment confirmation.
+- Hardened public contract signing so direct POSTs without signer name or signature date fail into the existing customer-safe retry page instead of recording incomplete signature data.
+- Updated manual payment browser coverage for the shared payment-method popup used by job detail and pending-payment flows.
+- Existing mobile destructive coverage remains in tests/mobile-hardening.spec.js for 375px/390px public documents, Settings, New Job, workflow actions, and Mapbox controls.
+- Files touched: public-workflows.js, tests/destructive-workflows.spec.js, tests/pending-payments.spec.js, tests/follow-up-automation.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: npm.cmd run check; node --check public-workflows.js; node --check tests\destructive-workflows.spec.js; node --check tests\pending-payments.spec.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- --workers=1 tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser -- --workers=1.
+- Remaining risk: browser attachment through the in-app Browser plugin is still blocked in this Windows sandbox, so visual verification relies on targeted Playwright assertions. Manual deployed verification is still recommended before beta for real Gmail/SMTP delivery, live Stripe/Square sandbox payment handoff, and real mobile Safari behavior.
 
 Package 06C-2A Critical UX Fixes:
 - Settings remains a single modal entry point and now opens reliably from Dashboard, Pipeline, Customers, Templates, and Expenses with pressed/expanded state and focus placement.

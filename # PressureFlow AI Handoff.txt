@@ -72,6 +72,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 06C-2A critical v0 UX fixes are complete.
 - Package 06C-2B customer trust layer polish is complete.
 - Package 06C-2C final visual consistency polish is complete.
+- Package 07A-1 automated end-to-end destructive testing is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -152,9 +153,20 @@ Package 06C-2C final visual consistency behavior:
 - Tests run: node --check app.js; node --check tests\dashboard-analytics.spec.js; node --check tests\onboarding.spec.js; node --check tests\mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js.
 - Known follow-up: in-app Browser visual verification still cannot attach in this Windows sandbox session (CreateProcessAsUserW failed: 5); targeted Playwright coverage passed.
 
+Package 07A-1 automated destructive testing behavior:
+
+- Added focused destructive Playwright coverage in tests/destructive-workflows.spec.js.
+- Covered customer edge data, duplicate customer rendering, public estimate token tampering, duplicate estimate approvals, public contract malformed submissions, duplicate contract signing, invalid invoice/proof links, paid invoice state, and manual payment confirmation.
+- Public contract signing now validates signer name and signature date server-side, so malformed direct posts redirect to the existing safe sign-error page and do not create incomplete signatures or deposit invoices.
+- Existing manual payment tests now confirm the shared payment-method popup before marking deposit/final invoices paid.
+- Existing mobile destructive coverage remains in tests/mobile-hardening.spec.js.
+- Tests run: npm.cmd run check; node --check public-workflows.js; node --check tests\destructive-workflows.spec.js; node --check tests\pending-payments.spec.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- --workers=1 tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser -- --workers=1.
+- Full browser suite is passing at 36 tests after Package 07A-1.
+- Known follow-up: in-app Browser visual verification is still blocked in this Windows sandbox; manual deployed checks are still recommended for real Gmail/SMTP delivery, live Stripe/Square sandbox handoff, and real mobile Safari.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, and Package 06C-2C final visual consistency polish are complete.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, and Package 07A-1 automated destructive testing are complete.
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 

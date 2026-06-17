@@ -175,13 +175,17 @@ function createPublicWorkflowHandlers({
       }
 
       const settings = await readSettingsForJob(job);
+      const cleanSignerName = limitText(signerName, FIELD_LIMITS.publicSignerName);
       const cleanSignedDate = String(signedDate || "").trim();
-      if (cleanSignedDate && !isValidDateOnly(cleanSignedDate)) {
+      if (!cleanSignerName) {
+        throw validationError("Signer name is required.");
+      }
+      if (!cleanSignedDate || !isValidDateOnly(cleanSignedDate)) {
         throw validationError("Signed date must be a real date in YYYY-MM-DD format.");
       }
 
       job.status = "Contract Signed";
-      job.contractSignerName = limitText(signerName, FIELD_LIMITS.publicSignerName);
+      job.contractSignerName = cleanSignerName;
       job.contractSignedAt = new Date().toISOString();
       job.contractSignedDate = cleanSignedDate;
       job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);

@@ -24,9 +24,11 @@ test("pending payments can be manually confirmed with method and reference", asy
   await expect(page.locator("#pendingPaymentsList")).toContainText("Overdue");
   const alexPayment = page.locator(".pending-payment-row").filter({ hasText: "Alex Rivera" });
   await alexPayment.getByRole("button", { name: "Mark as paid" }).click();
-  await alexPayment.locator("select[name='paymentMethod']").selectOption("Venmo");
-  await alexPayment.locator("input[name='paymentReference']").fill("4829301A");
-  await alexPayment.getByRole("button", { name: "Confirm" }).click();
+  await expect(page.locator("#paymentDialog")).toBeVisible();
+  await page.locator("#paymentDialog select[name='paymentMethod']").selectOption("Venmo");
+  await page.locator("#paymentDialog input[name='paymentReference']").fill("4829301A");
+  await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
+  await expect(page.locator("#paymentDialog")).toBeHidden();
 
   await expect(page.locator("#jobDetail")).toContainText("Deposit Paid");
   await expect(page.locator("#jobDetail")).toContainText("marked paid");

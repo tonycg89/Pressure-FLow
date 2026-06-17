@@ -243,6 +243,8 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
   await page.getByRole("button", { name: /Deposit Drew/ }).click();
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
   await page.getByRole("button", { name: "Mark Deposit Paid" }).click();
+  await expect(page.locator("#paymentDialog")).toBeVisible();
+  await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
   await expect(page.locator("#jobDetail")).toContainText("Deposit Paid");
 
   let tasks = await readTasks();
@@ -259,6 +261,8 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
   expect(invoiceTask).toMatchObject({ status: "pending", source: "auto" });
 
   await page.getByRole("button", { name: "Mark Paid" }).click();
+  await expect(page.locator("#paymentDialog")).toBeVisible();
+  await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
   await expect(page.locator("#jobDetail")).toContainText("Paid");
   tasks = await readTasks();
   const cancelledInvoiceTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "invoice_followup");
