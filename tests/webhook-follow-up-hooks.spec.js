@@ -20,14 +20,14 @@ test("Square payment webhooks cancel matching invoice follow-ups", async () => {
 
 test("Stripe payment webhooks cancel matching invoice follow-ups", async () => {
   const jobs = [
-    job("stripe-deposit-job", "Deposit Sent"),
-    job("stripe-final-job", "Final Invoice Sent")
+    job("stripe-deposit-job", "Deposit Sent", { squareDepositInvoiceId: "stripe-deposit-invoice" }),
+    job("stripe-final-job", "Final Invoice Sent", { squareFinalInvoiceId: "stripe-final-invoice" })
   ];
   const cancellations = [];
   const handlers = createHandlers(jobs, cancellations);
 
-  await handlers.handleStripeWebhook(stripeCheckoutEvent("stripe-deposit-job", "deposit"));
-  await handlers.handleStripeWebhook(stripeCheckoutEvent("stripe-final-job", "final"));
+  await handlers.handleStripeWebhook(stripeCheckoutEvent("stripe-deposit-job", "deposit", "stripe-deposit-invoice", 5000));
+  await handlers.handleStripeWebhook(stripeCheckoutEvent("stripe-final-job", "final", "stripe-final-invoice", 15000));
 
   expect(cancellations).toEqual([
     { jobId: "stripe-deposit-job", reason: "paid", accountId: "acct-hooks", type: "deposit_followup" },
@@ -66,16 +66,18 @@ function squareInvoiceEvent(invoiceId) {
   };
 }
 
-function stripeCheckoutEvent(jobId, invoiceType) {
+function stripeCheckoutEvent(jobId, invoiceType, invoiceId, amountTotal) {
   return {
     type: "checkout.session.completed",
     data: {
       object: {
         payment_status: "paid",
+        amount_total: amountTotal,
         metadata: {
           jobId,
           accountId: "acct-hooks",
-          invoiceType
+          invoiceType,
+          invoiceId
         }
       }
     }

@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, including payment configuration enforcement, first-run guidance, mobile field usability, and customer clarity plus Pool Service expansion.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, and Package 07B-2 webhook/external integration security audit.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -34,6 +34,8 @@ Last Updated: June 17, 2026
 - Package 07A-4B first-run and post-action guidance
 - Package 07A-4C mobile and field usability fixes
 - Package 07A-4D customer clarity and Pool Service expansion
+- Package 07B-1 multi-tenant security audit
+- Package 07B-2 webhook and external integration security audit
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -93,7 +95,37 @@ Last Updated: June 17, 2026
 - `node --check app.js`, `node --check assets\detail-rendering.js`, `node --check tests\onboarding.spec.js`, and `node --check tests\expense-contract-regression.spec.js`: passing
 - `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`: passing, 21 tests
 - `npm.cmd run test:browser -- --workers=1`: passing, 40 tests
+- `npm.cmd run test:browser -- tests/tenant-security.spec.js`: passing, 3 tests
+- `npm.cmd run smoke:test-user-safety`: passing
+- `npm.cmd run test:browser`: passing, 44 tests
+- `npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js tests/webhook-security.spec.js`: passing, 6 tests
+- `npm.cmd run test:browser`: passing, 48 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 07B-2 Webhook + External Integration Security Audit
+
+- Webhook routes audited: `POST /webhooks/stripe`, `POST /webhooks/square`, public Stripe card handoff at `POST /api/public/invoices/:jobId/pay-card`, payment update handlers in `webhooks.js`, invoice creation in `payment-workflows.js`, Stripe/Square helpers in `integrations/stripe.js` and `integrations/square.js`, and follow-up/email side effects triggered by payment events.
+- Signature protections confirmed: Stripe requires a configured webhook secret plus a valid `stripe-signature`; Square requires a configured webhook signature key plus `x-square-hmacsha256-signature`. Missing signatures, invalid signatures, and missing tenant secrets return 401 and do not mutate jobs.
+- Tenant routing protections confirmed: Stripe events now validate metadata `accountId`, `jobId`, `invoiceType`, and `invoiceId` against the stored job before updating payment state. Square events resolve only by stored invoice ID and then validate invoice type and amount against that job. Forged Stripe metadata and unknown Square invoices fail closed.
+- Idempotency protections confirmed: duplicate paid webhooks now return without rewriting `paidAt`, replacing payment records, re-cancelling follow-ups, sending duplicate admin alerts, or sending duplicate completion emails for already-paid invoices.
+- Payment state integrity: deposit events only mark deposit invoices paid; final events only mark final invoices paid; amount mismatches are ignored without mutation; missing/deleted jobs are ignored or rejected safely.
+- Bugs found and fixed: webhook handlers previously accepted Stripe events without checking stored invoice ID/account consistency, did not compare paid amounts when present, and repeated side effects on duplicate paid events. `webhooks.js` now enforces stored-record validation and already-paid idempotency before side effects.
+- Tests added/updated: `tests/webhook-security.spec.js` covers Stripe/Square missing signature, invalid signature, missing secret, valid payment update, duplicate idempotency, forged metadata, unknown invoice, amount mismatch, and already-paid stability. `tests/webhook-follow-up-hooks.spec.js` now includes invoice IDs and amounts for the stricter Stripe contract.
+- Required environment/configuration: per-account `stripeWebhookSecret` or `STRIPE_WEBHOOK_SECRET` fallback for Stripe verification; per-account `squareWebhookSignatureKey` for Square verification; webhook tests use mocked signed payloads and make no live Stripe/Square calls.
+- Files changed: `webhooks.js`, `tests/webhook-follow-up-hooks.spec.js`, `tests/webhook-security.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests run: `node --check webhooks.js`; `node --check tests\webhook-follow-up-hooks.spec.js`; `node --check tests\webhook-security.spec.js`; `npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js tests/webhook-security.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser`.
+- Remaining deployment checks: configure Stripe and Square sandbox webhooks with deployed URLs/secrets, send real sandbox duplicate and mismatched test events if providers support them, and confirm production proxy headers preserve Square's notification URL exactly for signature verification.
+
+## Package 07B-1 Multi-Tenant Security Audit
+
+- Routes audited: authenticated records (`/api/jobs`, `/api/customers`, `/api/expenses`, saved measurements), job actions, settings/session/users, custom templates, job CSV export, follow-up tasks, Square/Stripe webhooks, public estimate/contract/invoice/proof links, Stripe public card handoff, dashboard data feeds, completion photos, customer service-area photos, and local/Postgres storage helpers.
+- Data models audited: accounts, users/settings, customers, jobs, expenses, follow-up tasks, custom templates, inline file/photo records, payment records, public workflow tokens, webhook events, and map/property measurements.
+- Tenant-boundary protections confirmed: authenticated reads/writes/deletes search only tenant-scoped collections; cross-tenant customer/job/expense updates and deletes fail closed; expense-to-job links must resolve inside the current account; job actions cannot act on foreign jobs; settings/templates are per account; job CSV export is tenant-scoped; public links require matching job ID plus token and show generic invalid-link pages when tampered.
+- Weakness found and fixed: local JSON follow-up task storage ignored `accountId` options, so `/api/follow-up-tasks` could list all local/test follow-up tasks and scoped follow-up writes could overwrite foreign tasks in local mode. `db.js` now filters local follow-up reads by `accountId` and merges scoped writes with other tenants preserved, matching the Postgres behavior.
+- Tests added: `tests/tenant-security.spec.js` covers Tenant A vs Tenant B list isolation, dashboard/API data feeds, settings/template isolation, job CSV export scoping, saved measurement isolation, follow-up task isolation, cross-tenant customer/job/expense/measurement writes and deletes, job action blocking, cross-tenant expense links, generic public-token failures, valid public tenant branding, and proof-photo isolation.
+- Files changed: `db.js`, `tests/tenant-security.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests run: `npm.cmd run test:browser -- tests/tenant-security.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser`.
+- Known follow-up: webhook signature behavior and object-storage/file URL access should still be verified against the deployed environment with real Square/Stripe sandbox webhooks and any future external file storage provider. Current inline photos/files remain protected through tenant-scoped parent records and public token checks.
 
 ## Package 07A-4B First-Run and Post-Action Guidance
 

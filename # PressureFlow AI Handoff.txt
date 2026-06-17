@@ -77,8 +77,33 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07A-4B first-run and post-action guidance is complete.
 - Package 07A-4C mobile and field usability fixes are complete.
 - Package 07A-4D customer clarity and Pool Service expansion is complete.
+- Package 07B-1 multi-tenant security audit is complete.
+- Package 07B-2 webhook and external integration security audit is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
+
+07B-2 webhook and external integration security behavior:
+
+- Audited POST /webhooks/stripe, POST /webhooks/square, public Stripe card handoff, webhook payment update handlers, invoice creation helpers, Stripe/Square integration helpers, and follow-up/email side effects triggered by payment events.
+- Stripe webhooks require a configured webhook secret plus a valid stripe-signature; Square webhooks require a configured webhook signature key plus x-square-hmacsha256-signature. Missing signatures, invalid signatures, and missing secrets fail closed with no job mutation.
+- Stripe payment events now validate metadata accountId, jobId, invoiceType, and invoiceId against stored job records before payment state can change. Square payment events resolve by stored invoice ID, then validate invoice type and amount against that job.
+- Duplicate paid webhooks are idempotent: already-paid invoices do not rewrite paidAt, replace payment records, re-cancel follow-ups, send duplicate admin alerts, or send duplicate completion emails.
+- Payment state integrity is enforced: deposit events only mark deposit invoices paid, final events only mark final invoices paid, amount mismatches are ignored without mutation, and missing/deleted jobs fail closed.
+- Fixed webhooks.js so webhook handlers validate stored invoice/account/amount state before side effects and skip duplicate already-paid events.
+- Added tests/webhook-security.spec.js; updated tests/webhook-follow-up-hooks.spec.js for stored invoice IDs and Stripe amounts. Tests cover Stripe/Square missing signature, invalid signature, missing secret, valid update, duplicate idempotency, forged metadata, unknown invoice, amount mismatch, and already-paid stability.
+- Required webhook configuration: per-account stripeWebhookSecret or STRIPE_WEBHOOK_SECRET fallback for Stripe; per-account squareWebhookSignatureKey for Square. Tests use mocked signed payloads and do not call live Stripe or Square APIs.
+- Tests run: node --check webhooks.js; node --check tests\webhook-follow-up-hooks.spec.js; node --check tests\webhook-security.spec.js; npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js tests/webhook-security.spec.js; npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (48 passed).
+- Remaining deployment checks: configure Stripe/Square sandbox webhooks against the deployed URL, verify real provider signatures, confirm duplicate sandbox events remain idempotent, and confirm proxy headers preserve Square's notification URL exactly.
+
+07B-1 multi-tenant security audit behavior:
+
+- Audited authenticated records, job actions, settings/session/users, custom templates, exports, dashboard feeds, saved map measurements, follow-up automations, payment reminders, Square/Stripe webhooks, public estimate/contract/invoice/proof links, Stripe card handoff, completion photos, customer service-area photos, inline file metadata, and local/Postgres storage helpers.
+- Confirmed authenticated customer/job/expense/settings/template/export/dashboard flows are tenant-scoped server-side and fail closed for cross-tenant reads, writes, deletes, and job actions.
+- Confirmed public customer links require matching job ID plus token; tampered estimate, contract, invoice, and proof links return generic customer-safe pages without tenant branding or internal IDs.
+- Fixed a local JSON storage weakness in db.js: follow-up task reads and writes now honor accountId options in local mode, matching Postgres behavior. Before the fix, local/test /api/follow-up-tasks could list all tenants' tasks and scoped writes could overwrite foreign tasks.
+- Added tests/tenant-security.spec.js covering Tenant A/Tenant B isolation for lists, dashboard/API feeds, settings, templates, CSV export, saved measurements, follow-up tasks, cross-tenant mutations/deletes/actions, expense job links, public token tampering, valid public branding, and proof-photo isolation.
+- Tests run: npm.cmd run test:browser -- tests/tenant-security.spec.js; npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (44 passed).
+- Remaining deployment checks: verify real Square/Stripe webhook signatures and tenant routing in the deployed sandbox; re-audit any future external object-storage provider because current file/photo protection relies on inline records plus tenant-scoped parent records and public token checks.
 
 Invoice payment behavior:
 

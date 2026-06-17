@@ -349,7 +349,10 @@ async function readFollowUpTasks(options = {}) {
     return result.rows.map(followUpTaskFromRow);
   }
 
-  return readJson(FOLLOW_UP_TASKS_FILE);
+  const tasks = await readJson(FOLLOW_UP_TASKS_FILE);
+  return options.accountId
+    ? tasks.filter((task) => (task.accountId || "owner") === options.accountId)
+    : tasks;
 }
 
 async function writeFollowUpTasks(tasks, options = {}) {
@@ -380,6 +383,16 @@ async function writeFollowUpTasks(tasks, options = {}) {
     const allTasks = await readJson(FOLLOW_UP_TASKS_FILE);
     const otherTasks = allTasks.filter((task) => (task.accountId || "owner") !== options.accountId);
     await writeJson(FOLLOW_UP_TASKS_FILE, [...otherTasks, ...tasks.map((task) => ({ ...task, accountId: options.accountId }))]);
+    return;
+  }
+
+  if (options.accountId) {
+    const allTasks = await readJson(FOLLOW_UP_TASKS_FILE);
+    const otherAccountTasks = allTasks.filter((task) => (task.accountId || "owner") !== options.accountId);
+    await writeJson(FOLLOW_UP_TASKS_FILE, [
+      ...tasks.map((task) => ({ ...task, accountId: options.accountId })),
+      ...otherAccountTasks
+    ]);
     return;
   }
 

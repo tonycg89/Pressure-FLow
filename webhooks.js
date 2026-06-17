@@ -68,6 +68,16 @@ function createWebhookHandlers({
       return { action: "ignored", reason: "invoice not matched", invoiceId: invoice.id };
     }
 
+    const invoiceType = getInvoiceTypeForInvoice(job, invoice.id);
+    if (!invoiceType) {
+      return { action: "ignored", reason: "invoice mismatch", invoiceId: invoice.id };
+    }
+
+    const amountValidation = validateInvoiceAmount(job, invoiceType, getSquareInvoicePaidCents(invoice));
+    if (!amountValidation.ok) {
+      return { action: "ignored", reason: amountValidation.reason, invoiceId: invoice.id };
+    }
+
     const paid = isSquareInvoicePaid(invoice);
     if (!paid) {
       setInvoiceStatus(job, invoice);
@@ -75,7 +85,11 @@ function createWebhookHandlers({
       return { action: "status_recorded", invoiceId: invoice.id, status: invoice.status || "" };
     }
 
-    if (job.squareDepositInvoiceId === invoice.id) {
+    if (isInvoiceAlreadyPaid(job, invoiceType)) {
+      return { action: "ignored", reason: "already paid", jobId: job.id, invoiceId: invoice.id, invoiceType };
+    }
+
+    if (invoiceType === "deposit") {
       job.status = "Deposit Paid";
       job.squareDepositInvoiceStatus = invoice.status || "PAID";
       job.squareDepositPaidAt = new Date().toISOString();
@@ -84,7 +98,7 @@ function createWebhookHandlers({
       await sendAdminTextAlertSafe(`PressureFlow: Square deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
 
-    if (job.squareFinalInvoiceId === invoice.id) {
+    if (invoiceType === "final") {
       job.status = "Paid";
       job.squareFinalInvoiceStatus = invoice.status || "PAID";
       job.squareFinalPaidAt = new Date().toISOString();
@@ -96,7 +110,7 @@ function createWebhookHandlers({
 
     job.updatedAt = new Date().toISOString();
     await writeJobs(jobs);
-    return { action: "job_updated", jobId: job.id, invoiceId: invoice.id, status: job.status };
+    return { action: "job_updated", jobId: job.id, invoiceId: invoice.id, invoiceType, status: job.status };
   }
 
   async function getStripeWebhookSecret(rawBody) {
@@ -130,12 +144,28 @@ function createWebhookHandlers({
     const jobId = session.metadata?.jobId || "";
     const accountId = String(session.metadata?.accountId || "");
     const invoiceType = session.metadata?.invoiceType === "deposit" ? "deposit" : "final";
+    const invoiceId = String(session.metadata?.invoiceId || "");
     const jobs = accountId && process.env.DATABASE_URL
       ? await readAllJobs({ accountId })
       : await readJobs();
     const job = jobs.find((item) => item.id === jobId);
     if (!job) {
       return { action: "ignored", reason: "job not found", jobId };
+    }
+    if ((job.accountId || "owner") !== accountId) {
+      return { action: "ignored", reason: "account mismatch", jobId };
+    }
+    if (!invoiceId || getStoredInvoiceId(job, invoiceType) !== invoiceId) {
+      return { action: "ignored", reason: "invoice mismatch", jobId, invoiceType };
+    }
+
+    const amountValidation = validateInvoiceAmount(job, invoiceType, getStripeSessionPaidCents(session));
+    if (!amountValidation.ok) {
+      return { action: "ignored", reason: amountValidation.reason, jobId, invoiceType };
+    }
+
+    if (isInvoiceAlreadyPaid(job, invoiceType)) {
+      return { action: "ignored", reason: "already paid", jobId, invoiceType };
     }
 
     if (invoiceType === "deposit") {
@@ -203,6 +233,56 @@ function setInvoiceStatus(job, invoice) {
   job.updatedAt = new Date().toISOString();
 }
 
+function getInvoiceTypeForInvoice(job, invoiceId) {
+  if (job.squareDepositInvoiceId === invoiceId) {
+    return "deposit";
+  }
+  if (job.squareFinalInvoiceId === invoiceId) {
+    return "final";
+  }
+  return "";
+}
+
+function getStoredInvoiceId(job, invoiceType) {
+  return invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
+}
+
+function isInvoiceAlreadyPaid(job, invoiceType) {
+  return invoiceType === "deposit"
+    ? job.squareDepositInvoiceStatus === "PAID" || Boolean(job.squareDepositPaidAt)
+    : job.squareFinalInvoiceStatus === "PAID" || Boolean(job.squareFinalPaidAt);
+}
+
+function validateInvoiceAmount(job, invoiceType, paidCents) {
+  if (paidCents === null) {
+    return { ok: true };
+  }
+  const expectedCents = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
+  return paidCents === expectedCents
+    ? { ok: true }
+    : { ok: false, reason: "amount mismatch" };
+}
+
+function getStripeSessionPaidCents(session) {
+  if (session.amount_total === undefined || session.amount_total === null || session.amount_total === "") {
+    return null;
+  }
+  const amount = Number(session.amount_total);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount) : null;
+}
+
+function getSquareInvoicePaidCents(invoice) {
+  const requests = invoice.payment_requests || [];
+  if (!requests.length) {
+    return null;
+  }
+  const completed = requests.reduce((sum, request) => {
+    const amount = Number(request.total_completed_amount_money?.amount || 0);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
+  return completed > 0 ? completed : null;
+}
+
 function isSquareInvoicePaid(invoice) {
   if (invoice.status === "PAID") {
     return true;
@@ -218,6 +298,8 @@ function isSquareInvoicePaid(invoice) {
 
 module.exports = {
   createWebhookHandlers,
+  getSquareInvoicePaidCents,
+  getStripeSessionPaidCents,
   isSquareInvoicePaid,
   setInvoiceStatus
 };
