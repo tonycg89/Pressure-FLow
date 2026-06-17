@@ -6,6 +6,8 @@ Use this checklist before promoting PressureFlow to a production or beta product
 
 For backup expectations, recovery playbooks, local JSON safety, destructive-action notes, export limits, and payment/webhook recovery procedures, use `PRESSUREFLOW_BACKUP_RECOVERY.md`.
 
+For operational troubleshooting, safe log fields, and the post-deploy smoke checklist, use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`.
+
 ## Required Production Variables
 
 | Variable | Required in production | Sensitive | Default if missing | Depends on it |
@@ -102,7 +104,7 @@ Startup warns when Twilio is enabled but any Twilio variable is missing.
 
 ## Post-Deploy Smoke Tests
 
-Run these after every production deploy:
+Run these after every production deploy. See `PRESSUREFLOW_OPERATIONS_RUNBOOK.md` for the expanded operator checklist.
 
 1. Open `/health`; expect `{ "ok": true, "service": "pressureflow" }`.
 2. Log in with an owner/test account.
@@ -117,6 +119,7 @@ Run these after every production deploy:
 11. Complete a job with before/after photos.
 12. Confirm final invoice and completion proof render.
 13. Confirm exports only include the logged-in account's jobs.
+14. Check Render logs for unexpected `request_failed`, `email_send_failed`, `webhook_signature_rejected`, or `follow_up_send_failed` entries.
 
 ## Backup And Rollback
 

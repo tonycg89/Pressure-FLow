@@ -6,6 +6,8 @@ For the full production environment matrix, webhook setup, smoke test list, back
 
 For the backup/recovery playbook, local JSON fallback safety notes, destructive-action review, export limits, and payment/webhook recovery steps, use `PRESSUREFLOW_BACKUP_RECOVERY.md`.
 
+For operational troubleshooting, safe log fields, and smoke checks during beta, use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`.
+
 ## Production URL
 
 ```text
@@ -145,6 +147,7 @@ Add the business Gmail account as a test user while the Google app is in testing
    - notification dropdown
 8. Open `/health` and confirm it returns `{"ok":true,"service":"pressureflow"}` without configuration details.
 9. Run the expanded post-deploy checklist in `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`.
+10. Use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md` if an email, webhook, automation, calendar, upload, or 500 error needs troubleshooting.
 
 ## Local vs Production Storage
 

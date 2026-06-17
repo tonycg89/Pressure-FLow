@@ -75,6 +75,7 @@ const { createExportTemplateRoutes } = require("./export-template-routes");
 const { createSettingsUserRoutes } = require("./settings-user-routes");
 const { createRecordRoutes } = require("./record-routes");
 const { assertDeploymentEnvironment } = require("./environment");
+const { createOperationalLogger } = require("./operational-logger");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -94,6 +95,7 @@ const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
 const requestContext = new AsyncLocalStorage();
 const jobActionLocks = new Map();
+const operationalLogger = createOperationalLogger();
 
 const {
   authenticateLogin,
@@ -158,7 +160,7 @@ const {
   sendEstimateFollowUpEmail,
   sendPressureFlowInvoiceEmail,
   sendScheduleConfirmationEmail
-} = createEmailDelivery();
+} = createEmailDelivery({ logger: operationalLogger });
 
 const {
   cancelManualFollowUp,
@@ -177,7 +179,8 @@ const {
   sendEstimateFollowUpEmail,
   writeAllJobs,
   writeFollowUpTasks,
-  writeJobs
+  writeJobs,
+  logger: operationalLogger
 });
 
 const {
@@ -190,7 +193,8 @@ const {
   isSquareInvoicePaid,
   itemWorkspaceId,
   readSettingsForJob,
-  sendPressureFlowInvoiceEmail
+  sendPressureFlowInvoiceEmail,
+  logger: operationalLogger
 });
 
 const {
@@ -231,7 +235,8 @@ const {
   sendCompletionCertificateEmailSafe,
   writeAllJobs,
   writeJobs,
-  writeWebhookEvents
+  writeWebhookEvents,
+  logger: operationalLogger
 });
 
 const {
@@ -620,12 +625,26 @@ async function handleApi(request, response, url) {
     const rawBody = await readRawRequestBody(request);
     const verification = await verifySquareWebhookSignature(request, rawBody);
     if (!verification.ok) {
+      operationalLogger.warn("webhook_signature_rejected", {
+        provider: "square",
+        reason: verification.reason
+      });
       await recordWebhookEvent({ provider: "square", status: "rejected", reason: verification.reason });
       sendError(response, 401, verification.message);
       return;
     }
 
-    const event = parseJsonRequestText(rawBody);
+    let event;
+    try {
+      event = parseJsonRequestText(rawBody);
+    } catch (error) {
+      operationalLogger.warn("webhook_payload_parse_failed", {
+        provider: "square",
+        error
+      });
+      sendError(response, 400, "Invalid webhook payload.");
+      return;
+    }
     const result = await handleSquareWebhook(event);
     await recordWebhookEvent({
       provider: "square",
@@ -642,11 +661,25 @@ async function handleApi(request, response, url) {
     const rawBody = await readRawRequestBody(request);
     const verification = await verifyStripeWebhookSignature(request, rawBody);
     if (!verification.ok) {
+      operationalLogger.warn("webhook_signature_rejected", {
+        provider: "stripe",
+        reason: verification.reason
+      });
       sendError(response, 401, verification.message);
       return;
     }
 
-    const event = parseJsonRequestText(rawBody);
+    let event;
+    try {
+      event = parseJsonRequestText(rawBody);
+    } catch (error) {
+      operationalLogger.warn("webhook_payload_parse_failed", {
+        provider: "stripe",
+        error
+      });
+      sendError(response, 400, "Invalid webhook payload.");
+      return;
+    }
     const result = await handleStripeWebhook(event);
     sendJson(response, 200, { ok: true, result });
     return;
@@ -748,6 +781,7 @@ async function verifyStripeWebhookSignature(request, rawBody) {
   if (!secret) {
     return {
       ok: false,
+      reason: "missing signature key",
       message: "Stripe webhook secret is not configured."
     };
   }
@@ -755,6 +789,7 @@ async function verifyStripeWebhookSignature(request, rawBody) {
     ? { ok: true }
     : {
       ok: false,
+      reason: "invalid signature",
       message: "Invalid Stripe webhook signature."
     };
 }
@@ -798,7 +833,12 @@ const server = http.createServer(async (request, response) => {
   } catch (error) {
     const statusCode = error.statusCode || 500;
     if (statusCode >= 500) {
-      console.error(`PressureFlow request error: ${request.method} ${request.url} - ${error.message}`);
+      operationalLogger.error("request_failed", {
+        method: request.method,
+        path: url?.pathname || request.url,
+        statusCode,
+        error
+      });
     }
     const message = statusCode >= 500 && process.env.NODE_ENV === "production"
       ? "Unexpected server error."

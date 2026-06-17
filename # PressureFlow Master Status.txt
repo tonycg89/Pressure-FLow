@@ -3,7 +3,7 @@ PressureFlow Master Status
 Last Updated: June 17, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, and Package 07C-2 backup/recovery/data safety audit.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -36,6 +36,7 @@ Completed Safety / Readiness Work:
 - Package 07B-2 webhook and external integration security audit
 - Package 07C-1 environment and deployment readiness audit
 - Package 07C-2 backup, recovery, and data safety audit
+- Package 07C-3 operational monitoring and error visibility
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -96,7 +97,29 @@ Testing Status:
 - npm.cmd run test:browser -- tests/data-safety.spec.js tests/environment-readiness.spec.js: passing, 6 tests
 - npm.cmd run smoke:test-user-safety: passing
 - npm.cmd run test:browser: passing, 54 tests
+- node --check operational-logger.js, node --check email-delivery.js, node --check follow-ups.js, node --check webhooks.js, node --check server.js, and node --check tests\operational-logger.spec.js: passing
+- npm.cmd run test:browser -- tests/operational-logger.spec.js tests/environment-readiness.spec.js: passing, 10 tests
+- npm.cmd run test:browser -- tests/operational-logger.spec.js tests/webhook-security.spec.js: passing, 9 tests
+- npm.cmd run check: passing
+- npm.cmd run smoke:test-user-safety: passing
+- npm.cmd run test:browser: passing, 59 tests
 - Playwright is configured for one worker because browser specs share .tmp/playwright-data.
+
+Package 07C-3 Operational Monitoring + Error Visibility:
+- Error logging audit completed for API/public routes, webhooks, email delivery, follow-up automation, payment invoice cancellation, Google/SMTP send paths, exports/templates, auth/startup, and production 500 handling.
+- Added operational-logger.js as a lightweight safe logging helper. Logs use JSON-shaped lines with action, safe account/job/customer/invoice/event context, and redacted error details. Secret-like keys, bearer tokens, and URL token/signature/password/secret parameters are redacted.
+- Email visibility improved in email-delivery.js: email send failures now log email_send_failed with email type, accountId, jobId/customerId, provider, masked recipient, recipient domain, and safe error details. Audit skipped-email logs no longer print full customer addresses or subjects.
+- Webhook visibility improved in server.js and webhooks.js: missing/invalid signatures, invalid payloads, unknown invoices/jobs, tenant/account mismatches, invoice mismatches, amount mismatches, duplicate/already-paid events, status-only events, and successful payment updates now emit safe structured context without raw payloads or signatures.
+- Automation visibility improved in follow-ups.js: scheduled, skipped, duplicate-reused, cancelled, auto-skipped, and failed follow-up sends now log account/job/task/type/reason context.
+- Payment cancellation visibility improved in payment-workflows.js: Square invoice cancellation failures now log account/job/invoice/integration context safely.
+- Production request 500 handling now uses the safe logger while preserving the Package 07C-1 generic client-facing production error response.
+- Added PRESSUREFLOW_OPERATIONS_RUNBOOK.md with where-to-look-first guidance, log field explanations, troubleshooting steps for email/webhook/public link/automation/calendar/upload/500/health issues, and an expanded post-deploy smoke checklist.
+- Deployment docs updated: PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md and DEPLOYMENT.md now point to the operations runbook; the checklist includes a log review step after deploy.
+- Activity/audit trail review: important events are visible through job state, follow-up task records, provider dashboards, Square webhook event records, and operational logs. A full in-app admin activity timeline is documented as a future improvement, not built in this package.
+- Tests added: tests/operational-logger.spec.js covers logger redaction, email masking/domain helpers, consistent log shape, email failure logging without bodies/secrets/full recipients, and webhook ignored-event logging with safe context.
+- Files changed: operational-logger.js, email-delivery.js, follow-ups.js, webhooks.js, server.js, payment-workflows.js, tests/operational-logger.spec.js, PRESSUREFLOW_OPERATIONS_RUNBOOK.md, PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md, DEPLOYMENT.md, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, PRESSUREFLOW_GOVERNANCE.md, # PressureFlow Master Status.txt, # PressureFlow AI Handoff.txt, and # PressureFlow Project Governance.txt.
+- Tests run: node --check operational-logger.js; node --check email-delivery.js; node --check follow-ups.js; node --check webhooks.js; node --check server.js; node --check tests\operational-logger.spec.js; npm.cmd run test:browser -- tests/operational-logger.spec.js tests/environment-readiness.spec.js; npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser; npm.cmd run test:browser -- tests/operational-logger.spec.js tests/webhook-security.spec.js.
+- Known follow-up: consider a compact owner-only activity/audit timeline after beta support patterns are known; current package intentionally stays with logs/runbooks rather than adding a monitoring platform or admin dashboard.
 
 Package 07C-2 Backup, Recovery + Data Safety:
 - Data storage audit completed for Supabase/Postgres storage, local JSON fallback files, customers, jobs, estimates, contracts, invoices, payments, expenses, settings, templates, follow-up tasks, saved measurements, inline logos/photos/files, public tokens, webhook events, and exports.

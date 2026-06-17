@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const { getDepositCents, getFinalBalanceCents } = require("./billing");
 const { createStripeCheckoutSessionRequest } = require("./integrations/stripe");
+const { createOperationalLogger } = require("./operational-logger");
 const { buildInvoiceUrl } = require("./public-workflows");
 
 function createPaymentHandlers({
@@ -10,6 +11,7 @@ function createPaymentHandlers({
   itemWorkspaceId,
   readSettingsForJob,
   sendPressureFlowInvoiceEmail,
+  logger = createOperationalLogger(),
   warn = console.warn
 }) {
   async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl) {
@@ -50,6 +52,14 @@ function createPaymentHandlers({
         await cancelSquareInvoice(settings, invoice.id, invoice.version);
       }
     } catch (error) {
+      logger.warn("invoice_cancel_failed", {
+        accountId: itemWorkspaceId(job),
+        jobId: job.id,
+        invoiceType,
+        invoiceId,
+        integration: "square",
+        error
+      });
       warn(`Unable to cancel ${invoiceType} invoice ${invoiceId}: ${error.message}`);
     }
   }

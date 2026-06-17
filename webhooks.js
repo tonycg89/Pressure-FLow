@@ -8,6 +8,7 @@ const {
 const { getBaseUrlFromLink } = require("./rendering");
 const { extractSquareInvoice, parseSquareWebhookInvoiceId } = require("./integrations/square");
 const { parseStripeWebhookMetadata } = require("./integrations/stripe");
+const { createOperationalLogger } = require("./operational-logger");
 
 function createWebhookHandlers({
   cancelPendingFollowUp = async () => {},
@@ -20,7 +21,8 @@ function createWebhookHandlers({
   sendCompletionCertificateEmailSafe,
   writeAllJobs,
   writeJobs,
-  writeWebhookEvents
+  writeWebhookEvents,
+  logger = createOperationalLogger()
 }) {
   async function recordWebhookEvent(event) {
     const events = await readWebhookEvents();
@@ -58,35 +60,35 @@ function createWebhookHandlers({
   async function handleSquareWebhook(event) {
     const invoice = extractSquareInvoice(event);
     if (!invoice?.id) {
-      return { action: "ignored", reason: "no invoice id found" };
+      return logWebhookResult("square", { action: "ignored", reason: "no invoice id found" }, event);
     }
 
     const jobs = await readJobs();
     const job = await findJobBySquareInvoiceId(invoice.id, { jobs });
 
     if (!job) {
-      return { action: "ignored", reason: "invoice not matched", invoiceId: invoice.id };
+      return logWebhookResult("square", { action: "ignored", reason: "invoice not matched", invoiceId: invoice.id }, event);
     }
 
     const invoiceType = getInvoiceTypeForInvoice(job, invoice.id);
     if (!invoiceType) {
-      return { action: "ignored", reason: "invoice mismatch", invoiceId: invoice.id };
+      return logWebhookResult("square", { action: "ignored", reason: "invoice mismatch", invoiceId: invoice.id }, event);
     }
 
     const amountValidation = validateInvoiceAmount(job, invoiceType, getSquareInvoicePaidCents(invoice));
     if (!amountValidation.ok) {
-      return { action: "ignored", reason: amountValidation.reason, invoiceId: invoice.id };
+      return logWebhookResult("square", { action: "ignored", reason: amountValidation.reason, invoiceId: invoice.id, jobId: job.id, invoiceType }, event);
     }
 
     const paid = isSquareInvoicePaid(invoice);
     if (!paid) {
       setInvoiceStatus(job, invoice);
       await writeJobs(jobs);
-      return { action: "status_recorded", invoiceId: invoice.id, status: invoice.status || "" };
+      return logWebhookResult("square", { action: "status_recorded", invoiceId: invoice.id, jobId: job.id, invoiceType, status: invoice.status || "" }, event);
     }
 
     if (isInvoiceAlreadyPaid(job, invoiceType)) {
-      return { action: "ignored", reason: "already paid", jobId: job.id, invoiceId: invoice.id, invoiceType };
+      return logWebhookResult("square", { action: "ignored", reason: "already paid", jobId: job.id, invoiceId: invoice.id, invoiceType }, event);
     }
 
     if (invoiceType === "deposit") {
@@ -110,7 +112,7 @@ function createWebhookHandlers({
 
     job.updatedAt = new Date().toISOString();
     await writeJobs(jobs);
-    return { action: "job_updated", jobId: job.id, invoiceId: invoice.id, invoiceType, status: job.status };
+    return logWebhookResult("square", { action: "job_updated", jobId: job.id, invoiceId: invoice.id, invoiceType, status: job.status }, event);
   }
 
   async function getStripeWebhookSecret(rawBody) {
@@ -133,12 +135,12 @@ function createWebhookHandlers({
 
   async function handleStripeWebhook(event) {
     if (event.type !== "checkout.session.completed") {
-      return { action: "ignored", type: event.type || "" };
+      return logWebhookResult("stripe", { action: "ignored", reason: "unsupported event type", type: event.type || "" }, event);
     }
 
     const session = event.data?.object || {};
     if (session.payment_status && session.payment_status !== "paid") {
-      return { action: "ignored", reason: "checkout not paid" };
+      return logWebhookResult("stripe", { action: "ignored", reason: "checkout not paid", eventId: event.id || "" }, event);
     }
 
     const jobId = session.metadata?.jobId || "";
@@ -150,22 +152,22 @@ function createWebhookHandlers({
       : await readJobs();
     const job = jobs.find((item) => item.id === jobId);
     if (!job) {
-      return { action: "ignored", reason: "job not found", jobId };
+      return logWebhookResult("stripe", { action: "ignored", reason: "job not found", jobId, accountId }, event);
     }
     if ((job.accountId || "owner") !== accountId) {
-      return { action: "ignored", reason: "account mismatch", jobId };
+      return logWebhookResult("stripe", { action: "ignored", reason: "account mismatch", jobId, accountId });
     }
     if (!invoiceId || getStoredInvoiceId(job, invoiceType) !== invoiceId) {
-      return { action: "ignored", reason: "invoice mismatch", jobId, invoiceType };
+      return logWebhookResult("stripe", { action: "ignored", reason: "invoice mismatch", jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     const amountValidation = validateInvoiceAmount(job, invoiceType, getStripeSessionPaidCents(session));
     if (!amountValidation.ok) {
-      return { action: "ignored", reason: amountValidation.reason, jobId, invoiceType };
+      return logWebhookResult("stripe", { action: "ignored", reason: amountValidation.reason, jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     if (isInvoiceAlreadyPaid(job, invoiceType)) {
-      return { action: "ignored", reason: "already paid", jobId, invoiceType };
+      return logWebhookResult("stripe", { action: "ignored", reason: "already paid", jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     if (invoiceType === "deposit") {
@@ -191,7 +193,29 @@ function createWebhookHandlers({
     } else {
       await writeJobs(jobs);
     }
-    return { action: "job_updated", jobId: job.id, invoiceType, status: job.status };
+    return logWebhookResult("stripe", { action: "job_updated", jobId: job.id, accountId, invoiceType, invoiceId, status: job.status }, event);
+  }
+
+  function logWebhookResult(provider, result, event = {}) {
+    const context = {
+      provider,
+      action: result.action,
+      reason: result.reason || "",
+      eventId: result.eventId || event.id || event.event_id || "",
+      jobId: result.jobId || "",
+      accountId: result.accountId || "",
+      invoiceId: result.invoiceId || "",
+      invoiceType: result.invoiceType || "",
+      type: result.type || event.type || "",
+      status: result.status || ""
+    };
+    if (result.action === "ignored") {
+      const isExpectedDuplicate = result.reason === "already paid";
+      logger[isExpectedDuplicate ? "info" : "warn"]("webhook_event_ignored", context);
+    } else {
+      logger.info("webhook_event_processed", context);
+    }
+    return result;
   }
 
   return {

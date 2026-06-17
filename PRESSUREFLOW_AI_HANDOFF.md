@@ -81,8 +81,24 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-2 webhook and external integration security audit is complete.
 - Package 07C-1 environment and deployment readiness audit is complete.
 - Package 07C-2 backup, recovery, and data safety audit is complete.
+- Package 07C-3 operational monitoring and error visibility is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
+
+07C-3 operational monitoring and error visibility behavior:
+
+- Added `operational-logger.js`, a lightweight console-based safe logger. It emits JSON-shaped lines with `action`, safe operational context, and redacted error details. Secret-like keys, bearer tokens, webhook signatures, and URL token/signature/password/secret parameters are redacted.
+- Email failures in `email-delivery.js` now log `email_send_failed` with email type, accountId, jobId/customerId, provider, masked recipient, recipient domain, and safe error details. Audit skipped-email logs no longer print full customer email addresses or subjects.
+- Webhook visibility improved in `server.js` and `webhooks.js`: rejected signatures, invalid JSON payloads, unsupported events, unknown invoices/jobs, account mismatches, invoice mismatches, amount mismatches, already-paid duplicates, status-only events, and successful payment updates emit safe structured context.
+- Follow-up automation in `follow-ups.js` now logs scheduled, skipped, duplicate-reused, cancelled, auto-skipped, and failed send events with account/job/task/type/reason context.
+- Payment cancellation failures in `payment-workflows.js` now log safe account/job/invoice/integration context.
+- Production 500 request logging now uses the safe operational logger while keeping generic client-facing production errors.
+- Added `PRESSUREFLOW_OPERATIONS_RUNBOOK.md` with where-to-look-first guidance, log field explanations, troubleshooting steps for email/webhook/public link/automation/calendar/upload/500/health failures, and a post-deploy smoke checklist.
+- Updated `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` and `DEPLOYMENT.md` to reference the operations runbook and include post-deploy log review.
+- Activity trail review: important state changes remain visible through job state, follow-up tasks, Square webhook events, provider dashboards, and operational logs. A full in-app owner activity timeline is documented as future work.
+- Added `tests/operational-logger.spec.js` for redaction, email masking/domain helpers, log shape, email failure visibility without body/secrets/full recipient, and safe webhook ignored-event logging.
+- Tests run: `node --check operational-logger.js`; `node --check email-delivery.js`; `node --check follow-ups.js`; `node --check webhooks.js`; `node --check server.js`; `node --check tests\operational-logger.spec.js`; `npm.cmd run test:browser -- tests/operational-logger.spec.js tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed); `npm.cmd run test:browser -- tests/operational-logger.spec.js tests/webhook-security.spec.js`.
+- Remaining follow-up: consider a compact owner-only activity/audit timeline after beta support patterns prove it is needed.
 
 07C-2 backup, recovery, and data safety behavior:
 

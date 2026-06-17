@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const { statuses } = require("./db");
+const { createOperationalLogger } = require("./operational-logger");
 
 const FOLLOW_UP_TYPE = "estimate_followup";
 const FOLLOW_UP_TYPES = {
@@ -50,6 +51,7 @@ function createFollowUpHandlers({
   writeAllJobs,
   writeFollowUpTasks,
   writeJobs,
+  logger = createOperationalLogger(),
   warn = console.warn
 }) {
   async function scheduleEstimateFollowUp(job, settings) {
@@ -58,16 +60,35 @@ function createFollowUpHandlers({
 
   async function scheduleFollowUp(job, settings, type = getActiveFollowUpType(job)) {
     if (!job?.id || settings.estimateFollowUpEnabled === false || job.suppressEstimateFollowUp) {
+      logger.info("follow_up_schedule_skipped", {
+        accountId: job?.accountId || "owner",
+        jobId: job?.id || "",
+        reason: !job?.id ? "missing_job" : settings.estimateFollowUpEnabled === false ? "disabled" : "suppressed"
+      });
       return null;
     }
     const config = FOLLOW_UP_CONFIG[type];
     if (!config?.canSend(job)) {
+      logger.info("follow_up_schedule_skipped", {
+        accountId: itemWorkspaceId(job),
+        jobId: job.id,
+        type,
+        reason: "not_sendable"
+      });
       return null;
     }
 
     const accountId = itemWorkspaceId(job);
     const tasks = await readScopedTasks(accountId);
     const existing = tasks.find((task) => task.jobId === job.id && task.type === type && task.status === "pending");
+    if (existing) {
+      logger.info("follow_up_duplicate_pending_reused", {
+        accountId,
+        jobId: job.id,
+        taskId: existing.id,
+        type
+      });
+    }
     const now = new Date().toISOString();
     const scheduledFor = new Date(new Date(config.sentAtField ? job[config.sentAtField] || now : now).getTime() + getDelayMs(settings)).toISOString();
     const task = existing || {
@@ -88,6 +109,13 @@ function createFollowUpHandlers({
     });
 
     await writeScopedTasks(upsertTask(tasks, task), accountId);
+    logger.info("follow_up_scheduled", {
+      accountId,
+      jobId: job.id,
+      taskId: task.id,
+      type,
+      scheduledFor
+    });
     return task;
   }
 
@@ -110,6 +138,12 @@ function createFollowUpHandlers({
 
     if (changed) {
       await writeScopedTasks(updatedTasks, accountId);
+      logger.info("follow_up_cancelled", {
+        accountId: accountId || "",
+        jobId,
+        type,
+        reason
+      });
     }
     return changed;
   }
@@ -164,6 +198,13 @@ function createFollowUpHandlers({
       if (cancellationReason) {
         updatedTasks[index] = cancelTask(task, cancellationReason);
         tasksChanged = true;
+        logger.info("follow_up_task_skipped", {
+          accountId: task.accountId || "",
+          jobId: task.jobId,
+          taskId: task.id,
+          type: task.type,
+          reason: cancellationReason
+        });
         continue;
       }
 
@@ -180,6 +221,13 @@ function createFollowUpHandlers({
         tasksChanged = true;
         jobsChanged = true;
       } catch (error) {
+        logger.error("follow_up_send_failed", {
+          accountId: task.accountId || "",
+          jobId: task.jobId,
+          taskId: task.id,
+          type: task.type,
+          error
+        });
         warn(`Unable to send ${task.type} for job ${task.jobId}: ${error.message}`);
       }
     }

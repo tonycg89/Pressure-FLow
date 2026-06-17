@@ -9,6 +9,11 @@ const {
 } = require("./email-content");
 const { sendGmailEmail } = require("./integrations/google");
 const { sendSmtpEmail } = require("./integrations/smtp");
+const {
+  createOperationalLogger,
+  maskEmail,
+  recipientDomain
+} = require("./operational-logger");
 const { getBaseUrlFromLink } = require("./rendering");
 const {
   buildScheduleInviteAttachment,
@@ -16,31 +21,35 @@ const {
   getDayOfServiceInstructions
 } = require("./scheduling");
 
-function createEmailDelivery({ warn = console.warn } = {}) {
+function createEmailDelivery({ logger = createOperationalLogger(), warn = console.warn } = {}) {
   async function sendEstimateEmail(job, settings) {
-    await sendCustomerEmail(settings, buildEstimateEmailMessage(job, settings));
+    await sendCustomerEmail(settings, buildEstimateEmailMessage(job, settings), { ...emailContext("estimate", job, settings), logger });
   }
 
   async function sendEstimateFollowUpEmail(job, settings, type = "estimate_followup") {
-    await sendCustomerEmail(settings, buildFollowUpEmailMessage(job, settings, type));
+    await sendCustomerEmail(settings, buildFollowUpEmailMessage(job, settings, type), { ...emailContext(type, job, settings), logger });
   }
 
   async function sendContractEmail(job, settings) {
-    await sendCustomerEmail(settings, buildContractEmailMessage(job, settings));
+    await sendCustomerEmail(settings, buildContractEmailMessage(job, settings), { ...emailContext("contract", job, settings), logger });
   }
 
   async function sendPressureFlowInvoiceEmail(job, settings, invoiceType, invoiceUrl) {
-    await sendCustomerEmail(settings, buildPressureFlowInvoiceEmailMessage(job, settings, invoiceType, invoiceUrl));
+    await sendCustomerEmail(settings, buildPressureFlowInvoiceEmailMessage(job, settings, invoiceType, invoiceUrl), { ...emailContext(`${invoiceType}_invoice`, job, settings), logger });
   }
 
   async function sendCompletionCertificateEmail(job, settings, baseUrl) {
-    await sendCustomerEmail(settings, buildCompletionCertificateEmailMessage(job, settings, baseUrl));
+    await sendCustomerEmail(settings, buildCompletionCertificateEmailMessage(job, settings, baseUrl), { ...emailContext("completion_proof", job, settings), logger });
   }
 
   async function sendCompletionCertificateEmailSafe(job, settings, baseUrl) {
     try {
       await sendCompletionCertificateEmail(job, settings, baseUrl || getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
     } catch (error) {
+      logger.warn("email_send_safe_completion_failed", {
+        ...emailContext("completion_proof", job, settings),
+        error
+      });
       warn(`Unable to send completion certificate for job ${job.id}: ${error.message}`);
     }
   }
@@ -55,7 +64,7 @@ function createEmailDelivery({ warn = console.warn } = {}) {
       buildScheduleInviteAttachment(job, settings),
       scheduleText,
       instructions
-    ));
+    ), { ...emailContext("schedule_confirmation", job, settings), logger });
   }
 
   return {
@@ -69,24 +78,58 @@ function createEmailDelivery({ warn = console.warn } = {}) {
   };
 }
 
-async function sendCustomerEmail(settings, message) {
+async function sendCustomerEmail(settings, message, context = {}) {
+  const logger = context.logger || createOperationalLogger();
+  const { logger: _logger, ...safeContext } = context;
+  const provider = settings.emailSendProvider === "smtp" ? "smtp" : "google";
+  const logContext = {
+    ...safeContext,
+    provider,
+    recipient: maskEmail(message.to),
+    recipientDomain: recipientDomain(message.to)
+  };
+
   if (process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY === "true") {
     if (settings.emailSendProvider !== "smtp" && !settings.googleRefreshToken && !isAuditGoogleMockEnabled()) {
-      throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+      const error = new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+      logger.error("email_send_failed", {
+        ...logContext,
+        reason: "google_not_connected",
+        error
+      });
+      throw error;
     }
     const result = { id: `skipped-email-${Date.now()}`, skipped: true, to: message.to };
     if (isAuditGoogleMockEnabled()) {
       result.auditGoogleMock = true;
-      console.info(`PressureFlow audit Google mock: skipped email to ${message.to} (${message.subject}).`);
+      logger.info("email_send_skipped_audit_mock", logContext);
     }
     return result;
   }
 
-  if (settings.emailSendProvider === "smtp") {
-    return sendSmtpEmail(settings, message);
-  }
+  try {
+    if (settings.emailSendProvider === "smtp") {
+      return await sendSmtpEmail(settings, message);
+    }
 
-  return sendGmailEmail(settings, message);
+    return await sendGmailEmail(settings, message);
+  } catch (error) {
+    logger.error("email_send_failed", {
+      ...logContext,
+      error
+    });
+    throw error;
+  }
+}
+
+function emailContext(type, job = {}, settings = {}) {
+  return {
+    emailType: type,
+    accountId: job.accountId || "owner",
+    jobId: job.id || "",
+    customerId: job.customerId || "",
+    provider: settings.emailSendProvider === "smtp" ? "smtp" : "google"
+  };
 }
 
 function isAuditGoogleMockEnabled() {
