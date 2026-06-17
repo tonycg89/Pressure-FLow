@@ -85,6 +85,15 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
+Phase 07D deployment sandbox verification status:
+
+- Added `PRESSUREFLOW_SANDBOX_VERIFICATION.md` as the external-beta sandbox verification tracker with pass/fail/manual fields, external provider setup notes, rollback triggers, and beta go/no-go criteria.
+- Read-only check performed on June 17, 2026: `GET https://pressure-flow.onrender.com/health` returned HTTP 200 with `{"ok":true}`.
+- Current code expects `{"ok":true,"service":"pressureflow"}` from `/health`, so the deployed Render app is reachable but appears not to be running the latest 07C readiness code.
+- Current recommendation: no-go for external beta until latest code is redeployed and Phase 07D is rerun.
+- Still blocked/manual after redeploy: Render env review, Supabase/Postgres persistence, login/test account workflow, email delivery, public links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
+- Local Phase 07D pre-deploy checks run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed).
+
 07C-3 operational monitoring and error visibility behavior:
 
 - Added `operational-logger.js`, a lightweight console-based safe logger. It emits JSON-shaped lines with `action`, safe operational context, and redacted error details. Secret-like keys, bearer tokens, webhook signatures, and URL token/signature/password/secret parameters are redacted.

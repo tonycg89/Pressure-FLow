@@ -8,6 +8,8 @@ For backup expectations, recovery playbooks, local JSON safety, destructive-acti
 
 For operational troubleshooting, safe log fields, and the post-deploy smoke checklist, use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`.
 
+For the external-beta sandbox verification tracker and go/no-go checklist, use `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
+
 ## Required Production Variables
 
 | Variable | Required in production | Sensitive | Default if missing | Depends on it |
@@ -120,6 +122,7 @@ Run these after every production deploy. See `PRESSUREFLOW_OPERATIONS_RUNBOOK.md
 12. Confirm final invoice and completion proof render.
 13. Confirm exports only include the logged-in account's jobs.
 14. Check Render logs for unexpected `request_failed`, `email_send_failed`, `webhook_signature_rejected`, or `follow_up_send_failed` entries.
+15. Before inviting external beta users, complete `PRESSUREFLOW_SANDBOX_VERIFICATION.md` and confirm the go/no-go criteria are met.
 
 ## Backup And Rollback
 

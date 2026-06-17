@@ -12,6 +12,7 @@ This runbook answers: if something fails during beta, where should the operator 
 4. Provider dashboards: Gmail/Google Calendar, Stripe, Square, SMTP provider, Supabase.
 5. `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` for environment/deploy checks.
 6. `PRESSUREFLOW_BACKUP_RECOVERY.md` for recovery and restore decisions.
+7. `PRESSUREFLOW_SANDBOX_VERIFICATION.md` for external-beta deployment go/no-go status.
 
 ## Log Shape
 
@@ -188,6 +189,7 @@ Run after every beta/production deploy:
 14. Run a Stripe or Square sandbox webhook test.
 15. Run a Google Calendar sandbox scheduling test if Google is enabled.
 16. Confirm exports only include the logged-in account's data.
+17. Complete `PRESSUREFLOW_SANDBOX_VERIFICATION.md` before inviting external beta users.
 
 ## Known Follow-Up Items
 

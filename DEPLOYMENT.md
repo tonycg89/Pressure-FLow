@@ -8,6 +8,8 @@ For the backup/recovery playbook, local JSON fallback safety notes, destructive-
 
 For operational troubleshooting, safe log fields, and smoke checks during beta, use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`.
 
+For the external-beta sandbox verification tracker and go/no-go checklist, use `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
+
 ## Production URL
 
 ```text
@@ -148,6 +150,7 @@ Add the business Gmail account as a test user while the Google app is in testing
 8. Open `/health` and confirm it returns `{"ok":true,"service":"pressureflow"}` without configuration details.
 9. Run the expanded post-deploy checklist in `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`.
 10. Use `PRESSUREFLOW_OPERATIONS_RUNBOOK.md` if an email, webhook, automation, calendar, upload, or 500 error needs troubleshooting.
+11. Complete `PRESSUREFLOW_SANDBOX_VERIFICATION.md` before inviting external beta users.
 
 ## Local vs Production Storage
 

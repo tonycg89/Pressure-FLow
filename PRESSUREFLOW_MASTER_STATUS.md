@@ -5,6 +5,7 @@ Last Updated: June 17, 2026
 ## Current Phase
 
 - PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
+- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable, but `/health` returned the old `{"ok":true}` payload instead of the current expected `{"ok":true,"service":"pressureflow"}`, so external beta remains no-go until the latest code is redeployed and verified.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -115,7 +116,19 @@ Last Updated: June 17, 2026
 - `npm.cmd run check`: passing
 - `npm.cmd run smoke:test-user-safety`: passing
 - `npm.cmd run test:browser`: passing, 59 tests
+- Phase 07D read-only deployed check: `GET https://pressure-flow.onrender.com/health` returned HTTP 200 with `{"ok":true}`; reachable but not latest expected payload.
+- Phase 07D local pre-deploy checks: `npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, and `npm.cmd run test:browser` passing, 59 tests.
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Phase 07D Deployment Sandbox Verification
+
+- Sandbox verification tracker added: `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
+- Read-only deployed health check performed against `https://pressure-flow.onrender.com/health` on June 17, 2026. Result: HTTP 200 with `{"ok":true}`.
+- Expected current health payload is `{"ok":true,"service":"pressureflow"}`. The live response indicates the hosted app is reachable but is not running the latest 07C readiness code.
+- Current recommendation: no-go for external beta until latest code is redeployed and the sandbox verification checklist passes.
+- Deployment/runbook docs updated to link the sandbox verification tracker and require it before external beta.
+- Items still blocked/manual: Render env review, Supabase/Postgres persistence check, login/test account workflow, email delivery, public links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
+- Local pre-deploy tests run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed).
 
 ## Package 07C-3 Operational Monitoring + Error Visibility
 
