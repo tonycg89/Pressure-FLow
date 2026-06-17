@@ -75,6 +75,8 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07A-1 automated end-to-end destructive testing is complete.
 - Package 07A-4A payment configuration enforcement is complete.
 - Package 07A-4B first-run and post-action guidance is complete.
+- Package 07A-4C mobile and field usability fixes are complete.
+- Package 07A-4D customer clarity and Pool Service expansion is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -202,9 +204,24 @@ Package 07A-4C mobile and field usability behavior:
 - Tests run: npm.cmd run test:browser -- tests/mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/measurement-map.spec.js; npm.cmd run test:browser.
 - Known follow-up: verify on real iOS Safari and a deployed Mapbox map before beta, since local automated coverage uses Chromium and mocked Mapbox controls.
 
+Package 07A-4D customer clarity and Pool Service behavior:
+
+- Customer-facing estimate, invoice, and contract service rows show clear rate units such as $0.04 / SqFt; Hours and Per Hour render as per hour.
+- Estimate approval retains the valid-through summary while removing duplicate 30-day validity copy.
+- Completion proof pages use customer language: Service and Payment Details, Payment pending / Payment complete, accurate photo badges, and explicit no-photo copy.
+- Contract project details reference the contractor business estimate instead of PressureFlow estimate approved online.
+- Customer/job/onboarding forms show lightweight required-field markers where appropriate and clearer examples for job title, notes, and sensitive areas.
+- Complete Job modal clarifies before/after photos are optional but recommended and will appear on completion proof.
+- Pool Service is available in onboarding and settings with starter services for recurring service, chemicals, filters, cleaning, startup/shutdown, salt cells, equipment, lights, tile, acid wash, and drain/refill work.
+- Pool-friendly units include Visit, Service Call, Flat Rate, and a custom-service Per hour option.
+- Fresh job line items start at quantity 0, keeping new estimates at $0.00 until quantity is entered.
+- Files touched: assets/service-catalog.js, app.js, assets/detail-rendering.js, index.html, styles.css, public-pages.js, tests/onboarding.spec.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: node --check app.js; node --check public-pages.js; node --check assets\detail-rendering.js; node --check assets\service-catalog.js; node --check tests\onboarding.spec.js; node --check tests\mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/onboarding.spec.js; npm.cmd run test:browser -- tests/mobile-hardening.spec.js; npm.cmd run test:browser.
+- Known follow-up: Pool Service defaults should be tuned with real pool operator feedback before relying on them as production pricing recommendations.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, Package 07A-4B first-run/post-action guidance, and Package 07A-4C mobile/field usability fixes are complete.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Packages 07A-4A through 07A-4D are complete.
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 

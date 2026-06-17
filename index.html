@@ -398,19 +398,19 @@
             <datalist id="jobCustomerOptions"></datalist>
           </label>
           <label class="field">
-            Customer name
+            <span class="field-title">Customer name <span class="required-tag">Required</span></span>
             <input name="customerName" class="input" required placeholder="Maria Johnson">
           </label>
           <label class="field">
-            Email
+            <span class="field-title">Email <span class="required-tag">Required</span></span>
             <input name="email" class="input" required type="email" placeholder="maria@example.com">
           </label>
           <label class="field">
-            Phone
+            <span class="field-title">Phone <span class="required-tag">Required</span></span>
             <input name="phone" class="input" required placeholder="(555) 123-4567">
           </label>
           <label class="field">
-            Street address
+            <span class="field-title">Street address <span class="required-tag">Required</span></span>
             <input name="streetAddress" class="input" required placeholder="214 Oak Ridge Dr">
           </label>
           <div class="field-row">
@@ -419,17 +419,17 @@
               <input name="addressUnit" class="input" placeholder="Apt 2, Suite B">
             </label>
             <label class="field">
-              City
+              <span class="field-title">City <span class="required-tag">Required</span></span>
               <input name="city" class="input" required placeholder="City">
             </label>
           </div>
           <div class="field-row">
             <label class="field">
-              State
+              <span class="field-title">State <span class="required-tag">Required</span></span>
               <input name="state" class="input" required maxlength="2" placeholder="CA">
             </label>
             <label class="field">
-              ZIP
+              <span class="field-title">ZIP <span class="required-tag">Required</span></span>
               <input name="zip" class="input" required inputmode="numeric" placeholder="ZIP code">
             </label>
           </div>
@@ -445,8 +445,8 @@
             </select>
           </label>
           <label class="field">
-            Job title
-            <input name="serviceType" class="input" required list="jobTitleSuggestions" placeholder="Choose or enter a job title">
+            <span class="field-title">Job title <span class="required-tag">Required</span></span>
+            <input name="serviceType" class="input" required list="jobTitleSuggestions" placeholder="Driveway and patio cleaning">
           </label>
           <datalist id="jobTitleSuggestions">
             <option value="Exterior Cleaning"></option>
@@ -494,12 +494,12 @@
 
           <input name="estimate" type="hidden" value="450">
           <label class="field">
-            Deposit %
+            <span class="field-title">Deposit % <span class="required-tag">Required</span></span>
             <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
           </label>
           <label class="field">
             Notes
-            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, water access, prep notes"></textarea>
+            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, access instructions, special requests"></textarea>
           </label>
           <label class="field">
             Access notes
@@ -507,7 +507,7 @@
           </label>
           <label class="field">
             Sensitive areas
-            <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, loose paint, plants, outlets"></textarea>
+            <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, outdoor outlets, delicate plants"></textarea>
           </label>
 
           <section class="photo-uploader" aria-label="Before job photos">
@@ -545,7 +545,7 @@
 
         <div class="modal__body">
           <label class="field">
-            Customer name
+            <span class="field-title">Customer name <span class="required-tag">Required</span></span>
             <input name="customerName" class="input" required placeholder="Maria Johnson">
           </label>
           <label class="field">
@@ -593,7 +593,7 @@
           </label>
           <label class="field">
             Notes
-            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, quote notes, follow-up details"></textarea>
+            <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, access instructions, special requests"></textarea>
           </label>
 
           <section class="photo-uploader" aria-label="Service area photos">
@@ -706,14 +706,15 @@
           </div>
           <div class="settings-grid">
             <label>
-              Business name
+              <span class="field-title">Business name <span class="required-tag">Required</span></span>
               <input name="businessName" required placeholder="e.g. Johnson Exterior Cleaning">
             </label>
             <label>
-              Service industry
+              <span class="field-title">Service industry <span class="required-tag">Required</span></span>
               <select name="serviceIndustry" required>
                 <option value="">Choose industry</option>
                 <option value="Pressure Washing">Pressure Washing</option>
+                <option value="Pool Service">Pool Service</option>
                 <option value="Landscaping">Landscaping</option>
                 <option value="Handyman">Handyman</option>
                 <option value="Construction">Construction</option>
@@ -852,6 +853,7 @@
                 <select name="serviceIndustry" class="select">
                   <option value="">Choose industry</option>
                   <option value="Pressure Washing">Pressure Washing</option>
+                  <option value="Pool Service">Pool Service</option>
                   <option value="Landscaping">Landscaping</option>
                   <option value="Handyman">Handyman</option>
                   <option value="Construction">Construction</option>
@@ -1166,9 +1168,13 @@
             <select name="unit" class="select">
               <option value="QTY">QTY</option>
               <option value="SqFt">SqFt</option>
+              <option value="Per Hour">Per hour</option>
               <option value="Hours">Hours</option>
-              <option value="LFN">LFN</option>
+              <option value="LNF">LNF</option>
               <option value="Each">Each</option>
+              <option value="Visit">Visit</option>
+              <option value="Service Call">Service Call</option>
+              <option value="Flat Rate">Flat Rate</option>
             </select>
           </label>
           <label class="field">
@@ -1240,7 +1246,7 @@
         </div>
 
         <div class="modal__body">
-          <p class="form-note">Add before and after photos before sending the final invoice.</p>
+          <p class="form-note">Before and after photos are optional but recommended. They appear on the customer's completion proof.</p>
 
           <div class="field-row">
             <section class="photo-section">

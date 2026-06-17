@@ -102,8 +102,8 @@ Completed:
 
 Current Phase:
 
-- Claude UX Audit is next.
-- v0 UI Audit comes after Claude UX findings are reviewed, approved, and safely implemented by Codex.
+- Approved Claude UX packages through 07A-4D are complete locally.
+- v0 UI Audit comes after the approved Claude UX findings are reviewed, approved, safely implemented by Codex, and verified for deployment.
 
 ---
 

@@ -24,8 +24,8 @@ function renderEstimateApprovalPage(job, settings = {}) {
   const lineRows = (job.lineItems || []).map((item) => `
     <tr>
       <td>${escapeHtml(item.name)}</td>
-      <td>${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</td>
-      <td class="num">$${Number(item.price || 0).toFixed(2)}</td>
+      <td>${formatQuantityDisplay(item)}</td>
+      <td class="num">${formatRateDisplay(item)}</td>
       <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
     </tr>
   `).join("");
@@ -48,7 +48,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
           <span>${escapeHtml(job.customerName)}</span>
           <span>${escapeHtml(job.address)}</span>
         </div>
-        ${renderTrustPills(["Prepared for your review", "Valid for 30 days", "No payment collected on this page"])}
+        ${renderTrustPills(["Prepared for your review", "No payment collected on this page"])}
       </header>
       <div class="doc__content">
         <section class="doc__summary-grid" aria-label="Estimate summary">
@@ -69,10 +69,6 @@ function renderEstimateApprovalPage(job, settings = {}) {
           ${discountAmount > 0 ? `<div class="doc__total-row"><span>Discount</span><strong>-$${discountAmount.toFixed(2)}</strong></div>` : ""}
           <div class="doc__total-row"><span>Total</span><strong>$${Number(job.estimate || 0).toFixed(2)}</strong></div>
         </section>
-        <section class="notice doc__callout">
-          <strong>Estimate valid for 30 days</strong>
-          <p>This estimate is valid through ${escapeHtml(formatPublicDate(validUntil))}.</p>
-        </section>
         ${renderMeasurementPreview(job)}
       </div>
       <div class="doc__actions">
@@ -82,7 +78,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
           <button class="btn" type="submit">Approve Estimate</button>
         </form>
         <details class="reject-estimate">
-          <summary>Decline estimate</summary>
+          <summary>Decline Estimate</summary>
           <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/reject">
             <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
             <label>
@@ -149,6 +145,31 @@ function renderTrustPills(items) {
 function renderStatusBadge(label, tone = "neutral") {
   const toneClass = tone === "success" ? " status--success" : tone === "warning" ? " status--warning" : "";
   return `<span class="status${toneClass}">${escapeHtml(label)}</span>`;
+}
+
+function normalizeUnitLabel(unit = "") {
+  const value = String(unit || "Qty").trim();
+  const lower = value.toLowerCase();
+  if (lower === "per hour" || lower === "hours") return "Hours";
+  if (lower === "qty") return "Qty";
+  return value;
+}
+
+function normalizeRateUnit(unit = "") {
+  const value = String(unit || "").trim().toLowerCase();
+  if (value === "per hour" || value === "hours") return "hour";
+  const label = normalizeUnitLabel(unit);
+  return label.toLowerCase() === "flat rate" ? "flat rate" : label;
+}
+
+function formatQuantityDisplay(item = {}) {
+  return `${escapeHtml(item.quantity)} ${escapeHtml(normalizeUnitLabel(item.unit))}`;
+}
+
+function formatRateDisplay(item = {}) {
+  const rate = `$${Number(item.price || 0).toFixed(2)}`;
+  const unit = normalizeRateUnit(item.unit);
+  return unit === "flat rate" ? rate : `${rate} / ${escapeHtml(unit)}`;
 }
 
 function renderEstimateApprovalWordTemplate(settings) {
@@ -293,6 +314,9 @@ function renderCompletionProofPage(job, settings = {}) {
   const finalBalance = getFinalBalanceCents(job) / 100;
   const deposit = getDepositCents(job) / 100;
   const total = Number(job.estimate || 0);
+  const hasPhotos = before.length || after.length;
+  const isPaid = job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
+  const proofPills = ["Service completed", hasPhotos ? "Photos included" : "No photos included", "Customer copy"];
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -318,11 +342,11 @@ function renderCompletionProofPage(job, settings = {}) {
           <span>${escapeHtml(job.address)}</span>
           <span>${escapeHtml(new Date(job.completionNoticeSentAt || Date.now()).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }))}</span>
         </div>
-        ${renderTrustPills(["Work completed", "Photos available", "Customer copy"])}
+        ${renderTrustPills(proofPills)}
       </header>
       <div class="doc__content">
         <section>
-          <h2>Completion and Invoice Details</h2>
+          <h2>Service and Payment Details</h2>
           <table class="proof-details table">
             <tbody>
               <tr><th>Service</th><td>${escapeHtml(job.serviceType || "Pressure washing")}</td></tr>
@@ -330,7 +354,7 @@ function renderCompletionProofPage(job, settings = {}) {
               <tr><th>Estimate total</th><td class="num">${escapeHtml(formatAlertMoney(total))}</td></tr>
               <tr><th>Deposit</th><td class="num">${escapeHtml(formatAlertMoney(deposit))}</td></tr>
               <tr><th>Final balance</th><td class="num">${escapeHtml(formatAlertMoney(finalBalance))}</td></tr>
-              <tr><th>Status</th><td>${renderStatusBadge(job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "Paid" : "Final invoice sent", job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt ? "success" : "warning")}</td></tr>
+              <tr><th>Payment status</th><td>${renderStatusBadge(isPaid ? "Payment complete" : "Payment pending", isPaid ? "success" : "warning")}</td></tr>
             </tbody>
           </table>
         </section>
@@ -372,7 +396,7 @@ function renderCompletionServiceAreas(job) {
 
 function renderProofPhotoGrid(photos) {
   if (!photos.length) {
-    return "<p>No photos provided.</p>";
+    return "<p>No photos were included with this service.</p>";
   }
 
   return `<div class="proof-grid doc__gallery">
@@ -441,7 +465,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
             <tbody>
               ${(job.lineItems || []).map((item) => `
                 <tr>
-                  <td>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</td>
+                  <td>${escapeHtml(item.name)} (${formatQuantityDisplay(item)} at ${formatRateDisplay(item)})</td>
                   <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
                 </tr>
               `).join("")}
@@ -513,7 +537,7 @@ function renderContractSigningPage(job, options = {}) {
   const lineRows = (job.lineItems || []).map((item) => `
     <tr>
       <td>${escapeHtml(item.name)}</td>
-      <td>${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</td>
+      <td>${formatQuantityDisplay(item)} at ${formatRateDisplay(item)}</td>
       <td>$${Number(item.total || 0).toFixed(2)}</td>
     </tr>
   `).join("");
@@ -622,7 +646,7 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
     ["Business", businessName],
     ["Client", job.customerName],
     ["Service Address", job.address],
-    ["Approved Estimate", "PressureFlow estimate approved online"],
+    ["Approved Estimate", `${businessName} estimate approved online`],
     ["Estimated Price", `$${Number(job.estimate || 0).toFixed(2)}`],
     ["Deposit", `$${depositAmount.toFixed(2)} (${Number(job.depositPercent || 25)}%)`],
     ["Scheduled Date", job.scheduledAt || "To be scheduled after deposit payment"]

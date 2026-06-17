@@ -510,7 +510,7 @@ function syncServiceCatalog() {
   const customServices = Array.isArray(settings.customServices) ? settings.customServices : [];
   serviceCatalog = [...new Map([...builtInServiceCatalog, ...customServices]
     .map((service) => [String(service.name || "").toLowerCase(), service])).values()];
-  defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
+  defaultEstimateService = getDefaultEstimateService(customServices);
   serviceTypes = [...builtInServiceTypes, ...(settings.customServiceTypes || [])]
     .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
   beforePhotoSections = [...beforePhotoSections, ...(settings.customPhotoSections || [])]
@@ -518,6 +518,31 @@ function syncServiceCatalog() {
   renderServiceTypeOptions();
   renderBeforePhotoSectionOptions();
   renderOnboardingServices();
+}
+
+function getDefaultEstimateService(customServices = []) {
+  const industryServices = customServices.filter((service) => service.source === "onboarding");
+  if (settings.serviceIndustry && settings.serviceIndustry !== "Pressure Washing" && industryServices.length) {
+    return industryServices[0];
+  }
+
+  return serviceCatalog.find((service) => service.name === "Pressure Washing") || industryServices[0] || serviceCatalog[0];
+}
+
+function formatUnitLabel(unit = "") {
+  const value = String(unit || "Qty").trim();
+  if (!value) return "unit";
+  if (value.toLowerCase() === "per hour" || value.toLowerCase() === "hours") return "Hours";
+  if (value.toLowerCase() === "qty") return "Qty";
+  return value;
+}
+
+function formatRateUnit(unit = "") {
+  const raw = String(unit || "").trim().toLowerCase();
+  if (raw === "per hour" || raw === "hours") return "per hour";
+  const label = formatUnitLabel(unit);
+  if (label.toLowerCase() === "flat rate") return "flat rate";
+  return `per ${label}`;
 }
 
 function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?.value || "") {
@@ -699,9 +724,9 @@ function renderOnboardingServiceRow(service, savedByName, seededServiceNames = n
           <input type="checkbox" data-onboarding-service-toggle ${checked ? "checked" : ""}>
           <span>${escapeHtml(service.name)}</span>
         </label>
-        <span class="service-unit">${escapeHtml(unit)}</span>
+        <span class="service-unit">${escapeHtml(formatUnitLabel(unit))}</span>
         <label>
-          Rate
+          Rate (${escapeHtml(formatRateUnit(unit))})
           <input data-onboarding-service-rate type="number" min="0" step="0.01" value="${rate}" ${checked ? "" : "disabled"}>
         </label>
       </div>
@@ -736,7 +761,7 @@ async function saveOnboardingServices() {
     const data = await apiRequest("/api/settings", { ...settings, customServices, onboardingCompleted: true });
     settings = data.settings;
     syncServiceCatalog();
-    renderLineItems(getEstimateLineItems().length ? getEstimateLineItems() : [{ ...defaultEstimateService, quantity: 1 }]);
+    renderLineItems(getEstimateLineItems().length ? getEstimateLineItems() : [{ ...defaultEstimateService, quantity: 0 }]);
     onboardingStatus.textContent = `${selectedServices.length} default services saved for this account.`;
   } catch (error) {
     onboardingStatus.textContent = error.message;
@@ -1694,7 +1719,7 @@ function openEditJob() {
   renderServiceTypeOptions(job.serviceType || "");
   jobForm.elements.estimate.value = job.estimate || 0;
   jobForm.elements.depositPercent.value = job.depositPercent ?? getDefaultDepositPercent();
-  renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 1 }]);
+  renderLineItems(job.lineItems?.length ? job.lineItems : [{ ...defaultEstimateService, quantity: 0 }]);
   currentMeasurement = job.measurement || {};
   currentJobPhotos = {
     before: [...(job.jobPhotos?.before || [])],
@@ -1717,7 +1742,7 @@ function resetJobDialog() {
   if (jobCustomerSearch) {
     jobCustomerSearch.value = "";
   }
-  renderLineItems([{ ...defaultEstimateService, quantity: 1 }]);
+  renderLineItems([{ ...defaultEstimateService, quantity: 0 }]);
   currentMeasurement = {};
   activeMeasurementAreaId = "";
   currentJobPhotos = { before: [], after: [] };
@@ -1923,7 +1948,7 @@ function closeDialogFromButton(event) {
 
 function renderLineItems(items) {
   lineItemsContainer.innerHTML = "";
-  const normalizedItems = items.length ? items : [{ ...defaultEstimateService, quantity: 1 }];
+  const normalizedItems = items.length ? items : [{ ...defaultEstimateService, quantity: 0 }];
   normalizedItems.forEach((item) => addLineItemRow(item));
   updateEstimateTotals();
 }
@@ -1954,11 +1979,11 @@ function addLineItemRow(item = serviceCatalog[0]) {
       </select>
     </label>
     <label class="field">
-      <span class="line-quantity-label">${escapeHtml(catalogItem.unit)}</span>
-      <input class="line-quantity input" type="number" min="0" step="1" value="${Number(item.quantity || 1)}">
+      <span class="line-quantity-label">${escapeHtml(formatUnitLabel(catalogItem.unit))}</span>
+      <input class="line-quantity input" type="number" min="0" step="1" value="${Number(item.quantity ?? 0)}">
     </label>
     <label class="field">
-      Rate
+      <span class="line-rate-label">Rate (${escapeHtml(formatRateUnit(catalogItem.unit))})</span>
       <input class="line-rate input" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
     </label>
     <div class="line-item-total">
@@ -1980,7 +2005,8 @@ function addLineItemRow(item = serviceCatalog[0]) {
     const selected = serviceCatalog.find((service) => service.name === event.target.value);
     if (!selected) return;
     row.querySelector(".line-rate").value = selected.price;
-    row.querySelector(".line-quantity-label").textContent = selected.unit;
+    row.querySelector(".line-quantity-label").textContent = formatUnitLabel(selected.unit);
+    row.querySelector(".line-rate-label").textContent = `Rate (${formatRateUnit(selected.unit)})`;
     updateMeasurementButtonVisibility();
     updateEstimateTotals();
   });

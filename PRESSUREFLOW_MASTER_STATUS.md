@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, and Package 07A-4B first-run/post-action guidance.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, including payment configuration enforcement, first-run guidance, mobile field usability, and customer clarity plus Pool Service expansion.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -32,6 +32,8 @@ Last Updated: June 17, 2026
 - Package 07A-1 automated end-to-end destructive testing
 - Package 07A-4A payment configuration enforcement
 - Package 07A-4B first-run and post-action guidance
+- Package 07A-4C mobile and field usability fixes
+- Package 07A-4D customer clarity and Pool Service expansion
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -117,6 +119,22 @@ Last Updated: June 17, 2026
 - Tests added/updated: mobile Settings/New Customer/New Job/Schedule/Complete/Record Payment modal fit checks, mobile map control 48px touch-target checks, public estimate mobile rendering, public document field sizing, and public document viewport overflow coverage.
 - Tests run: `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js`; `npm.cmd run test:browser`.
 - Known follow-up: real iOS Safari and live Mapbox touch testing are still recommended on deployed hardware before beta, since automated coverage uses Chromium and mocked Mapbox controls.
+
+## Package 07A-4D Customer Clarity + Pool Service Expansion
+
+- Customer-facing estimate, invoice, and contract service rows now show clear rate units such as `$0.04 / SqFt`; hourly units render as `per hour`.
+- Estimate approval no longer repeats the 30-day validity message in both trust copy and a separate callout; the valid-through date remains in the estimate summary.
+- Completion proof pages now use customer language: `Service and Payment Details`, `Payment pending` / `Payment complete`, accurate `Photos included` / `No photos included` badges, and `No photos were included with this service.` when photo sets are empty.
+- Customer-facing contract project details now reference the contractor business estimate instead of `PressureFlow estimate approved online`.
+- Customer and job forms now show lightweight `Required` markers for major required fields and have clearer practical placeholders for job title, notes, and sensitive areas.
+- Complete Job modal copy now states that before/after photos are optional but recommended and will appear on the customer's completion proof.
+- Added `Pool Service` as an onboarding/settings industry with a starter catalog: Weekly Pool Service, Chemical Balancing, Filter Cleaning/Replacement, Pool Vacuuming, Pool Brush Service, Green Pool Cleanup, Pool Startup/Shutdown, Salt Cell services, Equipment Inspection, Pump Replacement, Pool Light Replacement, Pool Tile Cleaning, Acid Wash, and Pool Drain and Refill.
+- Added Pool-friendly units (`Visit`, `Service Call`, `Flat Rate`) and a clear custom-service `Per hour` option; existing `Hours` data also displays as `per hour`.
+- Fresh job line items now start at quantity `0`, so new estimates show `$0.00` until a contractor enters a quantity.
+- Files touched: `assets/service-catalog.js`, `app.js`, `assets/detail-rendering.js`, `index.html`, `styles.css`, `public-pages.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests added/updated: Pool Service onboarding/catalog/default-job coverage, per-hour custom unit coverage, rate-unit estimate assertions, no-photo completion proof assertions, and updated public document mobile checks.
+- Tests run: `node --check app.js`; `node --check public-pages.js`; `node --check assets\detail-rendering.js`; `node --check assets\service-catalog.js`; `node --check tests\onboarding.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/onboarding.spec.js`; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run test:browser`.
+- Known follow-up: Pool Service prices are starter defaults only and should be adjusted with real operator feedback before production templates/marketing promise exact pool pricing.
 
 ## Package 07A-4A Payment Configuration Enforcement
 

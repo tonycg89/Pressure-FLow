@@ -83,8 +83,8 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await lineItem.locator(".line-quantity").fill("1000");
   await expect(lineItem.locator(".line-item-total span")).toHaveText("Line total");
   const lineItemText = await lineItem.innerText();
-  expect(lineItemText.match(/SqFt/g) || []).toHaveLength(1);
-  expect(lineItemText.match(/\$0\.04/g) || []).toHaveLength(0);
+  expect(lineItemText).toContain("Rate (per SqFt)");
+  await expect(lineItem.locator(".line-rate")).toHaveValue("0.04");
   await expect(page.locator("#estimateTotal")).toHaveText("$40.00");
   await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
   await expect(page.locator("#jobDialog")).toBeHidden();
@@ -107,9 +107,40 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   const publicPage = await context.newPage();
   await publicPage.goto(job.estimateApprovalUrl);
   await expect(publicPage.getByRole("heading", { name: /Landscape maintenance for Alex Rivera/ })).toBeVisible();
-  await expect(publicPage.getByRole("row", { name: /Lawn Mowing 1000 SqFt \$0\.04 \$40\.00/ })).toBeVisible();
+  await expect(publicPage.getByRole("row", { name: /Lawn Mowing 1000 SqFt \$0\.04 \/ SqFt \$40\.00/ })).toBeVisible();
   await expect(publicPage.getByText("Estimate Only, not an actual Invoice.")).toBeVisible();
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);
+});
+
+test("pool service onboarding seeds pool catalog and per-hour custom unit is available", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(TEST_USER.email);
+  await page.getByLabel("Password").fill(TEST_USER.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
+  await page.locator("#onboardingForm [name='businessName']").fill("Bluewater Pool Care");
+  await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Pool Service");
+  await page.locator("#onboardingForm [name='businessEmail']").fill("owner@bluewater.test");
+  await page.locator("#onboardingNextButton").click();
+
+  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Pool Service");
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Weekly Pool Service'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Chemical Balancing'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Acid Wash'] input[type='checkbox']")).not.toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Weekly Pool Service']")).toContainText("Rate (per Visit)");
+
+  await page.locator("#onboardingNextButton").click();
+  await page.getByRole("button", { name: "Save Setup" }).click();
+  await expect(page.locator("#sidebarBusinessName")).toHaveText("Bluewater Pool Care");
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#lineItems .line-item-row").first()).toContainText("Weekly Pool Service");
+  await expect(page.locator("#estimateTotal")).toHaveText("$0.00");
+  await page.getByRole("button", { name: "Custom Service" }).click();
+  await expect(page.locator("#customServiceDialog")).toBeVisible();
+  await expect(page.locator("#customServiceForm [name='unit']")).toContainText("Per hour");
 });
 
 async function loginAndCompleteOnboarding(page) {

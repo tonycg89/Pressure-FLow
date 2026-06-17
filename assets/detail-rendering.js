@@ -125,7 +125,7 @@
 
       const rows = job.lineItems.map((item) => `
         <div class="detail-row estimate-item">
-          <span>${escapeHtml(item.name)} (${Number(item.quantity || 0)} ${escapeHtml(item.unit || "")})</span>
+          <span>${escapeHtml(item.name)} (${formatQuantityDisplay(item)}${item.price !== undefined ? ` at ${formatRateDisplay(item)}` : ""})</span>
           <strong>${currency.format(Number(item.total || 0))}</strong>
         </div>
       `).join("");
@@ -140,6 +140,31 @@
           </div>
         ` : ""}
       `;
+    }
+
+    function normalizeUnitLabel(unit = "") {
+      const value = String(unit || "Qty").trim();
+      const lower = value.toLowerCase();
+      if (lower === "per hour" || lower === "hours") return "Hours";
+      if (lower === "qty") return "Qty";
+      return value;
+    }
+
+    function normalizeRateUnit(unit = "") {
+      const value = String(unit || "").trim().toLowerCase();
+      if (value === "per hour" || value === "hours") return "hour";
+      const label = normalizeUnitLabel(unit);
+      return label.toLowerCase() === "flat rate" ? "flat rate" : label;
+    }
+
+    function formatQuantityDisplay(item = {}) {
+      return `${Number(item.quantity || 0)} ${escapeHtml(normalizeUnitLabel(item.unit))}`;
+    }
+
+    function formatRateDisplay(item = {}) {
+      const rate = currency.format(Number(item.price || 0));
+      const unit = normalizeRateUnit(item.unit);
+      return unit === "flat rate" ? rate : `${rate} / ${escapeHtml(unit)}`;
     }
 
     function renderMeasurementDetail(job) {

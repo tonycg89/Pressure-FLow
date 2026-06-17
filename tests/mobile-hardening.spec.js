@@ -159,8 +159,13 @@ test("public documents remain within the mobile viewport and proof links are tap
   await expectMinHeight(page.getByRole("button", { name: "Approve Estimate" }), 44);
 
   await page.goto("/proof/final-mobile-job?token=proof-mobile");
-  await expect(page.locator("body")).toContainText("Work completed");
+  await expect(page.locator("body")).toContainText("Photos included");
   await expect(page.locator("body")).toContainText("Customer copy");
+
+  await page.goto("/proof/no-photo-mobile-job?token=proof-no-photo-mobile");
+  await expect(page.locator("body")).toContainText("No photos included");
+  await expect(page.locator("body")).toContainText("No photos were included with this service.");
+  await expect(page.locator("body")).not.toContainText("Photos available");
 
   await page.goto("/contract/contract-mobile-job?token=contract-mobile");
   await expect(page.locator("body")).toContainText("Ready for signature");
@@ -399,6 +404,15 @@ async function resetTestData() {
       status: "Contract Sent",
       contractApprovalToken: "contract-mobile",
       contractApprovalUrl: "http://127.0.0.1:3173/contract/contract-mobile-job?token=contract-mobile"
+    }),
+    baseJob({
+      id: "no-photo-mobile-job",
+      customerName: "No Photo Mobile",
+      email: "no.photo.mobile@example.com",
+      status: "Completed",
+      completionProofToken: "proof-no-photo-mobile",
+      completionProofUrl: "http://127.0.0.1:3173/proof/no-photo-mobile-job?token=proof-no-photo-mobile",
+      completionNoticeSentAt: "2026-06-15T17:00:00.000Z"
     })
   ], null, 2));
 }
