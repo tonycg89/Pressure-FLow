@@ -21,6 +21,32 @@ HTTP 200
 Body: {"ok":true}
 ```
 
+Retry after latest push/commit on June 17, 2026:
+
+```text
+GET https://pressure-flow.onrender.com/health
+HTTP 200
+Body: {"ok":true}
+```
+
+During retry, two intermediate requests were temporarily unable to connect, then the endpoint returned HTTP 200 again with the same old payload.
+
+Additional diagnosis after commit `f9b44e4 07D-1`:
+
+- Local `main` tracks `origin/main` at `f9b44e45e22da2e2852f31d0021b72bed0d6c399`.
+- `server.js` at that commit contains the current health response: `{ ok: true, service: "pressureflow" }`.
+- A cache-busted deployed request still returned `{"ok":true}`.
+- Therefore, the deployed service is almost certainly still serving a previous successful deploy.
+
+Render dashboard checks to perform:
+
+1. Confirm the Render service is connected to `tonycg89/Pressure-FLow`, branch `main`.
+2. Confirm the latest deploy commit shown by Render is `f9b44e4` or newer.
+3. If the latest deploy failed, open the deploy logs and check for production startup validation failures.
+4. Confirm production-like sandbox env vars do not include `ALLOW_AUTH_DISABLED=true`, `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true`, or `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true`.
+5. Confirm `DATABASE_URL`, `SESSION_SECRET`, and `APP_BASE_URL=https://pressure-flow.onrender.com` are set.
+6. Trigger a manual deploy after env cleanup if Render did not deploy the latest commit.
+
 Expected body from the current codebase:
 
 ```json
