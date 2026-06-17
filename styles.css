@@ -602,7 +602,12 @@ label.compact-select {
 
 .toggle-input {
   position: absolute;
+  width: 1px;
+  min-height: 1px;
+  height: 1px;
+  margin: 0;
   opacity: 0;
+  overflow: hidden;
   pointer-events: none;
 }
 
@@ -2522,6 +2527,12 @@ label {
   background: #e8eef5;
 }
 
+.measurement-map .mapboxgl-ctrl-group {
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.16);
+}
+
 .measurement-map .mapboxgl-ctrl-group button,
 .measurement-map .mapbox-gl-draw_ctrl-draw-btn,
 .measurement-map .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_polygon,
@@ -2778,6 +2789,13 @@ label {
   .secondary-small-button,
   .action-button,
   .icon-button,
+  .link-button,
+  .text-link-button,
+  .toast__action,
+  .photo-action-button,
+  .settings-jump-list a,
+  .saved-measurement-choice,
+  .saved-measurement-delete,
   .secondary-link-button,
   .dialog-actions button,
   .button-sm,
@@ -2790,6 +2808,19 @@ label {
   .button-icon {
     width: 44px;
     min-width: 44px;
+  }
+
+  .link-button,
+  .text-link-button,
+  .toast__action {
+    display: inline-flex;
+    align-items: center;
+    padding-block: 8px;
+  }
+
+  .settings-jump-list a,
+  .saved-measurement-choice {
+    align-items: center;
   }
 }
 
@@ -2900,6 +2931,7 @@ label {
   }
 
   .notification-item {
+    min-height: 44px;
     padding: 10px 12px;
   }
 
@@ -2993,6 +3025,20 @@ label {
 
   .measurement-map {
     min-height: 360px;
+  }
+
+  .measurement-map .mapboxgl-ctrl {
+    margin: 10px;
+  }
+
+  .measurement-map .mapboxgl-ctrl-group button,
+  .measurement-map .mapbox-gl-draw_ctrl-draw-btn,
+  .measurement-map .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_polygon,
+  .measurement-map .mapbox-gl-draw_ctrl-draw-btn.mapbox-gl-draw_trash {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
   }
 
   .full-field {

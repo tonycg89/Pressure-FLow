@@ -34,7 +34,7 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
   await expectMinHeight(page.locator("#jobForm").getByRole("button", { name: "Create Job" }), 44);
 });
 
-test("settings and new job modals fit a 375px mobile viewport", async ({ page }) => {
+test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);
 
@@ -45,8 +45,19 @@ test("settings and new job modals fit a 375px mobile viewport", async ({ page })
   await expect(page.locator("#settingsDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#settingsDialog");
   await expect(page.getByRole("button", { name: "Close Settings" })).toBeInViewport();
+  await expectFontSize(page.locator("#settingsForm [name='businessName']"), 16);
+  await expectMinHeight(page.locator(".settings-jump-list a").first(), 44);
   await expectNoViewportOverflow(page, "settings modal at 375px");
   await page.getByRole("button", { name: "Close Settings" }).click();
+
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#customerDialog");
+  await expectFontSize(page.locator("#customerForm [name='customerName']"), 16);
+  await expectMinHeight(page.locator("#customerForm").getByRole("button", { name: "Save Customer" }), 44);
+  await expectNoViewportOverflow(page, "new customer modal at 375px");
+  await page.getByRole("button", { name: "Close Customer" }).click();
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: "New Job" }).click();
@@ -55,6 +66,33 @@ test("settings and new job modals fit a 375px mobile viewport", async ({ page })
   await expect(page.getByRole("button", { name: "Close New Job" })).toBeInViewport();
   await expect(page.locator("#jobForm [name='customerName']")).toBeEditable();
   await expectNoViewportOverflow(page, "new job modal at 375px");
+  await page.getByRole("button", { name: "Close New Job" }).click();
+
+  await page.getByRole("button", { name: /Deposit Ready Mobile/ }).click();
+  await page.getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#scheduleDialog");
+  await expectFontSize(page.locator("#scheduleForm [name='scheduleDate']"), 16);
+  await expectMinHeight(page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job", exact: true }), 44);
+  await expectNoViewportOverflow(page, "schedule job modal at 375px");
+  await page.getByRole("button", { name: "Close Schedule Job" }).click();
+
+  await page.getByRole("button", { name: /Scheduled Mobile/ }).click();
+  await page.getByRole("button", { name: "Complete Job + Send Final Invoice" }).click();
+  await expect(page.locator("#completionDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#completionDialog");
+  await expectMinHeight(page.locator("#completionForm .photo-action-button").first(), 44);
+  await expectMinHeight(page.locator("#completionForm").getByRole("button", { name: "Send Final Invoice" }), 44);
+  await expectNoViewportOverflow(page, "complete job modal at 375px");
+  await page.getByRole("button", { name: "Close Complete Job" }).click();
+
+  await page.getByRole("button", { name: /Final Mobile/ }).click();
+  await page.getByRole("button", { name: "Mark Paid" }).click();
+  await expect(page.locator("#paymentDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#paymentDialog");
+  await expectFontSize(page.locator("#paymentForm [name='paymentMethod']"), 16);
+  await expectMinHeight(page.locator("#paymentForm").getByRole("button", { name: "Confirm Payment" }), 44);
+  await expectNoViewportOverflow(page, "record payment modal at 375px");
 });
 
 test("measure from map controls meet mobile touch target requirements", async ({ page }) => {
@@ -86,13 +124,16 @@ test("measure from map controls meet mobile touch target requirements", async ({
 
   await expectMinSize(page.locator(".mapbox-gl-draw_polygon"), 44, 44);
   await expectMinSize(page.locator(".mapbox-gl-draw_trash"), 44, 44);
+  await expectMinSize(page.locator(".mapbox-gl-draw_polygon"), 48, 48);
   await expectMinHeight(page.locator("#measurementAddress"), 44);
+  await expectFontSize(page.locator("#measurementAddress"), 16);
   await expectMinHeight(page.locator("#saveMeasurementAreaButton"), 44);
   await expectMinHeight(page.locator("#useMeasurementButton"), 44);
 });
 
 test("public documents remain within the mobile viewport and proof links are tappable", async ({ page }) => {
   const publicPaths = [
+    "/estimate/estimate-mobile-job?token=estimate-mobile",
     "/invoice/final-mobile-job?type=final&token=pf-final-mobile",
     "/proof/final-mobile-job?token=proof-mobile",
     "/contract/contract-mobile-job?token=contract-mobile"
@@ -111,6 +152,11 @@ test("public documents remain within the mobile viewport and proof links are tap
   await expect(page.locator("body")).toContainText("Payment options available");
   await expectMinHeight(page.locator(".proof-link a"), 44);
   await expectMinHeight(page.getByRole("button", { name: "Pay by Credit Card" }), 44);
+
+  await page.goto("/estimate/estimate-mobile-job?token=estimate-mobile");
+  await expect(page.locator("body")).toContainText("No payment collected on this page");
+  await expectFontSize(page.locator("#estimateRejectReason"), 16);
+  await expectMinHeight(page.getByRole("button", { name: "Approve Estimate" }), 44);
 
   await page.goto("/proof/final-mobile-job?token=proof-mobile");
   await expect(page.locator("body")).toContainText("Work completed");
@@ -305,6 +351,27 @@ async function resetTestData() {
       customerName: "Mobile Lead",
       email: "lead.mobile@example.com",
       status: "Lead"
+    }),
+    baseJob({
+      id: "estimate-mobile-job",
+      customerName: "Estimate Mobile",
+      email: "estimate.mobile@example.com",
+      status: "Estimate Sent",
+      estimateApprovalToken: "estimate-mobile",
+      estimateApprovalUrl: "http://127.0.0.1:3173/estimate/estimate-mobile-job?token=estimate-mobile"
+    }),
+    baseJob({
+      id: "deposit-ready-mobile-job",
+      customerName: "Deposit Ready Mobile",
+      email: "deposit.ready.mobile@example.com",
+      status: "Deposit Paid"
+    }),
+    baseJob({
+      id: "scheduled-mobile-job",
+      customerName: "Scheduled Mobile",
+      email: "scheduled.mobile@example.com",
+      status: "Scheduled",
+      scheduledAt: "2026-06-20T09:00"
     }),
     baseJob({
       id: "final-mobile-job",

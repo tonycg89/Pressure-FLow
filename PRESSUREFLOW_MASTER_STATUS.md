@@ -106,6 +106,18 @@ Last Updated: June 17, 2026
 - Tests run: `node --check app.js`; `node --check assets\detail-rendering.js`; `node --check tests\onboarding.spec.js`; `node --check tests\expense-contract-regression.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`; `npm.cmd run test:browser -- --workers=1`.
 - Known follow-up: in-app Browser visual verification remains blocked in this Windows sandbox, so visual confidence comes from targeted Playwright assertions.
 
+## Package 07A-4C Mobile + Field Usability Fixes
+
+- Mobile form controls now keep customer, job, settings, payment, schedule, map, and public document fields at 16px on small screens to avoid iOS Safari focus zoom.
+- Touch targets were hardened for action links, toast actions, settings jump links, photo upload/take-picture controls, saved measurement controls, notification rows, modal buttons, and map controls without resizing desktop UI.
+- Measure From Map controls now have clearer grouped styling and expand to 48px draw/delete controls on phone-width viewports for better tap reliability.
+- Public estimate, contract, invoice, and completion proof pages keep customer-facing tables/documents readable at phone widths, allow wrapping inside cells, keep controlled horizontal scrolling, and keep trust pills from awkward wrapping.
+- Mobile modal coverage now exercises Settings, New Customer, New Job, Schedule Job, Complete Job, and Record Payment at a 375px viewport.
+- Files touched: `styles.css`, `rendering.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests added/updated: mobile Settings/New Customer/New Job/Schedule/Complete/Record Payment modal fit checks, mobile map control 48px touch-target checks, public estimate mobile rendering, public document field sizing, and public document viewport overflow coverage.
+- Tests run: `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js`; `npm.cmd run test:browser`.
+- Known follow-up: real iOS Safari and live Mapbox touch testing are still recommended on deployed hardware before beta, since automated coverage uses Chromium and mocked Mapbox controls.
+
 ## Package 07A-4A Payment Configuration Enforcement
 
 - Centralized payment readiness in `settings.js`. Payment is configured when at least one customer payment path exists: Square token plus Square location ID, Stripe secret key, Zelle, Cash App, Venmo, or manual payment instructions.
@@ -198,11 +210,11 @@ Last Updated: June 17, 2026
 ## Mobile Beta Hardening
 
 - Mobile form controls render at 16px on small screens to prevent iOS Safari focus zoom.
-- Major workflow actions and modal buttons meet a 44px minimum mobile touch target.
-- Measure From Map draw/delete controls and measurement actions meet a 44px minimum touch target.
-- Public invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving all visible information.
+- Major workflow actions, action links, modal buttons, settings jump links, toast actions, photo controls, and customer-facing CTAs meet a 44px minimum mobile touch target.
+- Measure From Map draw/delete controls expand to 48px on phone-width viewports, with measurement actions at or above 44px.
+- Public estimate, invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving visible information and readable wrapping.
 - Completion proof links and public document actions meet mobile touch target requirements.
-- Automated mobile browser coverage verifies form sizing, workflow action sizing, map control sizing, public document overflow, completion proof link sizing, and public pay/sign actions.
+- Automated mobile browser coverage verifies form sizing, workflow action sizing, map control sizing, public document overflow, completion proof link sizing, public estimate rendering, and public pay/sign actions.
 
 ## Next
 

@@ -143,13 +143,19 @@ function estimatePageStyles() {
       .doc { width: min(100vw - 20px, 760px); margin: 10px auto; padding: 18px; border-radius: 10px; }
       .doc__brand { display: grid; gap: 12px; }
       .doc__logo { max-width: 150px !important; }
+      .doc__trust-row { gap: 6px; }
+      .doc__trust-pill { min-height: 32px; white-space: normal; }
       h1 { font-size: 24px; line-height: 1.2; }
+      label { font-size: 14px; }
       input,
       select,
       textarea { font-size: 16px; }
+      input,
+      select { min-height: 44px; }
+      textarea { min-height: 104px; }
       .table,
-      table { display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-      th, td { padding: 10px 8px; }
+      table { display: block; max-width: 100%; overflow-x: auto; white-space: normal; -webkit-overflow-scrolling: touch; }
+      th, td { padding: 10px 8px; white-space: normal; }
       .doc__amount-due strong { font-size: 30px; }
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .doc__gallery img { height: 128px; }

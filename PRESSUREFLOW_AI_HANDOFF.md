@@ -191,9 +191,20 @@ Package 07A-4B first-run and post-action guidance behavior:
 - Tests run: `node --check app.js`; `node --check assets\detail-rendering.js`; `node --check tests\onboarding.spec.js`; `node --check tests\expense-contract-regression.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`; `npm.cmd run test:browser -- --workers=1`.
 - Known follow-up: in-app Browser visual verification remains blocked in this Windows sandbox; targeted Playwright coverage passed.
 
+Package 07A-4C mobile and field usability behavior:
+
+- Mobile text fields remain at 16px on small screens across onboarding/settings/customer/job/payment/schedule/map/public document surfaces to avoid iOS Safari input zoom.
+- Touch targets were hardened for mobile action links, toast actions, settings jump links, notification rows, photo controls, saved measurement controls, modal buttons, customer-facing CTAs, and workflow actions.
+- Measure From Map controls now keep grouped styling and expand draw/delete controls to 48px on phone-width viewports while preserving the existing map workflow.
+- Public estimate, contract, invoice, and completion proof pages wrap table cell content, keep controlled horizontal scrolling, and keep trust/status pills professional on phones.
+- Mobile modal coverage now includes Settings, New Customer, New Job, Schedule Job, Complete Job, and Record Payment at 375px.
+- Files touched: `styles.css`, `rendering.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests run: `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js`; `npm.cmd run test:browser`.
+- Known follow-up: verify on real iOS Safari and a deployed Mapbox map before beta, since local automated coverage uses Chromium and mocked Mapbox controls.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, and Package 07A-4B first-run/post-action guidance are complete.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Package 07A-4A payment configuration enforcement, Package 07A-4B first-run/post-action guidance, and Package 07A-4C mobile/field usability fixes are complete.
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
