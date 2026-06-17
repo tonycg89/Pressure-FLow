@@ -4,6 +4,8 @@ PressureFlow is deployed as a Node web service on Render with Supabase/Postgres 
 
 For the full production environment matrix, webhook setup, smoke test list, backup reminders, and rollback notes, use `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`.
 
+For the backup/recovery playbook, local JSON fallback safety notes, destructive-action review, export limits, and payment/webhook recovery steps, use `PRESSUREFLOW_BACKUP_RECOVERY.md`.
+
 ## Production URL
 
 ```text
@@ -149,9 +151,10 @@ Add the business Gmail account as a test user while the Google app is in testing
 Local without `DATABASE_URL`:
 
 - JSON files in `data/`
+- Each write keeps the previous file beside it as `<name>.json.bak`
 
 Production with `DATABASE_URL`:
 
 - Supabase/Postgres
 
-Do not rely on local JSON files for production data.
+Do not rely on local JSON files or `.bak` files for production data or production backups.

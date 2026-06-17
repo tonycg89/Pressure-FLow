@@ -80,8 +80,23 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07B-1 multi-tenant security audit is complete.
 - Package 07B-2 webhook and external integration security audit is complete.
 - Package 07C-1 environment and deployment readiness audit is complete.
+- Package 07C-2 backup, recovery, and data safety audit is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
+
+07C-2 backup, recovery, and data safety behavior:
+
+- Added `PRESSUREFLOW_BACKUP_RECOVERY.md` with the operator playbook for storage audit, backup expectations, recovery procedures, local JSON safety, destructive-action safeguards, export/data portability limits, and payment/webhook recovery.
+- Current production storage expectation remains Supabase/Postgres through `DATABASE_URL`; local JSON remains local/test or emergency maintenance only and production startup still fails closed without `DATABASE_URL` unless `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` is explicitly set.
+- Local JSON writes in `db.js` now write a temporary file, preserve the previous active file as `<name>.json.bak`, and then replace the active JSON file. Treat `.bak` files as local last-write safety nets, not production backups.
+- Data storage audited: accounts/users/settings, customers, jobs, estimates/contracts/invoices/payment records, expenses, follow-up tasks, saved measurements, inline logos/photos/files/templates, public tokens, webhook logs, and exports.
+- Destructive actions reviewed: customer, job, expense, saved measurement, custom template, logo, photos, follow-up cancellation, and manual payment actions have existing confirmation or staged-save behavior; server-side tenant scoping remains the security boundary.
+- Export behavior documented: `/api/export/jobs.csv` remains tenant-scoped; `/api/export/backup.json` is owner-only and limited to public settings/statuses/jobs, not a full restore/import system.
+- Payment/webhook recovery notes reference 07B-2 hardening: signed webhooks fail closed, stored invoice/account/type/amount validation is required, and duplicate paid webhooks are idempotent.
+- Updated `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` and `DEPLOYMENT.md` to point to the recovery playbook and clarify JSON `.bak` limits.
+- Added `tests/data-safety.spec.js`; updated `tests/environment-readiness.spec.js` for the explicit production local JSON maintenance override.
+- Tests run: `node --check db.js`; `node --check tests\data-safety.spec.js`; `node --check tests\environment-readiness.spec.js`; `npm.cmd run test:browser -- tests/data-safety.spec.js tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (54 passed).
+- Remaining deployment checks: confirm Supabase backup/PITR access, rehearse restore into staging, and expand backup export only after a restore/import design is approved.
 
 07C-1 environment and deployment readiness behavior:
 

@@ -4,6 +4,8 @@ Last Updated: June 17, 2026
 
 Use this checklist before promoting PressureFlow to a production or beta production environment. Do not paste secret values into this file, tickets, screenshots, or chat logs.
 
+For backup expectations, recovery playbooks, local JSON safety, destructive-action notes, export limits, and payment/webhook recovery procedures, use `PRESSUREFLOW_BACKUP_RECOVERY.md`.
+
 ## Required Production Variables
 
 | Variable | Required in production | Sensitive | Default if missing | Depends on it |
@@ -119,6 +121,9 @@ Run these after every production deploy:
 ## Backup And Rollback
 
 - Confirm Supabase/Postgres point-in-time recovery or backup export before beta traffic.
+- Read `PRESSUREFLOW_BACKUP_RECOVERY.md` and confirm the operator knows how to recover accidental deletion, failed deployment, corrupted settings, missed webhooks, local JSON corruption, database outage, and full environment rebuild.
+- Do not treat local JSON files or `.bak` files as production backups. They are local/test safety nets only.
+- If production temporarily uses `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true`, document the reason, data path, time window, and rollback plan before allowing beta traffic.
 - Keep the previous known-good deployment available for rollback.
 - If a deployment fails startup validation, fix environment variables instead of disabling production validation.
 - If webhook signatures fail after deploy, check provider endpoint URLs and proxy headers before rotating secrets.

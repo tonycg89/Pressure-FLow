@@ -1,4 +1,4 @@
-const { readFile, writeFile, mkdir } = require("node:fs/promises");
+const { readFile, writeFile, mkdir, rename, copyFile } = require("node:fs/promises");
 const { existsSync } = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
@@ -224,7 +224,15 @@ function asArray(value) {
 }
 
 async function writeJson(file, value) {
-  await writeFile(file, `${JSON.stringify(value, null, 2)}\n`);
+  const contents = `${JSON.stringify(value, null, 2)}\n`;
+  const temporaryFile = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  const backupFile = `${file}.bak`;
+
+  await writeFile(temporaryFile, contents);
+  if (existsSync(file)) {
+    await copyFile(file, backupFile);
+  }
+  await rename(temporaryFile, file);
 }
 
 async function syncPostgresItems(client, tableName, items, upsertItem, options = {}) {

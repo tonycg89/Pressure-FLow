@@ -39,6 +39,23 @@ test("production environment validation requires a secure public base URL", () =
   expect(result.errors).toContain("APP_BASE_URL must be a valid https:// URL in production.");
 });
 
+test("production local JSON fallback requires the explicit maintenance override", () => {
+  const blocked = validateDeploymentEnvironment({
+    NODE_ENV: "production",
+    SESSION_SECRET: "prod-secret",
+    APP_BASE_URL: "https://pressureflow.example"
+  });
+  expect(blocked.errors).toContain("DATABASE_URL is required in production. Set PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true only for an intentional temporary maintenance deployment.");
+
+  const allowed = validateDeploymentEnvironment({
+    NODE_ENV: "production",
+    SESSION_SECRET: "prod-secret",
+    APP_BASE_URL: "https://pressureflow.example",
+    PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION: "true"
+  });
+  expect(allowed.errors).not.toContain("DATABASE_URL is required in production. Set PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true only for an intentional temporary maintenance deployment.");
+});
+
 test("optional integration warnings are clear without blocking development", () => {
   const result = validateDeploymentEnvironment({
     NODE_ENV: "development",

@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, and Package 07C-1 environment/deployment readiness audit.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, and Package 07C-2 backup/recovery/data safety audit.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -37,6 +37,7 @@ Last Updated: June 17, 2026
 - Package 07B-1 multi-tenant security audit
 - Package 07B-2 webhook and external integration security audit
 - Package 07C-1 environment and deployment readiness audit
+- Package 07C-2 backup, recovery, and data safety audit
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -103,7 +104,25 @@ Last Updated: June 17, 2026
 - `npm.cmd run test:browser`: passing, 48 tests
 - `npm.cmd run test:browser -- tests/environment-readiness.spec.js`: passing, 4 tests
 - `npm.cmd run test:browser`: passing, 52 tests
+- `node --check db.js`, `node --check tests\data-safety.spec.js`, and `node --check tests\environment-readiness.spec.js`: passing
+- `npm.cmd run test:browser -- tests/data-safety.spec.js tests/environment-readiness.spec.js`: passing, 6 tests
+- `npm.cmd run smoke:test-user-safety`: passing
+- `npm.cmd run test:browser`: passing, 54 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 07C-2 Backup, Recovery + Data Safety
+
+- Data storage audit completed for Supabase/Postgres storage, local JSON fallback files, customers, jobs, estimates, contracts, invoices, payments, expenses, settings, templates, follow-up tasks, saved measurements, inline logos/photos/files, public tokens, webhook events, and exports.
+- Backup/recovery documentation added in `PRESSUREFLOW_BACKUP_RECOVERY.md`. It documents where data lives, tenant scoping, backup coverage, reconstructability, delete reversibility, production backup expectations, recovery playbooks, local JSON safety, destructive-action safeguards, export limits, and payment/webhook recovery steps.
+- Local JSON fallback safety improved in `db.js`: local writes now write a temporary file, preserve the previous active file as `<name>.json.bak`, and then replace the active JSON file. This is a local/test recovery aid only, not a production backup system.
+- Production storage behavior remains explicit from Package 07C-1: `DATABASE_URL` is required in production unless `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` is intentionally set for temporary maintenance.
+- Destructive actions reviewed: customer, job, expense, saved measurement, custom template, logo, photos, follow-up cancellation, and manual payment state actions have client confirmation or staged-save behavior appropriate to their risk; server-side tenant scoping remains the security boundary.
+- Export/data portability reviewed: `jobs.csv` remains tenant-scoped, and owner-only `backup.json` is documented as limited business continuity output rather than a full restore/import system.
+- Deployment docs updated: `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` and `DEPLOYMENT.md` now point to the backup/recovery playbook and clarify that local JSON `.bak` files are not production backups.
+- Tests added/updated: `tests/data-safety.spec.js` verifies local JSON previous-file `.bak` behavior; `tests/environment-readiness.spec.js` now explicitly covers the production local JSON maintenance override requirement.
+- Files changed: `db.js`, `tests/data-safety.spec.js`, `tests/environment-readiness.spec.js`, `PRESSUREFLOW_BACKUP_RECOVERY.md`, `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`, `DEPLOYMENT.md`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `PRESSUREFLOW_GOVERNANCE.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`, and `# PressureFlow Project Governance.txt`.
+- Tests run: `node --check db.js`; `node --check tests\data-safety.spec.js`; `node --check tests\environment-readiness.spec.js`; `npm.cmd run test:browser -- tests/data-safety.spec.js tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser`.
+- Remaining follow-up: confirm Supabase backup/PITR access before beta, rehearse restore into staging, and expand owner backup export only if a full restore/import plan is approved.
 
 ## Package 07C-1 Environment + Deployment Readiness Audit
 
