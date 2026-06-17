@@ -494,6 +494,20 @@ label.compact-select {
   margin-bottom: 18px;
 }
 
+.dashboard-setup-panel {
+  margin-top: 18px;
+  margin-bottom: 18px;
+}
+
+.dashboard-setup-panel .empty-state--horizontal {
+  align-items: center;
+}
+
+.dashboard-setup-panel .secondary-small-button {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .pending-payments-list {
   display: grid;
 }
@@ -546,12 +560,21 @@ label.compact-select {
 }
 
 .payment-warning {
+  display: grid;
+  gap: 10px;
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--status-warning-text) 22%, var(--status-warning-bg));
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
   line-height: 1.45;
+}
+
+.payment-warning p {
+  margin: 0;
+}
+
+.payment-warning .secondary-small-button {
+  justify-self: start;
 }
 
 .inline-toggle {

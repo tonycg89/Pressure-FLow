@@ -422,6 +422,7 @@ function testSettings() {
     businessLogoDataUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     serviceIndustry: "Pressure Washing",
     onboardingCompleted: true,
+    paymentInstructions: "Please include the invoice number with payment.",
     estimateFollowUpEnabled: true,
     estimateFollowUpDelayHours: 24
   };

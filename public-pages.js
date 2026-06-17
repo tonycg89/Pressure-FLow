@@ -393,6 +393,12 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const invoicePaid = isDeposit
     ? job.squareDepositInvoiceStatus === "PAID" || job.squareDepositPaidAt
     : job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
+  const visiblePaymentConfigured = Boolean(settings.stripeSecretKey || settings.zellePayment || settings.cashAppPayment || settings.venmoPayment || settings.paymentInstructions);
+  const trustPills = [
+    invoicePaid ? "Paid" : visiblePaymentConfigured ? "Payment options available" : "Payment instructions pending",
+    isDeposit ? "Deposit invoice" : "Final invoice",
+    "Customer copy"
+  ];
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -419,7 +425,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
           <span>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)}</span>
           <span>${escapeHtml(job.address)}</span>
         </div>
-        ${renderTrustPills([invoicePaid ? "Paid" : "Secure payment options", isDeposit ? "Deposit invoice" : "Final invoice", "Customer copy"])}
+        ${renderTrustPills(trustPills)}
       </header>
       <div class="doc__content">
         <section class="invoice-total doc__amount-due">
@@ -486,7 +492,7 @@ function renderPaymentMethods(settings) {
   ].filter(([, value]) => value);
 
   if (!methods.length) {
-    if (hasConfiguredInvoicePaymentMethod(settings)) {
+    if (settings.stripeSecretKey || settings.paymentInstructions) {
       return "";
     }
 
@@ -501,16 +507,6 @@ function renderPaymentMethods(settings) {
   return `<div class="payment-methods doc__pay-methods">
     ${methods.map(([label, value]) => `<div class="doc__pay-method"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
   </div>`;
-}
-
-function hasConfiguredInvoicePaymentMethod(settings = {}) {
-  return Boolean(
-    settings.stripeSecretKey ||
-    settings.zellePayment ||
-    settings.cashAppPayment ||
-    settings.venmoPayment ||
-    settings.paymentInstructions
-  );
 }
 
 function renderContractSigningPage(job, options = {}) {

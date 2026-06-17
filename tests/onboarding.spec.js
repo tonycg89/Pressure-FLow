@@ -149,7 +149,8 @@ async function loginAndCompleteOnboarding(page) {
   await checkOnboardingService(page, "Hedge Trimming");
   await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='2']")).toBeVisible();
-  await expect(page.locator("#onboardingWizardStatus")).toHaveText("Set final preferences for deposits and email delivery before saving setup.");
+  await expect(page.locator("#onboardingWizardStatus")).toHaveText("Customers need at least one payment option before invoices are sent. Add options from Settings when setup is complete.");
+  await expect(page.locator("#onboardingForm")).toContainText("Customers need at least one payment option before invoices are sent.");
   await expect(page.locator("#onboardingSaveButton")).toBeVisible();
   await expect(page.locator("#onboardingDepositPercentField")).toBeVisible();
   await page.locator("#onboardingForm [name='defaultDepositEnabled']").selectOption("false");
@@ -164,6 +165,8 @@ async function loginAndCompleteOnboarding(page) {
   await expect(page.locator("#sidebarBusinessName")).toHaveText("Johnson Exterior Cleaning");
   await expect(page.locator("#dashboardFirstRunPanel")).toBeVisible();
   await expect(page.locator("#dashboardFirstRunPanel")).toContainText("Ready for the first workflow");
+  await expect(page.locator("#dashboardPaymentSetupPanel")).toBeVisible();
+  await expect(page.locator("#dashboardPaymentSetupPanel")).toContainText("Set up payment options before sending invoices.");
 }
 
 async function checkOnboardingService(page, serviceName) {

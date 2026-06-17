@@ -64,6 +64,7 @@ function createPublicWorkflowHandlers({
   itemWorkspaceId = (job) => job.accountId || "owner",
   readJobs,
   readSettingsForJob,
+  requireConfiguredInvoicePaymentMethod = () => {},
   sendAdminTextAlertSafe,
   sendContractEmail,
   scheduleFollowUp = async () => {},
@@ -175,6 +176,7 @@ function createPublicWorkflowHandlers({
       }
 
       const settings = await readSettingsForJob(job);
+      requireConfiguredInvoicePaymentMethod(settings);
       const cleanSignerName = limitText(signerName, FIELD_LIMITS.publicSignerName);
       const cleanSignedDate = String(signedDate || "").trim();
       if (!cleanSignerName) {

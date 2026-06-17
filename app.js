@@ -125,6 +125,7 @@ const dashboardChartTitle = document.querySelector("#dashboardChartTitle");
 const dashboardBreakdownEyebrow = document.querySelector("#dashboardBreakdownEyebrow");
 const dashboardBreakdownTitle = document.querySelector("#dashboardBreakdownTitle");
 const dashboardFirstRunPanel = document.querySelector("#dashboardFirstRunPanel");
+const dashboardPaymentSetupPanel = document.querySelector("#dashboardPaymentSetupPanel");
 const sidebarBusinessName = document.querySelector("#sidebarBusinessName");
 const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
@@ -284,7 +285,7 @@ let onboardingCurrentStep = 0;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
-  "Set final preferences for deposits and email delivery before saving setup."
+  "Customers need at least one payment option before invoices are sent. Add options from Settings when setup is complete."
 ];
 
 async function init() {
@@ -297,6 +298,7 @@ async function init() {
   notificationToggle?.addEventListener("click", toggleNotificationDropdown);
   notificationClearAll?.addEventListener("click", clearAllDashboardNotifications);
   document.addEventListener("click", closeNotificationDropdownFromOutside);
+  document.addEventListener("click", handleSettingsPaymentClick);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
   jobCustomerSearch?.addEventListener("input", selectJobCustomer);
@@ -877,7 +879,7 @@ function renderStatusOptions() {
   statusFilter.value = statuses.includes(currentValue) ? currentValue : "all";
 }
 
-function openSettings() {
+function openSettings(options = {}) {
   fillSettingsForm();
   applyAccountVisibility();
   if (currentUser?.isOwner) {
@@ -889,7 +891,21 @@ function openSettings() {
   if (!settingsDialog.open) {
     settingsDialog.showModal();
   }
+  if (options.section === "payment") {
+    const paymentTarget = settingsDialog.querySelector("#settingsPaymentSection");
+    paymentTarget?.scrollIntoView({ block: "center" });
+    paymentTarget?.querySelector("input, select, textarea, button")?.focus();
+    return;
+  }
   settingsDialog.querySelector(".modal__close, input, select, textarea, button")?.focus();
+}
+
+function handleSettingsPaymentClick(event) {
+  const trigger = event.target.closest("[data-open-settings-payment]");
+  if (!trigger) return;
+
+  event.preventDefault();
+  openSettings({ section: "payment" });
 }
 
 function openOnboardingWizardFromSettings() {
@@ -2660,6 +2676,7 @@ function renderDashboard() {
   renderDashboardBreakdown(breakdownRows);
   renderDashboardNotifications(scopedJobs);
   renderDashboardFirstRunPanel();
+  renderDashboardPaymentSetupPanel();
 }
 
 function renderDashboardFirstRunPanel() {
@@ -2667,6 +2684,12 @@ function renderDashboardFirstRunPanel() {
 
   const hasOperationalData = jobs.length > 0 || customers.length > 0 || expenses.length > 0;
   dashboardFirstRunPanel.hidden = hasOperationalData;
+}
+
+function renderDashboardPaymentSetupPanel() {
+  if (!dashboardPaymentSetupPanel) return;
+
+  dashboardPaymentSetupPanel.hidden = hasConfiguredInvoicePaymentMethod();
 }
 
 function filterByTimeframe(items, dateField) {
@@ -3824,12 +3847,15 @@ function renderInvoicePaymentWarning(nextAction) {
   }
 
   return `<div class="payment-warning status-warning" role="status">
-    No payment methods are configured. Customers will need to contact you for payment instructions. Add payment options in Settings.
+    <p><strong>Payment options are not configured yet.</strong> Customers will not have a clear way to pay this invoice.</p>
+    <button class="secondary-small-button" type="button" data-open-settings-payment>Configure payment options</button>
   </div>`;
 }
 
 function hasConfiguredInvoicePaymentMethod() {
   return Boolean(
+    settings.hasConfiguredInvoicePaymentMethod ||
+    (settings.hasSquareAccessToken && settings.squareLocationId) ||
     settings.hasStripeSecretKey ||
     settings.zellePayment ||
     settings.cashAppPayment ||

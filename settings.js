@@ -37,7 +37,8 @@ function publicSettings(settings, options = {}) {
     hasQuickBooksClientSecret: Boolean(settings.quickBooksClientSecret),
     hasQuickBooksRefreshToken: Boolean(settings.quickBooksRefreshToken),
     hasGoogleClientSecret: Boolean(settings.googleClientSecret),
-    hasGoogleRefreshToken: Boolean(settings.googleRefreshToken)
+    hasGoogleRefreshToken: Boolean(settings.googleRefreshToken),
+    hasConfiguredInvoicePaymentMethod: hasConfiguredInvoicePaymentMethod(settings)
   };
   if (options.hidePlatformCredentials) {
     values.googleClientId = "";
@@ -46,6 +47,28 @@ function publicSettings(settings, options = {}) {
     values.hasMapboxPublicToken = Boolean(settings.mapboxPublicToken);
   }
   return values;
+}
+
+function hasConfiguredInvoicePaymentMethod(settings = {}) {
+  return Boolean(
+    (settings.squareAccessToken && settings.squareLocationId) ||
+    settings.stripeSecretKey ||
+    settings.zellePayment ||
+    settings.cashAppPayment ||
+    settings.venmoPayment ||
+    settings.paymentInstructions
+  );
+}
+
+function requireConfiguredInvoicePaymentMethod(settings = {}) {
+  if (hasConfiguredInvoicePaymentMethod(settings)) {
+    return;
+  }
+
+  const error = new Error("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
+  error.statusCode = 400;
+  error.code = "PAYMENT_OPTIONS_NOT_CONFIGURED";
+  throw error;
 }
 
 function omitPrivateSettings(settings = {}) {
@@ -311,5 +334,7 @@ module.exports = {
   normalizeServiceUnit,
   normalizeSettings,
   publicSettings,
+  hasConfiguredInvoicePaymentMethod,
+  requireConfiguredInvoicePaymentMethod,
   validateSettingsInput
 };

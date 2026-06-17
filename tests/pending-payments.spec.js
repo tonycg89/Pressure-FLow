@@ -73,7 +73,7 @@ test("public deposit and final invoices show configured payment methods", async 
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
   await expect(page.locator(".doc__logo")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Secure payment options");
+  await expect(page.locator("body")).toContainText("Payment options available");
   await expect(page.locator("body")).toContainText("Johnson Exterior Cleaning");
   await expect(page.locator("body")).toContainText("owner@johnson.test | (555) 222-3333");
   await expect(page.locator("body")).toContainText("Zelle");
@@ -117,6 +117,8 @@ test("paid public invoices show a paid state without payment CTAs", async ({ pag
 test("public deposit and final invoices show contact fallback when no payment methods are configured", async ({ page }) => {
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Payment instructions pending");
+  await expect(page.locator("body")).not.toContainText("Secure payment options");
   await expect(page.locator("body")).toContainText("Payment options have not been configured yet. Please contact Johnson Exterior Cleaning at owner@johnson.test or (555) 222-3333 for payment instructions.");
   await expect(page.locator("body")).not.toContainText("Payment instructions will be provided by the business.");
   await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
@@ -128,13 +130,68 @@ test("public deposit and final invoices show contact fallback when no payment me
   await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
 });
 
-test("contractor sees warning before sending invoice when no payment methods are configured", async ({ page }) => {
+test("public invoice renders manual payment instructions without card CTA", async ({ page }) => {
+  await updateTestSettings({
+    paymentInstructions: "Please pay by check at the service address and include invoice number PPW-D-TEST."
+  });
+
+  await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
+  await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Payment options available");
+  await expect(page.locator("body")).toContainText("Please pay by check at the service address and include invoice number PPW-D-TEST.");
+  await expect(page.locator("body")).not.toContainText("Payment options have not been configured yet.");
+  await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
+});
+
+test("contractor is blocked before sending deposit invoice when no payment methods are configured", async ({ page }) => {
   await login(page);
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Contract Carla/ }).click();
   await expect(page.locator("#jobDetail")).toContainText("Send Deposit Invoice");
-  await expect(page.locator("#jobDetail")).toContainText("No payment methods are configured. Customers will need to contact you for payment instructions. Add payment options in Settings.");
+  await expect(page.locator("#jobDetail")).toContainText("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
+  await expect(page.locator("#jobDetail")).toContainText("Configure payment options");
+
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "Send Deposit Invoice" }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const carla = jobs.find((item) => item.id === "66666666-6666-4666-8666-666666666666");
+  expect(carla.status).toBe("Contract Signed");
+  expect(carla.squareDepositInvoiceId || "").toBe("");
+});
+
+test("contractor is blocked before sending final invoice when no payment methods are configured", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Completed Casey/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Send Final Invoice");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
+    await dialog.accept();
+  });
+  await page.getByRole("button", { name: "Send Final Invoice" }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Completed");
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const casey = jobs.find((item) => item.id === "77777777-7777-4777-8777-777777777777");
+  expect(casey.status).toBe("Completed");
+  expect(casey.squareFinalInvoiceId || "").toBe("");
+});
+
+test("dashboard setup reminder opens payment settings when payment methods are missing", async ({ page }) => {
+  await login(page);
+
+  await expect(page.locator("#dashboardPaymentSetupPanel")).toBeVisible();
+  await expect(page.locator("#dashboardPaymentSetupPanel")).toContainText("Set up payment options before sending invoices.");
+  await page.locator("#dashboardPaymentSetupPanel").getByRole("button", { name: "Configure payment options" }).click();
+  await expect(page.locator("#settingsDialog")).toBeVisible();
+  await expect(page.locator("#settingsPaymentSection input[name='zellePayment']")).toBeFocused();
 });
 
 async function login(page) {
@@ -266,6 +323,25 @@ async function resetTestData() {
     depositPercent: 25,
     lineItems: [{ name: "House wash", quantity: 1, unit: "QTY", total: 400 }],
     status: "Contract Signed",
+    paymentRecords: [],
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  }, {
+    id: "77777777-7777-4777-8777-777777777777",
+    accountId: TEST_USER.accountId,
+    customerName: "Completed Casey",
+    email: "casey@example.com",
+    phone: "(555) 777-1212",
+    streetAddress: "400 Elm Street",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    address: "400 Elm Street, Riverside, CA 92501",
+    serviceType: "Fence cleaning",
+    estimate: 500,
+    depositPercent: 25,
+    lineItems: [{ name: "Fence cleaning", quantity: 1, unit: "QTY", total: 500 }],
+    status: "Completed",
     paymentRecords: [],
     createdAt: "2026-06-01T12:00:00.000Z",
     updatedAt: "2026-06-01T12:00:00.000Z"

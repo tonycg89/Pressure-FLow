@@ -48,6 +48,7 @@ const {
   normalizeCustomTemplates,
   normalizeSettings,
   publicSettings,
+  requireConfiguredInvoicePaymentMethod,
   validateSettingsInput
 } = require("./settings");
 const { buildGoogleAuthUrl, createGoogleCalendarEvent, exchangeGoogleCode } = require("./integrations/google");
@@ -206,6 +207,7 @@ const {
   itemWorkspaceId,
   readJobs,
   readSettingsForJob,
+  requireConfiguredInvoicePaymentMethod,
   sendAdminTextAlertSafe,
   sendContractEmail,
   writeJobs
@@ -256,6 +258,7 @@ const { applyAction } = createJobActionHandler({
   sendManualEstimateFollowUp,
   sendScheduleConfirmationEmail,
   setSuppressEstimateFollowUp,
+  requireConfiguredInvoicePaymentMethod,
   writeSettings
 });
 

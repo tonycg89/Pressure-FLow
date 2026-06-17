@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, and Package 07A-1 automated destructive testing.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Package 07A-4A payment configuration enforcement.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -30,6 +30,7 @@ Last Updated: June 17, 2026
 - Package 06C-2B customer trust layer polish
 - Package 06C-2C final visual consistency polish
 - Package 07A-1 automated end-to-end destructive testing
+- Package 07A-4A payment configuration enforcement
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -83,7 +84,22 @@ Last Updated: June 17, 2026
 - `npm.cmd run test:browser -- --workers=1 tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js`: passing, 20 tests
 - `npm.cmd run smoke:test-user-safety`: passing
 - `npm.cmd run test:browser -- --workers=1`: passing, 36 tests
+- `node --check settings.js`, `node --check job-actions.js`, `node --check public-workflows.js`, `node --check public-pages.js`, `node --check app.js`, `node --check tests\pending-payments.spec.js`, `node --check tests\onboarding.spec.js`, `node --check tests\follow-up-automation.spec.js`, and `node --check tests\mobile-hardening.spec.js`: passing
+- `npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js`: passing, 25 tests
+- `npm.cmd run test:browser -- --workers=1`: passing, 39 tests
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+
+## Package 07A-4A Payment Configuration Enforcement
+
+- Centralized payment readiness in `settings.js`. Payment is configured when at least one customer payment path exists: Square token plus Square location ID, Stripe secret key, Zelle, Cash App, Venmo, or manual payment instructions.
+- Server-side invoice creation now blocks deposit invoice sends, final invoice sends, completion-triggered final invoices, and public contract-signing deposit invoices when no payment path is configured.
+- Contractor job detail warnings now use the approved copy and include a direct `Configure payment options` action that opens Settings at the payment fields.
+- Dashboard shows a setup reminder when payment options are missing, and onboarding Preferences now explains that customers need at least one payment option before invoices are sent.
+- Public invoice pages avoid the old `Secure payment options` language unless a visible payment path exists, hide card CTAs when Stripe is not configured, preserve manual payment instructions, and show professional fallback contact copy when no visible customer payment option exists.
+- Files touched: `settings.js`, `job-actions.js`, `public-workflows.js`, `server.js`, `public-pages.js`, `app.js`, `index.html`, `styles.css`, `tests/pending-payments.spec.js`, `tests/onboarding.spec.js`, `tests/follow-up-automation.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests added/updated: blocked deposit invoice send, blocked final invoice send, dashboard payment setup reminder, onboarding payment guidance, invoice fallback without misleading secure-payment language, manual-instructions invoice rendering, configured Stripe/manual payment rendering, and existing follow-up/mobile invoice flows.
+- Tests run: `node --check settings.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check public-pages.js`; `node --check app.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\onboarding.spec.js`; `node --check tests\follow-up-automation.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js`; `npm.cmd run test:browser -- --workers=1`.
+- Known follow-up: deployed sandbox verification is still recommended for real Stripe/Square handoff behavior and Gmail/SMTP delivery.
 
 ## Package 07A-1 Automated Destructive Testing
 
@@ -137,7 +153,7 @@ Last Updated: June 17, 2026
 - Public deposit and final invoices show configured Stripe card checkout, Zelle, Cash App, Venmo, and manual payment instructions.
 - Unconfigured payment methods are hidden from public invoice pages.
 - Accounts with no configured payment methods show customer-safe contact fallback copy using business name, email, and phone when available.
-- The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
+- The contractor job detail view warns and server-side invoice actions block before invoice-sending actions when no payment methods are configured.
 
 ## 07B UX Cleanup Status
 

@@ -37,6 +37,7 @@ function createJobActionHandler({
   setSuppressEstimateFollowUp = async (job, suppressed) => {
     job.suppressEstimateFollowUp = Boolean(suppressed);
   },
+  requireConfiguredInvoicePaymentMethod = () => {},
   writeSettings
 }) {
   async function applyAction(job, action, input) {
@@ -157,6 +158,7 @@ function createJobActionHandler({
 
     if (action === "send-deposit-invoice") {
       const settings = await readSettings();
+      requireConfiguredInvoicePaymentMethod(settings);
       await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
       const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl);
       job.status = "Deposit Sent";
@@ -185,6 +187,7 @@ function createJobActionHandler({
 
     if (action === "complete") {
       const settings = await readSettings();
+      requireConfiguredInvoicePaymentMethod(settings);
       if (Object.hasOwn(input, "jobPhotos")) {
         job.jobPhotos = normalizeJobPhotos(input.jobPhotos);
       }
@@ -206,6 +209,7 @@ function createJobActionHandler({
 
     if (action === "send-final-invoice") {
       const settings = await readSettings();
+      requireConfiguredInvoicePaymentMethod(settings);
       const invoice = await createPressureFlowInvoice(job, settings, "final", input._baseUrl);
       job.status = "Final Invoice Sent";
       job.squareFinalInvoiceId = invoice.invoiceId;

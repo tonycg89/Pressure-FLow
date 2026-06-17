@@ -134,6 +134,23 @@
           </div>
         </section>
 
+        <section id="dashboardPaymentSetupPanel" class="panel dashboard-setup-panel" aria-labelledby="dashboardPaymentSetupTitle" hidden>
+          <div class="empty-state empty-state--horizontal">
+            <span class="empty-state__icon-wrap" aria-hidden="true">
+              <svg class="empty-state__icon" viewBox="0 0 24 24">
+                <path d="M4 7h16v10H4Z"></path>
+                <path d="M7 11h4"></path>
+                <path d="M15 15h2"></path>
+              </svg>
+            </span>
+            <div>
+              <p id="dashboardPaymentSetupTitle" class="empty-state__title">Set up payment options before sending invoices.</p>
+              <p class="empty-state__hint">Customers need at least one payment option on file before invoice links are sent.</p>
+            </div>
+            <button class="secondary-small-button" type="button" data-open-settings-payment>Configure payment options</button>
+          </div>
+        </section>
+
         <section class="panel pending-payments-panel" id="pendingPaymentsPanel" aria-labelledby="pendingPaymentsTitle" hidden>
           <div class="panel-header">
             <div>
@@ -752,7 +769,7 @@
           <div class="section-header">
             <div>
               <h3>Preferences</h3>
-              <p class="form-note">Credentials and payment processors can be connected later from Settings.</p>
+              <p class="form-note">Customers need at least one payment option before invoices are sent. You can add Zelle, Cash App, Venmo, manual instructions, Stripe, or Square in Settings.</p>
             </div>
           </div>
           <div class="settings-grid">
@@ -802,6 +819,7 @@
         <div class="modal__body">
           <nav class="settings-jump-list" aria-label="Settings sections">
             <a href="#settingsBusinessSection">Business</a>
+            <a href="#settingsPaymentSection">Payments</a>
             <a href="#settingsCalendarSection">Calendar</a>
             <a href="#settingsServicesSection">Services</a>
             <a href="#settingsIntegrationsSection">Integrations</a>
@@ -855,7 +873,7 @@
                 Default job duration
                 <input name="defaultJobDurationMinutes" class="input" type="number" min="30" max="720" step="15" value="180">
               </label>
-              <label class="field">
+              <label id="settingsPaymentSection" class="field">
                 Zelle
                 <input name="zellePayment" class="input" placeholder="Email or phone for Zelle">
               </label>

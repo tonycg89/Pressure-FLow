@@ -73,15 +73,19 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 06C-2B customer trust layer polish is complete.
 - Package 06C-2C final visual consistency polish is complete.
 - Package 07A-1 automated end-to-end destructive testing is complete.
+- Package 07A-4A payment configuration enforcement is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
 Invoice payment behavior:
 
+- Payment is configured when at least one customer payment path exists: Square access token plus Square location ID, Stripe secret key, Zelle, Cash App, Venmo, or manual payment instructions.
+- Deposit invoice sends, final invoice sends, completion-triggered final invoices, and public contract-signing deposit invoices are blocked server-side when no payment path is configured.
 - Public deposit and final invoices show configured Stripe card checkout, Zelle, Cash App, Venmo, and manual payment instructions.
 - Unconfigured payment methods do not render publicly.
 - Accounts with no configured payment methods show a customer-safe fallback asking customers to contact the business.
-- The contractor job detail view warns before invoice-sending actions when no payment methods are configured.
+- The contractor job detail view warns before invoice-sending actions when no payment methods are configured and includes a direct Settings/payment action.
+- The dashboard shows a setup reminder when payment options are missing, and onboarding Preferences explains that customers need at least one payment option before invoices are sent.
 
 07B UX cleanup behavior:
 
@@ -164,9 +168,19 @@ Package 07A-1 automated destructive testing behavior:
 - Full browser suite is passing at 36 tests after Package 07A-1.
 - Known follow-up: in-app Browser visual verification is still blocked in this Windows sandbox; manual deployed checks are still recommended for real Gmail/SMTP delivery, live Stripe/Square sandbox handoff, and real mobile Safari.
 
+Package 07A-4A payment configuration enforcement behavior:
+
+- Centralized payment readiness in `settings.js` with `hasConfiguredInvoicePaymentMethod` and `requireConfiguredInvoicePaymentMethod`.
+- Server-side blocking is wired through `job-actions.js` and `public-workflows.js`, with `server.js` passing the helper into both paths.
+- Customer invoice rendering in `public-pages.js` no longer uses misleading `Secure payment options` language when no visible payment option exists, hides card CTAs unless Stripe is configured, keeps manual payment instructions valid, and shows clear contact fallback copy when needed.
+- Dashboard, job-detail warning, Settings CTA targeting, and onboarding guidance were updated in `index.html`, `app.js`, and `styles.css` without changing frameworks or UI libraries.
+- Tests added/updated in `tests/pending-payments.spec.js`, `tests/onboarding.spec.js`, `tests/follow-up-automation.spec.js`, and `tests/mobile-hardening.spec.js`.
+- Tests run: `node --check settings.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check public-pages.js`; `node --check app.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\onboarding.spec.js`; `node --check tests\follow-up-automation.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js`; `npm.cmd run test:browser -- --workers=1`.
+- Known follow-up: deployed sandbox verification remains recommended for real Stripe/Square handoff behavior and Gmail/SMTP delivery.
+
 ## 5. Current Status
 
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, and Package 07A-1 automated destructive testing are complete.
+- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Package 07A-4A payment configuration enforcement are complete.
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 

@@ -108,7 +108,7 @@ test("public documents remain within the mobile viewport and proof links are tap
   }
 
   await page.goto("/invoice/final-mobile-job?type=final&token=pf-final-mobile");
-  await expect(page.locator("body")).toContainText("Secure payment options");
+  await expect(page.locator("body")).toContainText("Payment options available");
   await expectMinHeight(page.locator(".proof-link a"), 44);
   await expectMinHeight(page.getByRole("button", { name: "Pay by Credit Card" }), 44);
 
