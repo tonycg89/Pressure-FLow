@@ -10,8 +10,8 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | --- | --- | --- |
 | Deployment URL tested | Partial | Documented URL: `https://pressure-flow.onrender.com` |
 | `/health` reachable | Pass | Read-only check returned HTTP 200 on June 17, 2026 |
-| Latest code deployed | Fail | `/health` returned `{"ok":true}` instead of current expected `{"ok":true,"service":"pressureflow"}` |
-| External beta go/no-go | No-go | Redeploy latest code and rerun this checklist before inviting external beta users |
+| Latest code deployed | Pass | After Render env updates/redeploy, `/health` returned `{"ok":true,"service":"pressureflow"}` |
+| External beta go/no-go | No-go | Health/latest-code check now passes, but external email, database persistence, public links, provider webhooks, Google OAuth/Calendar, Mapbox, and full E2E workflow remain pending |
 
 ## Read-Only Check Performed
 
@@ -47,6 +47,16 @@ Render dashboard checks to perform:
 5. Confirm `DATABASE_URL`, `SESSION_SECRET`, and `APP_BASE_URL=https://pressure-flow.onrender.com` are set.
 6. Trigger a manual deploy after env cleanup if Render did not deploy the latest commit.
 
+Post-env-update retry on June 17, 2026:
+
+```text
+GET https://pressure-flow.onrender.com/health?codex=after-env-update
+HTTP 200
+Body: {"ok":true,"service":"pressureflow"}
+```
+
+Interpretation: the deployed service is now serving the latest readiness health response.
+
 Expected body from the current codebase:
 
 ```json
@@ -78,8 +88,8 @@ Interpretation: the hosted app is reachable, but the deployed sandbox does not a
 | --- | --- | --- |
 | App boots | Partial | `/health` responded HTTP 200 |
 | Health response safe | Pass | No secrets/config exposed |
-| Health response current | Fail | Missing `service:"pressureflow"` field |
-| Production validation accepts env | Blocked | Requires redeploy and Render log review |
+| Health response current | Pass | Returned `{"ok":true,"service":"pressureflow"}` after Render env updates/redeploy |
+| Production validation accepts env | Manual | Requires Render log review |
 | Production validation rejects unsafe flags | Local pass / deployed manual | Covered locally by browser tests; verify by configuration review in Render |
 | Logs do not expose secrets | Manual | Review Render logs after redeploy and smoke tests |
 
@@ -234,4 +244,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The documented deployed URL is reachable, but the health payload indicates the hosted app is not running the latest readiness code. Redeploy latest code, then rerun this document from Phase 2 onward.
+No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, but the remaining deployed sandbox workflow and external integration checks still need to be completed before external beta users are invited.

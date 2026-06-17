@@ -35,6 +35,35 @@ Production startup fails if `SESSION_SECRET`, `APP_BASE_URL`, or `DATABASE_URL` 
 | `PRESSUREFLOW_DATA_DIR` | Optional for local/test only | No | `data/` | Do not use local JSON as production storage |
 | `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION` | Emergency only | No | `false` | Allows production without `DATABASE_URL`; document any temporary use |
 
+## Claude/v0 Audit Render Service
+
+Use a separate Render Web Service for Claude/v0 audit testing instead of flipping the production/beta service between production and audit mode.
+
+Recommended audit service values:
+
+```text
+NODE_ENV=development
+ALLOW_AUTH_DISABLED=false
+APP_BASE_URL=https://pressure-flow-audit.onrender.com
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
+MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
+SESSION_SECRET=<separate random audit secret>
+```
+
+Do not set `DATABASE_URL` for disposable audit testing unless a separate staging database is intentionally created. Never point the audit service at the production database. Do not copy live Google, SMTP, Stripe, or Square secrets into the audit service unless a specific sandbox integration test requires sandbox-only credentials.
+
+Generate a Windows PowerShell-compatible `SESSION_SECRET` with:
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Use the printed value as `SESSION_SECRET`; use a different value from production.
+
 ## Google / Email
 
 | Variable | Required in production | Sensitive | Default if missing | Depends on it |

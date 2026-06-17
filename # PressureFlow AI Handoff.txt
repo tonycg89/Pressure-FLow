@@ -89,9 +89,9 @@ Phase 07D deployment sandbox verification status:
 
 - Added PRESSUREFLOW_SANDBOX_VERIFICATION.md as the external-beta sandbox verification tracker with pass/fail/manual fields, external provider setup notes, rollback triggers, and beta go/no-go criteria.
 - Read-only check performed on June 17, 2026: GET https://pressure-flow.onrender.com/health returned HTTP 200 with {"ok":true}.
-- Current code expects {"ok":true,"service":"pressureflow"} from /health, so the deployed Render app is reachable but appears not to be running the latest 07C readiness code.
-- Current recommendation: no-go for external beta until latest code is redeployed and Phase 07D is rerun.
-- Still blocked/manual after redeploy: Render env review, Supabase/Postgres persistence, login/test account workflow, email delivery, public links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
+- After Render environment updates/redeploy, GET https://pressure-flow.onrender.com/health?codex=after-env-update returned HTTP 200 with {"ok":true,"service":"pressureflow"}.
+- Current recommendation: no-go for external beta until the remaining deployed sandbox checks are completed.
+- Still blocked/manual after redeploy: Supabase/Postgres persistence, login/test account workflow, email delivery, public links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
 - Local Phase 07D pre-deploy checks run: npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (59 passed).
 
 07C-3 operational monitoring and error visibility behavior:
@@ -310,6 +310,29 @@ Required for audits:
 ```text
 MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 ```
+
+For Claude/v0 hosted audit testing, use a separate Render Web Service such as pressure-flow-audit instead of changing the production/beta service. Recommended audit env:
+
+```text
+NODE_ENV=development
+ALLOW_AUTH_DISABLED=false
+APP_BASE_URL=https://pressure-flow-audit.onrender.com
+PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
+PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
+MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
+SESSION_SECRET=<separate random audit secret>
+```
+
+Generate a PowerShell-compatible SESSION_SECRET with:
+
+```powershell
+$bytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Use a separate staging database only if persistent audit data is needed; otherwise leave DATABASE_URL unset for disposable audit testing. Never point the audit service at production data.
 
 Google Calendar / Gmail connection is required by design for client communication workflows. The audit environment must use one of these options:
 
