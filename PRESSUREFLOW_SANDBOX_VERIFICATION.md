@@ -11,7 +11,8 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | Deployment URL tested | Partial | Documented URL: `https://pressure-flow.onrender.com` |
 | `/health` reachable | Pass | Read-only check returned HTTP 200 on June 17, 2026 |
 | Latest code deployed | Pass | After Render env updates/redeploy, `/health` returned `{"ok":true,"service":"pressureflow"}` |
-| External beta go/no-go | No-go | Health/latest-code check now passes, but external email, database persistence, public links, provider webhooks, Google OAuth/Calendar, Mapbox, and full E2E workflow remain pending |
+| 07D-1 core app verification | Partial | Login/auth, protected routes, settings save, customer/job creation, and normal-request persistence passed; estimate send/public URL generation is blocked by a deployed 502 |
+| External beta go/no-go | No-go | Health/latest-code and core auth/data checks pass, but estimate email/public link generation returned 502 and external provider checks remain pending |
 
 ## Read-Only Check Performed
 
@@ -63,7 +64,7 @@ Expected body from the current codebase:
 {"ok":true,"service":"pressureflow"}
 ```
 
-Interpretation: the hosted app is reachable, but the deployed sandbox does not appear to include the latest environment/deployment readiness changes from Package 07C-1. Redeploy the latest code before performing mutating workflow checks.
+Interpretation: the hosted app is reachable and serving the latest health payload. Mutating workflow checks may proceed with a dedicated test account only.
 
 ## Phase 1: Deployment Config Review
 
@@ -97,12 +98,42 @@ Interpretation: the hosted app is reachable, but the deployed sandbox does not a
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| App uses Supabase/Postgres | Manual | Confirm `DATABASE_URL` in Render and persistence after redeploy |
-| Records persist after restart/redeploy | Blocked | Requires logged-in sandbox workflow after latest redeploy |
+| App uses Supabase/Postgres | Partial / manual | Production startup with `NODE_ENV=production` requires `DATABASE_URL` unless an emergency override is set; normal deployed read/write persistence passed. Render env/log review still required to confirm no local JSON fallback warning. |
+| Records persist after restart/redeploy | Partial | Test customer/job persisted after normal refresh-style requests; restart/redeploy persistence still not performed |
 | Tenant isolation in deployed environment | Optional/manual | Local tenant security suite passes; deployed check requires sandbox accounts |
 | Local JSON not used | Manual | Confirm no local JSON fallback flag and `DATABASE_URL` is set |
 | Backup/PITR documented | Documented | See `PRESSUREFLOW_BACKUP_RECOVERY.md` |
 | Restore rehearsal completed | Manual follow-up | Recommended before external beta |
+
+07D-1 deployed core app verification on June 17, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Health: PASS
+Login page: PASS
+Invalid login: PASS
+Protected app route: PASS
+Protected API routes: PASS
+Valid login: PASS
+Session refresh/readback: PASS
+Logout: PASS
+Settings save/onboarding complete/manual payment instructions: PASS
+Customer creation/readback: PASS
+Job creation/readback: PASS
+Public estimate send/link generation: FAIL/BLOCKED - POST /api/jobs/:id/send-square-estimate returned 502 Bad Gateway
+Post-failure health: PASS
+Post-failure job state: FAIL-CLOSED - job remained Lead, estimateSentAt false, estimateApprovalUrl empty
+```
+
+Safe records created:
+
+```text
+Customer: Codex 07D Test Customer 07D1-20260617170022
+Job: 07D-1 Core Verification 07D1-20260617170022
+Customer: Codex 07D Email Test 07D1-EMAIL-20260617170529
+Job: 07D-1 Estimate Link Verification 07D1-EMAIL-20260617170529
+```
 
 ## Phase 4: Email Delivery Verification
 
@@ -110,13 +141,13 @@ Use test inboxes only. Do not send to real customers.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Estimate email sends | Blocked | Requires latest redeploy and sandbox login |
+| Estimate email sends | Fail / blocked | 07D-1 deployed attempt to owner-approved test inbox returned 502 Bad Gateway |
 | Contract email sends | Blocked | Requires latest redeploy and sandbox login |
 | Deposit invoice email sends | Blocked | Requires latest redeploy and payment configuration |
 | Final invoice email sends | Blocked | Requires latest redeploy and sandbox workflow |
 | Follow-up email sends or can be safely triggered | Blocked | Requires latest redeploy and safe test account |
 | Completion email sends | Blocked | Requires latest redeploy and completed job |
-| Links use deployed `APP_BASE_URL` | Blocked | Verify from received email links after redeploy |
+| Links use deployed `APP_BASE_URL` | Blocked | No estimate link was generated because the deployed estimate send returned 502 before persisting a public URL |
 | No placeholders leak | Blocked | Inspect received test emails |
 | Failures log safely | Manual | Review Render logs for `email_send_failed` |
 
@@ -124,7 +155,7 @@ Use test inboxes only. Do not send to real customers.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Estimate approval page loads | Blocked | Requires generated deployed link |
+| Estimate approval page loads | Blocked | Estimate send returned 502 before generating a deployed link |
 | Estimate approval works | Blocked | Requires generated deployed link |
 | Already-approved state works | Blocked | Requires generated deployed link |
 | Contract signing page loads | Blocked | Requires generated deployed link |
@@ -193,13 +224,13 @@ Run only after latest code is redeployed and a safe test account/test inbox is a
 
 | Step | Status | Notes |
 | --- | --- | --- |
-| Login | Blocked | Requires sandbox credentials |
-| Complete onboarding if needed | Blocked | Requires sandbox credentials |
-| Configure payment method or manual instructions | Blocked | Use sandbox/manual-only test data |
-| Create customer | Blocked | Use fake/test customer data |
-| Create job | Blocked | Use fake/test job data |
-| Send estimate | Blocked | Use test inbox |
-| Open estimate public link | Blocked | Confirm deployed HTTPS URL |
+| Login | Pass | Dedicated test user `codex@test.com`; password not documented |
+| Complete onboarding if needed | Pass | Settings saved with onboarding complete for test account |
+| Configure payment method or manual instructions | Pass | Manual payment instructions configured for test account |
+| Create customer | Pass | Safe fake/test customer created and read back |
+| Create job | Pass | Safe fake/test job created and read back |
+| Send estimate | Fail / blocked | Deployed send returned 502 Bad Gateway |
+| Open estimate public link | Blocked | No public estimate link persisted because send failed closed |
 | Approve estimate | Blocked | Confirm status changes |
 | Sign contract | Blocked | Confirm deployed contract page |
 | Send/verify deposit invoice | Blocked | Confirm payment method configured |
@@ -244,4 +275,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, but the remaining deployed sandbox workflow and external integration checks still need to be completed before external beta users are invited.
+No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check and 07D-1 core auth/data checks, but deployed estimate sending/public link generation returned 502 Bad Gateway and the remaining external integration checks still need to be completed before external beta users are invited.

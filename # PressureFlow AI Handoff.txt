@@ -90,8 +90,10 @@ Phase 07D deployment sandbox verification status:
 - Added PRESSUREFLOW_SANDBOX_VERIFICATION.md as the external-beta sandbox verification tracker with pass/fail/manual fields, external provider setup notes, rollback triggers, and beta go/no-go criteria.
 - Read-only check performed on June 17, 2026: GET https://pressure-flow.onrender.com/health returned HTTP 200 with {"ok":true}.
 - After Render environment updates/redeploy, GET https://pressure-flow.onrender.com/health?codex=after-env-update returned HTTP 200 with {"ok":true,"service":"pressureflow"}.
-- Current recommendation: no-go for external beta until the remaining deployed sandbox checks are completed.
-- Still blocked/manual after redeploy: Supabase/Postgres persistence, login/test account workflow, email delivery, public links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
+- 07D-1 deployed core app verification used dedicated test user codex@test.com with the password intentionally not documented. Login/auth, protected routes, invalid login handling, session refresh, logout, settings save, manual payment setup, customer creation/readback, and job creation/readback passed.
+- 07D-1 blocker: deployed estimate send to the owner-approved test inbox returned 502 Bad Gateway before a public estimate URL was persisted. Post-failure /health still returned {"ok":true,"service":"pressureflow"}, and the failed job remained Lead with no estimateSentAt and no estimateApprovalUrl.
+- Current recommendation: no-go for external beta until the deployed estimate-send 502 is diagnosed/fixed and the remaining deployed sandbox checks are completed.
+- Still blocked/manual after redeploy: Render log review for the 502, restart/redeploy persistence proof, public estimate link generation, contract/invoice/proof public link testing, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
 - Local Phase 07D pre-deploy checks run: npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (59 passed).
 
 07C-3 operational monitoring and error visibility behavior:
