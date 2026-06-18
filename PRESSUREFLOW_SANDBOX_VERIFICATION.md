@@ -12,7 +12,8 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | `/health` reachable | Pass | Read-only check returned HTTP 200 on June 17, 2026 |
 | Latest code deployed | Pass | After Render env updates/redeploy, `/health` returned `{"ok":true,"service":"pressureflow"}` |
 | 07D-1 core app verification | Pass | Login/auth, protected routes, settings save, customer/job creation/readback, estimate send, and deployed public estimate URL generation passed |
-| External beta go/no-go | No-go | Health/latest-code and 07D-1 core app checks pass, but contract/invoice/proof links, provider webhooks, Google schedule behavior, Mapbox, restart/redeploy persistence proof, and full E2E workflow remain pending |
+| 07D-2 public workflow verification | Pass | Deployed estimate, contract, deposit invoice, final invoice, completion proof, invalid-link safety, and state transitions passed with generated sandbox links |
+| External beta go/no-go | No-go | Health/latest-code, 07D-1, and 07D-2 checks pass, but Stripe/Square provider webhooks, Mapbox, restart/redeploy persistence proof, and remaining deployment checks are pending |
 
 ## Read-Only Check Performed
 
@@ -163,16 +164,56 @@ Use test inboxes only. Do not send to real customers.
 | Check | Status | Notes |
 | --- | --- | --- |
 | Estimate approval page loads | Pass | Generated deployed estimate page returned HTTP 200 and rendered the test job |
-| Estimate approval works | Blocked | Requires generated deployed link |
-| Already-approved state works | Blocked | Requires generated deployed link |
-| Contract signing page loads | Blocked | Requires generated deployed link |
-| Contract signing works | Blocked | Requires generated deployed link |
-| Already-signed state works | Blocked | Requires generated deployed link |
-| Deposit invoice page loads | Blocked | Requires generated deployed link |
-| Final invoice page loads | Blocked | Requires generated deployed link |
-| Completion proof page loads | Blocked | Requires generated deployed link |
-| Invalid/tampered links fail safely | Blocked | Requires generated deployed link |
-| Mobile rendering acceptable | Manual | Verify at phone width after deployed links exist |
+| Estimate approval works | Pass | Public approval POST returned expected approved state and updated job to contract workflow |
+| Already-approved state works | Pass | Approved estimate state rendered safely after approval |
+| Contract signing page loads | Pass | Generated deployed contract page returned HTTP 200 with business/customer context |
+| Contract signing works | Pass | Typed signer name and signature date succeeded; no initials inputs were present |
+| Already-signed state works | Pass | Signed agreement state rendered safely |
+| Deposit invoice page loads | Pass | Generated deployed deposit invoice returned HTTP 200 and showed expected 25% deposit amount |
+| Final invoice page loads | Pass | Generated deployed final invoice returned HTTP 200 and showed expected final balance |
+| Completion proof page loads | Pass | Generated deployed proof page returned HTTP 200 with appropriate customer language and no-photo fallback |
+| Invalid/tampered links fail safely | Pass | Invalid estimate, contract, deposit invoice, final invoice, and proof tokens showed generic safe pages with no customer info, stack traces, or token leakage |
+| Mobile rendering acceptable | Local automated pass / deployed content pass | Public deployed pages rendered required content; `tests/mobile-hardening.spec.js` passed public-document mobile coverage |
+
+07D-2 deployed public workflow verification on June 17, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Workflow: fresh sandbox customer/job, generated public links only
+Estimate page: PASS
+Estimate branding/customer/total: PASS
+Estimate approval: PASS
+Already-approved state: PASS
+Contract page: PASS
+Contract signing with typed name/date: PASS
+Initials boxes absent: PASS
+Already-signed state: PASS
+Deposit invoice page: PASS
+Deposit amount/manual instructions: PASS
+Deposit manual paid state: PASS
+Deposit already-paid rendering: PASS
+Schedule after deposit paid: PASS
+Final invoice page: PASS
+Final amount/manual instructions: PASS
+Final manual paid state: PASS
+Final already-paid rendering: PASS
+Completion proof page: PASS
+Completion proof no-photo copy: PASS
+Completion proof payment-complete state: PASS
+Invalid/tampered public links: PASS
+No localhost URLs in tested public pages: PASS
+Final deployed job state readback: PASS
+```
+
+Safe record created:
+
+```text
+Customer: Codex 07D-2 Public Workflow 07D2-20260617173700
+Job: 07D-2 Public Workflow Verification 07D2-20260617173700
+```
+
+No public tokens or full customer-sensitive URLs are stored in this document.
 
 ## Phase 6: Stripe Sandbox Verification
 
@@ -209,9 +250,9 @@ Use test inboxes only. Do not send to real customers.
 | Check | Status | Notes |
 | --- | --- | --- |
 | OAuth callback registered | Manual | Expected: `<APP_BASE_URL>/auth/google/callback` |
-| OAuth flow completes | Blocked | Google OAuth app is still in Testing mode; each real Google account used for Connect Google Calendar must be added as a Google Cloud OAuth test user |
-| Calendar connection established | Blocked | 07D-1 attempt with `codex.ppw@gmail.com` was blocked by Google 403 until that Gmail is added as an OAuth test user |
-| Scheduled job creates event | Blocked | Requires sandbox workflow |
+| OAuth flow completes | Pass for current test account | `codex.ppw@gmail.com` was added as a Google OAuth test user and connected through Settings |
+| Calendar connection established | Pass for current test account | Google connected flag returned true for the 07D test account |
+| Scheduled job creates event | Pass / monitor logs | 07D-2 schedule action succeeded after deposit payment with Google connected; review Google Calendar/Render logs as follow-up |
 | Calendar failures log safely | Manual | Review Render logs for `request_failed` |
 | Disconnected state clear to user | Local covered / deployed manual | Local flows and copy covered by prior packages |
 
@@ -241,15 +282,15 @@ Run only after latest code is redeployed and a safe test account/test inbox is a
 | Send estimate | Pass | Initial 502 resolved after Google OAuth test user was connected |
 | Open estimate public link | Pass | Public estimate link used deployed HTTPS URL and rendered successfully |
 | Approve estimate | Blocked | Confirm status changes |
-| Sign contract | Blocked | Confirm deployed contract page |
-| Send/verify deposit invoice | Blocked | Confirm payment method configured |
-| Record or process deposit payment | Blocked | Use manual or sandbox provider |
-| Schedule job | Blocked | Confirm Google Calendar if enabled |
-| Complete job | Blocked | Use test photos only |
-| Send/verify final invoice | Blocked | Confirm deployed invoice page |
-| Record or process final payment | Blocked | Use manual or sandbox provider |
-| View completion proof | Blocked | Confirm deployed proof URL |
-| Dashboard/pipeline reflects status | Blocked | Confirm final state |
+| Sign contract | Pass | Deployed contract page signed successfully with typed name/date |
+| Send/verify deposit invoice | Pass | Deposit invoice generated through public contract signing and rendered correctly |
+| Record or process deposit payment | Pass | Manual deposit payment recorded; no live processor used |
+| Schedule job | Pass | Schedule action succeeded after deposit payment |
+| Complete job | Pass | Completion generated final invoice and proof link; no-photo handling verified |
+| Send/verify final invoice | Pass | Final invoice generated and rendered correctly |
+| Record or process final payment | Pass | Manual final payment recorded; no live processor used |
+| View completion proof | Pass | Completion proof rendered and reflected payment complete after final payment |
+| Dashboard/pipeline reflects status | Pass | Final deployed job readback showed `Paid` with expected approval/sign/payment timestamps |
 
 ## Rollback Triggers
 
@@ -284,4 +325,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check and 07D-1 core app verification, including estimate email/public estimate link generation after Google OAuth test-user setup. Contract/invoice/proof links, provider webhooks, Google schedule behavior, Mapbox, restart/redeploy persistence proof, and the full deployed end-to-end workflow still need to be completed before external beta users are invited.
+No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, and 07D-2 deployed public workflow verification. Stripe/Square provider webhook verification, Mapbox deployed workflow, restart/redeploy persistence proof, and remaining deployment checks still need to be completed before external beta users are invited.
