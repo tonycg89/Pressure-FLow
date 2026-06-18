@@ -15,7 +15,8 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | 07D-2 public workflow verification | Pass | Deployed estimate, contract, deposit invoice, final invoice, completion proof, invalid-link safety, and state transitions passed with generated sandbox links |
 | 07D-3 deployed Mapbox verification | Pass | Deployed Mapbox token delivery, map load, polygon measurement, quantity/total update, saved measurement data, and mobile/touch sanity passed |
 | 07D-4 Stripe/Square sandbox webhooks | Blocked / app fail-closed pass | Deployed sandbox has no Stripe/Square sandbox credentials or webhook secrets configured for the test account; deployed webhook endpoints fail closed safely |
-| External beta go/no-go | No-go | Health/latest-code, 07D-1, 07D-2, 07D-3, and 07D-4 app-side checks pass, but Stripe/Square provider webhook acceptance, restart/redeploy persistence proof, and remaining deployment checks are pending |
+| 07D-5 restart/redeploy persistence proof | Partial | Fresh deployed customer/job/measurement/estimate-link baseline persisted across refresh-style readback and logout/login; Render restart/redeploy proof is pending manual Render action |
+| External beta go/no-go | No-go | Health/latest-code, 07D-1, 07D-2, 07D-3, 07D-4 app-side checks, and 07D-5 refresh/logout-login checks pass, but Stripe/Square provider webhook acceptance, Render restart/redeploy persistence proof, and remaining deployment checks are pending |
 
 ## Read-Only Check Performed
 
@@ -102,11 +103,41 @@ Interpretation: the hosted app is reachable and serving the latest health payloa
 | Check | Status | Notes |
 | --- | --- | --- |
 | App uses Supabase/Postgres | Partial / manual | Production startup with `NODE_ENV=production` requires `DATABASE_URL` unless an emergency override is set; normal deployed read/write persistence passed. Render env/log review still required to confirm no local JSON fallback warning. |
-| Records persist after restart/redeploy | Partial | Test customer/job persisted after normal refresh-style requests; restart/redeploy persistence still not performed |
+| Records persist after restart/redeploy | Partial | 07D-5 fresh test customer/job/measurement/estimate-link persisted after refresh-style readback and logout/login; Render restart/redeploy persistence still requires a manual Render restart/deploy action |
 | Tenant isolation in deployed environment | Optional/manual | Local tenant security suite passes; deployed check requires sandbox accounts |
 | Local JSON not used | Manual | Confirm no local JSON fallback flag and `DATABASE_URL` is set |
 | Backup/PITR documented | Documented | See `PRESSUREFLOW_BACKUP_RECOVERY.md` |
 | Restore rehearsal completed | Manual follow-up | Recommended before external beta |
+
+07D-5 deployed persistence baseline on June 18, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Health before restart/redeploy: PASS - HTTP 200 with {"ok":true,"service":"pressureflow"}
+Fresh customer label: Persistence Test Customer 07D5-20260618055842
+Fresh job label: Persistence Restart Test 07D5-20260618055842
+Customer/job creation: PASS
+Measurement saved on job: PASS - 1,450 SqFt
+Estimate send/link generation: PASS
+Generated estimate URL host: PASS - https://pressure-flow.onrender.com
+Public estimate page loads: PASS - HTTP 200
+Refresh-style authenticated readback: PASS
+Logout/login readback: PASS
+Pipeline/job state after readback: PASS - Estimate Sent
+Settings readback: PASS - settings endpoint responded; this test account currently reports no configured customer payment path
+Render restart persistence: PENDING - requires manual Render Restart Service or Manual Deploy action
+Render redeploy persistence: PENDING - requires manual Render Manual Deploy or next normal deploy
+Local JSON fallback warning review: PENDING - requires Render log review after restart/redeploy
+```
+
+Manual steps needed to finish 07D-5:
+
+1. In Render, open the `pressure-flow` service.
+2. Trigger **Restart Service** or **Manual Deploy**.
+3. Wait until `/health` returns `{"ok":true,"service":"pressureflow"}`.
+4. Re-run the 07D-5 readback against the labels above.
+5. Review Render logs for any local JSON fallback warning or production startup validation warning.
 
 07D-1 deployed core app verification on June 17, 2026:
 
@@ -397,4 +428,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, 07D-2 deployed public workflow verification, 07D-3 deployed Mapbox workflow verification, and 07D-4 deployed webhook fail-closed checks. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets; restart/redeploy persistence proof and remaining deployment checks still need to be completed before external beta users are invited.
+No-go for external beta as of June 18, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, 07D-2 deployed public workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 refresh/logout-login persistence checks. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets; Render restart/redeploy persistence proof and remaining deployment checks still need to be completed before external beta users are invited.

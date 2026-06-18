@@ -114,7 +114,7 @@ Current Phase:
 
 - Approved Claude UX packages through 07A-4D are complete locally.
 - Dedicated beta security/readiness packages through 07C-3 are complete locally.
-- Phase 07D deployment sandbox verification has started. The deployed `/health` endpoint now returns the latest readiness payload after Render environment updates/redeploy, and 07D-1 core app, 07D-2 public workflow, 07D-3 deployed Mapbox, and 07D-4 deployed webhook fail-closed checks passed. Stripe/Square valid provider webhook acceptance is blocked until sandbox credentials/secrets are configured. External beta remains no-go until the remaining deployed sandbox checks pass or explicitly accepted blockers are documented.
+- Phase 07D deployment sandbox verification has started. The deployed `/health` endpoint now returns the latest readiness payload after Render environment updates/redeploy, and 07D-1 core app, 07D-2 public workflow, 07D-3 deployed Mapbox, 07D-4 deployed webhook fail-closed checks, and 07D-5 refresh/logout-login persistence checks passed. Stripe/Square valid provider webhook acceptance is blocked until sandbox credentials/secrets are configured, and Render restart/redeploy persistence proof remains pending manual Render action. External beta remains no-go until the remaining deployed sandbox checks pass or explicitly accepted blockers are documented.
 - Deployment verification should use `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`, `PRESSUREFLOW_BACKUP_RECOVERY.md`, `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`, and `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
 
 ---
