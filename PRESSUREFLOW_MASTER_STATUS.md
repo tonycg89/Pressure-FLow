@@ -5,7 +5,7 @@ Last Updated: June 17, 2026
 ## Current Phase
 
 - PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
-- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` now returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 core auth/data verification passed for login, protected routes, settings save, customer/job creation, and normal-request persistence, but deployed estimate sending/public link generation returned 502 Bad Gateway. External beta remains no-go until that blocker and the remaining deployed provider, Google OAuth/Calendar, Mapbox, and end-to-end workflow checks pass.
+- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` now returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification passed for login, protected routes, settings save, customer/job creation/readback, estimate send, and deployed public estimate URL generation after Google OAuth test-user setup. External beta remains no-go until the remaining deployed contract/invoice/proof links, provider webhooks, Google schedule behavior, Mapbox, restart/redeploy persistence proof, and end-to-end workflow checks pass.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -118,7 +118,7 @@ Last Updated: June 17, 2026
 - `npm.cmd run test:browser`: passing, 59 tests
 - Phase 07D read-only deployed check: `GET https://pressure-flow.onrender.com/health` returned HTTP 200 with `{"ok":true}`; reachable but not latest expected payload.
 - Phase 07D post-env-update deployed check: `GET https://pressure-flow.onrender.com/health?codex=after-env-update` returned HTTP 200 with `{"ok":true,"service":"pressureflow"}`.
-- Phase 07D-1 deployed core app checks: login/auth, protected routes, invalid login handling, session refresh, logout, settings save, manual payment setup, customer creation/readback, and job creation/readback passed using the dedicated `codex@test.com` test user. Estimate send/public URL generation returned 502 Bad Gateway; post-failure health remained passing and the job failed closed with no estimate URL persisted.
+- Phase 07D-1 deployed core app checks: login/auth, protected routes, invalid login handling, session refresh, logout, settings save, manual payment setup, customer creation/readback, job creation/readback, estimate send, and deployed public estimate page rendering passed using the dedicated `codex@test.com` test user. Initial estimate send returned 502 because Google was not connected; after `codex.ppw@gmail.com` was added as a Google OAuth test user and connected, retry succeeded.
 - Phase 07D local pre-deploy checks: `npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, and `npm.cmd run test:browser` passing, 59 tests.
 - Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
 
@@ -127,10 +127,10 @@ Last Updated: June 17, 2026
 - Sandbox verification tracker added: `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
 - Initial read-only deployed health check against `https://pressure-flow.onrender.com/health` returned HTTP 200 with the old `{"ok":true}` payload.
 - After Render environment updates/redeploy, `https://pressure-flow.onrender.com/health?codex=after-env-update` returned HTTP 200 with `{"ok":true,"service":"pressureflow"}`.
-- 07D-1 deployed core app verification passed for core auth/data behavior, but estimate email/public link generation failed with a 502 before any public estimate URL was persisted.
-- Current recommendation: no-go for external beta until the deployed estimate-send 502 is diagnosed/fixed and the remaining sandbox verification checklist passes.
+- 07D-1 deployed core app verification passed for core auth/data behavior and estimate email/public estimate link generation after Google OAuth test-user setup.
+- Current recommendation: no-go for external beta until the remaining sandbox verification checklist passes.
 - Deployment/runbook docs updated to link the sandbox verification tracker and require it before external beta.
-- Items still blocked/manual: Render log review for the estimate-send 502, restart/redeploy persistence proof, public estimate/contract/invoice/proof links, Stripe/Square sandbox webhooks, Google OAuth/Calendar, Mapbox deployed workflow, and full deployed end-to-end workflow.
+- Items still blocked/manual: restart/redeploy persistence proof, contract/invoice/proof public links, Stripe/Square sandbox webhooks, Google schedule behavior, Mapbox deployed workflow, and full deployed end-to-end workflow.
 - Local pre-deploy tests run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed).
 
 ## Package 07C-3 Operational Monitoring + Error Visibility

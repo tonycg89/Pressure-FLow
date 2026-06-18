@@ -114,7 +114,7 @@ Current Phase:
 
 - Approved Claude UX packages through 07A-4D are complete locally.
 - Dedicated beta security/readiness packages through 07C-3 are complete locally.
-- Phase 07D deployment sandbox verification has started. The deployed `/health` endpoint now returns the latest readiness payload after Render environment updates/redeploy, and 07D-1 core auth/data checks passed, but deployed estimate send/public link generation returned 502 Bad Gateway. External beta remains no-go until that blocker and the remaining deployed sandbox checks pass.
+- Phase 07D deployment sandbox verification has started. The deployed `/health` endpoint now returns the latest readiness payload after Render environment updates/redeploy, and 07D-1 core app checks passed after Google OAuth test-user setup, including deployed estimate send and public estimate URL generation. External beta remains no-go until the remaining deployed sandbox checks pass.
 - Deployment verification should use `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`, `PRESSUREFLOW_BACKUP_RECOVERY.md`, `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`, and `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
 
 ---

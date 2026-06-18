@@ -11,8 +11,8 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | Deployment URL tested | Partial | Documented URL: `https://pressure-flow.onrender.com` |
 | `/health` reachable | Pass | Read-only check returned HTTP 200 on June 17, 2026 |
 | Latest code deployed | Pass | After Render env updates/redeploy, `/health` returned `{"ok":true,"service":"pressureflow"}` |
-| 07D-1 core app verification | Partial | Login/auth, protected routes, settings save, customer/job creation, and normal-request persistence passed; estimate send/public URL generation is blocked by a deployed 502 |
-| External beta go/no-go | No-go | Health/latest-code and core auth/data checks pass, but estimate email/public link generation returned 502 and external provider checks remain pending |
+| 07D-1 core app verification | Pass | Login/auth, protected routes, settings save, customer/job creation/readback, estimate send, and deployed public estimate URL generation passed |
+| External beta go/no-go | No-go | Health/latest-code and 07D-1 core app checks pass, but contract/invoice/proof links, provider webhooks, Google schedule behavior, Mapbox, restart/redeploy persistence proof, and full E2E workflow remain pending |
 
 ## Read-Only Check Performed
 
@@ -121,9 +121,13 @@ Logout: PASS
 Settings save/onboarding complete/manual payment instructions: PASS
 Customer creation/readback: PASS
 Job creation/readback: PASS
-Public estimate send/link generation: FAIL/BLOCKED - POST /api/jobs/:id/send-square-estimate returned 502 Bad Gateway
+Public estimate send/link generation: INITIAL FAIL/BLOCKED - POST /api/jobs/:id/send-square-estimate returned 502 Bad Gateway
 Post-failure health: PASS
 Post-failure job state: FAIL-CLOSED - job remained Lead, estimateSentAt false, estimateApprovalUrl empty
+Google OAuth fix: PASS - real Gmail account added as Google OAuth test user and connected through Settings
+Estimate send retry: PASS
+Generated estimate URL host: PASS - https://pressure-flow.onrender.com
+Public estimate page loads: PASS - HTTP 200, job content present, no not-found copy
 ```
 
 Safe records created:
@@ -133,7 +137,10 @@ Customer: Codex 07D Test Customer 07D1-20260617170022
 Job: 07D-1 Core Verification 07D1-20260617170022
 Customer: Codex 07D Email Test 07D1-EMAIL-20260617170529
 Job: 07D-1 Estimate Link Verification 07D1-EMAIL-20260617170529
+Job: 07D-1 Estimate Link Verification 07D1-EMAIL-20260617170313
 ```
+
+07D-1 estimate send blocker resolution: Render logs showed `email_send_failed` because the test account used Google email but Google Calendar/Gmail was not connected. Google OAuth then blocked `codex.ppw@gmail.com` with `Error 403: access_denied` because the OAuth app is in Testing mode. After adding `codex.ppw@gmail.com` as a Google OAuth test user and connecting Google from PressureFlow Settings, the estimate send retry succeeded. The generated estimate URL used the deployed HTTPS origin and the public estimate page rendered successfully.
 
 ## Phase 4: Email Delivery Verification
 
@@ -141,21 +148,21 @@ Use test inboxes only. Do not send to real customers.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Estimate email sends | Fail / blocked | 07D-1 deployed attempt to owner-approved test inbox returned 502 Bad Gateway |
+| Estimate email sends | Pass | Initial 502 was caused by disconnected Google OAuth; after adding/connecting the Google OAuth test user, deployed estimate send succeeded to the owner-approved test inbox |
 | Contract email sends | Blocked | Requires latest redeploy and sandbox login |
 | Deposit invoice email sends | Blocked | Requires latest redeploy and payment configuration |
 | Final invoice email sends | Blocked | Requires latest redeploy and sandbox workflow |
 | Follow-up email sends or can be safely triggered | Blocked | Requires latest redeploy and safe test account |
 | Completion email sends | Blocked | Requires latest redeploy and completed job |
-| Links use deployed `APP_BASE_URL` | Blocked | No estimate link was generated because the deployed estimate send returned 502 before persisting a public URL |
-| No placeholders leak | Blocked | Inspect received test emails |
+| Links use deployed `APP_BASE_URL` | Pass for estimate | Generated estimate URL started with `https://pressure-flow.onrender.com/estimate/` |
+| No placeholders leak | Manual | Inspect received test email content |
 | Failures log safely | Manual | Review Render logs for `email_send_failed` |
 
 ## Phase 5: Public Link Verification
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Estimate approval page loads | Blocked | Estimate send returned 502 before generating a deployed link |
+| Estimate approval page loads | Pass | Generated deployed estimate page returned HTTP 200 and rendered the test job |
 | Estimate approval works | Blocked | Requires generated deployed link |
 | Already-approved state works | Blocked | Requires generated deployed link |
 | Contract signing page loads | Blocked | Requires generated deployed link |
@@ -231,8 +238,8 @@ Run only after latest code is redeployed and a safe test account/test inbox is a
 | Configure payment method or manual instructions | Pass | Manual payment instructions configured for test account |
 | Create customer | Pass | Safe fake/test customer created and read back |
 | Create job | Pass | Safe fake/test job created and read back |
-| Send estimate | Fail / blocked | Deployed send returned 502 Bad Gateway |
-| Open estimate public link | Blocked | No public estimate link persisted because send failed closed |
+| Send estimate | Pass | Initial 502 resolved after Google OAuth test user was connected |
+| Open estimate public link | Pass | Public estimate link used deployed HTTPS URL and rendered successfully |
 | Approve estimate | Blocked | Confirm status changes |
 | Sign contract | Blocked | Confirm deployed contract page |
 | Send/verify deposit invoice | Blocked | Confirm payment method configured |
@@ -277,4 +284,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check and 07D-1 core auth/data checks, but deployed estimate sending/public link generation returned 502 Bad Gateway and the remaining external integration checks still need to be completed before external beta users are invited.
+No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check and 07D-1 core app verification, including estimate email/public estimate link generation after Google OAuth test-user setup. Contract/invoice/proof links, provider webhooks, Google schedule behavior, Mapbox, restart/redeploy persistence proof, and the full deployed end-to-end workflow still need to be completed before external beta users are invited.
