@@ -76,6 +76,64 @@ Use the printed value as `SESSION_SECRET`; use a different value from production
 
 SMTP credentials are stored per account in Settings, not as environment variables. If an account selects SMTP, Settings must include host, port, username, password, and from email.
 
+## Test User Onboarding Checklist
+
+Use this checklist for every PressureFlow beta/test user added to the deployed production-like service. Do not document passwords in repo files, tickets, screenshots, or chats after setup.
+
+1. Create the PressureFlow app user.
+   - Use a dedicated test login, not an owner/admin account unless owner behavior is specifically being tested.
+   - Use a temporary password and rotate/delete it after verification.
+   - Record only the test user's email and role in verification notes, never the password.
+
+2. Decide which Google account will connect email/calendar.
+   - The PressureFlow login email does not need to be a real Gmail inbox.
+   - The Google account used in **Connect Google Calendar** must be real and accessible.
+   - One Google test account can be reused across multiple PressureFlow test users if that is intentional.
+
+3. Add the Google account as an OAuth test user while the Google app is in Testing mode.
+   - In Google Cloud Console, select the PressureFlow OAuth project.
+   - Go to **APIs & Services** -> **OAuth consent screen**.
+   - Add the real Gmail account under **Test users** or **Audience/Test users**.
+   - Save and wait a minute before retrying the OAuth flow.
+   - If this is skipped, Google can show `Error 403: access_denied` with an app verification/testing message.
+
+4. Confirm OAuth redirect configuration.
+   - The OAuth client must include:
+
+```text
+https://pressure-flow.onrender.com/auth/google/callback
+```
+
+   - For a separate audit/staging service, also add that service's callback URL if Google OAuth is tested there.
+
+5. Connect Google from the test user's PressureFlow Settings.
+   - Log in as the PressureFlow test user.
+   - Open Settings.
+   - Click **Connect Google Calendar**.
+   - Sign in with the approved real Google test account.
+   - Confirm PressureFlow shows the connected state before sending estimates or scheduling jobs.
+
+6. Configure payment readiness for invoice tests.
+   - Add manual payment instructions for the test account unless Stripe/Square sandbox is being tested.
+   - Do not use live payment credentials for test users.
+   - Confirm Settings reports at least one configured customer payment path before invoice testing.
+
+7. Run the per-user smoke check.
+   - Log in successfully.
+   - Confirm invalid login fails safely if testing auth.
+   - Create a fake customer.
+   - Create a fake job.
+   - Send one estimate to an approved test inbox.
+   - Confirm generated public links use `https://pressure-flow.onrender.com`.
+   - Open the public estimate link and confirm it renders.
+   - Review Render logs for `email_send_failed`, `request_failed`, or unexpected 500/502 responses.
+
+8. Clean up after testing.
+   - Delete or disable temporary test users that are no longer needed.
+   - Rotate any shared temporary passwords.
+   - Remove Google OAuth test users that should no longer have access.
+   - Keep fake test records only if they are useful for regression verification.
+
 ## Maps
 
 | Variable | Required in production | Sensitive | Default if missing | Depends on it |

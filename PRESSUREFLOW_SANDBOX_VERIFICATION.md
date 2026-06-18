@@ -202,11 +202,13 @@ Use test inboxes only. Do not send to real customers.
 | Check | Status | Notes |
 | --- | --- | --- |
 | OAuth callback registered | Manual | Expected: `<APP_BASE_URL>/auth/google/callback` |
-| OAuth flow completes | Blocked | Requires latest redeploy and Google Cloud test user |
-| Calendar connection established | Blocked | Requires sandbox login |
+| OAuth flow completes | Blocked | Google OAuth app is still in Testing mode; each real Google account used for Connect Google Calendar must be added as a Google Cloud OAuth test user |
+| Calendar connection established | Blocked | 07D-1 attempt with `codex.ppw@gmail.com` was blocked by Google 403 until that Gmail is added as an OAuth test user |
 | Scheduled job creates event | Blocked | Requires sandbox workflow |
 | Calendar failures log safely | Manual | Review Render logs for `request_failed` |
 | Disconnected state clear to user | Local covered / deployed manual | Local flows and copy covered by prior packages |
+
+Per-test-user setup requirement: follow `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` -> **Test User Onboarding Checklist** before expecting deployed email/calendar workflows to pass.
 
 ## Phase 9: Mapbox Deployed Verification
 
