@@ -136,6 +136,26 @@ If two AI systems disagree:
 
 ---
 
+## Product Identity Rule
+
+PressureFlow serves pressure washing companies first.
+
+Every major feature decision should be evaluated through the lens of a pressure washing owner/operator before considering broader trade applicability. The product should become the easiest CRM for pressure washing companies to estimate, sell, schedule, complete, and get paid for jobs.
+
+Feature proposals should pass at least one of these tests:
+
+- Does this save time?
+- Does this make money?
+- Does this reduce confusion?
+
+If the answer is no to all three, move it to the backlog.
+
+Avoid drifting into a generic CRM, generic field-service platform, bloated enterprise system, or feature-packed but confusing product. Keep PressureFlow simple, fast, mobile-friendly, pressure-washing focused, easy to learn, and easy to sell.
+
+Adjacent trades and new verticals may be considered only when they share the core PressureFlow workflow. Any new trade should share at least 80% of the existing workflow and must not require rebuilding the product.
+
+---
+
 ## Architecture
 
 Current Stack:

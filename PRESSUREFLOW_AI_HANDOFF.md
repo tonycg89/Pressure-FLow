@@ -322,6 +322,35 @@ Package 07A-4D customer clarity and Pool Service behavior:
 - Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
+## 5A. Strategic Roadmap And Product Identity
+
+Core mission: PressureFlow should become the easiest CRM for pressure washing companies to estimate, sell, schedule, complete, and get paid for jobs.
+
+PressureFlow should not drift into a generic CRM, a generic field-service app, bloated enterprise software, or a feature-packed but confusing tool. It should stay simple, fast, mobile-friendly, pressure-washing focused, easy to learn, and easy to sell.
+
+PressureFlow Identity Rule: PressureFlow serves pressure washing companies first. Every major feature decision should be evaluated through the lens of a pressure washing owner/operator before considering broader trade applicability.
+
+Feature filter:
+
+- Does this save time?
+- Does this make money?
+- Does this reduce confusion?
+
+If a feature does none of those, it should move to the backlog.
+
+Founder north star: does this help a pressure washing company win more jobs, complete jobs faster, or get paid quicker?
+
+Strategic roadmap:
+
+- Phase 1: become the best pressure washing CRM for 0-100 paying companies.
+- Phase 2: become the best exterior cleaning CRM for 100-500 companies.
+- Phase 3: become the most efficient CRM for 500-2,000 companies.
+- Phase 4: add pressure washing intelligence tools only after the core CRM is excellent.
+- Phase 5: expand into commercial/property manager workflows.
+- Phase 6: selectively expand into adjacent trades only if they share at least 80% of the existing workflow.
+
+Phase 08 beta should validate the Phase 1 core before expanding. Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, franchise support, or similar expansion before Beta Cohort #1 unless real users expose a blocker.
+
 ## 6. Audit Environment Requirements
 
 Required for audits:

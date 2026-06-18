@@ -9,6 +9,39 @@ Last Updated: June 18, 2026
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
+## Strategic Product Roadmap
+
+Core mission: PressureFlow should become the easiest CRM for pressure washing companies to estimate, sell, schedule, complete, and get paid for jobs.
+
+PressureFlow is not trying to be the biggest CRM, the most feature-rich CRM, or a generic field-service platform. The goal is to become the platform pressure washing companies recommend to other pressure washing companies.
+
+Product philosophy: every feature should pass at least one of these tests:
+
+- Does this save time?
+- Does this make money?
+- Does this reduce confusion?
+
+If the answer is no to all three, it should not be built.
+
+Founder north star: does this help a pressure washing company win more jobs, complete jobs faster, or get paid quicker? If not, it moves to the backlog.
+
+PressureFlow Identity Rule: PressureFlow serves pressure washing companies first. Every major feature decision should be evaluated through the lens of a pressure washing owner/operator before considering broader trade applicability.
+
+Roadmap phases:
+
+- Phase 1: Become the best pressure washing CRM for 0-100 paying companies. Focus on customer/property/job history, estimates, contracts, deposits, final invoices, scheduling, completion tracking, before/after photos, Stripe/Square/manual payments, reminders, and review requests. Success metric: a contractor can run their entire pressure washing business without needing another CRM.
+- Phase 2: Become the best exterior cleaning CRM for 100-500 companies. Expand carefully into adjacent exterior cleaning trades such as window cleaning, roof cleaning, solar panel cleaning, gutter cleaning, and house washing. Add service-specific workflows only where they share the core PressureFlow workflow.
+- Phase 3: Become the most efficient CRM for 500-2,000 companies. Focus on speed: fastest path from lead to cash, one-click estimate creation, mobile-first operations, automated customer communication, smart scheduling, and automated payment collection.
+- Phase 4: Add a pressure washing intelligence layer only after the core CRM is excellent. Potential tools: chemical calculators, surface-specific pricing, job profitability, and equipment maintenance.
+- Phase 5: Expand selectively into commercial/property manager workflows, including multi-property management, recurring service contracts, site portfolios, property manager dashboards, and multi-location reporting.
+- Phase 6: Consider selective expansion into adjacent trades only after dominating exterior cleaning. Every new trade must share at least 80% of the existing workflow and must not require rebuilding the product.
+
+Product guardrails:
+
+- Avoid becoming a generic CRM, generic field-service platform, bloated enterprise system, or feature-packed but confusing tool.
+- Stay simple, fast, mobile-friendly, pressure-washing focused, easy to learn, and easy to sell.
+- Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, franchise support, or similar expansion before Beta Cohort #1 unless real users expose a blocker.
+
 ## Completed Safety / Readiness Work
 
 - Security Audit
