@@ -4,7 +4,7 @@ Last Updated: June 17, 2026
 
 Current Phase:
 - PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
-- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification and 07D-2 deployed public customer workflow verification both passed. External beta remains no-go until the remaining deployed sandbox checks pass.
+- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, and 07D-4 deployed webhook fail-closed checks passed. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets in the deployed test account. External beta remains no-go until Stripe/Square provider webhooks are configured/verified or explicitly deferred, restart/redeploy persistence proof passes, and remaining deployment checks pass.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -108,8 +108,12 @@ Testing Status:
 - Phase 07D post-env-update deployed check: GET https://pressure-flow.onrender.com/health?codex=after-env-update returned HTTP 200 with {"ok":true,"service":"pressureflow"}.
 - Phase 07D-1 deployed core app checks: login/auth, protected routes, invalid login handling, session refresh, logout, settings save, manual payment setup, customer creation/readback, job creation/readback, estimate send, and deployed public estimate page rendering passed using the dedicated codex@test.com test user. Initial estimate send returned 502 because Google was not connected; after codex.ppw@gmail.com was added as a Google OAuth test user and connected, retry succeeded.
 - Phase 07D-2 deployed public workflow checks: estimate page/approval/already-approved state, contract page/signing/already-signed state, deposit invoice/manual paid state, scheduling after deposit paid, final invoice/manual paid state, completion proof/no-photo/payment-complete state, invalid/tampered public links, and final deployed job state readback all passed with generated sandbox links. No public tokens were documented.
+- Phase 07D-3 deployed Mapbox checks: logged-in sandbox frontend received a public Mapbox token indicator/value shape, Mapbox GL/Draw/Turf assets and Mapbox style/tile/font/session requests loaded on https://pressure-flow.onrender.com, desktop polygon measurement applied 3,903 SqFt to a job line item, estimate total recalculated to $975.75, the saved job retained measurement GeoJSON/perimeter/square-foot data, and 390px mobile/touch sanity passed. No Mapbox token value was documented.
+- Phase 07D-4 deployed Stripe/Square checks: deployed test account reported no Stripe secret key/webhook secret and no Square access token/location ID/webhook signature key. Deployed /webhooks/stripe and /webhooks/square missing/invalid signature posts returned HTTP 401 with generic JSON errors and no stack traces. Valid provider webhook acceptance, payment-state mutation, duplicate replay, amount mismatch, and Render log review remain blocked on real Stripe/Square sandbox configuration/provider events; local webhook suites cover those behaviors.
 - Phase 07D local pre-deploy checks: npm.cmd run check, npm.cmd run smoke:test-user-safety, and npm.cmd run test:browser passing, 59 tests.
 - Phase 07D-2 local regression checks: npm.cmd run smoke:test-user-safety; npm.cmd run test:browser -- tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js (23 passed); npm.cmd run test:browser -- tests/mobile-hardening.spec.js (4 passed).
+- Phase 07D-3 local regression checks: npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser -- tests/measurement-map.spec.js (1 passed); npm.cmd run test:browser -- tests/mobile-hardening.spec.js (4 passed); npm.cmd run test:browser (59 passed).
+- Phase 07D-4 local regression checks: npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser -- tests/webhook-security.spec.js tests/webhook-follow-up-hooks.spec.js (6 passed); npm.cmd run test:browser (59 passed).
 - Playwright is configured for one worker because browser specs share .tmp/playwright-data.
 
 Phase 07D Deployment Sandbox Verification:
@@ -118,9 +122,11 @@ Phase 07D Deployment Sandbox Verification:
 - Post-env-update deployed health check performed against https://pressure-flow.onrender.com/health?codex=after-env-update on June 17, 2026. Result: HTTP 200 with {"ok":true,"service":"pressureflow"}.
 - 07D-1 deployed core app verification passed for core auth/data behavior and estimate email/public estimate link generation after Google OAuth test-user setup.
 - 07D-2 deployed public workflow verification passed for estimate, contract, deposit invoice, final invoice, completion proof, invalid/tampered links, and state consistency using real generated sandbox links.
+- 07D-3 deployed Mapbox workflow verification passed for deployed token delivery, Mapbox asset/style/tile loading, desktop polygon measurement, measurement-driven quantity/total update, saved measurement data retention, and 390px mobile/touch sanity.
+- 07D-4 deployed Stripe/Square webhook verification is blocked for valid provider events because the deployed test account has no Stripe/Square sandbox credentials or webhook secrets configured. App-side deployed webhook fail-closed behavior passed for missing/invalid signatures, and local webhook suites pass valid, duplicate, forged/unknown, amount-mismatch, tenant-routing, and follow-up-cancellation coverage.
 - Current recommendation: no-go for external beta until the remaining deployed sandbox verification checklist passes.
 - Deployment/runbook docs updated to link the sandbox verification tracker and require it before external beta.
-- Items still blocked/manual: restart/redeploy persistence proof, Stripe/Square sandbox webhooks, Mapbox deployed workflow, and final external-beta go/no-go review.
+- Items still blocked/manual: Stripe/Square sandbox credential setup and provider webhook acceptance, restart/redeploy persistence proof, and final external-beta go/no-go review.
 - Local pre-deploy tests run: npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (59 passed).
 
 Package 07C-3 Operational Monitoring + Error Visibility:
@@ -268,7 +274,7 @@ Package 07A-4C Mobile + Field Usability Fixes:
 - Files touched: styles.css, rendering.js, tests/mobile-hardening.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
 - Tests added/updated: mobile workflow modal fit checks, map 48px touch-target checks, public estimate mobile rendering, public document field sizing, and public document viewport overflow coverage.
 - Tests run: npm.cmd run test:browser -- tests/mobile-hardening.spec.js; npm.cmd run check; npm.cmd run test:browser -- tests/measurement-map.spec.js; npm.cmd run test:browser.
-- Known follow-up: verify on real iOS Safari and a deployed Mapbox map before beta, since local automated coverage uses Chromium and mocked Mapbox controls.
+- Known follow-up: verify on real iOS Safari and Android hardware before beta, since automated coverage uses Chromium; deployed Mapbox workflow passed in 07D-3.
 
 Package 07A-4D Customer Clarity + Pool Service Expansion:
 - Customer-facing estimate, invoice, and contract service rows now show clear rate units such as $0.04 / SqFt; hourly units render as per hour.
@@ -303,7 +309,7 @@ Measure From Map Stability:
 - After updating an existing shape, Draw returns to a ready polygon mode instead of getting stuck.
 - Polygon closure now requires a precise click near the starting vertex, reducing accidental premature closure near the start point.
 - Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
-- Manual verification still recommended on the deployed Mapbox map before beta: draw near the start point, intentionally close on the start point, add a second area immediately, save, and reopen.
+- Deployed Mapbox verification completed in 07D-3; remaining manual follow-up is real iOS Safari/Android touch behavior on physical devices.
 
 Mobile Beta Hardening:
 - Mobile form controls render at 16px on small screens to prevent iOS Safari focus zoom.

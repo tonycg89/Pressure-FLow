@@ -36,6 +36,7 @@ test("measure from map re-arms polygon drawing after adding and updating areas",
   await lineItem.locator(".line-service").selectOption("Pressure Washing");
   await lineItem.locator(".line-measure").click();
   await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
   expect(await getMockCloseBehavior(page)).toEqual({
     farClickAddedVertex: true,
     farClickClosed: false,

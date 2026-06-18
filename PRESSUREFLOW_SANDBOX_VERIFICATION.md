@@ -13,7 +13,9 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | Latest code deployed | Pass | After Render env updates/redeploy, `/health` returned `{"ok":true,"service":"pressureflow"}` |
 | 07D-1 core app verification | Pass | Login/auth, protected routes, settings save, customer/job creation/readback, estimate send, and deployed public estimate URL generation passed |
 | 07D-2 public workflow verification | Pass | Deployed estimate, contract, deposit invoice, final invoice, completion proof, invalid-link safety, and state transitions passed with generated sandbox links |
-| External beta go/no-go | No-go | Health/latest-code, 07D-1, and 07D-2 checks pass, but Stripe/Square provider webhooks, Mapbox, restart/redeploy persistence proof, and remaining deployment checks are pending |
+| 07D-3 deployed Mapbox verification | Pass | Deployed Mapbox token delivery, map load, polygon measurement, quantity/total update, saved measurement data, and mobile/touch sanity passed |
+| 07D-4 Stripe/Square sandbox webhooks | Blocked / app fail-closed pass | Deployed sandbox has no Stripe/Square sandbox credentials or webhook secrets configured for the test account; deployed webhook endpoints fail closed safely |
+| External beta go/no-go | No-go | Health/latest-code, 07D-1, 07D-2, 07D-3, and 07D-4 app-side checks pass, but Stripe/Square provider webhook acceptance, restart/redeploy persistence proof, and remaining deployment checks are pending |
 
 ## Read-Only Check Performed
 
@@ -78,9 +80,9 @@ Interpretation: the hosted app is reachable and serving the latest health payloa
 | `PORT` provided by Render | Manual | Render normally provides this |
 | Auth/login configured | Manual | Confirm owner/test account can log in |
 | Google OAuth callback URL configured | Manual | Expected: `<APP_BASE_URL>/auth/google/callback` |
-| Mapbox token configured | Manual | Required for deployed map workflow |
-| Stripe sandbox keys and webhook secret configured | Manual | Test keys only |
-| Square sandbox keys, location ID, and webhook signature key configured | Manual | Sandbox keys only |
+| Mapbox token configured | Pass | Deployed `/api/settings` exposed a public Mapbox token flag/value shape to the logged-in sandbox frontend; token value not documented |
+| Stripe sandbox keys and webhook secret configured | Blocked | Deployed test account reported no Stripe secret key and no Stripe webhook secret; test keys only when configured |
+| Square sandbox keys, location ID, and webhook signature key configured | Blocked | Deployed test account reported no Square access token, no location ID, and no webhook signature key; sandbox credentials only when configured |
 | Test bypasses disabled | Manual | `ALLOW_AUTH_DISABLED`, `PRESSUREFLOW_SKIP_EMAIL_DELIVERY`, and `PRESSUREFLOW_AUDIT_GOOGLE_MOCK` must be absent/false in production-like sandbox |
 | Local JSON fallback disabled | Manual | `DATABASE_URL` required; do not set `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` for beta sandbox |
 
@@ -219,31 +221,70 @@ No public tokens or full customer-sensitive URLs are stored in this document.
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Stripe test keys configured | Manual | Do not use live keys |
-| Webhook endpoint points to deployed URL | Manual | Expected: `<APP_BASE_URL>/webhooks/stripe` |
-| Webhook secret configured | Manual | Required; do not paste value |
-| Valid provider signature accepted | Blocked | Requires Stripe dashboard/test event after latest redeploy |
-| Missing/invalid signatures fail closed | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Test payment updates correct invoice only | Blocked | Requires full sandbox workflow |
-| Duplicate webhook is idempotent | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Amount mismatch fails safely | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Logs are safe | Manual | Review Render logs |
+| Stripe test keys configured | Blocked | Deployed test account reported `hasStripeSecretKey=false`; configure Stripe test-mode key only |
+| Webhook endpoint points to deployed URL | Pass by route | Expected endpoint exists at `https://pressure-flow.onrender.com/webhooks/stripe`; provider dashboard still needs this exact URL configured |
+| Webhook secret configured | Blocked | Deployed test account reported `hasStripeWebhookSecret=false`; configure Stripe test webhook secret only |
+| Valid provider signature accepted | Blocked | Cannot verify until Stripe sandbox key and webhook secret are configured and a real Stripe sandbox event is sent |
+| Missing/invalid signatures fail closed | Deployed pass / local pass | Deployed missing/invalid Stripe webhook posts returned HTTP 401 with generic JSON errors and no stack traces; local tests cover invalid/missing signatures and missing secret |
+| Test payment updates correct invoice only | Blocked / local pass | Deployed blocked by missing Stripe configuration; local tests verify metadata account/job/invoice/type matching |
+| Duplicate webhook is idempotent | Blocked / local pass | Deployed blocked by missing Stripe configuration; local tests verify duplicate paid events do not duplicate side effects |
+| Amount mismatch fails safely | Blocked / local pass | Deployed blocked by missing Stripe configuration; local tests verify amount mismatch is ignored safely |
+| Logs are safe | Local pass / Render manual | Local webhook/security tests emit safe structured log context; Render logs should be reviewed after real Stripe sandbox events are configured |
+
+07D-4 Stripe deployed checks on June 17, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Stripe secret configured: FAIL/BLOCKED - false
+Stripe webhook secret configured: FAIL/BLOCKED - false
+Missing signature behavior: PASS - HTTP 401
+Invalid signature behavior: PASS - HTTP 401
+Valid provider webhook: BLOCKED - Stripe sandbox secret/event not configured
+Payment state update: BLOCKED on deployed provider path; local tests pass
+Duplicate/idempotency: BLOCKED on deployed provider path; local tests pass
+Amount mismatch: BLOCKED on deployed provider path; local tests pass
+```
 
 ## Phase 7: Square Sandbox Verification
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Square sandbox token configured | Manual | Do not use live token |
-| Square location ID configured | Manual | Must match sandbox location |
-| Webhook endpoint points to deployed URL | Manual | Expected: `<APP_BASE_URL>/webhooks/square` |
-| Webhook signature key configured | Manual | Required; do not paste value |
-| Proxy/header behavior preserves notification URL | Manual | Verify with real Square sandbox event |
-| Valid provider signature accepted | Blocked | Requires Square dashboard/test event after latest redeploy |
-| Missing/invalid signatures fail closed | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Test payment updates correct invoice only | Blocked | Requires full sandbox workflow |
-| Duplicate webhook is idempotent | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Amount mismatch fails safely | Local pass / deployed manual | Local tests pass; deployed provider check pending |
-| Logs are safe | Manual | Review Render logs |
+| Square sandbox token configured | Blocked | Deployed test account reported `hasSquareAccessToken=false`; configure Square sandbox token only |
+| Square location ID configured | Blocked | Deployed test account reported no Square location ID |
+| Webhook endpoint points to deployed URL | Pass by route | Expected endpoint exists at `https://pressure-flow.onrender.com/webhooks/square`; Square dashboard still needs this exact notification URL configured |
+| Webhook signature key configured | Blocked | Deployed test account reported `hasSquareWebhookSignatureKey=false`; configure Square sandbox signature key only |
+| Proxy/header behavior preserves notification URL | Blocked / local covered | Requires a real Square sandbox event against the deployed URL; local signature tests cover notification URL behavior in the test server |
+| Valid provider signature accepted | Blocked | Cannot verify until Square sandbox access token, location ID, and webhook signature key are configured and a real Square sandbox event is sent |
+| Missing/invalid signatures fail closed | Deployed pass / local pass | Deployed missing/invalid Square webhook posts returned HTTP 401 with generic JSON errors and no stack traces; local tests cover invalid/missing signatures and missing secret |
+| Test payment updates correct invoice only | Blocked / local pass | Deployed blocked by missing Square configuration; local tests verify invoice matching |
+| Duplicate webhook is idempotent | Blocked / local pass | Deployed blocked by missing Square configuration; local tests verify duplicate paid events do not duplicate side effects |
+| Amount mismatch fails safely | Blocked / local pass | Deployed blocked by missing Square configuration; local tests verify amount mismatch is ignored safely |
+| Logs are safe | Local pass / Render manual | Local webhook/security tests emit safe structured log context; Render logs should be reviewed after real Square sandbox events are configured |
+
+07D-4 Square deployed checks on June 17, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Square environment: sandbox
+Square access token configured: FAIL/BLOCKED - false
+Square location ID configured: FAIL/BLOCKED - false
+Square webhook signature key configured: FAIL/BLOCKED - false
+Missing signature behavior: PASS - HTTP 401
+Invalid signature behavior: PASS - HTTP 401
+Valid provider webhook: BLOCKED - Square sandbox credentials/signature key/event not configured
+Payment state update: BLOCKED on deployed provider path; local tests pass
+Duplicate/idempotency: BLOCKED on deployed provider path; local tests pass
+Amount mismatch: BLOCKED on deployed provider path; local tests pass
+```
+
+07D-4 blocker summary:
+
+- Stripe cannot be fully provider-verified until the deployed sandbox account has a Stripe test secret key, Stripe test webhook secret, and Stripe dashboard endpoint pointing to `https://pressure-flow.onrender.com/webhooks/stripe`.
+- Square cannot be fully provider-verified until the deployed sandbox account has a Square sandbox access token, Square sandbox location ID, Square webhook signature key, and Square dashboard notification URL exactly set to `https://pressure-flow.onrender.com/webhooks/square`.
+- Manual payment recording remains verified from 07D-2 and can be used temporarily for beta only if Stripe/Square sandbox verification is explicitly deferred/accepted.
+- No live payment credentials or live customer payments were used.
 
 ## Phase 8: Google Calendar / OAuth Verification
 
@@ -262,11 +303,42 @@ Per-test-user setup requirement: follow `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` -
 
 | Check | Status | Notes |
 | --- | --- | --- |
-| Deployed frontend receives Mapbox token | Manual | Verify Settings/env and browser map load |
-| Map loads on deployed domain | Blocked | Requires logged-in sandbox workflow |
-| Domain restrictions allow deployed URL | Manual | Verify in Mapbox token settings |
-| Measurement workflow usable | Blocked | Requires deployed workflow test |
-| Mobile/touch real-device test | Manual follow-up | Recommended before external beta |
+| Deployed frontend receives Mapbox token | Pass | Logged-in sandbox frontend received a public Mapbox token indicator/value shape; token value was not printed or documented |
+| Map loads on deployed domain | Pass | Mapbox GL CSS/JS, Mapbox Draw, Turf, style, tiles, fonts, and session calls loaded from the deployed app with HTTP 200/204 responses and no failed requests |
+| Domain restrictions allow deployed URL | Pass by behavior | Deployed host loaded Mapbox style/tiles successfully; no visible authorization errors appeared |
+| No localhost-only assumptions | Pass | Deployed workflow ran entirely on `https://pressure-flow.onrender.com` with Mapbox HTTPS assets and API calls |
+| Token not exposed in verification notes/log capture | Local pass / Render manual | Browser/network output and docs redacted or omitted token values; review Render logs manually if token-log exposure must be independently proven |
+| Measurement workflow usable | Pass | Drew and saved a polygon on the deployed map, applied 3,903 SqFt to the Pressure Washing line item, recalculated the estimate total to `$975.75`, and saved a job with measurement GeoJSON/perimeter/square-foot data retained |
+| Mobile/touch sanity | Pass / real-device follow-up | 390px mobile viewport opened the map, showed controls, kept Save/Use actions at 44px, drew a polygon, and applied quantity; real iOS/Android hardware remains a prudent manual follow-up |
+| Fallback when token missing | Safe local/deployed guard observed | Deployed UI showed `Add your Mapbox public token in Settings before using map measurement.` when the flow was started before settings were available; local tests cover the guarded path. Production env was not intentionally broken. |
+
+07D-3 deployed Mapbox workflow verification on June 17, 2026:
+
+```text
+URL tested: https://pressure-flow.onrender.com
+Test user: codex@test.com
+Mapbox token delivered to frontend: PASS
+Mapbox assets/style/tiles load: PASS
+Visible authorization errors: PASS - none observed
+Desktop map opens from New Job: PASS
+Desktop draw controls render: PASS
+Polygon measurement appears: PASS
+Measurement applied to line quantity: PASS
+Estimate total recalculates: PASS
+Saved job retains measurement data: PASS
+Mobile 390px map opens: PASS
+Mobile controls/action buttons usable: PASS
+Fallback guard if token unavailable: PASS
+Secrets/tokens documented: PASS - none documented
+```
+
+Safe records created:
+
+```text
+Customer/job names used the `Codex 07D-3 Mapbox` and `07D-3 Map Measurement` prefixes.
+```
+
+Observed note: headless Chromium logged generic `Error` entries from the Mapbox GL bundled script with no message body while the map remained usable and no Mapbox requests failed. Treat as non-blocking headless-rendering console noise unless repeated in a real browser session.
 
 ## Phase 10: Deployed End-to-End Workflow
 
@@ -281,7 +353,7 @@ Run only after latest code is redeployed and a safe test account/test inbox is a
 | Create job | Pass | Safe fake/test job created and read back |
 | Send estimate | Pass | Initial 502 resolved after Google OAuth test user was connected |
 | Open estimate public link | Pass | Public estimate link used deployed HTTPS URL and rendered successfully |
-| Approve estimate | Blocked | Confirm status changes |
+| Approve estimate | Pass | Public estimate approval passed in 07D-2 and advanced the deployed workflow |
 | Sign contract | Pass | Deployed contract page signed successfully with typed name/date |
 | Send/verify deposit invoice | Pass | Deposit invoice generated through public contract signing and rendered correctly |
 | Record or process deposit payment | Pass | Manual deposit payment recorded; no live processor used |
@@ -325,4 +397,4 @@ External beta is go only after:
 
 ## Current Recommendation
 
-No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, and 07D-2 deployed public workflow verification. Stripe/Square provider webhook verification, Mapbox deployed workflow, restart/redeploy persistence proof, and remaining deployment checks still need to be completed before external beta users are invited.
+No-go for external beta as of June 17, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, 07D-2 deployed public workflow verification, 07D-3 deployed Mapbox workflow verification, and 07D-4 deployed webhook fail-closed checks. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets; restart/redeploy persistence proof and remaining deployment checks still need to be completed before external beta users are invited.
