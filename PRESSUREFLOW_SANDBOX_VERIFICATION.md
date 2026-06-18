@@ -1,6 +1,6 @@
 # PressureFlow Sandbox Verification
 
-Last Updated: June 17, 2026
+Last Updated: June 18, 2026
 
 This document tracks Phase 07D deployed sandbox verification. It is a go/no-go checklist for inviting external beta users. Do not include secrets, access tokens, webhook signatures, passwords, or full customer data in this file.
 
@@ -15,8 +15,9 @@ This document tracks Phase 07D deployed sandbox verification. It is a go/no-go c
 | 07D-2 public workflow verification | Pass | Deployed estimate, contract, deposit invoice, final invoice, completion proof, invalid-link safety, and state transitions passed with generated sandbox links |
 | 07D-3 deployed Mapbox verification | Pass | Deployed Mapbox token delivery, map load, polygon measurement, quantity/total update, saved measurement data, and mobile/touch sanity passed |
 | 07D-4 Stripe/Square sandbox webhooks | Blocked / app fail-closed pass | Deployed sandbox has no Stripe/Square sandbox credentials or webhook secrets configured for the test account; deployed webhook endpoints fail closed safely |
-| 07D-5 restart/redeploy persistence proof | Partial | Fresh deployed customer/job/measurement/estimate-link baseline persisted across refresh-style readback and logout/login; Render restart/redeploy proof is pending manual Render action |
-| External beta go/no-go | No-go | Health/latest-code, 07D-1, 07D-2, 07D-3, 07D-4 app-side checks, and 07D-5 refresh/logout-login checks pass, but Stripe/Square provider webhook acceptance, Render restart/redeploy persistence proof, and remaining deployment checks are pending |
+| 07D-5 restart/redeploy persistence proof | Pass | Fresh deployed customer/job/measurement/estimate-link baseline persisted across refresh-style readback, logout/login, and post-Render-action readback |
+| 07D-6 beta go decision | Go for limited beta | Approved for a small founder-led beta cohort using manual payment recording; Stripe/Square provider webhook verification remains pending and should not be advertised as complete |
+| External beta go/no-go | Go - limited cohort | Health/latest-code, 07D-1, 07D-2, 07D-3, 07D-4 app-side checks, and 07D-5 persistence proof pass; proceed with 3-5 real contractors while tracking Stripe/Square provider webhook verification as an open limitation |
 
 ## Read-Only Check Performed
 
@@ -103,7 +104,7 @@ Interpretation: the hosted app is reachable and serving the latest health payloa
 | Check | Status | Notes |
 | --- | --- | --- |
 | App uses Supabase/Postgres | Partial / manual | Production startup with `NODE_ENV=production` requires `DATABASE_URL` unless an emergency override is set; normal deployed read/write persistence passed. Render env/log review still required to confirm no local JSON fallback warning. |
-| Records persist after restart/redeploy | Partial | 07D-5 fresh test customer/job/measurement/estimate-link persisted after refresh-style readback and logout/login; Render restart/redeploy persistence still requires a manual Render restart/deploy action |
+| Records persist after restart/redeploy | Pass | 07D-5 fresh test customer/job/measurement/estimate-link persisted after refresh-style readback, logout/login, and post-Render-action readback |
 | Tenant isolation in deployed environment | Optional/manual | Local tenant security suite passes; deployed check requires sandbox accounts |
 | Local JSON not used | Manual | Confirm no local JSON fallback flag and `DATABASE_URL` is set |
 | Backup/PITR documented | Documented | See `PRESSUREFLOW_BACKUP_RECOVERY.md` |
@@ -126,18 +127,15 @@ Refresh-style authenticated readback: PASS
 Logout/login readback: PASS
 Pipeline/job state after readback: PASS - Estimate Sent
 Settings readback: PASS - settings endpoint responded; this test account currently reports no configured customer payment path
-Render restart persistence: PENDING - requires manual Render Restart Service or Manual Deploy action
-Render redeploy persistence: PENDING - requires manual Render Manual Deploy or next normal deploy
-Local JSON fallback warning review: PENDING - requires Render log review after restart/redeploy
+Post-Render-action health: PASS - HTTP 200 with {"ok":true,"service":"pressureflow"}
+Post-Render-action persistence readback: PASS - customer/job/link/measurement still present
+Render restart/redeploy persistence: PASS - manual Render action completed by operator, post-action readback passed
+Local JSON fallback warning review: MANUAL - Render log review still recommended after restart/redeploy
 ```
 
-Manual steps needed to finish 07D-5:
+07D-5 remaining manual check:
 
-1. In Render, open the `pressure-flow` service.
-2. Trigger **Restart Service** or **Manual Deploy**.
-3. Wait until `/health` returns `{"ok":true,"service":"pressureflow"}`.
-4. Re-run the 07D-5 readback against the labels above.
-5. Review Render logs for any local JSON fallback warning or production startup validation warning.
+1. Review Render logs for any local JSON fallback warning or production startup validation warning after the restart/redeploy action.
 
 07D-1 deployed core app verification on June 17, 2026:
 
@@ -426,6 +424,46 @@ External beta is go only after:
 - Full deployed workflow completes with fake/test data.
 - Backup/PITR access is confirmed or the risk is explicitly accepted before external testers are invited.
 
+## 07D-6 Go Decision
+
+Decision on June 18, 2026: GO for Beta Cohort #1.
+
+This is approval for a small, founder-led validation beta, not a broad production launch. PressureFlow is ready to put 3-5 real contractors through the deployed workflow with clear beta expectations and close observation.
+
+Known limitation accepted for Beta Cohort #1:
+
+- Real Stripe/Square provider webhook verification is still pending because sandbox credentials/secrets are not configured for the deployed test account.
+- Do not advertise Stripe/Square payment automation as complete during this cohort.
+- Use manual payment instructions and manual payment recording for beta workflows unless Stripe/Square sandbox verification is completed first.
+- Keep Stripe/Square marked as beta/in-progress until real provider events are verified against the deployed webhooks.
+
+Planned Beta Cohort #1:
+
+- 2 pressure washing companies.
+- 1 window cleaner.
+- 1 pool service company.
+- 1 miscellaneous home-service contractor.
+- No paid subscription promise during this first cohort.
+- Set expectations clearly: this is a beta and the goal is honest workflow feedback.
+
+Phase 08 validation focus:
+
+- Workflow completion: customer -> job -> estimate -> approval -> completion -> invoice.
+- Time to value: how long until a contractor says they could actually use it.
+- Confusion points: every "where do I click?" moment becomes Phase 08 input.
+- Repeated feature requests: pay attention only when several users ask for the same need.
+
+Do not build before Beta Cohort #1 unless a real blocker appears:
+
+- QuickBooks.
+- SMS.
+- Team permissions.
+- AI quoting.
+- Route optimization.
+- Large scheduling overhaul.
+- Customer portals.
+- Inventory, payroll, franchise support, or similar expansion.
+
 ## Current Recommendation
 
-No-go for external beta as of June 18, 2026. The deployed sandbox now passes the latest `/health` check, 07D-1 core app verification, 07D-2 deployed public workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 refresh/logout-login persistence checks. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets; Render restart/redeploy persistence proof and remaining deployment checks still need to be completed before external beta users are invited.
+Go for Beta Cohort #1 as of June 18, 2026. The deployed sandbox passes the latest `/health` check, 07D-1 core app verification, 07D-2 deployed public workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof. Stripe/Square provider webhook acceptance remains pending and must stay documented as a limitation; manual payment recording is the recommended beta payment path until sandbox provider events are verified.

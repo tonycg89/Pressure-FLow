@@ -1,11 +1,11 @@
 # PressureFlow Master Status
 
-Last Updated: June 17, 2026
+Last Updated: June 18, 2026
 
 ## Current Phase
 
 - PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
-- Phase 07D deployment sandbox verification has started but is not complete. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` now returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 refresh/logout-login persistence checks passed. Stripe/Square provider webhook acceptance remains blocked by missing sandbox credentials/secrets in the deployed test account, and Render restart/redeploy persistence proof remains pending manual Render action. External beta remains no-go until Stripe/Square provider webhooks are configured/verified or explicitly deferred, restart/redeploy persistence proof passes, and remaining deployment checks pass.
+- Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
 
@@ -122,7 +122,8 @@ Last Updated: June 17, 2026
 - Phase 07D-2 deployed public workflow checks: estimate page/approval/already-approved state, contract page/signing/already-signed state, deposit invoice/manual paid state, scheduling after deposit paid, final invoice/manual paid state, completion proof/no-photo/payment-complete state, invalid/tampered public links, and final deployed job state readback all passed with generated sandbox links. No public tokens were documented.
 - Phase 07D-3 deployed Mapbox checks: logged-in sandbox frontend received a public Mapbox token indicator/value shape, Mapbox GL/Draw/Turf assets and Mapbox style/tile/font/session requests loaded on `https://pressure-flow.onrender.com`, desktop polygon measurement applied 3,903 SqFt to a job line item, estimate total recalculated to `$975.75`, the saved job retained measurement GeoJSON/perimeter/square-foot data, and 390px mobile/touch sanity passed. No Mapbox token value was documented.
 - Phase 07D-4 deployed Stripe/Square checks: deployed test account reported no Stripe secret key/webhook secret and no Square access token/location ID/webhook signature key. Deployed `/webhooks/stripe` and `/webhooks/square` missing/invalid signature posts returned HTTP 401 with generic JSON errors and no stack traces. Valid provider webhook acceptance, payment-state mutation, duplicate replay, amount mismatch, and Render log review remain blocked on real Stripe/Square sandbox configuration/provider events; local webhook suites cover those behaviors.
-- Phase 07D-5 deployed persistence baseline: created safe deployed labels `Persistence Test Customer 07D5-20260618055842` and `Persistence Restart Test 07D5-20260618055842`; customer/job creation, 1,450 SqFt saved measurement, estimate send/link generation, deployed estimate URL host, public estimate page load, refresh-style readback, logout/login readback, and pre-restart `/health` all passed. Render restart/redeploy persistence and Render log review remain pending manual Render action.
+- Phase 07D-5 deployed persistence proof: created safe deployed labels `Persistence Test Customer 07D5-20260618055842` and `Persistence Restart Test 07D5-20260618055842`; customer/job creation, 1,450 SqFt saved measurement, estimate send/link generation, deployed estimate URL host, public estimate page load, refresh-style readback, logout/login readback, pre-restart `/health`, and post-Render-action readback all passed. Render log review remains recommended for local JSON fallback/startup warnings.
+- Phase 07D-6 beta go decision: approved limited Beta Cohort #1 with 3-5 real contractors. This is not a broad public launch. Manual payment instructions/manual payment recording are acceptable during the cohort; Stripe/Square payment automation must remain beta/in-progress until real sandbox provider webhooks are configured and verified.
 - Phase 07D local pre-deploy checks: `npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, and `npm.cmd run test:browser` passing, 59 tests.
 - Phase 07D-2 local regression checks: `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js` (23 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (4 passed).
 - Phase 07D-3 local regression checks: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- tests/measurement-map.spec.js` (1 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (4 passed); `npm.cmd run test:browser` (59 passed).
@@ -139,11 +140,23 @@ Last Updated: June 17, 2026
 - 07D-2 deployed public workflow verification passed for estimate, contract, deposit invoice, final invoice, completion proof, invalid/tampered links, and state consistency using real generated sandbox links.
 - 07D-3 deployed Mapbox workflow verification passed for deployed token delivery, Mapbox asset/style/tile loading, desktop polygon measurement, measurement-driven quantity/total update, saved measurement data retention, and 390px mobile/touch sanity.
 - 07D-4 deployed Stripe/Square webhook verification is blocked for valid provider events because the deployed test account has no Stripe/Square sandbox credentials or webhook secrets configured. App-side deployed webhook fail-closed behavior passed for missing/invalid signatures, and local webhook suites pass valid, duplicate, forged/unknown, amount-mismatch, tenant-routing, and follow-up-cancellation coverage.
-- 07D-5 deployed restart/redeploy persistence proof is partial: fresh deployed customer/job/measurement/estimate-link data persisted across refresh-style readback and logout/login, but Render restart/redeploy persistence still requires a manual Render Restart Service or Manual Deploy action plus post-action readback/log review.
-- Current recommendation: no-go for external beta until the remaining sandbox verification checklist passes.
+- 07D-5 deployed restart/redeploy persistence proof passed: fresh deployed customer/job/measurement/estimate-link data persisted across refresh-style readback, logout/login, and post-Render-action readback. Render log review remains recommended for local JSON fallback/startup warnings.
+- Current recommendation: proceed to Phase 08 Beta Cohort #1 with close founder observation and no paid/stability promise.
 - Deployment/runbook docs updated to link the sandbox verification tracker and require it before external beta.
-- Items still blocked/manual: Stripe/Square sandbox credential setup and provider webhook acceptance, Render restart/redeploy persistence proof, Render log review for local JSON fallback warnings, and final external-beta go/no-go review.
+- Items still blocked/manual: Stripe/Square sandbox credential setup and provider webhook acceptance, Render log review for local JSON fallback warnings, and ongoing beta feedback capture.
 - Local pre-deploy tests run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed).
+
+## Phase 08 Beta Cohort #1
+
+- Beta Cohort #1 target: 3-5 real contractors.
+- Ideal mix: 2 pressure washing companies, 1 window cleaner, 1 pool service company, and 1 miscellaneous home-service contractor.
+- Do not charge this first cohort and do not promise production stability.
+- Tell testers clearly that this is a beta and the goal is brutally honest workflow feedback.
+- Track workflow completion: create customer, create job, send estimate, get approval, complete job, and invoice customer without help.
+- Track time to value: how long until a contractor says they could actually use it.
+- Track confusion points, especially every "where do I click?" moment.
+- Track repeated feature requests; prioritize only patterns repeated by several users.
+- Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling changes, customer portals, inventory, payroll, or franchise support before this cohort unless a real blocker appears.
 
 ## Package 07C-3 Operational Monitoring + Error Visibility
 
