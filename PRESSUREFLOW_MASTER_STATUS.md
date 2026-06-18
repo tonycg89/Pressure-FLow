@@ -190,6 +190,10 @@ Product guardrails:
 - Track confusion points, especially every "where do I click?" moment.
 - Track repeated feature requests; prioritize only patterns repeated by several users.
 - Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling changes, customer portals, inventory, payroll, or franchise support before this cohort unless a real blocker appears.
+- Review request automation added before Beta Cohort #1: Settings now includes a review request follow-up toggle, delay, editable subject/message, and Google/Yelp/Facebook/Other review link fields. When enabled and at least one review link is configured, PressureFlow schedules a review request 24 hours after final payment by default. The default message asks satisfied customers for a 5-star review and includes configured review links.
+- Files changed for review request automation: `settings.js`, `db.js`, `index.html`, `app.js`, `follow-ups.js`, `job-actions.js`, `email-content.js`, and `tests/follow-up-automation.spec.js`.
+- Tests added/updated: final payment schedules a pending review request, due review request sends and records `reviewRequestSentAt`, and review email copy includes the 5-star request plus configured review links.
+- Tests run: `node --check db.js`; `node --check settings.js`; `node --check follow-ups.js`; `node --check email-content.js`; `node --check app.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` (13 passed); `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (61 passed).
 
 ## Package 07C-3 Operational Monitoring + Error Visibility
 

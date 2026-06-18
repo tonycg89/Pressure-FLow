@@ -1157,6 +1157,17 @@ function fillSettingsForm() {
   settingsForm.elements.estimateFollowUpDelayHours.value = String(settings.estimateFollowUpDelayHours ?? 24);
   settingsForm.elements.estimateFollowUpSubject.value = settings.estimateFollowUpSubject || "Following up on your estimate - {jobTitle} at {address}";
   settingsForm.elements.estimateFollowUpBody.value = settings.estimateFollowUpBody || getDefaultEstimateFollowUpBody();
+  const reviewRequestToggle = settingsForm.querySelector('input[type="checkbox"][name="reviewRequestEnabled"]');
+  if (reviewRequestToggle) {
+    reviewRequestToggle.checked = settings.reviewRequestEnabled !== false;
+  }
+  settingsForm.elements.reviewRequestDelayHours.value = String(settings.reviewRequestDelayHours ?? 24);
+  settingsForm.elements.reviewRequestSubject.value = settings.reviewRequestSubject || "Would you leave {businessName} a quick review?";
+  settingsForm.elements.reviewRequestBody.value = settings.reviewRequestBody || getDefaultReviewRequestBody();
+  settingsForm.elements.googleReviewUrl.value = settings.googleReviewUrl || "";
+  settingsForm.elements.yelpReviewUrl.value = settings.yelpReviewUrl || "";
+  settingsForm.elements.facebookReviewUrl.value = settings.facebookReviewUrl || "";
+  settingsForm.elements.otherReviewUrl.value = settings.otherReviewUrl || "";
   settingsForm.elements.dayOfServiceInstructions.value = settings.dayOfServiceInstructions || "";
   settingsForm.elements.googleCalendarId.value = settings.googleCalendarId || "";
   settingsForm.elements.googleClientId.value = settings.googleClientId || "";
@@ -1231,6 +1242,21 @@ function getDefaultEstimateFollowUpBody() {
     "Just wanted to follow up on the estimate we sent for {jobTitle} at {address}.",
     "",
     "Your estimate of {estimateTotal} is still available for review. Let us know if you have any questions - we're happy to walk you through it.",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n");
+}
+
+function getDefaultReviewRequestBody() {
+  return [
+    "Hi {firstName},",
+    "",
+    "Thank you again for choosing {businessName} for {jobTitle} at {address}.",
+    "",
+    "If you are satisfied with the work, it would mean the world to receive a 5-star review.",
+    "",
+    "{reviewLinks}",
     "",
     "Thank you,",
     "{businessName}"
@@ -3435,7 +3461,7 @@ function renderEstimateFollowUpControls(job) {
       </label>
       <button class="action-button secondary" type="button" data-preview-follow-up title="${suppressed ? "Follow-up suppressed for this job." : "Send follow-up email"}" ${suppressed || !followUpType ? "disabled" : ""}>Send follow-up email</button>
       <p class="field__help">${escapeHtml(formatFollowUpStatus(task, suppressed))}</p>
-      ${task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
+      ${followUpType && task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
     </div>
   `;
 }
@@ -3449,7 +3475,7 @@ function getLatestFollowUpTask(jobId, preferredType = "") {
 }
 
 function isFollowUpTaskType(type) {
-  return ["estimate_followup", "contract_followup", "deposit_followup", "invoice_followup"].includes(type);
+  return ["estimate_followup", "contract_followup", "deposit_followup", "invoice_followup", "review_request"].includes(type);
 }
 
 function getActiveFollowUpType(job) {
@@ -3465,7 +3491,8 @@ function getFollowUpTypeLabel(type) {
     estimate_followup: "estimate",
     contract_followup: "contract",
     deposit_followup: "deposit invoice",
-    invoice_followup: "final invoice"
+    invoice_followup: "final invoice",
+    review_request: "review request"
   }[type] || "estimate";
 }
 

@@ -114,6 +114,10 @@ function buildFollowUpEmailMessage(job, settings, type = "estimate_followup") {
     return buildEstimateFollowUpEmailMessage(job, settings);
   }
 
+  if (type === "review_request") {
+    return buildReviewRequestEmailMessage(job, settings);
+  }
+
   const config = getFollowUpEmailConfig(job, type);
   const businessName = getBusinessName(settings);
   const textBody = [
@@ -132,6 +136,22 @@ function buildFollowUpEmailMessage(job, settings, type = "estimate_followup") {
     subject: `${businessName} follow-up - ${job.serviceType || "your service"} at ${job.address || ""}`,
     textBody,
     htmlBody: renderFollowUpEmailHtml(job, settings, config)
+  };
+}
+
+function buildReviewRequestEmailMessage(job, settings) {
+  const businessName = getBusinessName(settings);
+  const subjectTemplate = settings.reviewRequestSubject || "Would you leave {businessName} a quick review?";
+  const bodyTemplate = settings.reviewRequestBody || getDefaultReviewRequestBody();
+  const reviewLinks = getReviewLinks(settings);
+  const textBody = renderReviewRequestTemplate(bodyTemplate, job, settings, reviewLinks);
+
+  return {
+    to: job.email,
+    subject: renderReviewRequestTemplate(subjectTemplate, job, settings, reviewLinks),
+    textBody,
+    htmlBody: renderReviewRequestEmailHtml(job, settings, textBody, reviewLinks),
+    businessName
   };
 }
 
@@ -513,6 +533,32 @@ function getFollowUpEmailConfig(job, type) {
   };
 }
 
+function getDefaultReviewRequestBody() {
+  return [
+    "Hi {firstName},",
+    "",
+    "Thank you again for choosing {businessName} for {jobTitle} at {address}.",
+    "",
+    "If you are satisfied with the work, it would mean the world to receive a 5-star review.",
+    "",
+    "{reviewLinks}",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n");
+}
+
+function getReviewLinks(settings = {}) {
+  return [
+    ["Google", settings.googleReviewUrl],
+    ["Yelp", settings.yelpReviewUrl],
+    ["Facebook", settings.facebookReviewUrl],
+    ["Review page", settings.otherReviewUrl]
+  ]
+    .filter(([, url]) => Boolean(url))
+    .map(([label, url]) => ({ label, url }));
+}
+
 function getFirstName(job) {
   return String(job.customerName || "").trim().split(/\s+/).filter(Boolean)[0] || "there";
 }
@@ -531,6 +577,47 @@ function renderEstimateFollowUpTemplate(template, job, settings) {
     approvalLink: job.estimateApprovalUrl || ""
   };
   return String(template || "").replace(/\{(firstName|lastName|jobTitle|address|estimateTotal|businessName|approvalLink)\}/g, (_, key) => values[key] || "");
+}
+
+function renderReviewRequestTemplate(template, job, settings, reviewLinks = getReviewLinks(settings)) {
+  const nameParts = String(job.customerName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] || job.customerName || "there";
+  const lastName = nameParts.length > 1 ? nameParts.at(-1) : "";
+  const reviewLinksText = reviewLinks.length
+    ? reviewLinks.map((link) => `${link.label}: ${link.url}`).join("\n")
+    : "";
+  const values = {
+    firstName,
+    lastName,
+    jobTitle: job.serviceType || "your service",
+    address: job.address || "",
+    businessName: getBusinessName(settings),
+    reviewLinks: reviewLinksText,
+    googleReviewLink: settings.googleReviewUrl || "",
+    yelpReviewLink: settings.yelpReviewUrl || "",
+    facebookReviewLink: settings.facebookReviewUrl || "",
+    otherReviewLink: settings.otherReviewUrl || ""
+  };
+  return String(template || "").replace(/\{(firstName|lastName|jobTitle|address|businessName|reviewLinks|googleReviewLink|yelpReviewLink|facebookReviewLink|otherReviewLink)\}/g, (_, key) => values[key] || "");
+}
+
+function renderReviewRequestEmailHtml(job, settings, textBody, reviewLinks) {
+  const firstLink = reviewLinks[0]?.url || "";
+  return renderEmailShell({
+    settings,
+    baseUrl: firstLink ? getBaseUrlFromLink(firstLink) : "",
+    preheader: `Thank you for choosing ${getBusinessName(settings)}.`,
+    title: "Thank you for your business",
+    body: `
+      ${textBody.split("\n\n").map((paragraph) => `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`).join("")}
+      ${reviewLinks.length ? `<p style="margin:0 0 18px">${reviewLinks.map((link) => `
+        <a href="${escapeHtml(link.url)}" style="display:inline-block;margin:0 8px 8px 0;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">
+          Leave a review on ${escapeHtml(link.label)}
+        </a>
+      `).join("")}</p>` : ""}
+      <p style="margin:0;color:${emailTheme.text}">Thank you,<br>${escapeHtml(getBusinessName(settings))}</p>
+    `
+  });
 }
 
 function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions) {
@@ -575,9 +662,11 @@ module.exports = {
   buildContractMailto,
   buildEstimateEmailMessage,
   buildFollowUpEmailMessage,
+  buildReviewRequestEmailMessage,
   buildEstimateFollowUpEmailMessage,
   buildEstimateMailto,
   buildPressureFlowInvoiceEmailMessage,
   buildScheduleConfirmationEmailMessage,
-  renderEstimateFollowUpTemplate
+  renderEstimateFollowUpTemplate,
+  renderReviewRequestTemplate
 };

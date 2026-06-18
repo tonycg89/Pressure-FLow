@@ -9,7 +9,8 @@ const SETTINGS_LIMITS = Object.freeze({
   paymentHandle: 80,
   paymentInstructions: 2000,
   integrationId: 254,
-  integrationSecret: 2000
+  integrationSecret: 2000,
+  reviewUrl: 500
 });
 
 const privateSettingKeys = new Set([
@@ -177,6 +178,14 @@ function normalizeSettings(input, existing) {
     estimateFollowUpDelayHours: normalizeEstimateFollowUpDelayHours(input.estimateFollowUpDelayHours ?? existing.estimateFollowUpDelayHours),
     estimateFollowUpSubject: normalizeShortTemplate(input.estimateFollowUpSubject || existing.estimateFollowUpSubject || ""),
     estimateFollowUpBody: normalizeLongText(input.estimateFollowUpBody || existing.estimateFollowUpBody || ""),
+    reviewRequestEnabled: normalizeBoolean(input.reviewRequestEnabled ?? existing.reviewRequestEnabled ?? true),
+    reviewRequestDelayHours: normalizeReviewRequestDelayHours(input.reviewRequestDelayHours ?? existing.reviewRequestDelayHours),
+    reviewRequestSubject: normalizeShortTemplate(input.reviewRequestSubject || existing.reviewRequestSubject || ""),
+    reviewRequestBody: normalizeLongText(input.reviewRequestBody || existing.reviewRequestBody || ""),
+    googleReviewUrl: normalizeUrl(input.googleReviewUrl ?? existing.googleReviewUrl),
+    yelpReviewUrl: normalizeUrl(input.yelpReviewUrl ?? existing.yelpReviewUrl),
+    facebookReviewUrl: normalizeUrl(input.facebookReviewUrl ?? existing.facebookReviewUrl),
+    otherReviewUrl: normalizeUrl(input.otherReviewUrl ?? existing.otherReviewUrl),
     dayOfServiceInstructions: normalizeLongText(input.dayOfServiceInstructions ?? existing.dayOfServiceInstructions),
     onboardingCompleted: Boolean(input.onboardingCompleted ?? existing.onboardingCompleted),
     customTemplates: normalizeCustomTemplates(existing.customTemplates),
@@ -193,6 +202,12 @@ function normalizePaymentFollowUpHours(value) {
 }
 
 function normalizeEstimateFollowUpDelayHours(value) {
+  const allowed = new Set([24, 48, 72, 168]);
+  const hours = Number(value);
+  return allowed.has(hours) ? hours : 24;
+}
+
+function normalizeReviewRequestDelayHours(value) {
   const allowed = new Set([24, 48, 72, 168]);
   const hours = Number(value);
   return allowed.has(hours) ? hours : 24;

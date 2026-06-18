@@ -225,6 +225,7 @@ function createJobActionHandler({
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordManualPayment(job, "final", input);
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+      await scheduleFollowUp(job, settings, "review_request");
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
 
@@ -236,6 +237,7 @@ function createJobActionHandler({
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordAutomaticPayment(job, "final", "Square");
       await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
+      await scheduleFollowUp(job, settings, "review_request");
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
   }

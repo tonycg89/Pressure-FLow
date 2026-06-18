@@ -2,6 +2,8 @@ const { test, expect } = require("@playwright/test");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { buildFollowUpEmailMessage } = require("../email-content");
+const { createFollowUpHandlers } = require("../follow-ups");
 
 const DATA_DIR = path.resolve(__dirname, "..", ".tmp", "playwright-data");
 const TEST_USER = {
@@ -264,9 +266,67 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
   await expect(page.locator("#paymentDialog")).toBeVisible();
   await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
   await expect(page.locator("#jobDetail")).toContainText("Paid");
+  await expect(page.locator("#jobDetail")).toContainText("review request");
   tasks = await readTasks();
   const cancelledInvoiceTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "invoice_followup");
+  const reviewTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "review_request");
   expect(cancelledInvoiceTask).toMatchObject({ status: "cancelled", cancelledReason: "paid" });
+  expect(reviewTask).toMatchObject({ status: "pending", source: "auto" });
+});
+
+test("review request follow-up sends after final payment and records sent marker", async () => {
+  const sent = [];
+  let jobs = [{
+    ...leadJob("review-job", "Review Rita"),
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-03T12:00:00.000Z",
+    reviewRequestSentAt: ""
+  }];
+  let tasks = [followUpTask("review-task", "review-job", "review_request")];
+  tasks[0].scheduledFor = "2026-06-04T12:00:00.000Z";
+
+  const handlers = createFollowUpHandlers({
+    itemWorkspaceId: (job) => job.accountId,
+    readAllJobs: async () => jobs,
+    readFollowUpTasks: async () => tasks,
+    readJobs: async () => jobs,
+    readSettingsForJob: async () => testSettings(),
+    sendEstimateFollowUpEmail: async (job, settings, type) => {
+      sent.push({ jobId: job.id, settings, type });
+    },
+    writeAllJobs: async (updated) => {
+      jobs = updated;
+    },
+    writeFollowUpTasks: async (updated) => {
+      tasks = updated;
+    },
+    writeJobs: async (updated) => {
+      jobs = updated;
+    },
+    logger: { info() {}, warn() {}, error() {} },
+    warn() {}
+  });
+
+  await handlers.processDueFollowUps();
+
+  expect(sent).toEqual([{ jobId: "review-job", settings: expect.objectContaining({ googleReviewUrl: "https://reviews.example.com/google" }), type: "review_request" }]);
+  expect(tasks[0]).toMatchObject({ status: "sent", source: "auto" });
+  expect(jobs[0].reviewRequestSentAt).toBeTruthy();
+});
+
+test("review request email includes 5-star copy and configured links", () => {
+  const job = {
+    ...leadJob("review-copy-job", "Review Robin"),
+    serviceType: "Driveway cleaning",
+    address: "100 Main Street, Riverside, CA 92501"
+  };
+  const message = buildFollowUpEmailMessage(job, testSettings(), "review_request");
+
+  expect(message.subject).toBe("Would you leave Johnson Exterior Cleaning a quick review?");
+  expect(message.textBody).toContain("it would mean the world to receive a 5-star review");
+  expect(message.textBody).toContain("Google: https://reviews.example.com/google");
+  expect(message.textBody).toContain("Yelp: https://reviews.example.com/yelp");
+  expect(message.htmlBody).toContain("Leave a review on Google");
 });
 
 async function login(page) {
@@ -424,7 +484,13 @@ function testSettings() {
     onboardingCompleted: true,
     paymentInstructions: "Please include the invoice number with payment.",
     estimateFollowUpEnabled: true,
-    estimateFollowUpDelayHours: 24
+    estimateFollowUpDelayHours: 24,
+    reviewRequestEnabled: true,
+    reviewRequestDelayHours: 24,
+    googleReviewUrl: "https://reviews.example.com/google",
+    yelpReviewUrl: "https://reviews.example.com/yelp",
+    facebookReviewUrl: "",
+    otherReviewUrl: ""
   };
 }
 

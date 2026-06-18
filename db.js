@@ -69,6 +69,25 @@ const defaultSettings = {
     "Thank you,",
     "{businessName}"
   ].join("\n"),
+  reviewRequestEnabled: true,
+  reviewRequestDelayHours: 24,
+  reviewRequestSubject: "Would you leave {businessName} a quick review?",
+  reviewRequestBody: [
+    "Hi {firstName},",
+    "",
+    "Thank you again for choosing {businessName} for {jobTitle} at {address}.",
+    "",
+    "If you are satisfied with the work, it would mean the world to receive a 5-star review.",
+    "",
+    "{reviewLinks}",
+    "",
+    "Thank you,",
+    "{businessName}"
+  ].join("\n"),
+  googleReviewUrl: "",
+  yelpReviewUrl: "",
+  facebookReviewUrl: "",
+  otherReviewUrl: "",
   dayOfServiceInstructions: "",
   onboardingCompleted: false,
   customTemplates: [],
@@ -568,6 +587,14 @@ function applyRuntimeSettings(settings = {}) {
     estimateFollowUpDelayHours: Number(rowSettings.estimateFollowUpDelayHours ?? 24),
     estimateFollowUpSubject: rowSettings.estimateFollowUpSubject || defaultSettings.estimateFollowUpSubject,
     estimateFollowUpBody: rowSettings.estimateFollowUpBody || defaultSettings.estimateFollowUpBody,
+    reviewRequestEnabled: rowSettings.reviewRequestEnabled !== false,
+    reviewRequestDelayHours: Number(rowSettings.reviewRequestDelayHours ?? 24),
+    reviewRequestSubject: rowSettings.reviewRequestSubject || defaultSettings.reviewRequestSubject,
+    reviewRequestBody: rowSettings.reviewRequestBody || defaultSettings.reviewRequestBody,
+    googleReviewUrl: rowSettings.googleReviewUrl || "",
+    yelpReviewUrl: rowSettings.yelpReviewUrl || "",
+    facebookReviewUrl: rowSettings.facebookReviewUrl || "",
+    otherReviewUrl: rowSettings.otherReviewUrl || "",
     dayOfServiceInstructions: rowSettings.dayOfServiceInstructions || "",
     serviceIndustry: rowSettings.serviceIndustry || "",
     defaultDepositEnabled: rowSettings.defaultDepositEnabled !== false,
@@ -623,6 +650,14 @@ async function writeSettings(settings) {
         estimate_follow_up_delay_hours,
         estimate_follow_up_subject,
         estimate_follow_up_body,
+        review_request_enabled,
+        review_request_delay_hours,
+        review_request_subject,
+        review_request_body,
+        google_review_url,
+        yelp_review_url,
+        facebook_review_url,
+        other_review_url,
         day_of_service_instructions,
         onboarding_completed,
         custom_templates,
@@ -630,7 +665,7 @@ async function writeSettings(settings) {
         custom_service_types,
         custom_photo_sections,
         updated_at
-      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40::jsonb, $41::jsonb, $42::jsonb, $43::jsonb, now())
+      ) values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48::jsonb, $49::jsonb, $50::jsonb, $51::jsonb, now())
       on conflict (id) do update set
         business_name = excluded.business_name,
         business_email = excluded.business_email,
@@ -669,6 +704,14 @@ async function writeSettings(settings) {
         estimate_follow_up_delay_hours = excluded.estimate_follow_up_delay_hours,
         estimate_follow_up_subject = excluded.estimate_follow_up_subject,
         estimate_follow_up_body = excluded.estimate_follow_up_body,
+        review_request_enabled = excluded.review_request_enabled,
+        review_request_delay_hours = excluded.review_request_delay_hours,
+        review_request_subject = excluded.review_request_subject,
+        review_request_body = excluded.review_request_body,
+        google_review_url = excluded.google_review_url,
+        yelp_review_url = excluded.yelp_review_url,
+        facebook_review_url = excluded.facebook_review_url,
+        other_review_url = excluded.other_review_url,
         day_of_service_instructions = excluded.day_of_service_instructions,
         onboarding_completed = excluded.onboarding_completed,
         custom_templates = excluded.custom_templates,
@@ -714,6 +757,14 @@ async function writeSettings(settings) {
         Number(settings.estimateFollowUpDelayHours ?? 24),
         settings.estimateFollowUpSubject || defaultSettings.estimateFollowUpSubject,
         settings.estimateFollowUpBody || defaultSettings.estimateFollowUpBody,
+        settings.reviewRequestEnabled !== false,
+        Number(settings.reviewRequestDelayHours ?? 24),
+        settings.reviewRequestSubject || defaultSettings.reviewRequestSubject,
+        settings.reviewRequestBody || defaultSettings.reviewRequestBody,
+        settings.googleReviewUrl || "",
+        settings.yelpReviewUrl || "",
+        settings.facebookReviewUrl || "",
+        settings.otherReviewUrl || "",
         settings.dayOfServiceInstructions || "",
         Boolean(settings.onboardingCompleted),
         JSON.stringify(settings.customTemplates || []),
@@ -899,6 +950,14 @@ async function ensurePostgresSchema() {
     estimate_follow_up_delay_hours integer not null default 24,
     estimate_follow_up_subject text not null default '',
     estimate_follow_up_body text not null default '',
+    review_request_enabled boolean not null default true,
+    review_request_delay_hours integer not null default 24,
+    review_request_subject text not null default '',
+    review_request_body text not null default '',
+    google_review_url text not null default '',
+    yelp_review_url text not null default '',
+    facebook_review_url text not null default '',
+    other_review_url text not null default '',
     day_of_service_instructions text not null default '',
     onboarding_completed boolean not null default false,
     custom_templates jsonb not null default '[]'::jsonb,
@@ -935,6 +994,14 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists estimate_follow_up_delay_hours integer not null default 24");
   await getPool().query("alter table app_settings add column if not exists estimate_follow_up_subject text not null default ''");
   await getPool().query("alter table app_settings add column if not exists estimate_follow_up_body text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists review_request_enabled boolean not null default true");
+  await getPool().query("alter table app_settings add column if not exists review_request_delay_hours integer not null default 24");
+  await getPool().query("alter table app_settings add column if not exists review_request_subject text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists review_request_body text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists google_review_url text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists yelp_review_url text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists facebook_review_url text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists other_review_url text not null default ''");
   await getPool().query("alter table app_settings add column if not exists day_of_service_instructions text not null default ''");
   await getPool().query("alter table app_settings add column if not exists onboarding_completed boolean not null default false");
   await getPool().query("alter table app_settings add column if not exists custom_templates jsonb not null default '[]'::jsonb");
@@ -1014,6 +1081,7 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists scheduled_event_at timestamptz");
   await getPool().query("alter table jobs add column if not exists payment_records jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists suppress_estimate_follow_up boolean not null default false");
+  await getPool().query("alter table jobs add column if not exists review_request_sent_at timestamptz");
   await getPool().query("alter table jobs add column if not exists contract_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists contract_mailto text not null default ''");
@@ -1314,8 +1382,9 @@ async function upsertJob(client, job) {
       zip = $25,
       account_id = $26,
       payment_records = $27::jsonb,
-      suppress_estimate_follow_up = $28
-    where id = $29`,
+      suppress_estimate_follow_up = $28,
+      review_request_sent_at = nullif($29, '')::timestamptz
+    where id = $30`,
     [
       JSON.stringify(job.lineItems || []),
       Number(job.discountPercent || 0),
@@ -1345,6 +1414,7 @@ async function upsertJob(client, job) {
       job.accountId || "owner",
       JSON.stringify(job.paymentRecords || []),
       Boolean(job.suppressEstimateFollowUp),
+      job.reviewRequestSentAt || "",
       job.id
     ]
   );
@@ -1411,6 +1481,7 @@ function jobFromRow(row) {
     squareFinalPaidAt: row.square_final_paid_at?.toISOString?.() || "",
     paymentRecords: Array.isArray(row.payment_records) ? row.payment_records : [],
     suppressEstimateFollowUp: Boolean(row.suppress_estimate_follow_up),
+    reviewRequestSentAt: row.review_request_sent_at?.toISOString?.() || "",
     googleCalendarEventId: row.google_calendar_event_id || "",
     googleCalendarEventUrl: row.google_calendar_event_url || "",
     completionNoticeSentAt: row.completion_notice_sent_at?.toISOString?.() || "",
@@ -1542,6 +1613,14 @@ function settingsFromRow(row) {
     estimateFollowUpDelayHours: Number(row.estimate_follow_up_delay_hours ?? 24),
     estimateFollowUpSubject: row.estimate_follow_up_subject || defaultSettings.estimateFollowUpSubject,
     estimateFollowUpBody: row.estimate_follow_up_body || defaultSettings.estimateFollowUpBody,
+    reviewRequestEnabled: row.review_request_enabled !== false,
+    reviewRequestDelayHours: Number(row.review_request_delay_hours ?? 24),
+    reviewRequestSubject: row.review_request_subject || defaultSettings.reviewRequestSubject,
+    reviewRequestBody: row.review_request_body || defaultSettings.reviewRequestBody,
+    googleReviewUrl: row.google_review_url || "",
+    yelpReviewUrl: row.yelp_review_url || "",
+    facebookReviewUrl: row.facebook_review_url || "",
+    otherReviewUrl: row.other_review_url || "",
     dayOfServiceInstructions: row.day_of_service_instructions || "",
     onboardingCompleted: Boolean(row.onboarding_completed),
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],

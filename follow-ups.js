@@ -7,7 +7,8 @@ const FOLLOW_UP_TYPES = {
   estimate: "estimate_followup",
   contract: "contract_followup",
   deposit: "deposit_followup",
-  invoice: "invoice_followup"
+  invoice: "invoice_followup",
+  review: "review_request"
 };
 
 const FOLLOW_UP_CONFIG = {
@@ -38,6 +39,17 @@ const FOLLOW_UP_CONFIG = {
     statusLabel: "final invoice",
     canSend: (job) => job?.status === "Final Invoice Sent" && job.squareFinalInvoiceUrl && !job.squareFinalPaidAt,
     cancelReason: (job) => job.squareFinalPaidAt || statuses.indexOf(job.status) > statuses.indexOf("Final Invoice Sent") ? "paid" : ""
+  },
+  review_request: {
+    sentAtField: "squareFinalPaidAt",
+    sentMarkerField: "reviewRequestSentAt",
+    statusLabel: "review request",
+    canSend: (job, settings = {}) => job?.status === "Paid" && job.squareFinalPaidAt && !job.reviewRequestSentAt && hasReviewRequestLink(settings),
+    cancelReason: (job) => {
+      if (!job) return "job_missing";
+      if (job.reviewRequestSentAt) return "sent";
+      return "";
+    }
   }
 };
 
@@ -59,16 +71,17 @@ function createFollowUpHandlers({
   }
 
   async function scheduleFollowUp(job, settings, type = getActiveFollowUpType(job)) {
-    if (!job?.id || settings.estimateFollowUpEnabled === false || job.suppressEstimateFollowUp) {
+    if (!job?.id || !isFollowUpEnabled(settings, type) || job.suppressEstimateFollowUp) {
       logger.info("follow_up_schedule_skipped", {
         accountId: job?.accountId || "owner",
         jobId: job?.id || "",
-        reason: !job?.id ? "missing_job" : settings.estimateFollowUpEnabled === false ? "disabled" : "suppressed"
+        type,
+        reason: !job?.id ? "missing_job" : !isFollowUpEnabled(settings, type) ? "disabled" : "suppressed"
       });
       return null;
     }
     const config = FOLLOW_UP_CONFIG[type];
-    if (!config?.canSend(job)) {
+    if (!config?.canSend(job, settings)) {
       logger.info("follow_up_schedule_skipped", {
         accountId: itemWorkspaceId(job),
         jobId: job.id,
@@ -90,7 +103,7 @@ function createFollowUpHandlers({
       });
     }
     const now = new Date().toISOString();
-    const scheduledFor = new Date(new Date(config.sentAtField ? job[config.sentAtField] || now : now).getTime() + getDelayMs(settings)).toISOString();
+    const scheduledFor = new Date(new Date(config.sentAtField ? job[config.sentAtField] || now : now).getTime() + getDelayMs(settings, type)).toISOString();
     const task = existing || {
       id: crypto.randomUUID(),
       accountId,
@@ -194,7 +207,8 @@ function createFollowUpHandlers({
       }
 
       const job = jobs.find((item) => item.id === task.jobId);
-      const cancellationReason = getCancellationReason(job, updatedTasks, task.type);
+      const settings = job ? await readSettingsForJob(job) : {};
+      const cancellationReason = getCancellationReason(job, updatedTasks, task.type, settings);
       if (cancellationReason) {
         updatedTasks[index] = cancelTask(task, cancellationReason);
         tasksChanged = true;
@@ -209,7 +223,11 @@ function createFollowUpHandlers({
       }
 
       try {
-        await sendEstimateFollowUpEmail(job, await readSettingsForJob(job), task.type);
+        await sendEstimateFollowUpEmail(job, settings, task.type);
+        const markerField = FOLLOW_UP_CONFIG[task.type]?.sentMarkerField;
+        if (markerField) {
+          job[markerField] = new Date().toISOString();
+        }
         updatedTasks[index] = {
           ...task,
           source: "auto",
@@ -259,9 +277,12 @@ function createFollowUpHandlers({
   };
 }
 
-function getDelayMs(settings) {
-  const hours = [24, 48, 72, 168].includes(Number(settings.estimateFollowUpDelayHours))
-    ? Number(settings.estimateFollowUpDelayHours)
+function getDelayMs(settings, type = FOLLOW_UP_TYPE) {
+  const configured = type === FOLLOW_UP_TYPES.review
+    ? settings.reviewRequestDelayHours
+    : settings.estimateFollowUpDelayHours;
+  const hours = [24, 48, 72, 168].includes(Number(configured))
+    ? Number(configured)
     : 24;
   return hours * 60 * 60 * 1000;
 }
@@ -270,9 +291,21 @@ function canSendFollowUp(job, type = getActiveFollowUpType(job)) {
   return Boolean(FOLLOW_UP_CONFIG[type]?.canSend(job));
 }
 
-function getCancellationReason(job, tasks, type = FOLLOW_UP_TYPE) {
+function isFollowUpEnabled(settings = {}, type = FOLLOW_UP_TYPE) {
+  if (type === FOLLOW_UP_TYPES.review) {
+    return settings.reviewRequestEnabled !== false;
+  }
+  return settings.estimateFollowUpEnabled !== false;
+}
+
+function hasReviewRequestLink(settings = {}) {
+  return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
+}
+
+function getCancellationReason(job, tasks, type = FOLLOW_UP_TYPE, settings = {}) {
   if (!job) return "job_missing";
   if (job.suppressEstimateFollowUp) return "suppressed";
+  if (type === FOLLOW_UP_TYPES.review && !hasReviewRequestLink(settings)) return "review_links_missing";
   const stageReason = FOLLOW_UP_CONFIG[type]?.cancelReason(job);
   if (stageReason) return stageReason;
   if (tasks.some((task) => task.jobId === job.id && task.type === type && task.status === "sent" && task.source === "manual")) {
@@ -312,6 +345,7 @@ function getActiveFollowUpType(job) {
   if (FOLLOW_UP_CONFIG.contract_followup.canSend(job)) return FOLLOW_UP_TYPES.contract;
   if (FOLLOW_UP_CONFIG.deposit_followup.canSend(job)) return FOLLOW_UP_TYPES.deposit;
   if (FOLLOW_UP_CONFIG.invoice_followup.canSend(job)) return FOLLOW_UP_TYPES.invoice;
+  if (FOLLOW_UP_CONFIG.review_request.canSend(job, {})) return FOLLOW_UP_TYPES.review;
   return FOLLOW_UP_TYPE;
 }
 

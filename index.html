@@ -927,6 +927,49 @@
                 <textarea name="estimateFollowUpBody" class="textarea" rows="7"></textarea>
                 <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {estimateTotal} {businessName} {approvalLink}</span>
               </label>
+              <label class="field">
+                Review request follow-up
+                <input type="hidden" name="reviewRequestEnabled" value="false">
+                <span class="follow-up-toggle-row">
+                  <span>Send after final payment</span>
+                  <input class="toggle-input" type="checkbox" name="reviewRequestEnabled" value="true">
+                  <span class="toggle-switch" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="field">
+                Review request delay
+                <select name="reviewRequestDelayHours" class="select">
+                  <option value="24">24 hours</option>
+                  <option value="48">48 hours</option>
+                  <option value="72">72 hours</option>
+                  <option value="168">1 week</option>
+                </select>
+              </label>
+              <label class="field full-field">
+                Review request subject
+                <input name="reviewRequestSubject" class="input" placeholder="Would you leave {businessName} a quick review?">
+              </label>
+              <label class="field full-field">
+                Review request message
+                <textarea name="reviewRequestBody" class="textarea" rows="7"></textarea>
+                <span class="form-note field__help">Merge fields: {firstName} {lastName} {jobTitle} {address} {businessName} {reviewLinks} {googleReviewLink} {yelpReviewLink} {facebookReviewLink} {otherReviewLink}</span>
+              </label>
+              <label class="field full-field">
+                Google review link
+                <input name="googleReviewUrl" class="input" inputmode="url" placeholder="https://g.page/r/.../review">
+              </label>
+              <label class="field full-field">
+                Yelp review link
+                <input name="yelpReviewUrl" class="input" inputmode="url" placeholder="https://www.yelp.com/writeareview/...">
+              </label>
+              <label class="field full-field">
+                Facebook review link
+                <input name="facebookReviewUrl" class="input" inputmode="url" placeholder="https://www.facebook.com/.../reviews">
+              </label>
+              <label class="field full-field">
+                Other review link
+                <input name="otherReviewUrl" class="input" inputmode="url" placeholder="Any other review page">
+              </label>
               <label class="field full-field">
                 Day of Service Instructions
                 <textarea name="dayOfServiceInstructions" class="textarea" rows="5" placeholder="One instruction per line. Leave blank to use industry defaults."></textarea>

@@ -351,6 +351,16 @@ Strategic roadmap:
 
 Phase 08 beta should validate the Phase 1 core before expanding. Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, franchise support, or similar expansion before Beta Cohort #1 unless real users expose a blocker.
 
+Review request automation added before Beta Cohort #1:
+
+- Settings includes a review request follow-up toggle, delay, editable subject/message, and Google/Yelp/Facebook/Other review link fields.
+- Default behavior is enabled with a 24-hour delay after final payment, but the automation only schedules when at least one review link is configured.
+- Default message asks satisfied customers for a 5-star review and inserts configured review links.
+- Final paid workflows schedule review_request follow-up tasks after cancelling final invoice reminders.
+- Due review request tasks send through the existing email delivery path and set reviewRequestSentAt on the job to prevent repeat requests.
+- Files changed: settings.js, db.js, index.html, app.js, follow-ups.js, job-actions.js, email-content.js, and tests/follow-up-automation.spec.js.
+- Tests run: node --check db.js; node --check settings.js; node --check follow-ups.js; node --check email-content.js; node --check app.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- tests/follow-up-automation.spec.js (13 passed); npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (61 passed).
+
 ## 6. Audit Environment Requirements
 
 Required for audits:
