@@ -201,6 +201,39 @@ test("public contract click-to-fill date signs agreement and sends deposit invoi
   expect(depositTask).toMatchObject({ status: "pending", source: "auto" });
 });
 
+test("public contract signing skips deposit invoice when deposit is zero percent", async ({ page }) => {
+  const approveResponse = await page.request.post("/api/public/estimates/zero-deposit-job/approve", {
+    form: { token: "zero-deposit-token" }
+  });
+  expect(approveResponse.ok()).toBeTruthy();
+
+  let jobs = await readJobs();
+  const approvedJob = jobs.find((item) => item.id === "zero-deposit-job");
+  await page.goto(approvedJob.contractApprovalUrl);
+  await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
+
+  await page.locator("#signedDateInput").click();
+  await page.locator("#signatureInput").fill("Zero Deposit Zoe");
+  await page.locator("#contractSignForm").getByRole("button", { name: "Sign Agreement" }).click();
+  await expect(page).toHaveURL(/\/contract\/zero-deposit-job\/signed\?token=/);
+  await expect(page.getByRole("heading", { name: "Agreement signed" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Agreement signed. No deposit is due at this time.");
+  await expect(page.locator("body")).not.toContainText("Your deposit invoice has been sent.");
+  await expect(page.getByRole("link", { name: "View deposit invoice" })).toHaveCount(0);
+
+  jobs = await readJobs();
+  const signedJob = jobs.find((item) => item.id === "zero-deposit-job");
+  expect(signedJob.status).toBe("Contract Signed");
+  expect(signedJob.squareDepositInvoiceId || "").toBe("");
+  expect(signedJob.squareDepositInvoiceUrl || "").toBe("");
+
+  const tasks = await readTasks();
+  const cancelledContractTask = tasks.find((item) => item.jobId === "zero-deposit-job" && item.type === "contract_followup");
+  const depositTask = tasks.find((item) => item.jobId === "zero-deposit-job" && item.type === "deposit_followup");
+  expect(cancelledContractTask).toMatchObject({ status: "cancelled", cancelledReason: "signed" });
+  expect(depositTask).toBeUndefined();
+});
+
 test("public contract signing error lands on branded retry page", async ({ page }) => {
   const approveResponse = await page.request.post("/api/public/estimates/approve-job/approve", {
     form: { token: "approve-token" }
@@ -383,6 +416,7 @@ async function resetTestData() {
   await fs.writeFile(path.join(DATA_DIR, "jobs.json"), JSON.stringify([
     leadJob("lead-job", "Lead Lane"),
     estimateJob("approve-job", "Approve Parker", "approve-token"),
+    zeroDepositEstimateJob("zero-deposit-job", "Zero Deposit Zoe", "zero-deposit-token"),
     estimateJob("reject-job", "Reject Rivers", "reject-token"),
     estimateJob("manual-job", "Manual Carter", "manual-token"),
     estimateJob("followup-job", "Followup Stone", "followup-token"),
@@ -391,11 +425,19 @@ async function resetTestData() {
   ], null, 2));
   await fs.writeFile(path.join(DATA_DIR, "follow-up-tasks.json"), JSON.stringify([
     followUpTask("approve-task", "approve-job"),
+    followUpTask("zero-deposit-task", "zero-deposit-job"),
     followUpTask("reject-task", "reject-job"),
     followUpTask("manual-task", "manual-job"),
     followUpTask("followup-task", "followup-job"),
     followUpTask("deposit-task", "deposit-job", "deposit_followup")
   ], null, 2));
+}
+
+function zeroDepositEstimateJob(id, customerName, token) {
+  return {
+    ...estimateJob(id, customerName, token),
+    depositPercent: 0
+  };
 }
 
 function leadJob(id, customerName) {

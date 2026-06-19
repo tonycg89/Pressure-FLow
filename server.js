@@ -76,6 +76,7 @@ const { createSettingsUserRoutes } = require("./settings-user-routes");
 const { createRecordRoutes } = require("./record-routes");
 const { assertDeploymentEnvironment } = require("./environment");
 const { createOperationalLogger } = require("./operational-logger");
+const { getDepositCents } = require("./billing");
 const {
   contentTypes,
   getAppBaseUrl,
@@ -539,10 +540,13 @@ async function handleApi(request, response, url) {
       return;
     }
 
+    const hasDepositDue = getDepositCents(job) > 0;
     const actions = job.squareDepositInvoiceUrl ? [{ label: "View deposit invoice", href: job.squareDepositInvoiceUrl }] : [];
     sendHtml(response, 200, renderEstimateMessagePage(
       "Agreement signed",
-      "Agreement signed. Your deposit invoice has been sent.",
+      hasDepositDue
+        ? "Agreement signed. Your deposit invoice has been sent."
+        : "Agreement signed. No deposit is due at this time.",
       {
         type: "Agreement",
         settings: await readSettingsForJob(job),

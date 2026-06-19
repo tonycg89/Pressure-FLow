@@ -192,15 +192,24 @@ function createPublicWorkflowHandlers({
       job.contractSignedDate = cleanSignedDate;
       job.squareContractUrl = buildExecutedContractUrl(getBaseUrlFromLink(job.contractApprovalUrl), job);
 
-      const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
-      job.status = "Deposit Sent";
-      job.squareDepositInvoiceId = invoice.invoiceId;
-      job.squareDepositInvoiceUrl = invoice.publicUrl;
-      job.updatedAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "signed", itemWorkspaceId(job), "contract_followup");
-      await scheduleFollowUp(job, settings, "deposit_followup");
+      if (getDepositCents(job) > 0) {
+        const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
+        job.status = "Deposit Sent";
+        job.squareDepositInvoiceId = invoice.invoiceId;
+        job.squareDepositInvoiceUrl = invoice.publicUrl;
+        await scheduleFollowUp(job, settings, "deposit_followup");
+      } else {
+        job.squareDepositInvoiceId = "";
+        job.squareDepositInvoiceUrl = "";
+        job.squareDepositInvoiceStatus = "";
+      }
+      job.updatedAt = new Date().toISOString();
       await writeJobs(jobs);
-      await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`);
+      const alertDetail = getDepositCents(job) > 0
+        ? `Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`
+        : "No deposit invoice sent because deposit is 0%.";
+      await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. ${alertDetail}`);
       return job;
     });
   }

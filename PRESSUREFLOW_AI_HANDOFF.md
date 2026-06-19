@@ -369,6 +369,15 @@ Business logo upload reliability fixed before Beta Cohort #1:
 - Tests added/updated: settings save verifies a selected logo previews and persists through `/api/settings` for document rendering.
 - Tests run: `node --check app.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (4 passed); `npm.cmd run check`; `npm.cmd run test:browser` (61 passed).
 
+Zero-deposit workflow cleanup added before Beta Cohort #1:
+
+- Jobs with 0% deposit no longer send or auto-generate deposit invoices.
+- Signed contracts with no deposit due move directly toward scheduling in the contractor UI, and public contract signing confirms no deposit is due instead of claiming a deposit invoice was sent.
+- Settings copy now labels default job duration as minutes so values such as 180 are clear.
+- Files changed: `job-actions.js`, `public-workflows.js`, `server.js`, `app.js`, `index.html`, `tests\pending-payments.spec.js`, and `tests\follow-up-automation.spec.js`.
+- Tests added/updated: contractor signed-contract flow skips deposit invoice and shows scheduling for 0% deposit; public contract signing skips deposit invoice and schedules no deposit follow-up for 0% deposit.
+- Tests run: `node --check app.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check server.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/pending-payments.spec.js tests/follow-up-automation.spec.js` (23 passed); `npm.cmd run check`; `npm.cmd run test:browser` (63 passed).
+
 ## 6. Audit Environment Requirements
 
 Required for audits:

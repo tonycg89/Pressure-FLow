@@ -165,6 +165,25 @@ test("contractor is blocked before sending deposit invoice when no payment metho
   expect(carla.squareDepositInvoiceId || "").toBe("");
 });
 
+test("zero percent deposit skips deposit invoice and moves signed contract to scheduling", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
+  await expect(page.locator("#jobDetail")).toContainText("$0.00");
+  await expect(page.getByRole("button", { name: "Schedule Job" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send Deposit Invoice" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const zoe = jobs.find((item) => item.id === "88888888-8888-4888-8888-888888888888");
+  expect(zoe.status).toBe("Contract Signed");
+  expect(zoe.squareDepositInvoiceId || "").toBe("");
+});
+
 test("contractor is blocked before sending final invoice when no payment methods are configured", async ({ page }) => {
   await login(page);
 
@@ -322,6 +341,25 @@ async function resetTestData() {
     estimate: 400,
     depositPercent: 25,
     lineItems: [{ name: "House wash", quantity: 1, unit: "QTY", total: 400 }],
+    status: "Contract Signed",
+    paymentRecords: [],
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  }, {
+    id: "88888888-8888-4888-8888-888888888888",
+    accountId: TEST_USER.accountId,
+    customerName: "Zero Deposit Zoe",
+    email: "zoe@example.com",
+    phone: "(555) 888-1212",
+    streetAddress: "500 Zero Street",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    address: "500 Zero Street, Riverside, CA 92501",
+    serviceType: "Pool deck cleaning",
+    estimate: 350,
+    depositPercent: 0,
+    lineItems: [{ name: "Pool deck cleaning", quantity: 1, unit: "QTY", total: 350 }],
     status: "Contract Signed",
     paymentRecords: [],
     createdAt: "2026-06-01T12:00:00.000Z",

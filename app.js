@@ -4006,7 +4006,9 @@ function getNextAction(job) {
     "Estimate Sent": { label: "Mark Estimate Signed", action: "mark-estimate-signed" },
     "Estimate Signed": { label: "Send Contract", action: "send-contract" },
     "Contract Sent": { label: "Mark Contract Signed", action: "mark-contract-signed" },
-    "Contract Signed": { label: "Send Deposit Invoice", action: "send-deposit-invoice" },
+    "Contract Signed": getDeposit(job) > 0
+      ? { label: "Send Deposit Invoice", action: "send-deposit-invoice" }
+      : { label: "Schedule Job", action: "schedule" },
     "Deposit Sent": { label: "Mark Deposit Paid", action: "mark-deposit-paid" },
     "Deposit Paid": { label: "Schedule Job", action: "schedule" },
     "Scheduled": { label: "Complete Job + Send Final Invoice", action: "complete" },

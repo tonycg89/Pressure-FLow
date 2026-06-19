@@ -158,8 +158,15 @@ function createJobActionHandler({
 
     if (action === "send-deposit-invoice") {
       const settings = await readSettings();
-      requireConfiguredInvoicePaymentMethod(settings);
       await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
+      if (getDepositCents(job) <= 0) {
+        job.status = "Contract Signed";
+        job.squareDepositInvoiceId = "";
+        job.squareDepositInvoiceUrl = "";
+        job.squareDepositInvoiceStatus = "";
+        return { job, jobs };
+      }
+      requireConfiguredInvoicePaymentMethod(settings);
       const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl);
       job.status = "Deposit Sent";
       job.squareDepositInvoiceId = invoice.invoiceId;
