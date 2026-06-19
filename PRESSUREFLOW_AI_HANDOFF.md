@@ -380,7 +380,7 @@ Zero-deposit workflow cleanup added before Beta Cohort #1:
 
 Empty API response handling improved after deployed estimate-send alert:
 
-- Shared frontend API requests now parse response text defensively and show clear retry messages for empty, unreachable, or unreadable server responses instead of the raw `Unexpected end of JSON input` browser error.
+- Shared frontend API requests and app data refresh loaders now parse response text defensively and show clear retry messages for empty, unreachable, or unreadable server responses instead of the raw `Unexpected end of JSON input` browser error.
 - Files changed: `app.js` and `tests\dashboard-analytics.spec.js`.
 - Tests added/updated: job action failure with an empty HTTP 502 response shows `The server returned an empty response HTTP 502. Please try again.`
 - Tests run: `node --check app.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (5 passed); `npm.cmd run check`; `npm.cmd run test:browser` (64 passed).

@@ -399,7 +399,7 @@ async function loadSession() {
   try {
     const response = await fetch("/api/session");
     if (!response.ok) return;
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load session.");
     currentUser = data.user;
     csrfToken = data.csrfToken || "";
   } catch {
@@ -469,11 +469,7 @@ function saveWorkspaceStateToHash() {
 async function loadSettings() {
   try {
     const response = await fetch("/api/settings");
-    if (!response.ok) {
-      throw new Error("Unable to load settings.");
-    }
-
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load settings.");
     settings = data.settings;
     syncServiceCatalog();
     applySettingsDefaults();
@@ -799,11 +795,7 @@ function slugifyServiceName(name) {
 async function loadJobs() {
   try {
     const response = await fetch("/api/jobs");
-    if (!response.ok) {
-      throw new Error("Unable to load jobs.");
-    }
-
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load jobs.");
     jobs = data.jobs;
     statuses = data.statuses;
     selectedJobId = selectedJobId ?? jobs[0]?.id ?? null;
@@ -818,11 +810,7 @@ async function loadJobs() {
 async function loadCustomers() {
   try {
     const response = await fetch("/api/customers");
-    if (!response.ok) {
-      throw new Error("Unable to load customers.");
-    }
-
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load customers.");
     customers = data.customers || [];
     selectedCustomerId = selectedCustomerId ?? customers[0]?.id ?? null;
     renderJobCustomerOptions();
@@ -871,11 +859,7 @@ function fillJobCustomerFields(customer) {
 async function loadExpenses() {
   try {
     const response = await fetch("/api/expenses");
-    if (!response.ok) {
-      throw new Error("Unable to load expenses.");
-    }
-
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load expenses.");
     expenses = data.expenses || [];
     selectedExpenseId = selectedExpenseId ?? expenses[0]?.id ?? null;
     renderExpenses();
@@ -888,10 +872,7 @@ async function loadExpenses() {
 async function loadFollowUpTasks() {
   try {
     const response = await fetch("/api/follow-up-tasks");
-    if (!response.ok) {
-      throw new Error("Unable to load follow-up tasks.");
-    }
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load follow-up tasks.");
     followUpTasks = data.tasks || [];
   } catch {
     followUpTasks = [];
@@ -1301,10 +1282,7 @@ async function loadSettingsUsers() {
 
   try {
     const response = await fetch("/api/users");
-    if (!response.ok) {
-      throw new Error("Unable to load users.");
-    }
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load users.");
     renderSettingsUsers(data.users || []);
     settingsUserStatus.textContent = "Team logins are for invited testers only.";
   } catch (error) {
@@ -2371,10 +2349,7 @@ async function loadSavedMeasurementsForAddress(address) {
 
   try {
     const response = await fetch(`/api/property-measurements?address=${encodeURIComponent(normalizedAddress)}`);
-    if (!response.ok) {
-      throw new Error("Unable to load saved measurements.");
-    }
-    const data = await response.json();
+    const data = await readJsonResponse(response, "Unable to load saved measurements.");
     renderSavedMeasurements(data.measurements || []);
   } catch {
     renderSavedMeasurements([]);
@@ -4198,24 +4173,25 @@ async function apiRequest(url, payload, method = "POST") {
     throw new Error("The server could not be reached. Check your connection and try again.");
   }
 
+  return readJsonResponse(response, "Request failed.");
+}
+
+async function readJsonResponse(response, fallbackMessage = "Request failed.") {
   const rawText = await response.text();
-  let data = {};
-  if (rawText.trim()) {
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      const statusText = response.status ? ` HTTP ${response.status}` : "";
-      throw new Error(`The server returned an unreadable response${statusText}. Please try again.`);
-    }
+  const statusText = response.status ? ` HTTP ${response.status}` : "";
+  if (!rawText.trim()) {
+    throw new Error(`The server returned an empty response${statusText}. Please try again.`);
+  }
+
+  let data;
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    throw new Error(`The server returned an unreadable response${statusText}. Please try again.`);
   }
 
   if (!response.ok) {
-    const statusText = response.status ? ` HTTP ${response.status}` : "";
-    throw new Error(data.error || `The server returned an empty response${statusText}. Please try again.`);
-  }
-
-  if (!rawText.trim()) {
-    throw new Error("The server returned an empty response. Please try again.");
+    throw new Error(data.error || `${fallbackMessage}${statusText}`);
   }
 
   return data;
