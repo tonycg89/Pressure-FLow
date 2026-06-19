@@ -91,6 +91,27 @@ test("settings opens from each main view and view headings stay current", async 
   }
 });
 
+test("job action failures with empty server responses show a clear retry message", async ({ page }) => {
+  const jobsPath = path.join(DATA_DIR, "jobs.json");
+  const jobs = JSON.parse(await fs.readFile(jobsPath, "utf8"));
+  jobs.push(job("lead-empty-response", "Lead Empty Response", "", "Lead", 150));
+  await fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2));
+
+  await login(page);
+
+  await page.route("**/api/jobs/lead-empty-response/send-square-estimate", async (route) => {
+    await route.fulfill({ status: 502, body: "" });
+  });
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Lead Empty Response/ }).click();
+  const dialogPromise = page.waitForEvent("dialog");
+  await page.getByRole("button", { name: "Send Estimate" }).click();
+  const dialog = await dialogPromise;
+  expect(dialog.message()).toBe("The server returned an empty response HTTP 502. Please try again.");
+  await dialog.accept();
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);

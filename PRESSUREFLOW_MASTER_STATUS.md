@@ -203,6 +203,10 @@ Product guardrails:
 - Files changed for zero-deposit/duration cleanup: `job-actions.js`, `public-workflows.js`, `server.js`, `app.js`, `index.html`, `tests\pending-payments.spec.js`, and `tests\follow-up-automation.spec.js`.
 - Tests added/updated: contractor signed-contract flow skips deposit invoice and shows scheduling for 0% deposit; public contract signing skips deposit invoice and schedules no deposit follow-up for 0% deposit.
 - Tests run: `node --check app.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check server.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/pending-payments.spec.js tests/follow-up-automation.spec.js` (23 passed); `npm.cmd run check`; `npm.cmd run test:browser` (63 passed).
+- Empty API response handling improved after deployed estimate-send alert: shared frontend API requests now parse response text defensively and show clear retry messages for empty, unreachable, or unreadable server responses instead of the raw `Unexpected end of JSON input` browser error.
+- Files changed for empty-response handling: `app.js` and `tests\dashboard-analytics.spec.js`.
+- Tests added/updated: job action failure with an empty HTTP 502 response now shows `The server returned an empty response HTTP 502. Please try again.`
+- Tests run: `node --check app.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (5 passed); `npm.cmd run check`; `npm.cmd run test:browser` (64 passed).
 
 ## Package 07C-3 Operational Monitoring + Error Visibility
 

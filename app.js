@@ -4187,15 +4187,35 @@ async function apiRequest(url, payload, method = "POST") {
     headers["x-csrf-token"] = csrfToken;
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: JSON.stringify(payload)
-  });
-  const data = await response.json();
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(payload)
+    });
+  } catch (error) {
+    throw new Error("The server could not be reached. Check your connection and try again.");
+  }
+
+  const rawText = await response.text();
+  let data = {};
+  if (rawText.trim()) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      const statusText = response.status ? ` HTTP ${response.status}` : "";
+      throw new Error(`The server returned an unreadable response${statusText}. Please try again.`);
+    }
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || "Request failed.");
+    const statusText = response.status ? ` HTTP ${response.status}` : "";
+    throw new Error(data.error || `The server returned an empty response${statusText}. Please try again.`);
+  }
+
+  if (!rawText.trim()) {
+    throw new Error("The server returned an empty response. Please try again.");
   }
 
   return data;
