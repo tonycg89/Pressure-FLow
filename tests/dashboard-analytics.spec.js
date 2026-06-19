@@ -47,9 +47,20 @@ test("settings save shows lightweight success feedback", async ({ page }) => {
 
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.locator("#settingsDialog")).toBeVisible();
+  await page.locator("#businessLogoInput").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64")
+  });
+  await expect(page.locator("#businessLogoPreview")).toBeVisible();
   await page.getByRole("button", { name: "Save Settings" }).click();
   await expect(page.locator("#settingsDialog")).toBeHidden();
-  await expect(page.locator(".toast")).toContainText("Settings saved.");
+  await expect(page.locator(".toast").filter({ hasText: "Settings saved." })).toBeVisible();
+
+  const settingsResponse = await page.request.get("/api/settings");
+  expect(settingsResponse.ok()).toBeTruthy();
+  const { settings } = await settingsResponse.json();
+  expect(settings.businessLogoDataUrl).toMatch(/^data:image\/png;base64,/);
 });
 
 test("settings opens from each main view and view headings stay current", async ({ page }) => {

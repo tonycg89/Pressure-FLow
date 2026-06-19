@@ -1,6 +1,6 @@
 PressureFlow Master Status
 
-Last Updated: June 18, 2026
+Last Updated: June 19, 2026
 
 Current Phase:
 - PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
@@ -177,6 +177,10 @@ Phase 08 Beta Cohort #1:
 - Files changed for review request automation: settings.js, db.js, index.html, app.js, follow-ups.js, job-actions.js, email-content.js, and tests/follow-up-automation.spec.js.
 - Tests added/updated: final payment schedules a pending review request, due review request sends and records reviewRequestSentAt, and review email copy includes the 5-star request plus configured review links.
 - Tests run: node --check db.js; node --check settings.js; node --check follow-ups.js; node --check email-content.js; node --check app.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- tests/follow-up-automation.spec.js (13 passed); npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (61 passed).
+- Business logo upload reliability fixed before Beta Cohort #1: Settings and onboarding logo uploads now accept PNG/JPG/WebP files up to 8 MB, resize/compress oversized images in the browser, store a bounded validated data URL, and keep customer document logo rendering on the existing businessLogoDataUrl path.
+- Files changed for logo upload reliability: app.js, settings.js, index.html, styles.css, and tests/dashboard-analytics.spec.js.
+- Tests added/updated: settings save now verifies a selected logo previews and persists through /api/settings for document rendering.
+- Tests run: node --check app.js; node --check settings.js; node --check tests\dashboard-analytics.spec.js; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js (4 passed); npm.cmd run check; npm.cmd run test:browser (61 passed).
 
 Package 07C-3 Operational Monitoring + Error Visibility:
 - Error logging audit completed for API/public routes, webhooks, email delivery, follow-up automation, payment invoice cancellation, Google/SMTP send paths, exports/templates, auth/startup, and production 500 handling.

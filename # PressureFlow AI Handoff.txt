@@ -361,6 +361,14 @@ Review request automation added before Beta Cohort #1:
 - Files changed: settings.js, db.js, index.html, app.js, follow-ups.js, job-actions.js, email-content.js, and tests/follow-up-automation.spec.js.
 - Tests run: node --check db.js; node --check settings.js; node --check follow-ups.js; node --check email-content.js; node --check app.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- tests/follow-up-automation.spec.js (13 passed); npm.cmd run check; npm.cmd run smoke:test-user-safety; npm.cmd run test:browser (61 passed).
 
+Business logo upload reliability fixed before Beta Cohort #1:
+
+- Settings and onboarding logo uploads accept PNG/JPG/WebP files up to 8 MB, resize/compress oversized images in the browser, and store a bounded validated data URL.
+- Customer document logo rendering continues to use the existing businessLogoDataUrl path; no document route migration or new file-storage dependency was introduced.
+- Files changed: app.js, settings.js, index.html, styles.css, and tests/dashboard-analytics.spec.js.
+- Tests added/updated: settings save verifies a selected logo previews and persists through /api/settings for document rendering.
+- Tests run: node --check app.js; node --check settings.js; node --check tests\dashboard-analytics.spec.js; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js (4 passed); npm.cmd run check; npm.cmd run test:browser (61 passed).
+
 ## 6. Audit Environment Requirements
 
 Required for audits:

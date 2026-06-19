@@ -1,6 +1,6 @@
 # PressureFlow Master Status
 
-Last Updated: June 18, 2026
+Last Updated: June 19, 2026
 
 ## Current Phase
 
@@ -194,6 +194,10 @@ Product guardrails:
 - Files changed for review request automation: `settings.js`, `db.js`, `index.html`, `app.js`, `follow-ups.js`, `job-actions.js`, `email-content.js`, and `tests/follow-up-automation.spec.js`.
 - Tests added/updated: final payment schedules a pending review request, due review request sends and records `reviewRequestSentAt`, and review email copy includes the 5-star request plus configured review links.
 - Tests run: `node --check db.js`; `node --check settings.js`; `node --check follow-ups.js`; `node --check email-content.js`; `node --check app.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` (13 passed); `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (61 passed).
+- Business logo upload reliability fixed before Beta Cohort #1: Settings and onboarding logo uploads now accept PNG/JPG/WebP files up to 8 MB, resize/compress oversized images in the browser, store a bounded validated data URL, and keep customer document logo rendering on the existing `businessLogoDataUrl` path.
+- Files changed for logo upload reliability: `app.js`, `settings.js`, `index.html`, `styles.css`, and `tests/dashboard-analytics.spec.js`.
+- Tests added/updated: settings save now verifies a selected logo previews and persists through `/api/settings` for document rendering.
+- Tests run: `node --check app.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (4 passed); `npm.cmd run check`; `npm.cmd run test:browser` (61 passed).
 
 ## Package 07C-3 Operational Monitoring + Error Visibility
 

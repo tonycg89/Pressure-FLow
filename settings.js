@@ -3,6 +3,7 @@ const { createInlineFileRecord, publicFileRecord } = require("./storage");
 
 const MAX_CUSTOM_TEMPLATES = 25;
 const MAX_TEMPLATE_DATA_URL_BYTES = 7_000_000;
+const MAX_BUSINESS_LOGO_DATA_URL_BYTES = 1_500_000;
 const SETTINGS_LIMITS = Object.freeze({
   businessName: 120,
   businessPhone: 40,
@@ -317,7 +318,7 @@ function normalizeBusinessLogoDataUrl(value) {
   if (!logo) {
     return "";
   }
-  return isAllowedImageDataUrl(logo, 900000) ? logo : "";
+  return isAllowedImageDataUrl(logo, MAX_BUSINESS_LOGO_DATA_URL_BYTES) ? logo : "";
 }
 
 function isAllowedImageDataUrl(value, maxBytes) {
@@ -341,6 +342,7 @@ function limitText(value, max) {
 
 module.exports = {
   MAX_CUSTOM_TEMPLATES,
+  MAX_BUSINESS_LOGO_DATA_URL_BYTES,
   MAX_TEMPLATE_DATA_URL_BYTES,
   SETTINGS_LIMITS,
   getTemplateMetadata,

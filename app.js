@@ -23,6 +23,10 @@ const {
 let serviceCatalog = [...builtInServiceCatalog];
 let defaultEstimateService = serviceCatalog.find((service) => service.name === "Pressure Washing") || serviceCatalog[0];
 let serviceTypes = [...builtInServiceTypes];
+const BUSINESS_LOGO_ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const BUSINESS_LOGO_MAX_SOURCE_BYTES = 8 * 1024 * 1024;
+const BUSINESS_LOGO_MAX_DATA_URL_BYTES = 1500000;
+const BUSINESS_LOGO_MAX_DIMENSION = 900;
 
 const {
   buildFullAddress,
@@ -1378,27 +1382,89 @@ function formatUserRole(role) {
 async function updateBusinessLogoFromInput(event, statusElement = settingsStatus) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (!file.type.startsWith("image/")) {
+  if (!BUSINESS_LOGO_ALLOWED_TYPES.has(file.type)) {
     if (statusElement) {
       statusElement.textContent = "Choose a PNG, JPG, or WebP logo image.";
     }
     event.target.value = "";
     return;
   }
-  if (file.size > 650000) {
+  if (file.size > BUSINESS_LOGO_MAX_SOURCE_BYTES) {
     if (statusElement) {
-      statusElement.textContent = "Choose a smaller logo image under 650 KB.";
+      statusElement.textContent = "Choose a smaller logo image under 8 MB.";
     }
     event.target.value = "";
     return;
   }
 
-  settings.businessLogoDataUrl = await readFileAsDataUrl(file);
-  renderBusinessLogoPreview();
-  if (statusElement) {
-    statusElement.textContent = "Logo updated. Save settings to publish it.";
+  try {
+    if (statusElement) {
+      statusElement.textContent = "Preparing logo...";
+    }
+    settings.businessLogoDataUrl = await prepareBusinessLogoDataUrl(file);
+    renderBusinessLogoPreview();
+    if (statusElement) {
+      statusElement.textContent = "Logo ready. Save settings to publish it.";
+    }
+    showToast("Logo ready. Save settings to publish it.", "info");
+  } catch (error) {
+    console.error("Unable to prepare business logo", error);
+    if (statusElement) {
+      statusElement.textContent = "Logo could not be prepared. Try a PNG, JPG, or WebP image.";
+    }
+    event.target.value = "";
   }
-  showToast("Logo updated. Save settings to publish it.", "info");
+}
+
+async function prepareBusinessLogoDataUrl(file) {
+  const directDataUrl = await readFileAsDataUrl(file);
+  if (getTextBytes(directDataUrl) <= BUSINESS_LOGO_MAX_DATA_URL_BYTES) {
+    return directDataUrl;
+  }
+
+  const image = await loadImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  const scale = Math.min(
+    1,
+    BUSINESS_LOGO_MAX_DIMENSION / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
+  );
+  canvas.width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  canvas.height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const mimeTypes = file.type === "image/png" ? ["image/png", "image/webp", "image/jpeg"] : [file.type, "image/webp", "image/jpeg"];
+  const qualities = [0.86, 0.76, 0.66, 0.56];
+  for (const mimeType of mimeTypes) {
+    for (const quality of qualities) {
+      const dataUrl = canvas.toDataURL(mimeType, quality);
+      if (getTextBytes(dataUrl) <= BUSINESS_LOGO_MAX_DATA_URL_BYTES) {
+        return dataUrl;
+      }
+    }
+  }
+
+  throw new Error("Prepared logo is still too large.");
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Logo image could not be loaded."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function getTextBytes(value) {
+  return new Blob([String(value || "")]).size;
 }
 
 function clearBusinessLogo(inputToClear = businessLogoInput) {
