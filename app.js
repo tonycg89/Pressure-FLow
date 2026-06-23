@@ -166,8 +166,7 @@ const navItems = document.querySelectorAll("[data-view]");
 const viewPanels = document.querySelectorAll("[data-view-panel]");
 const jobDialog = document.querySelector("#jobDialog");
 const jobForm = document.querySelector("#jobForm");
-const jobCustomerSearch = document.querySelector("#jobCustomerSearch");
-const jobCustomerOptions = document.querySelector("#jobCustomerOptions");
+const jobCustomerSelect = document.querySelector("#jobCustomerSelect");
 const customerDialog = document.querySelector("#customerDialog");
 const customerForm = document.querySelector("#customerForm");
 const expenseDialog = document.querySelector("#expenseDialog");
@@ -313,7 +312,7 @@ async function init() {
   document.addEventListener("click", handleFirstCustomerClick);
   newJobButton.addEventListener("click", openNewJob);
   editJobButton.addEventListener("click", openEditJob);
-  jobCustomerSearch?.addEventListener("input", selectJobCustomer);
+  jobCustomerSelect?.addEventListener("change", selectJobCustomer);
   newCustomerButton.addEventListener("click", openNewCustomer);
   editCustomerButton.addEventListener("click", openEditCustomer);
   newExpenseButton.addEventListener("click", openNewExpense);
@@ -828,16 +827,23 @@ async function loadCustomers() {
 }
 
 function renderJobCustomerOptions() {
-  if (!jobCustomerOptions) return;
+  if (!jobCustomerSelect) return;
 
-  jobCustomerOptions.innerHTML = customers.map((customer) => `
-    <option value="${escapeHtml(formatCustomerSearchValue(customer))}"></option>
-  `).join("");
+  const selectedValue = jobForm.elements.customerId.value || "";
+  jobCustomerSelect.innerHTML = `
+    <option value="">Select an existing customer</option>
+    ${customers.map((customer) => `
+      <option value="${escapeHtml(customer.id)}">${escapeHtml(formatCustomerSearchValue(customer))}</option>
+    `).join("")}
+  `;
+  if (customers.some((customer) => customer.id === selectedValue)) {
+    jobCustomerSelect.value = selectedValue;
+  }
 }
 
 function selectJobCustomer(event) {
-  const value = event.target.value.trim();
-  const customer = customers.find((item) => formatCustomerSearchValue(item) === value);
+  const value = event.target.value;
+  const customer = customers.find((item) => item.id === value);
   if (!customer) {
     jobForm.elements.customerId.value = "";
     return;
@@ -857,8 +863,8 @@ function fillJobCustomerFields(customer) {
   jobForm.elements.phone.value = customer.phone || "";
   fillAddressFields(jobForm, customer);
   jobForm.elements.leadSource.value = customer.leadSource || "referral";
-  if (jobCustomerSearch) {
-    jobCustomerSearch.value = formatCustomerSearchValue(customer);
+  if (jobCustomerSelect) {
+    jobCustomerSelect.value = customer.id || "";
   }
 }
 
@@ -1792,9 +1798,8 @@ function openEditJob() {
   jobForm.elements.customerName.value = job.customerName || "";
   jobForm.elements.email.value = job.email || "";
   jobForm.elements.phone.value = job.phone || "";
-  if (jobCustomerSearch) {
-    const customer = customers.find((item) => item.id === job.customerId);
-    jobCustomerSearch.value = customer ? formatCustomerSearchValue(customer) : "";
+  if (jobCustomerSelect) {
+    jobCustomerSelect.value = job.customerId || "";
   }
   fillAddressFields(jobForm, job);
   jobForm.elements.leadSource.value = job.leadSource || "referral";
@@ -1821,8 +1826,8 @@ function openEditJob() {
 function resetJobDialog() {
   jobForm.dataset.editingId = "";
   jobDialogTitle.textContent = "New job";
-  if (jobCustomerSearch) {
-    jobCustomerSearch.value = "";
+  if (jobCustomerSelect) {
+    jobCustomerSelect.value = "";
   }
   renderLineItems([{ ...defaultEstimateService, quantity: 0 }]);
   currentMeasurement = {};

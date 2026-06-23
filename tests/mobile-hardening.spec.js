@@ -28,8 +28,17 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
 
   await page.getByRole("button", { name: "New Job" }).click();
   await expect(page.locator("#jobDialog")).toBeVisible();
+  await expect(page.locator("#jobForm datalist")).toHaveCount(0);
+  await expect(page.locator("#jobCustomerSelect")).toHaveJSProperty("tagName", "SELECT");
+  await expect(page.locator("#jobForm [name='serviceType']")).toHaveJSProperty("tagName", "SELECT");
+  await page.locator("#jobCustomerSelect").selectOption("mobile-existing-customer");
+  await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Mobile Existing Customer");
+  await expect(page.locator("#jobForm [name='email']")).toHaveValue("existing.mobile@example.com");
+  await expect(page.locator("#jobForm [name='streetAddress']")).toHaveValue("700 Saved Customer Lane");
   await expectFontSize(page.locator("#jobForm [name='customerName']"), 16);
   await expectFontSize(page.locator("#jobForm [name='leadSource']"), 16);
+  await expectFontSize(page.locator("#jobCustomerSelect"), 16);
+  await expectFontSize(page.locator("#jobForm [name='serviceType']"), 16);
   await expectFontSize(page.locator("#jobForm [name='notes']"), 16);
   await expectMinHeight(page.locator("#jobForm").getByRole("button", { name: "Create Job" }), 44);
 });
@@ -352,7 +361,25 @@ async function resetTestData() {
   await fs.rm(DATA_DIR, { recursive: true, force: true });
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(path.join(DATA_DIR, "expenses.json"), "[]");
-  await fs.writeFile(path.join(DATA_DIR, "customers.json"), "[]");
+  await fs.writeFile(path.join(DATA_DIR, "customers.json"), JSON.stringify([{
+    id: "mobile-existing-customer",
+    accountId: TEST_USER.accountId,
+    customerName: "Mobile Existing Customer",
+    email: "existing.mobile@example.com",
+    phone: "(555) 888-7777",
+    streetAddress: "700 Saved Customer Lane",
+    addressUnit: "",
+    city: "Riverside",
+    state: "CA",
+    zip: "92501",
+    address: "700 Saved Customer Lane, Riverside, CA 92501",
+    leadSource: "referral",
+    notes: "",
+    serviceAreaPhotos: [],
+    propertyMeasurements: [],
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-01T12:00:00.000Z"
+  }], null, 2));
   await fs.writeFile(path.join(DATA_DIR, "follow-up-tasks.json"), "[]");
   await fs.writeFile(path.join(DATA_DIR, "webhook-events.json"), "[]");
   await fs.writeFile(path.join(DATA_DIR, "accounts.json"), JSON.stringify([{
