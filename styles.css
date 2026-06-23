@@ -775,6 +775,12 @@ label.compact-select {
   color: var(--status-info-text);
 }
 
+.toast--error {
+  border-color: var(--status-danger-bg);
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
 .notification-dropdown {
   position: absolute;
   top: calc(100% + 10px);
@@ -1124,6 +1130,30 @@ textarea {
 .action-list {
   display: grid;
   gap: 8px;
+}
+
+.workflow-action-status {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--status-info-bg);
+  border-radius: 8px;
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.workflow-action-status.error {
+  border-color: var(--status-danger-bg);
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
+.workflow-action-status.success {
+  border-color: var(--status-success-bg);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .action-button {

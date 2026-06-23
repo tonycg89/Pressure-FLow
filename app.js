@@ -27,6 +27,7 @@ const BUSINESS_LOGO_ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/w
 const BUSINESS_LOGO_MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const BUSINESS_LOGO_MAX_DATA_URL_BYTES = 1500000;
 const BUSINESS_LOGO_MAX_DIMENSION = 900;
+const JOB_FORM_DRAFT_KEY = "pressureflow.jobFormDraft.v1";
 
 const {
   buildFullAddress,
@@ -289,6 +290,9 @@ let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
 let onboardingCurrentStep = 0;
 let showPostOnboardingGuidance = false;
+let restoringJobDraft = false;
+let pendingWorkflowAction = "";
+let workflowActionMessage = null;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -327,6 +331,8 @@ async function init() {
   });
   templateUploadForm?.addEventListener("submit", uploadTemplate);
   jobForm.addEventListener("submit", createJob);
+  jobForm.addEventListener("input", saveJobDraft);
+  jobForm.addEventListener("change", saveJobDraft);
   customerForm.addEventListener("submit", saveCustomer);
   expenseForm.addEventListener("submit", saveExpense);
   expenseForm.elements.amount?.addEventListener("input", formatExpenseAmountInput);
@@ -1577,6 +1583,7 @@ function parseAddressFallback(address) {
 
 async function createJob(event) {
   if (event.submitter?.value === "cancel") {
+    clearJobDraft();
     resetJobDialog();
     return;
   }
@@ -1597,6 +1604,7 @@ async function createJob(event) {
       ? await apiRequest(`/api/jobs/${editingId}`, job, "PATCH")
       : await apiRequest("/api/jobs", job);
     selectedJobId = saved.job.id;
+    clearJobDraft();
     jobForm.reset();
     resetJobDialog();
     jobDialog.close();
@@ -1611,19 +1619,23 @@ async function createJob(event) {
       });
     }
   } catch (error) {
-    alert(error.message);
+    showToast(error.message || "Job was not saved. Check the estimate and try again.", "error");
   }
 }
 
-function openNewJob() {
+function openNewJob({ restoreDraft = true } = {}) {
   jobForm.reset();
   resetJobDialog();
   renderJobCustomerOptions();
+  if (restoreDraft) {
+    restoreJobDraft();
+  }
   jobDialog.showModal();
 }
 
 function openNewJobForCustomer(customer) {
-  openNewJob();
+  clearJobDraft();
+  openNewJob({ restoreDraft: false });
   fillJobCustomerFields(customer);
 }
 
@@ -1825,6 +1837,64 @@ function resetJobDialog() {
   updateEstimateTotals();
 }
 
+function saveJobDraft() {
+  if (restoringJobDraft || jobForm.dataset.editingId) return;
+
+  const fields = Object.fromEntries(new FormData(jobForm).entries());
+  const draft = {
+    savedAt: new Date().toISOString(),
+    fields,
+    lineItems: getEstimateLineItems(),
+    discountPercent: discountSelect.value || "0",
+    measurement: currentMeasurement || {},
+    jobPhotos: currentJobPhotos || { before: [], after: [] }
+  };
+
+  try {
+    localStorage.setItem(JOB_FORM_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Local draft recovery is best effort; saving the job still works without it.
+  }
+}
+
+function restoreJobDraft() {
+  let draft;
+  try {
+    draft = JSON.parse(localStorage.getItem(JOB_FORM_DRAFT_KEY) || "null");
+  } catch {
+    return;
+  }
+
+  if (!draft?.fields) return;
+
+  restoringJobDraft = true;
+  Object.entries(draft.fields).forEach(([name, value]) => {
+    const field = jobForm.elements[name];
+    if (!field || field.type === "file") return;
+    field.value = value;
+  });
+  renderLineItems(Array.isArray(draft.lineItems) && draft.lineItems.length
+    ? draft.lineItems
+    : [{ ...defaultEstimateService, quantity: 0 }]);
+  currentMeasurement = draft.measurement || {};
+  currentJobPhotos = {
+    before: [...(draft.jobPhotos?.before || [])],
+    after: [...(draft.jobPhotos?.after || [])]
+  };
+  discountSelect.value = String(draft.discountPercent || "0");
+  renderJobPhotoPreviews();
+  updateEstimateTotals();
+  restoringJobDraft = false;
+}
+
+function clearJobDraft() {
+  try {
+    localStorage.removeItem(JOB_FORM_DRAFT_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
 async function addPhotosFromInput(event, target, renderCallback, metadata = {}) {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
@@ -1989,6 +2059,7 @@ function closeDialogFromButton(event) {
   if (!dialog) return;
 
   if (dialog === jobDialog) {
+    clearJobDraft();
     jobForm.reset();
     resetJobDialog();
   }
@@ -3372,6 +3443,8 @@ function renderJobDetail() {
   selectedJobId = job.id;
   const nextAction = getNextAction(job);
   const fallbackAction = getFallbackAction(job);
+  const hasPendingWorkflowAction = pendingWorkflowAction.startsWith(`${job.id}:`);
+  const workflowMessage = workflowActionMessage?.jobId === job.id ? workflowActionMessage : null;
 
   jobDetail.innerHTML = `
     <section class="detail-section">
@@ -3416,11 +3489,13 @@ function renderJobDetail() {
     <section class="detail-section">
       <h4>Automation</h4>
       <div class="action-list">
+        ${hasPendingWorkflowAction ? `<p class="workflow-action-status" role="status">Sending update...</p>` : ""}
+        ${workflowMessage ? `<p class="workflow-action-status ${workflowMessage.type === "error" ? "error" : "success"}" role="${workflowMessage.type === "error" ? "alert" : "status"}">${escapeHtml(workflowMessage.message)}</p>` : ""}
         ${renderInvoicePaymentWarning(nextAction)}
-        ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}">${nextAction.label}</button>` : ""}
-        ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}">${fallbackAction.label}</button>` : ""}
+        ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
+        ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
-        <button class="action-button danger" type="button" data-action="delete-job">Delete Job</button>
+        <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>
       </div>
     </section>
 
@@ -4074,6 +4149,12 @@ async function runAction(jobId, action, actionPayload = {}) {
     payload.jobPhotos = completion.jobPhotos;
   }
 
+  const actionKey = `${jobId}:${action}`;
+  if (pendingWorkflowAction) return;
+  pendingWorkflowAction = actionKey;
+  workflowActionMessage = null;
+  renderJobDetail();
+
   try {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
@@ -4097,7 +4178,15 @@ async function runAction(jobId, action, actionPayload = {}) {
     await loadJobs();
     await loadCustomers();
   } catch (error) {
-    alert(error.message);
+    workflowActionMessage = {
+      jobId,
+      type: "error",
+      message: error.message || "Unable to complete this action. Try again."
+    };
+    showToast(workflowActionMessage.message, "error");
+  } finally {
+    pendingWorkflowAction = "";
+    renderJobDetail();
   }
 }
 

@@ -34,6 +34,51 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
   await expectMinHeight(page.locator("#jobForm").getByRole("button", { name: "Create Job" }), 44);
 });
 
+test("mobile send estimate action stays visible and completes", async ({ page }) => {
+  await page.route("**/api/jobs/lead-mobile-job/send-square-estimate", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.continue();
+  });
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Mobile Lead/ }).click();
+  const sendButton = page.getByRole("button", { name: "Send Estimate" });
+  await sendButton.click();
+
+  await expect(page.locator(".workflow-action-status")).toContainText("Sending update");
+  await expect(page.getByRole("button", { name: "Sending..." })).toBeDisabled();
+  await expect(page.locator("#jobDetail")).toContainText("Estimate Sent");
+  await expect(page.locator("#jobDialog")).toBeHidden();
+});
+
+test("mobile job draft survives refresh before estimate is saved", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='customerName']").fill("Refresh Draft Customer");
+  await page.locator("#jobForm [name='email']").fill("draft.mobile@example.com");
+  await page.locator("#jobForm [name='phone']").fill("(555) 888-0000");
+  await page.locator("#jobForm [name='streetAddress']").fill("101 Draft Recovery Way");
+  await page.locator("#jobForm [name='city']").fill("Riverside");
+  await page.locator("#jobForm [name='state']").fill("CA");
+  await page.locator("#jobForm [name='zip']").fill("92501");
+  await page.locator("#lineItems .line-quantity").first().fill("2");
+  await page.locator("#lineItems .line-rate").first().fill("175");
+  await expect(page.locator("#estimateTotal")).toHaveText("$350.00");
+
+  await page.reload();
+  await expect(page.locator("#sidebarBusinessName")).toHaveText("Mobile Exterior Cleaning");
+  await page.getByRole("button", { name: "New Job" }).click();
+
+  await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Refresh Draft Customer");
+  await expect(page.locator("#lineItems .line-quantity").first()).toHaveValue("2");
+  await expect(page.locator("#lineItems .line-rate").first()).toHaveValue("175");
+  await expect(page.locator("#estimateTotal")).toHaveText("$350.00");
+});
+
 test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);
