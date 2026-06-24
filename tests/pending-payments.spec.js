@@ -73,7 +73,7 @@ test("public deposit and final invoices show configured payment methods", async 
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
   await expect(page.locator(".doc__logo")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Payment options available");
+  await expect(page.locator("body")).not.toContainText("Payment options available");
   await expect(page.locator("body")).toContainText("Johnson Exterior Cleaning");
   await expect(page.locator("body")).toContainText("owner@johnson.test | (555) 222-3333");
   await expect(page.locator("body")).toContainText("Zelle");
@@ -117,7 +117,7 @@ test("paid public invoices show a paid state without payment CTAs", async ({ pag
 test("public deposit and final invoices show contact fallback when no payment methods are configured", async ({ page }) => {
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
-  await expect(page.locator("body")).toContainText("Payment instructions pending");
+  await expect(page.locator("body")).not.toContainText("Payment instructions pending");
   await expect(page.locator("body")).not.toContainText("Secure payment options");
   await expect(page.locator("body")).toContainText("Payment options have not been configured yet. Please contact Johnson Exterior Cleaning at owner@johnson.test or (555) 222-3333 for payment instructions.");
   await expect(page.locator("body")).not.toContainText("Payment instructions will be provided by the business.");
@@ -137,7 +137,7 @@ test("public invoice renders manual payment instructions without card CTA", asyn
 
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
-  await expect(page.locator("body")).toContainText("Payment options available");
+  await expect(page.locator("body")).not.toContainText("Payment options available");
   await expect(page.locator("body")).toContainText("Please pay by check at the service address and include invoice number PPW-D-TEST.");
   await expect(page.locator("body")).not.toContainText("Payment options have not been configured yet.");
   await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);

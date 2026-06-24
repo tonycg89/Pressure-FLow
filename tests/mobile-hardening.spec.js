@@ -35,11 +35,29 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
   await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Mobile Existing Customer");
   await expect(page.locator("#jobForm [name='email']")).toHaveValue("existing.mobile@example.com");
   await expect(page.locator("#jobForm [name='streetAddress']")).toHaveValue("700 Saved Customer Lane");
+  await expect(page.locator("#lineItems .line-item-index")).toHaveText(["Service 1"]);
+  await page.getByRole("button", { name: "Add Service", exact: true }).click();
+  await expect(page.locator("#lineItems .line-item-index")).toHaveText(["Service 1", "Service 2"]);
+  await expect(page.getByRole("button", { name: "Add Custom Service" })).toBeVisible();
+  const serviceActionsAreBelowRows = await page.locator(".estimate-builder").evaluate((builder) => {
+    const lineItems = builder.querySelector("#lineItems");
+    const actions = builder.querySelector(".estimate-service-actions");
+    const discounts = builder.querySelector(".discount-panel");
+    return Boolean(
+      lineItems &&
+      actions &&
+      discounts &&
+      (lineItems.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      (actions.compareDocumentPosition(discounts) & Node.DOCUMENT_POSITION_FOLLOWING)
+    );
+  });
+  expect(serviceActionsAreBelowRows).toBe(true);
   await expectFontSize(page.locator("#jobForm [name='customerName']"), 16);
   await expectFontSize(page.locator("#jobForm [name='leadSource']"), 16);
   await expectFontSize(page.locator("#jobCustomerSelect"), 16);
   await expectFontSize(page.locator("#jobForm [name='serviceType']"), 16);
   await expectFontSize(page.locator("#jobForm [name='notes']"), 16);
+  await expectMinHeight(page.getByRole("button", { name: "Add Custom Service" }), 44);
   await expectMinHeight(page.locator("#jobForm").getByRole("button", { name: "Create Job" }), 44);
 });
 
@@ -203,7 +221,7 @@ test("public documents remain within the mobile viewport and proof links are tap
   }
 
   await page.goto("/invoice/final-mobile-job?type=final&token=pf-final-mobile");
-  await expect(page.locator("body")).toContainText("Payment options available");
+  await expect(page.locator("body")).not.toContainText("Payment options available");
   await expectMinHeight(page.locator(".proof-link a"), 44);
   await expectMinHeight(page.getByRole("button", { name: "Pay by Credit Card" }), 44);
 

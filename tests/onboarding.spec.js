@@ -138,7 +138,7 @@ test("pool service onboarding seeds pool catalog and per-hour custom unit is ava
   await page.getByRole("button", { name: "New Job" }).click();
   await expect(page.locator("#lineItems .line-item-row").first()).toContainText("Weekly Pool Service");
   await expect(page.locator("#estimateTotal")).toHaveText("$0.00");
-  await page.getByRole("button", { name: "Custom Service" }).click();
+  await page.getByRole("button", { name: "Add Custom Service" }).click();
   await expect(page.locator("#customServiceDialog")).toBeVisible();
   await expect(page.locator("#customServiceForm [name='unit']")).toContainText("Per hour");
 });

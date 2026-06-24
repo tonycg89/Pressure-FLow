@@ -417,12 +417,11 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const invoicePaid = isDeposit
     ? job.squareDepositInvoiceStatus === "PAID" || job.squareDepositPaidAt
     : job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
-  const visiblePaymentConfigured = Boolean(settings.stripeSecretKey || settings.zellePayment || settings.cashAppPayment || settings.venmoPayment || settings.paymentInstructions);
   const trustPills = [
-    invoicePaid ? "Paid" : visiblePaymentConfigured ? "Payment options available" : "Payment instructions pending",
+    invoicePaid ? "Paid" : "",
     isDeposit ? "Deposit invoice" : "Final invoice",
     "Customer copy"
-  ];
+  ].filter(Boolean);
   return `<!doctype html>
 <html lang="en">
   <head>

@@ -2114,6 +2114,9 @@ function addLineItemRow(item = serviceCatalog[0]) {
   const row = document.createElement("div");
   row.className = "line-item-row";
   row.innerHTML = `
+    <div class="line-item-heading">
+      <span class="line-item-index">Service</span>
+    </div>
     <label class="field">
       Service
       <select class="line-service select">
@@ -2164,13 +2167,24 @@ function addLineItemRow(item = serviceCatalog[0]) {
     if (!lineItemsContainer.children.length) {
       addLineItemRow();
     }
+    updateLineItemLabels();
     updateMeasurementButtonVisibility();
     updateEstimateTotals();
   });
 
   lineItemsContainer.append(row);
+  updateLineItemLabels();
   updateMeasurementButtonVisibility();
   updateEstimateTotals();
+}
+
+function updateLineItemLabels() {
+  lineItemsContainer.querySelectorAll(".line-item-row").forEach((row, index) => {
+    const label = row.querySelector(".line-item-index");
+    if (label) {
+      label.textContent = `Service ${index + 1}`;
+    }
+  });
 }
 
 function openCustomServiceDialog() {
