@@ -12,6 +12,7 @@ let settings = {};
 let currentUser = null;
 let csrfToken = "";
 let dismissedNotificationIds = new Set(loadDismissedNotificationIds());
+let customerDialogTouchStartY = 0;
 
 const {
   builtInServiceCatalog,
@@ -28,6 +29,7 @@ const BUSINESS_LOGO_MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const BUSINESS_LOGO_MAX_DATA_URL_BYTES = 1500000;
 const BUSINESS_LOGO_MAX_DIMENSION = 900;
 const JOB_FORM_DRAFT_KEY = "pressureflow.jobFormDraft.v1";
+const CUSTOMER_FORM_DRAFT_KEY = "pressureflow.customerFormDraft.v1";
 
 const {
   buildFullAddress,
@@ -333,10 +335,15 @@ async function init() {
   jobForm.addEventListener("input", saveJobDraft);
   jobForm.addEventListener("change", saveJobDraft);
   customerForm.addEventListener("submit", saveCustomer);
+  customerForm.addEventListener("input", saveCustomerDraft);
+  customerForm.addEventListener("change", saveCustomerDraft);
+  customerDialog?.addEventListener("close", unlockCustomerDialogViewport);
+  document.addEventListener("touchstart", trackCustomerDialogTouchStart, { passive: true });
+  document.addEventListener("touchmove", containCustomerDialogTouchMove, { passive: false });
   expenseForm.addEventListener("submit", saveExpense);
   expenseForm.elements.amount?.addEventListener("input", formatExpenseAmountInput);
   serviceAreaPhotoInputs.forEach((input) => {
-    input.addEventListener("change", (event) => addPhotosFromInput(event, currentServiceAreaPhotos, renderServiceAreaPhotos));
+    input.addEventListener("change", (event) => addCustomerPhotosFromInput(event));
   });
   addBeforePhotoButton?.addEventListener("click", () => addBeforePhotoRow());
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
@@ -398,6 +405,7 @@ async function init() {
     loadFollowUpTasks(),
     loadJobs()
   ]);
+  restoreInterruptedCustomerDraft();
 }
 
 async function loadSession() {
@@ -1649,6 +1657,9 @@ function openNewCustomer() {
   customerForm.reset();
   resetCustomerDialog();
   customerDialog.showModal();
+  lockCustomerDialogViewport();
+  restoreCustomerDraft();
+  stabilizeCustomerDialogViewport();
 }
 
 function openEditCustomer() {
@@ -1666,6 +1677,9 @@ function openEditCustomer() {
   currentServiceAreaPhotos = [...(customer.serviceAreaPhotos || [])];
   renderServiceAreaPhotos();
   customerDialog.showModal();
+  lockCustomerDialogViewport();
+  saveCustomerDraft();
+  stabilizeCustomerDialogViewport();
 }
 
 function resetCustomerDialog() {
@@ -1678,8 +1692,127 @@ function resetCustomerDialog() {
   renderServiceAreaPhotos();
 }
 
+function lockCustomerDialogViewport() {
+  document.documentElement.classList.add("customer-dialog-open");
+  document.body.classList.add("customer-dialog-open");
+}
+
+function unlockCustomerDialogViewport() {
+  document.documentElement.classList.remove("customer-dialog-open");
+  document.body.classList.remove("customer-dialog-open");
+}
+
+function trackCustomerDialogTouchStart(event) {
+  if (!customerDialog?.open) return;
+  customerDialogTouchStartY = event.touches?.[0]?.clientY || 0;
+}
+
+function containCustomerDialogTouchMove(event) {
+  if (!customerDialog?.open) return;
+
+  const scrollable = event.target.closest?.("#customerDialog .modal__body");
+  if (!scrollable) {
+    event.preventDefault();
+    return;
+  }
+
+  const currentY = event.touches?.[0]?.clientY || 0;
+  const deltaY = currentY - customerDialogTouchStartY;
+  const atTop = scrollable.scrollTop <= 0;
+  const atBottom = Math.ceil(scrollable.scrollTop + scrollable.clientHeight) >= scrollable.scrollHeight;
+  if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) {
+    event.preventDefault();
+  }
+}
+
+function stabilizeCustomerDialogViewport() {
+  if (!customerDialog?.open) return;
+
+  requestAnimationFrame(() => {
+    customerDialog.scrollIntoView({ block: "center", inline: "nearest" });
+    const modalBody = customerDialog.querySelector(".modal__body");
+    modalBody?.scrollTo({
+      top: Math.min(modalBody.scrollTop, Math.max(0, modalBody.scrollHeight - modalBody.clientHeight))
+    });
+  });
+}
+
+function getCustomerDraftFields() {
+  const fields = {};
+  Array.from(customerForm.elements).forEach((field) => {
+    if (!field.name || field.type === "file") return;
+    fields[field.name] = field.value;
+  });
+  return fields;
+}
+
+function saveCustomerDraft() {
+  if (!customerDialog?.open) return;
+
+  try {
+    localStorage.setItem(CUSTOMER_FORM_DRAFT_KEY, JSON.stringify({
+      editingId: customerForm.dataset.editingId || "",
+      fields: getCustomerDraftFields(),
+      serviceAreaPhotos: currentServiceAreaPhotos || []
+    }));
+  } catch {
+    // Customer drafts are best-effort protection for mobile browser reloads.
+  }
+}
+
+function restoreCustomerDraft() {
+  let draft;
+  try {
+    draft = JSON.parse(localStorage.getItem(CUSTOMER_FORM_DRAFT_KEY) || "null");
+  } catch {
+    return;
+  }
+
+  if (!draft?.fields) return;
+
+  customerForm.dataset.editingId = draft.editingId || "";
+  customerDialogTitle.textContent = draft.editingId ? "Edit customer" : "New customer";
+  Object.entries(draft.fields).forEach(([name, value]) => {
+    const field = customerForm.elements[name];
+    if (!field || field.type === "file") return;
+    field.value = value;
+  });
+  currentServiceAreaPhotos = [...(draft.serviceAreaPhotos || [])];
+  renderServiceAreaPhotos();
+}
+
+function clearCustomerDraft() {
+  try {
+    localStorage.removeItem(CUSTOMER_FORM_DRAFT_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function hasCustomerDraft() {
+  try {
+    return Boolean(JSON.parse(localStorage.getItem(CUSTOMER_FORM_DRAFT_KEY) || "null")?.fields);
+  } catch {
+    return false;
+  }
+}
+
+function restoreInterruptedCustomerDraft() {
+  if (!hasCustomerDraft() || customerDialog.open) return;
+
+  setActiveView("customers");
+  renderCustomers();
+  customerForm.reset();
+  resetCustomerDialog();
+  customerDialog.showModal();
+  lockCustomerDialogViewport();
+  restoreCustomerDraft();
+  stabilizeCustomerDialogViewport();
+}
+
 async function saveCustomer(event) {
   if (event.submitter?.value === "cancel") {
+    clearCustomerDraft();
     resetCustomerDialog();
     return;
   }
@@ -1696,6 +1829,7 @@ async function saveCustomer(event) {
       : await apiRequest("/api/customers", payload);
     selectedCustomerId = saved.customer.id;
     customerForm.reset();
+    clearCustomerDraft();
     resetCustomerDialog();
     customerDialog.close();
     await loadCustomers();
@@ -1709,6 +1843,14 @@ async function saveCustomer(event) {
   } catch (error) {
     alert(error.message);
   }
+}
+
+async function addCustomerPhotosFromInput(event) {
+  await addPhotosFromInput(event, currentServiceAreaPhotos, () => {
+    renderServiceAreaPhotos();
+    saveCustomerDraft();
+    stabilizeCustomerDialogViewport();
+  });
 }
 
 function openNewExpense() {
@@ -2070,6 +2212,7 @@ function closeDialogFromButton(event) {
   }
 
   if (dialog === customerDialog) {
+    clearCustomerDraft();
     resetCustomerDialog();
   }
 

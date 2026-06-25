@@ -106,6 +106,44 @@ test("mobile job draft survives refresh before estimate is saved", async ({ page
   await expect(page.locator("#estimateTotal")).toHaveText("$350.00");
 });
 
+test("mobile customer photo capture keeps the modal usable and preserves the draft", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await login(page);
+
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await page.locator("#customerForm [name='customerName']").fill("Photo Draft Customer");
+  await page.locator("#customerForm [name='email']").fill("photo.draft@example.com");
+  await page.locator("#customerForm [name='phone']").fill("(555) 777-1212");
+  await page.locator("#customerForm [name='streetAddress']").fill("400 Camera Safe Way");
+  await page.locator("#customerForm [name='city']").fill("Riverside");
+  await page.locator("#customerForm [name='state']").fill("CA");
+  await page.locator("#customerForm [name='zip']").fill("92501");
+  await page.locator("#customerForm [name='notes']").fill("Keep this draft after camera handoff.");
+
+  const photoPath = path.join(DATA_DIR, "service-area.png");
+  await fs.writeFile(photoPath, Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64"
+  ));
+  await page.locator("#customerForm [data-service-area-photo-input]").first().setInputFiles(photoPath);
+
+  await expect(page.locator("#serviceAreaPhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#customerDialog");
+  await expect(page.locator("#customerForm [name='customerName']")).toHaveValue("Photo Draft Customer");
+  await expect(page.locator("#customerForm").getByRole("button", { name: "Save Customer" })).toBeInViewport();
+  await expectNoViewportOverflow(page, "customer modal after service-area photo");
+
+  await page.reload();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await expect(page.locator("#customerForm [name='customerName']")).toHaveValue("Photo Draft Customer");
+  await expect(page.locator("#customerForm [name='notes']")).toHaveValue("Keep this draft after camera handoff.");
+  await expect(page.locator("#serviceAreaPhotoPreview figure")).toHaveCount(1);
+  await expectDialogFitsViewport(page, "#customerDialog");
+});
+
 test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);

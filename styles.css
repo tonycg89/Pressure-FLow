@@ -1591,6 +1591,7 @@ dialog {
   width: min(620px, calc(100vw - 32px));
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1612,9 +1613,13 @@ dialog:not(.modal) > form {
 }
 
 .modal {
+  position: fixed;
+  inset: 0;
   width: min(620px, calc(100vw - 32px));
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  margin: auto;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
@@ -1626,9 +1631,22 @@ dialog:not(.modal) > form {
 .modal > form {
   display: flex;
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   flex-direction: column;
   gap: 0;
   overflow: hidden;
+}
+
+html.customer-dialog-open,
+body.customer-dialog-open {
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  touch-action: none;
+}
+
+body.customer-dialog-open #customerDialog,
+body.customer-dialog-open #customerDialog * {
+  touch-action: auto;
 }
 
 .modal--sm {
@@ -1698,10 +1716,14 @@ dialog:not(.modal) > form {
 }
 
 .modal__body {
+  flex: 1 1 auto;
   display: grid;
   gap: 14px;
+  min-height: 0;
   padding: 18px 20px;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-jump-list {
