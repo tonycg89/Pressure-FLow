@@ -1614,18 +1614,20 @@ dialog:not(.modal) > form {
 
 .modal {
   position: fixed;
-  inset: 0;
+  top: 50%;
+  left: 50%;
   width: min(620px, calc(100vw - 32px));
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  margin: auto;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   background: var(--card);
   color: var(--card-foreground);
   box-shadow: 0 24px 72px rgba(16, 24, 20, 0.18);
+  transform: translate(-50%, -50%);
 }
 
 .modal > form {
@@ -1763,9 +1765,11 @@ body.customer-dialog-open #customerDialog * {
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
+  flex: 0 0 auto;
   margin: 0;
   padding: 16px 20px 20px;
   border-top: 1px solid var(--border);
+  background: var(--card);
 }
 
 .modal__footer-left {
@@ -3173,7 +3177,6 @@ label {
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
-    margin: auto;
     border-right: 0;
     border-left: 0;
     border-radius: var(--card-radius);
