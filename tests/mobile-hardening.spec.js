@@ -134,7 +134,7 @@ test("mobile customer photo capture keeps the modal usable and preserves the dra
   await expectDialogFitsViewport(page, "#customerDialog");
   await expect(page.locator("#customerForm [name='customerName']")).toHaveValue("Photo Draft Customer");
   await expect(page.locator("#customerForm").getByRole("button", { name: "Save Customer" })).toBeInViewport();
-  await expectModalFooterHasNoBlankTail(page, "#customerDialog");
+  await expectModalCardHasNoVisibleBlankTail(page, "#customerDialog");
   await expectNoViewportOverflow(page, "customer modal after service-area photo");
 
   await page.reload();
@@ -143,7 +143,7 @@ test("mobile customer photo capture keeps the modal usable and preserves the dra
   await expect(page.locator("#customerForm [name='notes']")).toHaveValue("Keep this draft after camera handoff.");
   await expect(page.locator("#serviceAreaPhotoPreview figure")).toHaveCount(1);
   await expectDialogFitsViewport(page, "#customerDialog");
-  await expectModalFooterHasNoBlankTail(page, "#customerDialog");
+  await expectModalCardHasNoVisibleBlankTail(page, "#customerDialog");
 });
 
 test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
@@ -346,18 +346,22 @@ async function expectNoViewportOverflow(page, label) {
   expect(result, `${label} overflow: ${JSON.stringify(result, null, 2)}`).toMatchObject({ fits: true });
 }
 
-async function expectModalFooterHasNoBlankTail(page, selector) {
+async function expectModalCardHasNoVisibleBlankTail(page, selector) {
   const result = await page.locator(selector).evaluate((dialog) => {
+    const form = dialog.querySelector("form");
     const footer = dialog.querySelector(".modal__footer");
-    const dialogRect = dialog.getBoundingClientRect();
+    const formRect = form?.getBoundingClientRect();
     const footerRect = footer?.getBoundingClientRect();
+    const dialogStyles = getComputedStyle(dialog);
     return {
-      dialogBottom: Math.round(dialogRect.bottom),
+      dialogBackground: dialogStyles.backgroundColor,
+      formBottom: Math.round(formRect?.bottom || 0),
       footerBottom: Math.round(footerRect?.bottom || 0),
-      tail: Math.round(dialogRect.bottom - (footerRect?.bottom || dialogRect.bottom))
+      tail: Math.round((formRect?.bottom || 0) - (footerRect?.bottom || 0))
     };
   });
-  expect(result.tail, `modal footer blank tail: ${JSON.stringify(result, null, 2)}`).toBeLessThanOrEqual(2);
+  expect(result.dialogBackground, `modal wrapper should be transparent: ${JSON.stringify(result, null, 2)}`).toBe("rgba(0, 0, 0, 0)");
+  expect(result.tail, `modal card footer blank tail: ${JSON.stringify(result, null, 2)}`).toBeLessThanOrEqual(2);
 }
 
 async function installMapboxMocks(page) {

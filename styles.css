@@ -1620,22 +1620,30 @@ dialog:not(.modal) > form {
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
+  height: auto;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--card-radius);
-  background: var(--card);
+  background: transparent;
   color: var(--card-foreground);
-  box-shadow: 0 24px 72px rgba(16, 24, 20, 0.18);
+  box-shadow: none;
+  overflow: visible;
   transform: translate(-50%, -50%);
 }
 
 .modal > form {
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   flex-direction: column;
   gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--card);
+  box-shadow: 0 24px 72px rgba(16, 24, 20, 0.18);
   overflow: hidden;
 }
 
@@ -3174,6 +3182,8 @@ label {
 
 @media (max-width: 560px) {
   .modal {
+    top: 8px;
+    transform: translateX(-50%);
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
