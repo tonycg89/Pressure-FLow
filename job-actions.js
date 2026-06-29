@@ -42,6 +42,8 @@ function createJobActionHandler({
   writeSettings
 }) {
   async function applyAction(job, action, input) {
+    applyDeliveryPreference(job, action);
+
     if (action === "advance") {
       const previousStatus = job.status;
       job.status = getNextStatus(job.status);
@@ -376,6 +378,39 @@ function shouldCreateGoogleCalendarEvent(settings = {}) {
   }
 
   return !isAuditGoogleMockEnabled();
+}
+
+function applyDeliveryPreference(job, action) {
+  if (isTextDeliveryAction(action)) {
+    job.preferredDeliveryMethod = "text";
+    return;
+  }
+
+  if (isEmailDeliveryAction(action)) {
+    job.preferredDeliveryMethod = "email";
+  }
+}
+
+function isTextDeliveryAction(action) {
+  return action === "send-estimate-text" ||
+    action === "send-contract-text" ||
+    action === "send-deposit-invoice-text" ||
+    action === "send-final-invoice-text" ||
+    action === "complete-text" ||
+    action === "send-completion-notice-text";
+}
+
+function isEmailDeliveryAction(action) {
+  return action === "send-square-estimate" ||
+    action === "resend-estimate-email" ||
+    action === "send-contract" ||
+    action === "resend-contract-email" ||
+    action === "send-deposit-invoice" ||
+    action === "resend-deposit-invoice-email" ||
+    action === "send-final-invoice" ||
+    action === "resend-final-invoice-email" ||
+    action === "complete" ||
+    action === "send-completion-notice-email";
 }
 
 module.exports = {

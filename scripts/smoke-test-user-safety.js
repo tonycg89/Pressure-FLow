@@ -678,6 +678,7 @@ async function testWorkflowEmailIdempotency() {
     customerName: "Customer",
     email: "customer@example.com",
     estimate: 100,
+    depositPercent: 25,
     estimateApprovalToken: "estimate-token",
     estimateApprovalUrl: "https://pressureflow.test/estimate/public-job?token=estimate-token",
     contractApprovalToken: ""
@@ -712,6 +713,44 @@ async function testWorkflowEmailIdempotency() {
     handlers.signPublicContract("public-job", contractToken, "Customer", "2026-06-06")
   ]);
   assert.equal(invoices, 1);
+
+  const textPreferredJobs = [{
+    id: "public-text-job",
+    accountId: "acct-a",
+    customerName: "Text Customer",
+    email: "text@example.com",
+    address: "10 Text St",
+    serviceType: "Driveway cleaning",
+    estimate: 100,
+    depositPercent: 25,
+    depositPercent: 25,
+    preferredDeliveryMethod: "text",
+    estimateApprovalToken: "text-estimate-token",
+    estimateApprovalUrl: "https://pressureflow.test/estimate/public-text-job?token=text-estimate-token",
+    contractApprovalToken: ""
+  }];
+  let textContractEmails = 0;
+  let textInvoiceEmails = 0;
+  const textHandlers = createPublicWorkflowHandlers({
+    createPressureFlowInvoice: async (_job, _settings, _type, _baseUrl, options = {}) => {
+      if (options.sendEmail !== false) textInvoiceEmails += 1;
+      return { invoiceId: "text-deposit-token", publicUrl: "https://invoice.test/text-deposit" };
+    },
+    readJobs: async () => textPreferredJobs,
+    readSettingsForJob: async () => ({ businessName: "Test Business" }),
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => { textContractEmails += 1; },
+    writeJobs: async () => {}
+  });
+  await textHandlers.approvePublicEstimate("public-text-job", "text-estimate-token");
+  assert.equal(textContractEmails, 0);
+  assert.equal(textPreferredJobs[0].contractApprovalUrl, "https://pressureflow.test/contract/public-text-job?token=" + textPreferredJobs[0].contractApprovalToken);
+  assert.ok(textPreferredJobs[0].contractTextPendingAt);
+
+  await textHandlers.signPublicContract("public-text-job", textPreferredJobs[0].contractApprovalToken, "Text Customer", "2026-06-06");
+  assert.equal(textInvoiceEmails, 0);
+  assert.equal(textPreferredJobs[0].squareDepositInvoiceUrl, "https://invoice.test/text-deposit");
+  assert.ok(textPreferredJobs[0].depositInvoiceTextPendingAt);
 }
 
 async function testManualPaymentMarkingStillWorks() {

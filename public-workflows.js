@@ -103,7 +103,11 @@ function createPublicWorkflowHandlers({
       job.contractApprovalToken = job.contractApprovalToken || crypto.randomBytes(24).toString("hex");
       job.contractApprovalUrl = buildContractApprovalUrl(getBaseUrlFromLink(job.estimateApprovalUrl), job);
       job.contractMailto = buildContractMailto(job, settings);
-      await sendContractEmail(job, settings);
+      if (job.preferredDeliveryMethod === "text") {
+        job.contractTextPendingAt = new Date().toISOString();
+      } else {
+        await sendContractEmail(job, settings);
+      }
       job.contractSentAt = new Date().toISOString();
       job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
       job.squareContractUrl = job.contractApprovalUrl;
@@ -111,7 +115,10 @@ function createPublicWorkflowHandlers({
       await cancelPendingFollowUp(job.id, "approved", itemWorkspaceId(job));
       await scheduleFollowUp(job, settings, "contract_followup");
       await writeJobs(jobs);
-      await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. Contract sent automatically.`);
+      const contractDelivery = job.preferredDeliveryMethod === "text"
+        ? "Contract link is ready to send by text."
+        : "Contract sent automatically.";
+      await sendAdminTextAlertSafe(`PressureFlow: Estimate accepted by ${formatAlertCustomer(job)} for ${formatAlertMoney(job.estimate)}. ${contractDelivery}`);
       return job;
     });
   }
@@ -194,10 +201,15 @@ function createPublicWorkflowHandlers({
 
       await cancelPendingFollowUp(job.id, "signed", itemWorkspaceId(job), "contract_followup");
       if (getDepositCents(job) > 0) {
-        const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl));
+        const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl), {
+          sendEmail: job.preferredDeliveryMethod !== "text"
+        });
         job.status = "Deposit Sent";
         job.squareDepositInvoiceId = invoice.invoiceId;
         job.squareDepositInvoiceUrl = invoice.publicUrl;
+        if (job.preferredDeliveryMethod === "text") {
+          job.depositInvoiceTextPendingAt = new Date().toISOString();
+        }
         await scheduleFollowUp(job, settings, "deposit_followup");
       } else {
         job.squareDepositInvoiceId = "";
@@ -207,7 +219,9 @@ function createPublicWorkflowHandlers({
       job.updatedAt = new Date().toISOString();
       await writeJobs(jobs);
       const alertDetail = getDepositCents(job) > 0
-        ? `Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`
+        ? job.preferredDeliveryMethod === "text"
+          ? `Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} is ready to send by text for ${formatAlertMoney(getDepositCents(job) / 100)}.`
+          : `Deposit invoice ${getPressureFlowInvoiceNumber(job, "deposit")} sent for ${formatAlertMoney(getDepositCents(job) / 100)}.`
         : "No deposit invoice sent because deposit is 0%.";
       await sendAdminTextAlertSafe(`PressureFlow: Contract signed by ${formatAlertCustomer(job)}. ${alertDetail}`);
       return job;

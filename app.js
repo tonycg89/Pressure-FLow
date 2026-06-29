@@ -4370,7 +4370,7 @@ function renderDeliveryActions(job, actions, hasPendingWorkflowAction) {
         <p>${escapeHtml(item.label)}</p>
         <div class="delivery-action-buttons">
           <button class="action-button" type="button" data-action="${escapeHtml(item.emailAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${emailPending ? "Sending..." : `${item.hasLink ? "Resend" : "Send"} by Email`}</button>
-          <button class="action-button secondary" type="button" data-action="${escapeHtml(item.textAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${textPending ? "Preparing..." : `${item.hasLink ? "Send" : "Create + Text"} by Text`}</button>
+          <button class="action-button secondary" type="button" data-action="${escapeHtml(item.textAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${textPending ? "Preparing..." : item.hasLink ? "Send by Text" : "Create Link + Text"}</button>
         </div>
       </div>
     `;
