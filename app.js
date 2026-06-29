@@ -4364,13 +4364,11 @@ function renderDeliveryActions(job, actions, hasPendingWorkflowAction) {
 
   return actions.map((item) => {
     const emailPending = pendingWorkflowAction === `${job.id}:${item.emailAction}`;
-    const textPending = pendingWorkflowAction === `${job.id}:${item.textAction}`;
     return `
       <div class="delivery-action-group">
         <p>${escapeHtml(item.label)}</p>
         <div class="delivery-action-buttons">
           <button class="action-button" type="button" data-action="${escapeHtml(item.emailAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${emailPending ? "Sending..." : `${item.hasLink ? "Resend" : "Send"} by Email`}</button>
-          <button class="action-button secondary" type="button" data-action="${escapeHtml(item.textAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${textPending ? "Preparing..." : item.hasLink ? "Send by Text" : "Create Link + Text"}</button>
         </div>
       </div>
     `;
@@ -4494,10 +4492,6 @@ async function runAction(jobId, action, actionPayload = {}) {
     if (action === "send-completion-notice-email") {
       showToast(`Completion notice sent to ${updated.job.email}.`);
     }
-    if (isTextDeliveryAction(action)) {
-      openTextDelivery(updated.job, action);
-      showToast("Text message prepared. Review it in your texting app before sending.", "info");
-    }
     await loadFollowUpTasks();
     await loadJobs();
     await loadCustomers();
@@ -4512,64 +4506,6 @@ async function runAction(jobId, action, actionPayload = {}) {
     pendingWorkflowAction = "";
     renderJobDetail();
   }
-}
-
-function isTextDeliveryAction(action) {
-  return action === "send-estimate-text" ||
-    action === "send-contract-text" ||
-    action === "send-deposit-invoice-text" ||
-    action === "send-final-invoice-text" ||
-    action === "complete-text" ||
-    action === "send-completion-notice-text";
-}
-
-function openTextDelivery(job, action) {
-  const phone = normalizeSmsPhone(job.phone);
-  if (!phone) {
-    showToast("No customer phone number is saved for this job.", "error");
-    return;
-  }
-
-  const message = buildTextDeliveryMessage(job, action);
-  if (!message) {
-    showToast("No customer link is available to text yet.", "error");
-    return;
-  }
-
-  window.location.href = `sms:${encodeURIComponent(phone)}?&body=${encodeURIComponent(message)}`;
-}
-
-function normalizeSmsPhone(value) {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.length === 10) return digits;
-  if (digits.length === 11 && digits.startsWith("1")) return digits;
-  return "";
-}
-
-function buildTextDeliveryMessage(job, action) {
-  const businessName = settings.businessName || "PressureFlow";
-  const firstName = String(job.customerName || "").trim().split(/\s+/)[0] || "there";
-  if (action === "send-estimate-text") {
-    const url = job.estimateApprovalUrl || job.squareEstimateUrl;
-    return url ? `Hi ${firstName}, your estimate from ${businessName} is ready to review: ${url}` : "";
-  }
-  if (action === "send-contract-text") {
-    const url = job.contractApprovalUrl || job.squareContractUrl;
-    return url ? `Hi ${firstName}, your service agreement from ${businessName} is ready to review and sign: ${url}` : "";
-  }
-  if (action === "send-deposit-invoice-text") {
-    return job.squareDepositInvoiceUrl ? `Hi ${firstName}, your deposit invoice from ${businessName} is ready: ${job.squareDepositInvoiceUrl}` : "";
-  }
-  if (action === "send-final-invoice-text" || action === "complete-text") {
-    const parts = [];
-    if (job.squareFinalInvoiceUrl) parts.push(`final invoice: ${job.squareFinalInvoiceUrl}`);
-    if (job.completionProofUrl) parts.push(`completion photos/proof: ${job.completionProofUrl}`);
-    return parts.length ? `Hi ${firstName}, your ${parts.join(" and ")} from ${businessName} is ready.` : "";
-  }
-  if (action === "send-completion-notice-text") {
-    return job.completionProofUrl ? `Hi ${firstName}, ${businessName} has completed your service. You can review the completion proof here: ${job.completionProofUrl}` : "";
-  }
-  return "";
 }
 
 async function deleteJob(jobId) {

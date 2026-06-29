@@ -79,14 +79,14 @@ test("mobile send estimate action stays visible and completes", async ({ page })
   await expect(page.locator("#jobDialog")).toBeHidden();
 });
 
-test("sent estimate exposes resend email and text delivery choices", async ({ page }) => {
+test("sent estimate exposes email-only resend delivery", async ({ page }) => {
   await login(page);
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Estimate Mobile/ }).click();
   await expect(page.locator("#jobDetail")).toContainText("Estimate");
   await expect(page.getByRole("button", { name: "Resend by Email" }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Send by Text" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Text/ })).toHaveCount(0);
 });
 
 test("mobile job draft survives refresh before estimate is saved", async ({ page }) => {
