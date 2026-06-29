@@ -14,13 +14,15 @@ function createPaymentHandlers({
   logger = createOperationalLogger(),
   warn = console.warn
 }) {
-  async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl) {
+  async function createPressureFlowInvoice(job, settings, invoiceType, baseUrl, options = {}) {
     const invoiceId = invoiceType === "deposit"
       ? job.squareDepositInvoiceId || `pf-deposit-${crypto.randomBytes(16).toString("hex")}`
       : job.squareFinalInvoiceId || `pf-final-${crypto.randomBytes(16).toString("hex")}`;
     const publicUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceId);
 
-    await sendPressureFlowInvoiceEmail(job, settings, invoiceType, publicUrl);
+    if (options.sendEmail !== false) {
+      await sendPressureFlowInvoiceEmail(job, settings, invoiceType, publicUrl);
+    }
     return { invoiceId, publicUrl };
   }
 

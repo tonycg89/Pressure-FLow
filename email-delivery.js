@@ -1,5 +1,6 @@
 const {
   buildCompletionCertificateEmailMessage,
+  buildCompletionNoticeEmailMessage,
   buildContractEmailMessage,
   buildEstimateEmailMessage,
   buildEstimateFollowUpEmailMessage,
@@ -42,6 +43,10 @@ function createEmailDelivery({ logger = createOperationalLogger(), warn = consol
     await sendCustomerEmail(settings, buildCompletionCertificateEmailMessage(job, settings, baseUrl), { ...emailContext("completion_proof", job, settings), logger });
   }
 
+  async function sendCompletionNoticeEmail(job, settings) {
+    await sendCustomerEmail(settings, buildCompletionNoticeEmailMessage(job, settings), { ...emailContext("completion_notice", job, settings), logger });
+  }
+
   async function sendCompletionCertificateEmailSafe(job, settings, baseUrl) {
     try {
       await sendCompletionCertificateEmail(job, settings, baseUrl || getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
@@ -70,6 +75,7 @@ function createEmailDelivery({ logger = createOperationalLogger(), warn = consol
   return {
     sendCompletionCertificateEmail,
     sendCompletionCertificateEmailSafe,
+    sendCompletionNoticeEmail,
     sendContractEmail,
     sendEstimateEmail,
     sendEstimateFollowUpEmail,

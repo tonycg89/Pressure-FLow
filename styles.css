@@ -1132,6 +1132,28 @@ textarea {
   gap: 8px;
 }
 
+.delivery-action-group {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.delivery-action-group p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.delivery-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .workflow-action-status {
   margin: 0;
   padding: 10px 12px;
@@ -3232,6 +3254,10 @@ label {
   .modal__footer button,
   .modal .dialog-actions button {
     width: 100%;
+  }
+
+  .delivery-action-buttons {
+    grid-template-columns: 1fr;
   }
 }
 

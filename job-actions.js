@@ -30,6 +30,7 @@ function createJobActionHandler({
   scheduleEstimateFollowUp = async () => {},
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
+  sendCompletionNoticeEmail = async () => {},
   sendContractEmail,
   sendEstimateEmail,
   sendManualEstimateFollowUp = async () => {},
@@ -83,8 +84,9 @@ function createJobActionHandler({
       await sendAdminTextAlertSafe(`PressureFlow: Job scheduled for ${formatAlertCustomer(job)}. ${formatScheduledWindow(job)}.`);
     }
 
-    if (action === "send-square-estimate") {
-      if (job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl && job.estimateEmailStatus !== "failed") {
+    if (action === "send-square-estimate" || action === "resend-estimate-email" || action === "send-estimate-text") {
+      const isEmailDelivery = action !== "send-estimate-text";
+      if (action === "send-square-estimate" && job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl && job.estimateEmailStatus !== "failed") {
         job.status = job.status || "Estimate Sent";
         await scheduleEstimateFollowUp(job, await readSettings());
         return;
@@ -97,19 +99,23 @@ function createJobActionHandler({
       job.estimateMailto = buildEstimateMailto(job, settings);
       job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
       job.squareEstimateUrl = job.estimateApprovalUrl;
-      try {
-        await sendEstimateEmail(job, settings);
-      } catch (error) {
-        await clearRevokedGoogleToken(settings, error, writeSettings);
-        job.estimateEmailStatus = "failed";
-        job.estimateEmailError = error.message || "Estimate email could not be sent.";
-        job.estimateEmailFailedAt = new Date().toISOString();
-        return;
+      if (!isEmailDelivery) {
+        job.estimateTextPreparedAt = new Date().toISOString();
+      } else {
+        try {
+          await sendEstimateEmail(job, settings);
+        } catch (error) {
+          await clearRevokedGoogleToken(settings, error, writeSettings);
+          job.estimateEmailStatus = "failed";
+          job.estimateEmailError = error.message || "Estimate email could not be sent.";
+          job.estimateEmailFailedAt = new Date().toISOString();
+          return;
+        }
+        job.estimateEmailStatus = "sent";
+        job.estimateEmailError = "";
+        job.estimateEmailFailedAt = "";
       }
       job.estimateSentAt = new Date().toISOString();
-      job.estimateEmailStatus = "sent";
-      job.estimateEmailError = "";
-      job.estimateEmailFailedAt = "";
       job.estimateRejectedAt = "";
       job.estimateRejectionReason = "";
       job.estimateRejectionNote = "";
@@ -121,8 +127,9 @@ function createJobActionHandler({
       await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
     }
 
-    if (action === "send-contract") {
-      if (job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
+    if (action === "send-contract" || action === "resend-contract-email" || action === "send-contract-text") {
+      const isEmailDelivery = action !== "send-contract-text";
+      if (action === "send-contract" && job.contractSentAt && job.contractApprovalToken && job.contractApprovalUrl) {
         if (job.status === "Estimate Sent") {
           await cancelPendingFollowUp(job.id, "approved", job.accountId || "owner");
         }
@@ -137,8 +144,13 @@ function createJobActionHandler({
       job.contractApprovalToken = job.contractApprovalToken || randomToken();
       job.contractApprovalUrl = buildContractApprovalUrl(input._baseUrl, job);
       job.contractMailto = buildContractMailto(job, settings);
-      await sendContractEmail(job, settings);
-      job.contractSentAt = new Date().toISOString();
+      if (!isEmailDelivery) {
+        job.contractTextPreparedAt = new Date().toISOString();
+      } else {
+        await sendContractEmail(job, settings);
+        job.contractSentAt = new Date().toISOString();
+      }
+      job.contractSentAt = job.contractSentAt || new Date().toISOString();
       job.squareContractId = job.squareContractId || `pressureflow-contract-${Date.now()}`;
       job.squareContractUrl = job.contractApprovalUrl;
       await scheduleFollowUp(job, settings, "contract_followup");
@@ -162,7 +174,7 @@ function createJobActionHandler({
       await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
     }
 
-    if (action === "send-deposit-invoice") {
+    if (action === "send-deposit-invoice" || action === "resend-deposit-invoice-email" || action === "send-deposit-invoice-text") {
       const settings = await readSettings();
       await cancelPendingFollowUp(job.id, "signed", job.accountId || "owner", "contract_followup");
       if (getDepositCents(job) <= 0) {
@@ -173,10 +185,15 @@ function createJobActionHandler({
         return { job, jobs };
       }
       requireConfiguredInvoicePaymentMethod(settings);
-      const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl);
+      const invoice = await createPressureFlowInvoice(job, settings, "deposit", input._baseUrl, {
+        sendEmail: action !== "send-deposit-invoice-text"
+      });
       job.status = "Deposit Sent";
       job.squareDepositInvoiceId = invoice.invoiceId;
       job.squareDepositInvoiceUrl = invoice.publicUrl;
+      if (action === "send-deposit-invoice-text") {
+        job.depositInvoiceTextPreparedAt = new Date().toISOString();
+      }
       await scheduleFollowUp(job, settings, "deposit_followup");
     }
 
@@ -198,7 +215,7 @@ function createJobActionHandler({
       await sendAdminTextAlertSafe(`PressureFlow: Deposit paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "deposit")} ${formatAlertMoney(getDepositCents(job) / 100)}.`);
     }
 
-    if (action === "complete") {
+    if (action === "complete" || action === "complete-text") {
       const settings = await readSettings();
       requireConfiguredInvoicePaymentMethod(settings);
       if (Object.hasOwn(input, "jobPhotos")) {
@@ -209,7 +226,9 @@ function createJobActionHandler({
       const notice = buildCompletionNotice(job, settings);
       const invoice = job.squareFinalInvoiceId
         ? { invoiceId: job.squareFinalInvoiceId, publicUrl: job.squareFinalInvoiceUrl }
-        : await createPressureFlowInvoice(job, settings, "final", input._baseUrl);
+        : await createPressureFlowInvoice(job, settings, "final", input._baseUrl, {
+          sendEmail: action !== "complete-text"
+        });
       job.status = "Final Invoice Sent";
       job.completionNoticeSentAt = new Date().toISOString();
       job.completionNoticeSubject = notice.subject;
@@ -217,17 +236,41 @@ function createJobActionHandler({
       job.completionNoticeMailto = notice.mailto;
       job.squareFinalInvoiceId = invoice.invoiceId;
       job.squareFinalInvoiceUrl = invoice.publicUrl;
+      if (action === "complete-text") {
+        job.completionNoticeTextPreparedAt = new Date().toISOString();
+      }
       await scheduleFollowUp(job, settings, "invoice_followup");
     }
 
-    if (action === "send-final-invoice") {
+    if (action === "send-final-invoice" || action === "resend-final-invoice-email" || action === "send-final-invoice-text") {
       const settings = await readSettings();
       requireConfiguredInvoicePaymentMethod(settings);
-      const invoice = await createPressureFlowInvoice(job, settings, "final", input._baseUrl);
+      const invoice = await createPressureFlowInvoice(job, settings, "final", input._baseUrl, {
+        sendEmail: action !== "send-final-invoice-text"
+      });
       job.status = "Final Invoice Sent";
       job.squareFinalInvoiceId = invoice.invoiceId;
       job.squareFinalInvoiceUrl = invoice.publicUrl;
+      if (action === "send-final-invoice-text") {
+        job.finalInvoiceTextPreparedAt = new Date().toISOString();
+      }
       await scheduleFollowUp(job, settings, "invoice_followup");
+    }
+
+    if (action === "send-completion-notice-email" || action === "send-completion-notice-text") {
+      const settings = await readSettings();
+      job.completionProofToken = job.completionProofToken || randomToken();
+      job.completionProofUrl = buildCompletionProofUrl(input._baseUrl, job);
+      const notice = buildCompletionNotice(job, settings);
+      job.completionNoticeSubject = notice.subject;
+      job.completionNoticeBody = notice.body;
+      job.completionNoticeMailto = notice.mailto;
+      if (action === "send-completion-notice-email") {
+        await sendCompletionNoticeEmail(job, settings);
+        job.completionNoticeSentAt = new Date().toISOString();
+      } else {
+        job.completionNoticeTextPreparedAt = new Date().toISOString();
+      }
     }
 
     if (action === "mark-paid") {

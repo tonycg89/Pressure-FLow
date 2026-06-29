@@ -77,7 +77,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Alex Rivera");
   await expect(page.locator("#jobForm [name='email']")).toHaveValue("alex.rivera@example.com");
-  await page.locator("#jobForm [name='serviceType']").fill("Landscape maintenance");
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Lawn Mowing");
   await lineItem.locator(".line-quantity").fill("1000");
@@ -95,7 +95,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
 
   const responsePromise = page.waitForResponse((response) => response.url().includes("/api/jobs/") && response.url().endsWith("/send-square-estimate"));
   page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Send Estimate" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   const response = await responsePromise;
   expect(response.ok()).toBeTruthy();
   const { job } = await response.json();
@@ -106,7 +106,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
 
   const publicPage = await context.newPage();
   await publicPage.goto(job.estimateApprovalUrl);
-  await expect(publicPage.getByRole("heading", { name: /Landscape maintenance for Alex Rivera/ })).toBeVisible();
+  await expect(publicPage.getByRole("heading", { name: /Driveway cleaning for Alex Rivera/ })).toBeVisible();
   await expect(publicPage.getByRole("row", { name: /Lawn Mowing 1000 SqFt \$0\.04 \/ SqFt \$40\.00/ })).toBeVisible();
   await expect(publicPage.getByText("Estimate Only, not an actual Invoice.")).toBeVisible();
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);

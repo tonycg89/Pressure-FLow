@@ -148,7 +148,7 @@ test("contractor is blocked before sending deposit invoice when no payment metho
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Contract Carla/ }).click();
-  await expect(page.locator("#jobDetail")).toContainText("Send Deposit Invoice");
+  await expect(page.locator("#jobDetail")).toContainText("Deposit Invoice");
   await expect(page.locator("#jobDetail")).toContainText("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
   await expect(page.locator("#jobDetail")).toContainText("Configure payment options");
 
@@ -156,7 +156,7 @@ test("contractor is blocked before sending deposit invoice when no payment metho
     expect(dialog.message()).toContain("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
     await dialog.accept();
   });
-  await page.getByRole("button", { name: "Send Deposit Invoice" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
 
   const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
@@ -173,7 +173,7 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
   await expect(page.locator("#jobDetail")).toContainText("$0.00");
   await expect(page.getByRole("button", { name: "Schedule Job" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Send Deposit Invoice" })).toHaveCount(0);
+  await expect(page.locator("#jobDetail")).not.toContainText("Deposit Invoice");
 
   await page.getByRole("button", { name: "Schedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeVisible();
@@ -189,12 +189,12 @@ test("contractor is blocked before sending final invoice when no payment methods
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Completed Casey/ }).click();
-  await expect(page.locator("#jobDetail")).toContainText("Send Final Invoice");
+  await expect(page.locator("#jobDetail")).toContainText("Final Invoice");
   page.once("dialog", async (dialog) => {
     expect(dialog.message()).toContain("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
     await dialog.accept();
   });
-  await page.getByRole("button", { name: "Send Final Invoice" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   await expect(page.locator("#jobDetail")).toContainText("Completed");
 
   const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));

@@ -24,7 +24,7 @@ test("mobile form controls and workflow actions meet touch sizing requirements",
   await page.getByRole("button", { name: "Pipeline" }).click();
   await expectMinHeight(page.locator("#newJobButton"), 44);
   await page.getByRole("button", { name: /Mobile Lead/ }).click();
-  await expectMinHeight(page.getByRole("button", { name: "Send Estimate" }), 44);
+  await expectMinHeight(page.getByRole("button", { name: "Send by Email" }).first(), 44);
 
   await page.getByRole("button", { name: "New Job" }).click();
   await expect(page.locator("#jobDialog")).toBeVisible();
@@ -70,13 +70,23 @@ test("mobile send estimate action stays visible and completes", async ({ page })
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Mobile Lead/ }).click();
-  const sendButton = page.getByRole("button", { name: "Send Estimate" });
+  const sendButton = page.getByRole("button", { name: "Send by Email" }).first();
   await sendButton.click();
 
   await expect(page.locator(".workflow-action-status")).toContainText("Sending update");
   await expect(page.getByRole("button", { name: "Sending..." })).toBeDisabled();
   await expect(page.locator("#jobDetail")).toContainText("Estimate Sent");
   await expect(page.locator("#jobDialog")).toBeHidden();
+});
+
+test("sent estimate exposes resend email and text delivery choices", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Estimate Mobile/ }).click();
+  await expect(page.locator("#jobDetail")).toContainText("Estimate");
+  await expect(page.getByRole("button", { name: "Resend by Email" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send by Text" }).first()).toBeVisible();
 });
 
 test("mobile job draft survives refresh before estimate is saved", async ({ page }) => {
@@ -225,7 +235,7 @@ test("settings and workflow modals fit a 375px mobile viewport", async ({ page }
   await page.getByRole("button", { name: "Close Schedule Job" }).click();
 
   await page.getByRole("button", { name: /Scheduled Mobile/ }).click();
-  await page.getByRole("button", { name: "Complete Job + Send Final Invoice" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   await expect(page.locator("#completionDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#completionDialog");
   await expectMinHeight(page.locator("#completionForm .photo-action-button").first(), 44);

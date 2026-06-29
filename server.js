@@ -156,6 +156,7 @@ const {
 
 const {
   sendCompletionCertificateEmailSafe,
+  sendCompletionNoticeEmail,
   sendContractEmail,
   sendEstimateEmail,
   sendEstimateFollowUpEmail,
@@ -260,6 +261,7 @@ const { applyAction } = createJobActionHandler({
   scheduleFollowUp,
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
+  sendCompletionNoticeEmail,
   sendContractEmail,
   sendEstimateEmail,
   sendManualEstimateFollowUp,

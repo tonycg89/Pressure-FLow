@@ -3682,6 +3682,7 @@ function renderJobDetail() {
   selectedJobId = job.id;
   const nextAction = getNextAction(job);
   const fallbackAction = getFallbackAction(job);
+  const deliveryActions = getDeliveryActions(job);
   const hasPendingWorkflowAction = pendingWorkflowAction.startsWith(`${job.id}:`);
   const workflowMessage = workflowActionMessage?.jobId === job.id ? workflowActionMessage : null;
 
@@ -3730,7 +3731,8 @@ function renderJobDetail() {
       <div class="action-list">
         ${hasPendingWorkflowAction ? `<p class="workflow-action-status" role="status">Sending update...</p>` : ""}
         ${workflowMessage ? `<p class="workflow-action-status ${workflowMessage.type === "error" ? "error" : "success"}" role="${workflowMessage.type === "error" ? "alert" : "status"}">${escapeHtml(workflowMessage.message)}</p>` : ""}
-        ${renderInvoicePaymentWarning(nextAction)}
+        ${renderInvoicePaymentWarning(nextAction, deliveryActions)}
+        ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
@@ -4291,21 +4293,88 @@ function renderTimelineStep(job, status) {
 
 function getNextAction(job) {
   const actions = {
-    "Lead": { label: "Send Estimate", action: "send-square-estimate" },
+    "Lead": null,
     "Estimate Sent": { label: "Mark Estimate Signed", action: "mark-estimate-signed" },
-    "Estimate Signed": { label: "Send Contract", action: "send-contract" },
+    "Estimate Signed": null,
     "Contract Sent": { label: "Mark Contract Signed", action: "mark-contract-signed" },
     "Contract Signed": getDeposit(job) > 0
-      ? { label: "Send Deposit Invoice", action: "send-deposit-invoice" }
+      ? null
       : { label: "Schedule Job", action: "schedule" },
     "Deposit Sent": { label: "Mark Deposit Paid", action: "mark-deposit-paid" },
     "Deposit Paid": { label: "Schedule Job", action: "schedule" },
-    "Scheduled": { label: "Complete Job + Send Final Invoice", action: "complete" },
-    "Completed": { label: "Send Final Invoice", action: "send-final-invoice" },
+    "Scheduled": null,
+    "Completed": null,
     "Final Invoice Sent": { label: "Mark Paid", action: "mark-paid" }
   };
 
   return actions[job.status] ?? null;
+}
+
+function getDeliveryActions(job) {
+  const actions = [];
+  const canSendEstimate = job.status === "Lead" || Boolean(job.estimateApprovalUrl || job.squareEstimateUrl);
+  if (canSendEstimate) {
+    actions.push(deliveryAction("Estimate", job.estimateApprovalUrl || job.squareEstimateUrl, "send-square-estimate", "resend-estimate-email", "send-estimate-text"));
+  }
+
+  const canSendContract = job.status === "Estimate Signed" || Boolean(job.contractApprovalUrl || job.squareContractUrl);
+  if (canSendContract) {
+    actions.push(deliveryAction("Contract", job.contractApprovalUrl || job.squareContractUrl, "send-contract", "resend-contract-email", "send-contract-text"));
+  }
+
+  const canSendDepositInvoice = getDeposit(job) > 0 && (job.status === "Contract Signed" || Boolean(job.squareDepositInvoiceUrl));
+  if (canSendDepositInvoice) {
+    actions.push(deliveryAction("Deposit Invoice", job.squareDepositInvoiceUrl, "send-deposit-invoice", "resend-deposit-invoice-email", "send-deposit-invoice-text"));
+  }
+
+  const canComplete = job.status === "Scheduled";
+  if (canComplete) {
+    actions.push({
+      label: "Completion + Final Invoice",
+      emailAction: "complete",
+      textAction: "complete-text",
+      hasLink: Boolean(job.squareFinalInvoiceUrl || job.completionProofUrl)
+    });
+  }
+
+  const canSendFinalInvoice = job.status === "Completed" || Boolean(job.squareFinalInvoiceUrl);
+  if (canSendFinalInvoice) {
+    actions.push(deliveryAction("Final Invoice", job.squareFinalInvoiceUrl, "send-final-invoice", "resend-final-invoice-email", "send-final-invoice-text"));
+  }
+
+  const canSendCompletionNotice = Boolean(job.completionProofUrl) || statuses.indexOf(job.status) >= statuses.indexOf("Final Invoice Sent");
+  if (canSendCompletionNotice) {
+    actions.push(deliveryAction("Completion Notice", job.completionProofUrl, "send-completion-notice-email", "send-completion-notice-email", "send-completion-notice-text"));
+  }
+
+  return actions;
+}
+
+function deliveryAction(label, url, initialEmailAction, resendEmailAction, textAction) {
+  return {
+    label,
+    emailAction: url ? resendEmailAction : initialEmailAction,
+    textAction,
+    hasLink: Boolean(url)
+  };
+}
+
+function renderDeliveryActions(job, actions, hasPendingWorkflowAction) {
+  if (!actions.length) return "";
+
+  return actions.map((item) => {
+    const emailPending = pendingWorkflowAction === `${job.id}:${item.emailAction}`;
+    const textPending = pendingWorkflowAction === `${job.id}:${item.textAction}`;
+    return `
+      <div class="delivery-action-group">
+        <p>${escapeHtml(item.label)}</p>
+        <div class="delivery-action-buttons">
+          <button class="action-button" type="button" data-action="${escapeHtml(item.emailAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${emailPending ? "Sending..." : `${item.hasLink ? "Resend" : "Send"} by Email`}</button>
+          <button class="action-button secondary" type="button" data-action="${escapeHtml(item.textAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${textPending ? "Preparing..." : `${item.hasLink ? "Send" : "Create + Text"} by Text`}</button>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 function getFallbackAction(job) {
@@ -4317,9 +4386,11 @@ function getFallbackAction(job) {
   return actions[job.status] ?? null;
 }
 
-function renderInvoicePaymentWarning(nextAction) {
+function renderInvoicePaymentWarning(nextAction, deliveryActions = []) {
   const invoiceActions = new Set(["send-deposit-invoice", "send-final-invoice", "complete"]);
-  if (!nextAction || !invoiceActions.has(nextAction.action) || hasConfiguredInvoicePaymentMethod()) {
+  const hasInvoiceAction = (nextAction && invoiceActions.has(nextAction.action)) ||
+    deliveryActions.some((item) => invoiceActions.has(item.emailAction));
+  if (!hasInvoiceAction || hasConfiguredInvoicePaymentMethod()) {
     return "";
   }
 
@@ -4381,7 +4452,7 @@ async function runAction(jobId, action, actionPayload = {}) {
     payload.jobDurationMinutes = schedule.jobDurationMinutes;
   }
 
-  if (action === "complete") {
+  if (action === "complete" || action === "complete-text") {
     const completion = await openCompletionDialog(jobs.find((item) => item.id === jobId));
     if (!completion) return;
 
@@ -4405,17 +4476,27 @@ async function runAction(jobId, action, actionPayload = {}) {
         showToast(`Estimate sent to ${updated.job.email}.${followUpText}`);
       }
     }
-    if (action === "send-contract") {
+    if (action === "resend-estimate-email") {
+      showToast(`Estimate resent to ${updated.job.email}.`);
+    }
+    if (action === "send-contract" || action === "resend-contract-email") {
       showToast(`Contract sent to ${updated.job.email}.`);
     }
-    if (action === "send-deposit-invoice") {
+    if (action === "send-deposit-invoice" || action === "resend-deposit-invoice-email") {
       showToast(`Deposit invoice sent to ${updated.job.email}.`);
     }
-    if (action === "send-final-invoice") {
+    if (action === "send-final-invoice" || action === "resend-final-invoice-email") {
       showToast(`Final invoice sent to ${updated.job.email}.`);
     }
     if (action === "complete") {
       showToast(`Final invoice sent to ${updated.job.email}. Completion photos were saved.`);
+    }
+    if (action === "send-completion-notice-email") {
+      showToast(`Completion notice sent to ${updated.job.email}.`);
+    }
+    if (isTextDeliveryAction(action)) {
+      openTextDelivery(updated.job, action);
+      showToast("Text message prepared. Review it in your texting app before sending.", "info");
     }
     await loadFollowUpTasks();
     await loadJobs();
@@ -4431,6 +4512,64 @@ async function runAction(jobId, action, actionPayload = {}) {
     pendingWorkflowAction = "";
     renderJobDetail();
   }
+}
+
+function isTextDeliveryAction(action) {
+  return action === "send-estimate-text" ||
+    action === "send-contract-text" ||
+    action === "send-deposit-invoice-text" ||
+    action === "send-final-invoice-text" ||
+    action === "complete-text" ||
+    action === "send-completion-notice-text";
+}
+
+function openTextDelivery(job, action) {
+  const phone = normalizeSmsPhone(job.phone);
+  if (!phone) {
+    showToast("No customer phone number is saved for this job.", "error");
+    return;
+  }
+
+  const message = buildTextDeliveryMessage(job, action);
+  if (!message) {
+    showToast("No customer link is available to text yet.", "error");
+    return;
+  }
+
+  window.location.href = `sms:${encodeURIComponent(phone)}?&body=${encodeURIComponent(message)}`;
+}
+
+function normalizeSmsPhone(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 10) return digits;
+  if (digits.length === 11 && digits.startsWith("1")) return digits;
+  return "";
+}
+
+function buildTextDeliveryMessage(job, action) {
+  const businessName = settings.businessName || "PressureFlow";
+  const firstName = String(job.customerName || "").trim().split(/\s+/)[0] || "there";
+  if (action === "send-estimate-text") {
+    const url = job.estimateApprovalUrl || job.squareEstimateUrl;
+    return url ? `Hi ${firstName}, your estimate from ${businessName} is ready to review: ${url}` : "";
+  }
+  if (action === "send-contract-text") {
+    const url = job.contractApprovalUrl || job.squareContractUrl;
+    return url ? `Hi ${firstName}, your service agreement from ${businessName} is ready to review and sign: ${url}` : "";
+  }
+  if (action === "send-deposit-invoice-text") {
+    return job.squareDepositInvoiceUrl ? `Hi ${firstName}, your deposit invoice from ${businessName} is ready: ${job.squareDepositInvoiceUrl}` : "";
+  }
+  if (action === "send-final-invoice-text" || action === "complete-text") {
+    const parts = [];
+    if (job.squareFinalInvoiceUrl) parts.push(`final invoice: ${job.squareFinalInvoiceUrl}`);
+    if (job.completionProofUrl) parts.push(`completion photos/proof: ${job.completionProofUrl}`);
+    return parts.length ? `Hi ${firstName}, your ${parts.join(" and ")} from ${businessName} is ready.` : "";
+  }
+  if (action === "send-completion-notice-text") {
+    return job.completionProofUrl ? `Hi ${firstName}, ${businessName} has completed your service. You can review the completion proof here: ${job.completionProofUrl}` : "";
+  }
+  return "";
 }
 
 async function deleteJob(jobId) {

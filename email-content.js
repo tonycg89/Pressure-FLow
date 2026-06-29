@@ -253,6 +253,24 @@ function buildCompletionNotice(job, settings) {
   return { subject, body, mailto };
 }
 
+function buildCompletionNoticeEmailMessage(job, settings) {
+  const notice = buildCompletionNotice(job, settings);
+  return {
+    to: job.email,
+    subject: notice.subject,
+    textBody: notice.body,
+    htmlBody: renderEmailShell({
+      settings,
+      baseUrl: getBaseUrlFromLink(job.completionProofUrl || job.squareFinalInvoiceUrl || ""),
+      preheader: `Service completed at ${job.address}.`,
+      title: "Service Completed",
+      body: notice.body.split("\n\n").map((paragraph) =>
+        `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`
+      ).join("")
+    })
+  };
+}
+
 function buildScheduleConfirmationEmailMessage(job, settings, baseUrl, inviteAttachment, scheduleText, instructions) {
   const businessName = getBusinessName(settings);
   return {
@@ -658,6 +676,7 @@ function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleTex
 module.exports = {
   buildCompletionCertificateEmailMessage,
   buildCompletionNotice,
+  buildCompletionNoticeEmailMessage,
   buildContractEmailMessage,
   buildContractMailto,
   buildEstimateEmailMessage,

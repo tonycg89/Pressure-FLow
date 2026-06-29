@@ -72,7 +72,7 @@ test("sending an estimate schedules an automatic follow-up", async ({ page }) =>
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Lead Lane/ }).click();
-  await page.getByRole("button", { name: "Send Estimate" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   await expect(page.locator(".toast")).toContainText("Estimate sent to lead.lane@example.com.");
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
   expect(dialogs).toEqual([]);
@@ -287,7 +287,7 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
   expect(depositTask).toMatchObject({ status: "cancelled", cancelledReason: "paid" });
 
   await page.getByRole("button", { name: /Completed Finn/ }).click();
-  await page.getByRole("button", { name: "Send Final Invoice" }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
   await expect(page.locator(".toast")).toContainText("Final invoice sent to completed.finn@example.com.");
   await expect(page.locator("#jobDetail")).toContainText("Auto follow-up scheduled");
   expect(dialogs).toEqual([]);

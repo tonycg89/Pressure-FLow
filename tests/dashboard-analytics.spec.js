@@ -105,11 +105,8 @@ test("job action failures with empty server responses show a clear retry message
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Lead Empty Response/ }).click();
-  const dialogPromise = page.waitForEvent("dialog");
-  await page.getByRole("button", { name: "Send Estimate" }).click();
-  const dialog = await dialogPromise;
-  expect(dialog.message()).toBe("The server returned an empty response HTTP 502. Please try again.");
-  await dialog.accept();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
+  await expect(page.locator(".workflow-action-status.error")).toHaveText("The server returned an empty response HTTP 502. Please try again.");
 });
 
 async function login(page) {
