@@ -137,7 +137,17 @@ test("mobile customer photo capture keeps the modal usable and preserves the dra
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
     "base64"
   ));
-  await page.locator("#customerForm [data-service-area-photo-input]").first().setInputFiles(photoPath);
+  const cameraButton = page.locator("#customerForm [data-service-area-photo-camera]");
+  await expect(cameraButton).toHaveJSProperty("tagName", "BUTTON");
+  const chooserPromise = page.waitForEvent("filechooser");
+  await cameraButton.click();
+  const chooser = await chooserPromise;
+  await expect(page.locator("body > [data-detached-modal-photo-camera-input]")).toHaveCount(1);
+  const detachedInputIsOutsideDialog = await page.locator("body > [data-detached-modal-photo-camera-input]").evaluate((input) => {
+    return !input.closest("dialog");
+  });
+  expect(detachedInputIsOutsideDialog).toBe(true);
+  await chooser.setFiles(photoPath);
 
   await expect(page.locator("#serviceAreaPhotoPreview figure")).toHaveCount(1);
   await expect(page.locator("#customerDialog")).toBeVisible();
@@ -173,21 +183,23 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
   await page.locator("#lineItems .line-quantity").first().fill("1");
   await page.locator("#lineItems .line-rate").first().fill("275");
 
-  await page.locator("#jobForm [data-before-photo-camera]").first().evaluate((input) => {
-    input.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
-    input.closest("dialog").close();
-    window.dispatchEvent(new Event("focus"));
-  });
-  await expect(page.locator("#jobDialog")).toBeVisible();
-  await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Photo Estimate Customer");
-  await expect(page.locator("#lineItems .line-rate").first()).toHaveValue("275");
-
   const photoPath = path.join(DATA_DIR, "estimate-before.png");
   await fs.writeFile(photoPath, Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
     "base64"
   ));
-  await page.locator("#jobForm [data-before-photo-upload]").first().setInputFiles(photoPath);
+
+  const cameraButton = page.locator("#jobForm [data-before-photo-camera]").first();
+  await expect(cameraButton).toHaveJSProperty("tagName", "BUTTON");
+  const chooserPromise = page.waitForEvent("filechooser");
+  await cameraButton.click();
+  const chooser = await chooserPromise;
+  await expect(page.locator("body > [data-detached-before-photo-camera-input]")).toHaveCount(1);
+  const detachedInputIsOutsideDialog = await page.locator("body > [data-detached-before-photo-camera-input]").evaluate((input) => {
+    return !input.closest("dialog");
+  });
+  expect(detachedInputIsOutsideDialog).toBe(true);
+  await chooser.setFiles(photoPath);
 
   await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
   await expect(page.locator("#jobDialog")).toBeVisible();

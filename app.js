@@ -259,12 +259,15 @@ const closeMeasurementShapeButton = document.querySelector("#closeMeasurementSha
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
+const serviceAreaPhotoCameraButton = document.querySelector("[data-service-area-photo-camera]");
 const serviceAreaPhotoPreview = document.querySelector("#serviceAreaPhotoPreview");
 const beforePhotoRows = document.querySelector("#beforePhotoRows");
 const addBeforePhotoButton = document.querySelector("#addBeforePhotoButton");
 const beforePhotoPreview = document.querySelector("#beforePhotoPreview");
 const completionBeforePhotoInputs = document.querySelectorAll("[data-completion-before-photo-input]");
 const completionAfterPhotoInputs = document.querySelectorAll("[data-completion-after-photo-input]");
+const completionBeforePhotoCameraButton = document.querySelector("[data-completion-before-photo-camera]");
+const completionAfterPhotoCameraButton = document.querySelector("[data-completion-after-photo-camera]");
 const completionBeforePhotoPreview = document.querySelector("#completionBeforePhotoPreview");
 const completionAfterPhotoPreview = document.querySelector("#completionAfterPhotoPreview");
 const photoViewerDialog = document.querySelector("#photoViewerDialog");
@@ -299,6 +302,10 @@ let restoringJobDraft = false;
 let pendingWorkflowAction = "";
 let workflowActionMessage = null;
 let pendingPhotoCaptureRestore = null;
+let detachedModalPhotoCameraInput = null;
+let pendingDetachedModalPhotoCamera = null;
+let detachedBeforePhotoCameraInput = null;
+let pendingBeforePhotoCameraRow = null;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -353,6 +360,13 @@ async function init() {
     bindPhotoCaptureRestore(input);
     input.addEventListener("change", (event) => addCustomerPhotosFromInput(event));
   });
+  serviceAreaPhotoCameraButton?.addEventListener("click", () => openDetachedModalPhotoCamera({
+    source: serviceAreaPhotoCameraButton,
+    target: currentServiceAreaPhotos,
+    renderCallback: renderServiceAreaPhotos,
+    beforeOpen: saveCustomerDraft,
+    afterAdd: saveCustomerDraft
+  }));
   addBeforePhotoButton?.addEventListener("click", () => addBeforePhotoRow());
   receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
@@ -400,6 +414,16 @@ async function init() {
     bindPhotoCaptureRestore(input);
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.after, renderCompletionPhotoPreviews));
   });
+  completionBeforePhotoCameraButton?.addEventListener("click", () => openDetachedModalPhotoCamera({
+    source: completionBeforePhotoCameraButton,
+    target: currentCompletionPhotos.before,
+    renderCallback: renderCompletionPhotoPreviews
+  }));
+  completionAfterPhotoCameraButton?.addEventListener("click", () => openDetachedModalPhotoCamera({
+    source: completionAfterPhotoCameraButton,
+    target: currentCompletionPhotos.after,
+    renderCallback: renderCompletionPhotoPreviews
+  }));
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
     button.addEventListener("click", adjustScheduleDuration);
   });
@@ -1707,7 +1731,7 @@ function openWorkflowModal(dialog) {
 }
 
 function bindPhotoCaptureRestore(input) {
-  if (!input || input.dataset.photoCaptureRestoreBound === "true") return;
+  if (!input || input.tagName !== "INPUT" || input.dataset.photoCaptureRestoreBound === "true") return;
 
   input.dataset.photoCaptureRestoreBound = "true";
   input.addEventListener("pointerdown", () => preparePhotoCaptureHandoff(input));
@@ -1769,6 +1793,57 @@ function restorePhotoCaptureDialog(input, dialog) {
 
     stabilizeOpenWorkflowDialog(dialog.open ? input : null);
   }, 0);
+}
+
+function openDetachedModalPhotoCamera(options) {
+  const dialog = options.source?.closest?.("dialog");
+  if (!dialog?.open) return;
+
+  options.beforeOpen?.();
+  pendingDetachedModalPhotoCamera = { ...options, dialog };
+  getDetachedModalPhotoCameraInput().click();
+}
+
+function getDetachedModalPhotoCameraInput() {
+  if (detachedModalPhotoCameraInput) return detachedModalPhotoCameraInput;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+  input.dataset.detachedModalPhotoCameraInput = "true";
+  input.style.position = "fixed";
+  input.style.width = "1px";
+  input.style.height = "1px";
+  input.style.opacity = "0";
+  input.style.pointerEvents = "none";
+  input.style.left = "-10000px";
+  input.addEventListener("change", handleDetachedModalPhotoCameraChange);
+  document.body.append(input);
+  detachedModalPhotoCameraInput = input;
+  return input;
+}
+
+async function handleDetachedModalPhotoCameraChange(event) {
+  const input = event.target;
+  const pending = pendingDetachedModalPhotoCamera;
+  const files = Array.from(input.files || []);
+  pendingDetachedModalPhotoCamera = null;
+
+  if (!pending || !files.length) {
+    input.value = "";
+    stabilizeOpenWorkflowDialog(pending?.source || pending?.dialog || null);
+    return;
+  }
+
+  try {
+    await addPhotoFiles(files, pending.target, pending.metadata || {});
+    input.value = "";
+    pending.renderCallback?.();
+    pending.afterAdd?.();
+  } finally {
+    stabilizeOpenWorkflowDialog(pending.source || pending.dialog);
+  }
 }
 
 function syncWorkflowModalViewportLock() {
@@ -2123,13 +2198,17 @@ async function addPhotosFromInput(event, target, renderCallback, metadata = {}) 
   if (!files.length) return;
 
   try {
-    const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
-    target.push(...photos);
+    await addPhotoFiles(files, target, metadata);
     event.target.value = "";
     renderCallback();
   } finally {
     stabilizeOpenWorkflowDialog(event.target);
   }
+}
+
+async function addPhotoFiles(files, target, metadata = {}) {
+  const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
+  target.push(...photos);
 }
 
 function renderServiceAreaPhotos() {
@@ -2203,9 +2282,7 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
         <label class="photo-action-button primary">Upload
           <input data-before-photo-upload type="file" accept="image/*" multiple>
         </label>
-        <label class="photo-action-button">Take Picture
-          <input data-before-photo-camera type="file" accept="image/*" capture="environment">
-        </label>
+        <button class="photo-action-button" type="button" data-before-photo-camera>Take Picture</button>
       </div>
     </div>
     <div class="new-before-area" data-new-before-area hidden>
@@ -2219,15 +2296,67 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
 
   const select = row.querySelector("[data-before-photo-section-select]");
   const uploadInput = row.querySelector("[data-before-photo-upload]");
-  const cameraInput = row.querySelector("[data-before-photo-camera]");
+  const cameraButton = row.querySelector("[data-before-photo-camera]");
   select.value = beforePhotoSections.includes(selectedArea) ? selectedArea : beforePhotoSections[0] || "";
   select.addEventListener("change", () => handleBeforePhotoAreaChange(row));
   bindPhotoCaptureRestore(uploadInput);
-  bindPhotoCaptureRestore(cameraInput);
   uploadInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
-  cameraInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
+  cameraButton.addEventListener("click", () => openDetachedBeforePhotoCamera(row));
   row.querySelector("[data-save-before-area]").addEventListener("click", () => saveBeforePhotoArea(row));
   beforePhotoRows.append(row);
+}
+
+function openDetachedBeforePhotoCamera(row) {
+  if (!row || !jobDialog.open) return;
+
+  saveJobDraft();
+  pendingBeforePhotoCameraRow = row;
+  getDetachedBeforePhotoCameraInput().click();
+}
+
+function getDetachedBeforePhotoCameraInput() {
+  if (detachedBeforePhotoCameraInput) return detachedBeforePhotoCameraInput;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+  input.dataset.detachedBeforePhotoCameraInput = "true";
+  input.style.position = "fixed";
+  input.style.width = "1px";
+  input.style.height = "1px";
+  input.style.opacity = "0";
+  input.style.pointerEvents = "none";
+  input.style.left = "-10000px";
+  input.addEventListener("change", handleDetachedBeforePhotoCameraChange);
+  document.body.append(input);
+  detachedBeforePhotoCameraInput = input;
+  return input;
+}
+
+async function handleDetachedBeforePhotoCameraChange(event) {
+  const input = event.target;
+  const row = pendingBeforePhotoCameraRow;
+  const files = Array.from(input.files || []);
+  pendingBeforePhotoCameraRow = null;
+
+  if (!row || !files.length) {
+    input.value = "";
+    stabilizeOpenWorkflowDialog(jobDialog);
+    return;
+  }
+
+  const select = row.querySelector("[data-before-photo-section-select]");
+  const section = select?.value || "Before";
+  try {
+    await addPhotoFiles(files, currentJobPhotos.before, { section });
+    input.value = "";
+    renderJobPhotoPreviews();
+    saveJobDraft();
+    addBeforePhotoRow(section);
+  } finally {
+    stabilizeOpenWorkflowDialog(row);
+  }
 }
 
 function handleBeforePhotoAreaChange(row) {

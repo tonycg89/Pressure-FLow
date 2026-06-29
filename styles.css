@@ -2529,6 +2529,7 @@ label {
 }
 
 .photo-action-button {
+  appearance: none;
   display: inline-flex;
   min-height: 38px;
   align-items: center;
@@ -2538,6 +2539,8 @@ label {
   border-radius: 8px;
   background: white;
   color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 800;
   text-align: center;
