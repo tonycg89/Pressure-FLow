@@ -27,7 +27,8 @@ async function exchangeGoogleCode(settings, code) {
       client_secret: settings.googleClientSecret,
       redirect_uri: settings.googleRedirectUri,
       grant_type: "authorization_code"
-    })
+    }),
+    signal: googleRequestTimeoutSignal()
   });
   const data = await response.json().catch(() => ({}));
 
@@ -48,7 +49,8 @@ async function getGoogleAccessToken(settings) {
       client_secret: settings.googleClientSecret,
       refresh_token: settings.googleRefreshToken,
       grant_type: "refresh_token"
-    })
+    }),
+    signal: googleRequestTimeoutSignal()
   });
   const data = await response.json().catch(() => ({}));
 
@@ -80,7 +82,8 @@ async function sendGmailEmail(settings, message) {
       "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ raw })
+    body: JSON.stringify({ raw }),
+    signal: googleRequestTimeoutSignal()
   });
   const data = await response.json().catch(() => ({}));
 
@@ -101,7 +104,8 @@ async function createGoogleCalendarEventRequest(settings, event) {
       "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(event)
+    body: JSON.stringify(event),
+    signal: googleRequestTimeoutSignal()
   });
   const data = await response.json().catch(() => ({}));
 
@@ -173,6 +177,10 @@ function normalizeGoogleAuthErrorMessage(data, fallback) {
   }
 
   return fallback;
+}
+
+function googleRequestTimeoutSignal() {
+  return AbortSignal.timeout(15000);
 }
 
 module.exports = {

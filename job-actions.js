@@ -84,7 +84,7 @@ function createJobActionHandler({
     }
 
     if (action === "send-square-estimate") {
-      if (job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl) {
+      if (job.estimateSentAt && job.estimateApprovalToken && job.estimateApprovalUrl && job.estimateEmailStatus !== "failed") {
         job.status = job.status || "Estimate Sent";
         await scheduleEstimateFollowUp(job, await readSettings());
         return;
@@ -95,18 +95,24 @@ function createJobActionHandler({
       job.estimateApprovalToken = job.estimateApprovalToken || randomToken();
       job.estimateApprovalUrl = buildEstimateApprovalUrl(input._baseUrl, job);
       job.estimateMailto = buildEstimateMailto(job, settings);
+      job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
+      job.squareEstimateUrl = job.estimateApprovalUrl;
       try {
         await sendEstimateEmail(job, settings);
       } catch (error) {
         await clearRevokedGoogleToken(settings, error, writeSettings);
-        throw error;
+        job.estimateEmailStatus = "failed";
+        job.estimateEmailError = error.message || "Estimate email could not be sent.";
+        job.estimateEmailFailedAt = new Date().toISOString();
+        return;
       }
       job.estimateSentAt = new Date().toISOString();
+      job.estimateEmailStatus = "sent";
+      job.estimateEmailError = "";
+      job.estimateEmailFailedAt = "";
       job.estimateRejectedAt = "";
       job.estimateRejectionReason = "";
       job.estimateRejectionNote = "";
-      job.squareEstimateId = job.squareEstimateId || `pressureflow-estimate-${Date.now()}`;
-      job.squareEstimateUrl = job.estimateApprovalUrl;
       await scheduleEstimateFollowUp(job, settings);
     }
 

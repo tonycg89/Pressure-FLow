@@ -146,6 +146,40 @@ test("mobile customer photo capture keeps the modal usable and preserves the dra
   await expectModalCardHasNoVisibleBlankTail(page, "#customerDialog");
 });
 
+test("mobile estimate photo capture keeps the job modal editable and scrollable", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='customerName']").fill("Photo Estimate Customer");
+  await page.locator("#jobForm [name='email']").fill("photo.estimate@example.com");
+  await page.locator("#jobForm [name='phone']").fill("(555) 777-3434");
+  await page.locator("#jobForm [name='streetAddress']").fill("401 Camera Safe Way");
+  await page.locator("#jobForm [name='city']").fill("Riverside");
+  await page.locator("#jobForm [name='state']").fill("CA");
+  await page.locator("#jobForm [name='zip']").fill("92501");
+  await page.locator("#lineItems .line-quantity").first().fill("1");
+  await page.locator("#lineItems .line-rate").first().fill("275");
+
+  const photoPath = path.join(DATA_DIR, "estimate-before.png");
+  await fs.writeFile(photoPath, Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64"
+  ));
+  await page.locator("#jobForm [data-before-photo-upload]").first().setInputFiles(photoPath);
+
+  await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#jobDialog");
+  await page.locator("#jobForm [name='notes']").fill("Still editable after adding a mobile photo.");
+  await expect(page.locator("#jobForm [name='notes']")).toHaveValue("Still editable after adding a mobile photo.");
+  await expect(page.locator("#jobForm").getByRole("button", { name: "Create Job" })).toBeInViewport();
+  await expectModalCardHasNoVisibleBlankTail(page, "#jobDialog");
+  await expectNoViewportOverflow(page, "job modal after estimate photo");
+});
+
 test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);

@@ -2046,10 +2046,14 @@ async function addPhotosFromInput(event, target, renderCallback, metadata = {}) 
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
 
-  const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
-  target.push(...photos);
-  event.target.value = "";
-  renderCallback();
+  try {
+    const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
+    target.push(...photos);
+    event.target.value = "";
+    renderCallback();
+  } finally {
+    stabilizeOpenWorkflowDialog(event.target);
+  }
 }
 
 function renderServiceAreaPhotos() {
@@ -2170,7 +2174,9 @@ async function addBeforePhotosFromRow(event, row) {
 
   const section = select.value || "Before";
   await addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews, { section });
+  saveJobDraft();
   addBeforePhotoRow(section);
+  stabilizeOpenWorkflowDialog(event.target);
 }
 
 async function saveBeforePhotoArea(row) {
@@ -2233,6 +2239,24 @@ function closeDialogFromButton(event) {
   }
 
   dialog.close();
+}
+
+function stabilizeOpenWorkflowDialog(source = null) {
+  const dialog = source?.closest?.("dialog") || [customerDialog, jobDialog, expenseDialog, completionDialog].find((item) => item?.open);
+  if (!dialog?.open) return;
+
+  window.setTimeout(() => {
+    requestAnimationFrame(() => {
+      const modalBody = dialog.querySelector(".modal__body");
+      dialog.scrollIntoView({ block: "nearest", inline: "nearest" });
+      modalBody?.scrollTo({
+        top: Math.min(modalBody.scrollTop, Math.max(0, modalBody.scrollHeight - modalBody.clientHeight))
+      });
+      const focusTarget = source?.closest?.(".photo-action-button") ||
+        modalBody?.querySelector("input:not([type='file']), select, textarea, button");
+      focusTarget?.focus?.({ preventScroll: true });
+    });
+  }, 0);
 }
 
 function renderLineItems(items) {
@@ -4321,8 +4345,12 @@ async function runAction(jobId, action, actionPayload = {}) {
     const updated = await apiRequest(`/api/jobs/${jobId}/${action}`, payload);
     selectedJobId = updated.job.id;
     if (action === "send-square-estimate") {
-      const followUpText = settings.estimateFollowUpEnabled === false ? "" : " Automatic follow-up scheduled.";
-      showToast(`Estimate sent to ${updated.job.email}.${followUpText}`);
+      if (updated.job.estimateEmailStatus === "failed") {
+        showToast("Estimate link created, but email did not send. Reconnect email in Settings or copy the customer estimate link.", "error");
+      } else {
+        const followUpText = settings.estimateFollowUpEnabled === false ? "" : " Automatic follow-up scheduled.";
+        showToast(`Estimate sent to ${updated.job.email}.${followUpText}`);
+      }
     }
     if (action === "send-contract") {
       showToast(`Contract sent to ${updated.job.email}.`);

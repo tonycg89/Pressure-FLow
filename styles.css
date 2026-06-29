@@ -1651,7 +1651,6 @@ html.customer-dialog-open,
 body.customer-dialog-open {
   overflow: hidden;
   overscroll-behavior-y: none;
-  touch-action: none;
 }
 
 body.customer-dialog-open #customerDialog,
