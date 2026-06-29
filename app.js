@@ -8,6 +8,8 @@ let selectedCustomerId = null;
 let selectedExpenseId = null;
 let selectedExpenseJobId = "";
 let activeView = "dashboard";
+let calendarMode = "month";
+let calendarCursorDate = startOfDay(new Date());
 let settings = {};
 let currentUser = null;
 let csrfToken = "";
@@ -135,6 +137,13 @@ const dashboardFirstRunPanel = document.querySelector("#dashboardFirstRunPanel")
 const dashboardFirstRunTitle = document.querySelector("#dashboardFirstRunTitle");
 const dashboardFirstRunHint = document.querySelector("#dashboardFirstRunHint");
 const dashboardPaymentSetupPanel = document.querySelector("#dashboardPaymentSetupPanel");
+const calendarRangeTitle = document.querySelector("#calendarRangeTitle");
+const calendarJobCount = document.querySelector("#calendarJobCount");
+const calendarGrid = document.querySelector("#calendarGrid");
+const calendarPrevButton = document.querySelector("#calendarPrevButton");
+const calendarTodayButton = document.querySelector("#calendarTodayButton");
+const calendarNextButton = document.querySelector("#calendarNextButton");
+const calendarModeButtons = document.querySelectorAll("[data-calendar-mode]");
 const sidebarBusinessName = document.querySelector("#sidebarBusinessName");
 const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
@@ -320,6 +329,18 @@ async function init() {
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
   dashboardBreakdown?.addEventListener("change", renderDashboard);
+  calendarPrevButton?.addEventListener("click", () => shiftCalendarPeriod(-1));
+  calendarTodayButton?.addEventListener("click", () => {
+    calendarCursorDate = startOfDay(new Date());
+    renderCalendar();
+  });
+  calendarNextButton?.addEventListener("click", () => shiftCalendarPeriod(1));
+  calendarModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      calendarMode = button.dataset.calendarMode || "month";
+      renderCalendar();
+    });
+  });
   notificationToggle?.addEventListener("click", toggleNotificationDropdown);
   notificationClearAll?.addEventListener("click", clearAllDashboardNotifications);
   document.addEventListener("click", closeNotificationDropdownFromOutside);
@@ -3308,6 +3329,7 @@ function buildStaticMapUrl(measurement) {
 
 function render() {
   renderDashboard();
+  renderCalendar();
   renderMetrics();
   renderPendingPayments();
   renderJobList();
@@ -3315,6 +3337,255 @@ function render() {
   renderCustomers();
   renderExpenses();
   saveWorkspaceStateToHash();
+}
+
+function renderCalendar() {
+  if (!calendarGrid || !calendarRangeTitle || !calendarJobCount) return;
+
+  calendarModeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.calendarMode === calendarMode);
+  });
+
+  const scheduledJobs = getScheduledJobs();
+  const visibleJobs = getCalendarVisibleJobs(scheduledJobs);
+  calendarRangeTitle.textContent = getCalendarRangeTitle();
+  calendarJobCount.textContent = `${visibleJobs.length} scheduled job${visibleJobs.length === 1 ? "" : "s"}`;
+
+  if (!scheduledJobs.length) {
+    calendarGrid.className = "calendar-grid calendar-grid--empty";
+    calendarGrid.innerHTML = renderEmptyState("No scheduled jobs yet", "Jobs appear here as soon as they are scheduled in PressureFlow.");
+    return;
+  }
+
+  if (calendarMode === "day") {
+    renderCalendarDay(visibleJobs);
+  } else if (calendarMode === "week") {
+    renderCalendarWeek(scheduledJobs);
+  } else {
+    renderCalendarMonth(scheduledJobs);
+  }
+}
+
+function getScheduledJobs() {
+  return jobs
+    .filter((job) => job.scheduledAt && parseCalendarDate(job.scheduledAt))
+    .sort((a, b) => parseCalendarDate(a.scheduledAt) - parseCalendarDate(b.scheduledAt));
+}
+
+function getCalendarVisibleJobs(scheduledJobs) {
+  const range = getCalendarRange();
+  return scheduledJobs.filter((job) => isDateInRange(parseCalendarDate(job.scheduledAt), range.start, range.end));
+}
+
+function renderCalendarMonth(scheduledJobs) {
+  const year = calendarCursorDate.getFullYear();
+  const month = calendarCursorDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const gridStart = addDays(firstOfMonth, -firstOfMonth.getDay());
+  const todayKey = getDateKey(new Date());
+  const monthJobs = groupJobsByDate(scheduledJobs);
+  const days = Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
+
+  calendarGrid.className = "calendar-grid calendar-grid--month";
+  calendarGrid.innerHTML = `
+    ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => `<div class="calendar-weekday">${day}</div>`).join("")}
+    ${days.map((date) => {
+      const key = getDateKey(date);
+      const dayJobs = monthJobs.get(key) || [];
+      const isMuted = date.getMonth() !== month;
+      return `
+        <article class="calendar-day ${isMuted ? "muted" : ""} ${key === todayKey ? "today" : ""}">
+          <button class="calendar-day-number" type="button" data-calendar-date="${key}">${date.getDate()}</button>
+          <div class="calendar-day-jobs">
+            ${dayJobs.slice(0, 3).map(renderCompactCalendarJob).join("")}
+            ${dayJobs.length > 3 ? `<button class="calendar-more" type="button" data-calendar-date="${key}">+${dayJobs.length - 3} more</button>` : ""}
+          </div>
+        </article>
+      `;
+    }).join("")}
+  `;
+  bindCalendarInteractions();
+}
+
+function renderCalendarWeek(scheduledJobs) {
+  const start = startOfWeek(calendarCursorDate);
+  const grouped = groupJobsByDate(scheduledJobs);
+  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+
+  calendarGrid.className = "calendar-grid calendar-grid--week";
+  calendarGrid.innerHTML = days.map((date) => {
+    const key = getDateKey(date);
+    const dayJobs = grouped.get(key) || [];
+    return `
+      <article class="calendar-week-column">
+        <button class="calendar-week-heading" type="button" data-calendar-date="${key}">
+          <span>${formatCalendarWeekday(date)}</span>
+          <strong>${date.getDate()}</strong>
+        </button>
+        <div class="calendar-week-jobs">
+          ${dayJobs.length ? dayJobs.map(renderWeekCalendarJob).join("") : `<p class="calendar-empty-day">No jobs</p>`}
+        </div>
+      </article>
+    `;
+  }).join("");
+  bindCalendarInteractions();
+}
+
+function renderCalendarDay(dayJobs) {
+  calendarGrid.className = "calendar-grid calendar-grid--day";
+  if (!dayJobs.length) {
+    calendarGrid.innerHTML = renderEmptyState("No jobs scheduled for this day", "Use the Pipeline schedule action to add jobs to this calendar.");
+    return;
+  }
+
+  calendarGrid.innerHTML = dayJobs.map((job) => `
+    <article class="calendar-day-detail">
+      <div class="calendar-day-detail-time">
+        <strong>${formatCalendarTime(parseCalendarDate(job.scheduledAt))}</strong>
+        <span>${formatDuration(job.jobDurationMinutes)}</span>
+      </div>
+      <div class="calendar-day-detail-main">
+        <h3>${escapeHtml(job.customerName)}</h3>
+        <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
+        <dl>
+          <div><dt>Status</dt><dd>${escapeHtml(job.status)}</dd></div>
+          <div><dt>Phone</dt><dd>${escapeHtml(job.phone || "Not saved")}</dd></div>
+          <div><dt>Estimate</dt><dd>${currency.format(job.estimate || 0)}</dd></div>
+        </dl>
+      </div>
+      <button class="secondary-small-button" type="button" data-calendar-job="${escapeHtml(job.id)}">Open Job</button>
+    </article>
+  `).join("");
+  bindCalendarInteractions();
+}
+
+function bindCalendarInteractions() {
+  calendarGrid.querySelectorAll("[data-calendar-job]").forEach((button) => {
+    button.addEventListener("click", () => viewJobInPipeline(button.dataset.calendarJob));
+  });
+  calendarGrid.querySelectorAll("[data-calendar-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      calendarCursorDate = parseDateKey(button.dataset.calendarDate) || calendarCursorDate;
+      calendarMode = "day";
+      renderCalendar();
+    });
+  });
+}
+
+function renderCompactCalendarJob(job) {
+  return `<button class="calendar-job-chip" type="button" data-calendar-job="${escapeHtml(job.id)}">
+    <span>${formatCalendarTime(parseCalendarDate(job.scheduledAt))}</span>
+    ${escapeHtml(job.customerName)}
+  </button>`;
+}
+
+function renderWeekCalendarJob(job) {
+  return `<button class="calendar-week-job" type="button" data-calendar-job="${escapeHtml(job.id)}">
+    <strong>${formatCalendarTime(parseCalendarDate(job.scheduledAt))}</strong>
+    <span>${escapeHtml(job.customerName)}</span>
+    <small>${escapeHtml(job.serviceType)}</small>
+  </button>`;
+}
+
+function shiftCalendarPeriod(direction) {
+  if (calendarMode === "day") {
+    calendarCursorDate = addDays(calendarCursorDate, direction);
+  } else if (calendarMode === "week") {
+    calendarCursorDate = addDays(calendarCursorDate, direction * 7);
+  } else {
+    calendarCursorDate = new Date(calendarCursorDate.getFullYear(), calendarCursorDate.getMonth() + direction, 1);
+  }
+  renderCalendar();
+}
+
+function getCalendarRange() {
+  if (calendarMode === "day") {
+    const start = startOfDay(calendarCursorDate);
+    return { start, end: addDays(start, 1) };
+  }
+  if (calendarMode === "week") {
+    const start = startOfWeek(calendarCursorDate);
+    return { start, end: addDays(start, 7) };
+  }
+  const start = new Date(calendarCursorDate.getFullYear(), calendarCursorDate.getMonth(), 1);
+  const end = new Date(calendarCursorDate.getFullYear(), calendarCursorDate.getMonth() + 1, 1);
+  return { start, end };
+}
+
+function getCalendarRangeTitle() {
+  if (calendarMode === "day") {
+    return calendarCursorDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+  if (calendarMode === "week") {
+    const start = startOfWeek(calendarCursorDate);
+    const end = addDays(start, 6);
+    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+  return calendarCursorDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function groupJobsByDate(scheduledJobs) {
+  const grouped = new Map();
+  scheduledJobs.forEach((job) => {
+    const key = getDateKey(parseCalendarDate(job.scheduledAt));
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(job);
+  });
+  return grouped;
+}
+
+function parseCalendarDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function parseDateKey(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function getDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfWeek(date) {
+  return addDays(startOfDay(date), -date.getDay());
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function isDateInRange(date, start, end) {
+  return date && date >= start && date < end;
+}
+
+function formatCalendarTime(date) {
+  if (!date) return "";
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatCalendarWeekday(date) {
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+function formatDuration(minutes) {
+  const value = Number(minutes || settings.defaultJobDurationMinutes || 0);
+  if (!value) return "Duration not set";
+  if (value < 60) return `${value} min`;
+  const hours = Math.floor(value / 60);
+  const remaining = value % 60;
+  return remaining ? `${hours}h ${remaining}m` : `${hours}h`;
 }
 
 function renderDashboard() {

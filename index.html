@@ -30,6 +30,14 @@
             </svg>
             <span>Pipeline</span>
           </button>
+          <button class="nav-item" type="button" title="Calendar" data-view="calendar">
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M5 4h14a2 2 0 0 1 2 2v13H3V6a2 2 0 0 1 2-2Z"></path>
+              <path d="M8 2v4M16 2v4M3 9h18"></path>
+              <path d="M8 13h2M14 13h2M8 17h2M14 17h2"></path>
+            </svg>
+            <span>Calendar</span>
+          </button>
           <button class="nav-item" type="button" title="Customers" data-view="customers">
             <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
               <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path>
@@ -293,6 +301,39 @@
         </div>
         <div id="jobDetail" class="job-detail"></div>
       </aside>
+        </section>
+      </section>
+
+      <section class="workspace workspace-view" id="calendarView" data-view-panel="calendar" hidden>
+        <header class="topbar calendar-topbar">
+          <div>
+            <p class="eyebrow">Workspace Calendar</p>
+            <h2>Calendar</h2>
+            <p class="dashboard-subtitle">See every scheduled job in the workspace by month, week, or day.</p>
+          </div>
+          <div class="calendar-toolbar" aria-label="Calendar controls">
+            <div class="calendar-nav">
+              <button id="calendarPrevButton" class="secondary-small-button" type="button" aria-label="Previous calendar period">&lt;</button>
+              <button id="calendarTodayButton" class="secondary-small-button" type="button">Today</button>
+              <button id="calendarNextButton" class="secondary-small-button" type="button" aria-label="Next calendar period">&gt;</button>
+            </div>
+            <div class="segmented-control" role="group" aria-label="Calendar view">
+              <button class="segmented-control__button active" type="button" data-calendar-mode="month">Month</button>
+              <button class="segmented-control__button" type="button" data-calendar-mode="week">Week</button>
+              <button class="segmented-control__button" type="button" data-calendar-mode="day">Day</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="panel calendar-panel" aria-labelledby="calendarRangeTitle">
+          <div class="panel-header calendar-panel-header">
+            <div>
+              <p class="eyebrow">Scheduled Jobs</p>
+              <h3 id="calendarRangeTitle">This month</h3>
+            </div>
+            <p id="calendarJobCount" class="calendar-job-count">0 jobs</p>
+          </div>
+          <div id="calendarGrid" class="calendar-grid" aria-live="polite"></div>
         </section>
       </section>
 

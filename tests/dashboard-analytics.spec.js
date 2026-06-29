@@ -69,6 +69,7 @@ test("settings opens from each main view and view headings stay current", async 
   const views = [
     ["Dashboard", "#dashboardView", "Dashboard"],
     ["Pipeline", "#pipelineView", "Pipeline"],
+    ["Calendar", "#calendarView", "Calendar"],
     ["Customers", "#customersView", "Customers"],
     ["Templates", "#templatesView", "Templates"],
     ["Expenses", "#expensesView", "Expenses"]
@@ -89,6 +90,31 @@ test("settings opens from each main view and view headings stay current", async 
     await expect(page.locator("#settingsDialog")).toBeHidden();
     await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveAttribute("aria-pressed", "false");
   }
+});
+
+test("calendar view shows scheduled jobs by month week and day", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Calendar" }).click();
+  await expect(page.locator("#calendarView")).toBeVisible();
+  await expect(page.locator("#calendarRangeTitle")).toBeVisible();
+  await expect(page.locator("#calendarJobCount")).toContainText("2 scheduled jobs");
+  await expect(page.locator("#calendarGrid")).toContainText("Blank Sent");
+  await expect(page.locator("#calendarGrid")).toContainText("Blank Accepted");
+
+  await page.getByRole("button", { name: "Week" }).click();
+  await expect(page.locator("#calendarGrid")).toContainText("Blank Sent");
+  await expect(page.locator("#calendarGrid")).toContainText("Blank Accepted");
+
+  await page.getByRole("button", { name: "Day", exact: true }).click();
+  await expect(page.locator("#calendarGrid")).toContainText("Blank Sent");
+  await expect(page.locator("#calendarGrid")).toContainText("Status");
+  await expect(page.locator("#calendarGrid")).toContainText("Estimate Sent");
+  await expect(page.locator("#calendarGrid")).toContainText("$300.00");
+
+  await page.locator(".calendar-day-detail", { hasText: "Blank Sent" }).getByRole("button", { name: "Open Job" }).click();
+  await expect(page.locator("#pipelineView")).toBeVisible();
+  await expect(page.locator("#jobDetail")).toContainText("Blank Sent");
 });
 
 test("job action failures with empty server responses show a clear retry message", async ({ page }) => {
@@ -165,11 +191,19 @@ async function resetTestData() {
     job("explicit-referral-1", "Referral Won 1", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
     job("explicit-referral-2", "Referral Won 2", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
     job("explicit-referral-3", "Referral Won 3", "referral", "Paid", 200, { squareFinalPaidAt: new Date().toISOString() }),
-    job("blank-sent", "Blank Sent", "", "Estimate Sent", 300),
-    job("blank-accepted", "Blank Accepted", "", "Estimate Signed", 400),
+    job("blank-sent", "Blank Sent", "", "Estimate Sent", 300, { scheduledAt: localDateTime(9, 0), jobDurationMinutes: 120 }),
+    job("blank-accepted", "Blank Accepted", "", "Estimate Signed", 400, { scheduledAt: localDateTime(13, 30), jobDurationMinutes: 90 }),
     job("blank-paid", "Blank Paid", "", "Paid", 500, { squareFinalPaidAt: new Date().toISOString() }),
     job("paid-timestamp", "Paid Timestamp", "", "Final Invoice Sent", 250, { squareFinalPaidAt: new Date().toISOString() })
   ], null, 2));
+}
+
+function localDateTime(hour, minute) {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 function job(id, customerName, leadSource, status, estimate, extras = {}) {
