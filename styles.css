@@ -1620,7 +1620,7 @@ dialog:not(.modal) > form {
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
-  height: auto;
+  height: min-content;
   margin: 0;
   padding: 0;
   border: 0;
@@ -1628,7 +1628,7 @@ dialog:not(.modal) > form {
   background: transparent;
   color: var(--card-foreground);
   box-shadow: none;
-  overflow: visible;
+  overflow: hidden;
   transform: translate(-50%, -50%);
 }
 
@@ -2671,6 +2671,12 @@ label {
   min-width: 44px;
   height: 44px;
   min-height: 44px;
+}
+
+.measurement-close-shape-button {
+  min-height: 44px;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: var(--secondary);
 }
 
 .measurement-summary {

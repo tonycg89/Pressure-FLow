@@ -68,8 +68,10 @@ function createMeasurementHandlers({ readCustomers, readJobs, writeCustomers }) 
 
     const propertyMeasurements = normalizePropertyMeasurements(customer.propertyMeasurements || []);
     const savedMeasurements = buildPerAreaPropertyMeasurements(job);
-    const savedKeys = new Set(savedMeasurements.map((item) => JSON.stringify(item.measurement?.geojson)));
-    const retainedMeasurements = propertyMeasurements.filter((item) => !savedKeys.has(JSON.stringify(item.measurement?.geojson)));
+    const savedKeys = new Set(savedMeasurements.flatMap((item) => getMeasurementAreaKeys(item.measurement)));
+    const retainedMeasurements = propertyMeasurements.filter((item) =>
+      !getMeasurementAreaKeys(item.measurement).some((key) => savedKeys.has(key))
+    );
 
     customer.propertyMeasurements = [...savedMeasurements, ...retainedMeasurements].slice(0, 24);
     customer.updatedAt = new Date().toISOString();
@@ -215,6 +217,17 @@ function deleteCustomerMeasurementArea(customer, measurementId, areaKey) {
 
   customer.propertyMeasurements = nextMeasurements;
   return removed;
+}
+
+function getMeasurementAreaKeys(value) {
+  const measurement = normalizeMeasurement(value);
+  if (Array.isArray(measurement.areas) && measurement.areas.length) {
+    return measurement.areas
+      .map((area) => area.geojson ? JSON.stringify(area.geojson) : "")
+      .filter(Boolean);
+  }
+
+  return measurement.geojson ? [JSON.stringify(measurement.geojson)] : [];
 }
 
 module.exports = {

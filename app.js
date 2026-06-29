@@ -255,6 +255,7 @@ const savedMeasurementsPanel = document.querySelector("#savedMeasurementsPanel")
 const savedMeasurementsList = document.querySelector("#savedMeasurementsList");
 const measurementAreaList = document.querySelector("#measurementAreaList");
 const saveMeasurementAreaButton = document.querySelector("#saveMeasurementAreaButton");
+const closeMeasurementShapeButton = document.querySelector("#closeMeasurementShapeButton");
 const clearMeasurementButton = document.querySelector("#clearMeasurementButton");
 const useMeasurementButton = document.querySelector("#useMeasurementButton");
 const serviceAreaPhotoInputs = document.querySelectorAll("[data-service-area-photo-input]");
@@ -287,6 +288,8 @@ let mapboxDraw = null;
 let activeMeasurementLineItem = null;
 let completedJobsExpanded = false;
 let syncingMeasurementDraw = false;
+let activeMeasurementDrawState = null;
+let activeMeasurementDrawContext = null;
 const MEASUREMENT_CLOSE_VERTEX_PIXEL_TOLERANCE = 6;
 let beforePhotoRowCounter = 0;
 let beforePhotoSections = [...defaultBeforePhotoSections];
@@ -372,6 +375,7 @@ async function init() {
     savedMeasurementsPanel.dataset.userToggled = "true";
   });
   saveMeasurementAreaButton?.addEventListener("click", saveMeasurementArea);
+  closeMeasurementShapeButton?.addEventListener("click", closeActiveMeasurementShape);
   clearMeasurementButton.addEventListener("click", clearMeasurementPolygon);
   useMeasurementButton.addEventListener("click", useMeasurement);
   discountSelect.addEventListener("change", updateEstimateTotals);
@@ -2534,7 +2538,16 @@ function createPressureFlowDrawModes() {
     ...window.MapboxDraw.modes,
     draw_polygon: {
       ...drawPolygonMode,
+      clickAnywhere(state, event) {
+        activeMeasurementDrawState = state;
+        activeMeasurementDrawContext = this;
+        return typeof defaultClickAnywhere === "function"
+          ? defaultClickAnywhere.call(this, state, event)
+          : undefined;
+      },
       clickOnVertex(state, event) {
+        activeMeasurementDrawState = state;
+        activeMeasurementDrawContext = this;
         if (!isIntentionalPolygonClose(this, state, event)) {
           return typeof defaultClickAnywhere === "function"
             ? defaultClickAnywhere.call(this, state, event)
@@ -2575,6 +2588,38 @@ function getFirstDrawPolygonCoordinate(state) {
     ? state.polygon.getCoordinates()
     : state?.polygon?.coordinates;
   return coordinates?.[0]?.[0] || null;
+}
+
+function closeActiveMeasurementShape() {
+  if (!mapboxDraw) return;
+
+  const mode = mapboxDraw.options?.modes?.draw_polygon || window.MapboxDraw?.modes?.draw_polygon;
+  const closeWithVertex = mode?.clickOnVertex;
+  const state = activeMeasurementDrawState;
+  const context = activeMeasurementDrawContext;
+  const firstCoordinate = getFirstDrawPolygonCoordinate(state);
+  const coordinateCount = getDrawPolygonCoordinateCount(state);
+
+  if (typeof closeWithVertex !== "function" || !state || !context || !firstCoordinate || coordinateCount < 3) {
+    measurementStatus.textContent = "Add at least three points, then tap Close Shape.";
+    return;
+  }
+
+  const firstPoint = typeof context.map?.project === "function"
+    ? context.map.project(firstCoordinate)
+    : { x: 0, y: 0 };
+  closeWithVertex.call(context, state, {
+    point: firstPoint,
+    featureTarget: { properties: { coord_path: "0.0" } }
+  });
+  measurementStatus.textContent = "Shape closed. Add or update the named area.";
+}
+
+function getDrawPolygonCoordinateCount(state) {
+  const coordinates = typeof state?.polygon?.getCoordinates === "function"
+    ? state.polygon.getCoordinates()
+    : state?.polygon?.coordinates;
+  return Array.isArray(coordinates?.[0]) ? coordinates[0].length : 0;
 }
 
 async function geocodeMeasurementAddress() {
@@ -2756,6 +2801,8 @@ function updateMeasurementFromDraw() {
 function clearMeasurementPolygon() {
   mapboxDraw?.deleteAll();
   activeMeasurementAreaId = "";
+  activeMeasurementDrawState = null;
+  activeMeasurementDrawContext = null;
   updateMeasurementTotal();
   updateMeasurementFromDraw();
 }
@@ -2958,6 +3005,8 @@ function loadEditableMeasurementAreaIntoDraw() {
 function resetMeasurementDrawForNextArea() {
   if (!mapboxDraw) return;
 
+  activeMeasurementDrawState = null;
+  activeMeasurementDrawContext = null;
   window.setTimeout(() => {
     try {
       mapboxDraw.changeMode("draw_polygon");

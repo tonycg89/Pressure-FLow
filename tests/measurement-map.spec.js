@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { createMeasurementHandlers } = require("../measurements");
 
 const DATA_DIR = path.resolve(__dirname, "..", ".tmp", "playwright-data");
 const TEST_USER = {
@@ -17,6 +18,61 @@ test.beforeEach(async ({ page }) => {
   await installMapboxMocks(page);
 });
 
+test("reusing a saved customer service area does not duplicate the customer file measurement", async () => {
+  const measurement = {
+    address: "100 Main Street, Riverside, CA 92501",
+    squareFeet: 1076,
+    perimeterFeet: 0,
+    geojson: polygonFeature("shared-area"),
+    areas: [{
+      id: "shared-area",
+      name: "Driveway",
+      squareFeet: 1076,
+      perimeterFeet: 0,
+      geojson: polygonFeature("shared-area"),
+      capturedAt: "2026-06-01T12:00:00.000Z"
+    }],
+    center: [-117.3755, 33.9806],
+    zoom: 19,
+    capturedAt: "2026-06-01T12:00:00.000Z"
+  };
+  let customers = [{
+    id: "customer-1",
+    customerName: "Map Tester",
+    email: "map.tester@example.com",
+    address: "100 Main Street, Riverside, CA 92501",
+    propertyMeasurements: []
+  }];
+  const handlers = createMeasurementHandlers({
+    readCustomers: async () => customers,
+    readJobs: async () => [],
+    writeCustomers: async (nextCustomers) => { customers = nextCustomers; }
+  });
+  const firstJob = {
+    id: "job-1",
+    customerId: "customer-1",
+    customerName: "Map Tester",
+    email: "map.tester@example.com",
+    address: "100 Main Street, Riverside, CA 92501",
+    serviceType: "Pressure Washing",
+    measurement
+  };
+  const secondJob = {
+    ...firstJob,
+    id: "job-2",
+    measurement: {
+      ...measurement,
+      capturedAt: "2026-06-02T12:00:00.000Z"
+    }
+  };
+
+  await handlers.syncJobMeasurementToCustomerFile(firstJob);
+  await handlers.syncJobMeasurementToCustomerFile(secondJob);
+
+  expect(customers[0].propertyMeasurements).toHaveLength(1);
+  expect(customers[0].propertyMeasurements[0].sourceJobId).toBe("job-2");
+});
+
 test("measure from map re-arms polygon drawing after adding and updating areas", async ({ page }) => {
   await login(page);
 
@@ -30,12 +86,13 @@ test("measure from map re-arms polygon drawing after adding and updating areas",
   await page.locator("#jobForm [name='city']").fill("Riverside");
   await page.locator("#jobForm [name='state']").fill("CA");
   await page.locator("#jobForm [name='zip']").fill("92501");
-  await page.locator("#jobForm [name='serviceType']").fill("Pressure washing");
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
 
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Pressure Washing");
   await lineItem.locator(".line-measure").click();
   await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect(page.locator("#closeMeasurementShapeButton")).toBeVisible();
   await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
   expect(await getMockCloseBehavior(page)).toEqual({
     farClickAddedVertex: true,
@@ -43,6 +100,7 @@ test("measure from map re-arms polygon drawing after adding and updating areas",
     nearClickAddedVertex: false,
     nearClickClosed: true
   });
+  await expectCloseShapeButtonClosesMockPolygon(page);
 
   await drawMockPolygon(page, "first-area", 100);
   await expect(page.locator("#measurementStatus")).toContainText("1,076 SqFt drawn");
@@ -78,6 +136,24 @@ test("measure from map re-arms polygon drawing after adding and updating areas",
   await expect(page.locator("#measurementAreaList .measurement-area-card")).toHaveCount(2);
   await expect(page.locator("#measuredArea")).toHaveText("1,830 SqFt");
 });
+
+function polygonFeature(id) {
+  return {
+    id,
+    type: "Feature",
+    properties: { areaMeters: 100 },
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [-117.3755, 33.9806],
+        [-117.3754, 33.9806],
+        [-117.3754, 33.9807],
+        [-117.3755, 33.9807],
+        [-117.3755, 33.9806]
+      ]]
+    }
+  };
+}
 
 async function drawMockPolygon(page, id, areaMeters) {
   await page.evaluate(({ id, areaMeters }) => {
@@ -138,6 +214,27 @@ async function getMockCloseBehavior(page) {
 
     return { farClickAddedVertex, farClickClosed, nearClickAddedVertex, nearClickClosed };
   });
+}
+
+async function expectCloseShapeButtonClosesMockPolygon(page) {
+  await page.evaluate(() => {
+    const drawMode = window.__pressureFlowDraw.options.modes.draw_polygon;
+    const state = {
+      polygon: {
+        getCoordinates: () => [[[-117.3755, 33.9806], [-117.3754, 33.9806], [-117.3754, 33.9807]]]
+      }
+    };
+    const context = {
+      map: {
+        project: () => ({ x: 100, y: 100 })
+      }
+    };
+    window.__drawClosed = false;
+    drawMode.clickAnywhere.call(context, state, { point: { x: 120, y: 100 } });
+  });
+  await page.locator("#closeMeasurementShapeButton").click();
+  await expect.poll(() => page.evaluate(() => window.__drawClosed)).toBe(true);
+  await expect(page.locator("#measurementStatus")).toContainText("Shape closed");
 }
 
 async function installMapboxMocks(page) {
