@@ -480,8 +480,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
             ${renderCardPaymentForm(job, settings, invoiceType)}
           `}
         </section>
-        ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photos:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View completion proof and photos</a></section>` : ""}
-        ${!isDeposit ? `<section><h2>Before Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.before || [])}</section><section><h2>Completed Work Photos</h2>${renderProofPhotoGrid(job.jobPhotos?.after || [])}</section>` : ""}
+        ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photo record:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View before and after photos</a></section>` : ""}
       </div>
       <div class="doc__actions">
         <button class="btn btn--secondary" type="button" onclick="window.print()">Print or Save as PDF</button>
@@ -562,7 +561,6 @@ function renderContractSigningPage(job, options = {}) {
           <span>${escapeHtml(job.customerName)}</span>
           <span>${escapeHtml(job.address)}</span>
         </div>
-        ${renderTrustPills([alreadySigned ? "Signed agreement" : "Ready for signature", "No initials required", "Secure customer copy"])}
       </header>
 
       <div class="doc__content">

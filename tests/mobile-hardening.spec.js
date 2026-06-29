@@ -329,6 +329,8 @@ test("public documents remain within the mobile viewport and proof links are tap
   await page.goto("/invoice/final-mobile-job?type=final&token=pf-final-mobile");
   await expect(page.locator("body")).not.toContainText("Payment options available");
   await expectMinHeight(page.locator(".proof-link a"), 44);
+  await expect(page.locator("body")).not.toContainText("Before Photos");
+  await expect(page.locator("body")).not.toContainText("Completed Work Photos");
   await expectMinHeight(page.getByRole("button", { name: "Pay by Credit Card" }), 44);
 
   await page.goto("/estimate/estimate-mobile-job?token=estimate-mobile");
@@ -346,7 +348,9 @@ test("public documents remain within the mobile viewport and proof links are tap
   await expect(page.locator("body")).not.toContainText("Photos available");
 
   await page.goto("/contract/contract-mobile-job?token=contract-mobile");
-  await expect(page.locator("body")).toContainText("Ready for signature");
+  await expect(page.locator("body")).not.toContainText("Ready for signature");
+  await expect(page.locator("body")).not.toContainText("No initials required");
+  await expect(page.locator("body")).not.toContainText("Secure customer copy");
   await expectMinHeight(page.getByRole("button", { name: "Sign Agreement" }), 44);
 });
 

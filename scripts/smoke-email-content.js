@@ -92,7 +92,7 @@ const expectedFinalInvoiceText = [
   `Invoice number: ${finalInvoiceNumber}`,
   `Amount due: $${(getFinalBalanceCents(job) / 100).toFixed(2)}`,
   "Invoice: https://pressureflow.test/invoice/job-email-content?type=final&token=final-token",
-  "Completion photos: https://pressureflow.test/proof/job-email-content?token=proof-token",
+  "Completion photo record: https://pressureflow.test/proof/job-email-content?token=proof-token",
   "Payment options:",
   "Zelle: owner@johnson.test",
   "Cash App: $JohnsonExterior",
@@ -214,7 +214,7 @@ assert.match(finalInvoice.htmlBody, /123 Maple St/);
 assert.match(finalInvoice.htmlBody, new RegExp(finalInvoiceNumber));
 assert.match(finalInvoice.htmlBody, /\$318\.75/);
 assert.match(finalInvoice.htmlBody, /View invoice/);
-assert.match(finalInvoice.htmlBody, /View completion photos/);
+assert.match(finalInvoice.htmlBody, /View completion photo record/);
 assert.match(finalInvoice.htmlBody, /href="https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&amp;token=final-token"/);
 assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/invoice\/job-email-content\?type=final&amp;token=final-token/);
 assert.match(finalInvoice.htmlBody, /https:\/\/pressureflow\.test\/proof\/job-email-content\?token=proof-token/);

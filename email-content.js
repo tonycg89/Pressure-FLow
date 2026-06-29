@@ -189,7 +189,7 @@ function buildPressureFlowInvoiceEmailMessage(job, settings, invoiceType, invoic
       `Invoice number: ${invoiceNumber}`,
       `Amount due: $${amount.toFixed(2)}`,
       `Invoice: ${invoiceUrl}`,
-      !isDeposit && job.completionProofUrl ? `Completion photos: ${job.completionProofUrl}` : "",
+      !isDeposit && job.completionProofUrl ? `Completion photo record: ${job.completionProofUrl}` : "",
       "",
       "Payment options:",
       settings.zellePayment ? `Zelle: ${settings.zellePayment}` : "",
@@ -325,7 +325,7 @@ function renderPressureFlowInvoiceEmailHtml(job, settings, invoiceType, invoiceU
           View invoice
         </a>
       </p>
-      ${!isDeposit && job.completionProofUrl ? `<p style="margin:0 0 18px"><a href="${escapeHtml(job.completionProofUrl)}" style="color:${emailTheme.green};font-weight:bold">View completion photos</a></p>` : ""}
+      ${!isDeposit && job.completionProofUrl ? `<p style="margin:0 0 14px;color:${emailTheme.text}">Before and after photos are available in the completion photo record for your files.</p><p style="margin:0 0 18px"><a href="${escapeHtml(job.completionProofUrl)}" style="display:inline-block;padding:12px 18px;background:${emailTheme.green};color:${emailTheme.white};text-decoration:none;border-radius:8px;font-weight:bold">View completion photo record</a></p>` : ""}
       ${renderInvoicePaymentOptionsEmail(settings)}
       ${settings.paymentInstructions ? `<p style="margin:0 0 14px;color:${emailTheme.text}">${escapeHtml(settings.paymentInstructions)}</p>` : ""}
       <p style="margin:0 0 18px;color:${emailTheme.muted};font-size:13px;line-height:19px">If the button does not work, copy and paste this link into your browser:<br>${escapedInvoiceUrl}</p>

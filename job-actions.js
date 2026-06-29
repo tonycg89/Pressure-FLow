@@ -29,7 +29,6 @@ function createJobActionHandler({
   scheduleFollowUp = async () => {},
   scheduleEstimateFollowUp = async () => {},
   sendAdminTextAlertSafe,
-  sendCompletionCertificateEmailSafe,
   sendCompletionNoticeEmail = async () => {},
   sendContractEmail,
   sendEstimateEmail,
@@ -225,17 +224,12 @@ function createJobActionHandler({
       }
       job.completionProofToken = job.completionProofToken || randomToken();
       job.completionProofUrl = buildCompletionProofUrl(input._baseUrl, job);
-      const notice = buildCompletionNotice(job, settings);
       const invoice = job.squareFinalInvoiceId
         ? { invoiceId: job.squareFinalInvoiceId, publicUrl: job.squareFinalInvoiceUrl }
         : await createPressureFlowInvoice(job, settings, "final", input._baseUrl, {
           sendEmail: action !== "complete-text"
         });
       job.status = "Final Invoice Sent";
-      job.completionNoticeSentAt = new Date().toISOString();
-      job.completionNoticeSubject = notice.subject;
-      job.completionNoticeBody = notice.body;
-      job.completionNoticeMailto = notice.mailto;
       job.squareFinalInvoiceId = invoice.invoiceId;
       job.squareFinalInvoiceUrl = invoice.publicUrl;
       if (action === "complete-text") {
@@ -282,7 +276,6 @@ function createJobActionHandler({
       job.squareFinalPaidAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordManualPayment(job, "final", input);
-      await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await scheduleFollowUp(job, settings, "review_request");
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice marked paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
@@ -294,7 +287,6 @@ function createJobActionHandler({
       job.squareFinalPaidAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordAutomaticPayment(job, "final", "Square");
-      await sendCompletionCertificateEmailSafe(job, settings, input._baseUrl);
       await scheduleFollowUp(job, settings, "review_request");
       await sendAdminTextAlertSafe(`PressureFlow: Final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }

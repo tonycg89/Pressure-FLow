@@ -172,8 +172,9 @@ test("public contract click-to-fill date signs agreement and sends deposit invoi
   await page.goto(approvedJob.contractApprovalUrl);
   await expect(page.getByRole("heading", { name: /Service Agreement/ })).toBeVisible();
   await expect(page.locator(".doc__logo")).toBeVisible();
-  await expect(page.locator("body")).toContainText("Ready for signature");
-  await expect(page.locator("body")).toContainText("No initials required");
+  await expect(page.locator("body")).not.toContainText("Ready for signature");
+  await expect(page.locator("body")).not.toContainText("No initials required");
+  await expect(page.locator("body")).not.toContainText("Secure customer copy");
   await expect(page.locator(".initials-input")).toHaveCount(0);
   await expect(page.locator("#expectedInitials")).toHaveCount(0);
 

@@ -5,7 +5,6 @@ const {
   getFinalBalanceCents,
   getPressureFlowInvoiceNumber
 } = require("./billing");
-const { getBaseUrlFromLink } = require("./rendering");
 const { extractSquareInvoice, parseSquareWebhookInvoiceId } = require("./integrations/square");
 const { parseStripeWebhookMetadata } = require("./integrations/stripe");
 const { createOperationalLogger } = require("./operational-logger");
@@ -18,7 +17,6 @@ function createWebhookHandlers({
   readSettingsForJob,
   readWebhookEvents,
   sendAdminTextAlertSafe,
-  sendCompletionCertificateEmailSafe,
   writeAllJobs,
   writeJobs,
   writeWebhookEvents,
@@ -106,7 +104,6 @@ function createWebhookHandlers({
       job.squareFinalPaidAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordPayment(job, "final", "Square", getFinalBalanceCents(job) / 100);
-      await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Square final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
 
@@ -183,7 +180,6 @@ function createWebhookHandlers({
       job.squareFinalPaidAt = new Date().toISOString();
       await cancelPendingFollowUp(job.id, "paid", job.accountId || "owner", "invoice_followup");
       recordPayment(job, "final", "Stripe", getFinalBalanceCents(job) / 100);
-      await sendCompletionCertificateEmailSafe(job, await readSettingsForJob(job), getBaseUrlFromLink(job.squareFinalInvoiceUrl || job.completionProofUrl || ""));
       await sendAdminTextAlertSafe(`PressureFlow: Card final invoice paid for ${formatAlertCustomer(job)}. ${getPressureFlowInvoiceNumber(job, "final")} ${formatAlertMoney(getFinalBalanceCents(job) / 100)}.`);
     }
 

@@ -4542,11 +4542,6 @@ function getDeliveryActions(job) {
     actions.push(deliveryAction("Final Invoice", job.squareFinalInvoiceUrl, "send-final-invoice", "resend-final-invoice-email", "send-final-invoice-text"));
   }
 
-  const canSendCompletionNotice = Boolean(job.completionProofUrl) || statuses.indexOf(job.status) >= statuses.indexOf("Final Invoice Sent");
-  if (canSendCompletionNotice) {
-    actions.push(deliveryAction("Completion Notice", job.completionProofUrl, "send-completion-notice-email", "send-completion-notice-email", "send-completion-notice-text"));
-  }
-
   return actions;
 }
 
