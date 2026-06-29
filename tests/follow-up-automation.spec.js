@@ -133,6 +133,40 @@ test("manual follow-up send cancels pending auto follow-up before sending", asyn
   expect(manualTask.status).toBe("sent");
 });
 
+test("suppress follow-up toggle updates immediately while save is pending", async ({ page }) => {
+  let releaseSave;
+  let resolveStarted;
+  const saveStarted = new Promise((resolve) => {
+    resolveStarted = resolve;
+  });
+  await page.route("**/api/jobs/followup-job/suppress-estimate-follow-up", async (route) => {
+    await new Promise((resolve) => {
+      releaseSave = resolve;
+      resolveStarted();
+    });
+    await route.continue();
+  });
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Followup Stone/ }).click();
+  const toggle = page.locator("[data-suppress-follow-up]");
+  await expect(toggle).not.toBeChecked();
+
+  await page.locator("label.follow-up-toggle-row").click();
+  await saveStarted;
+  await expect(toggle).toBeChecked();
+  await expect(page.locator("#jobDetail")).toContainText("Follow-up suppressed for this job.");
+
+  releaseSave();
+  await expect(page.locator("#jobDetail")).toContainText("Follow-up suppressed for this job.");
+  await expect.poll(async () => {
+    const tasks = await readTasks();
+    const task = tasks.find((item) => item.jobId === "followup-job" && item.type === "estimate_followup");
+    return `${task?.status}:${task?.cancelledReason}`;
+  }).toBe("cancelled:suppressed");
+});
+
 test("contract signing cancels contract follow-up and schedules deposit follow-up", async ({ page }) => {
   const approveResponse = await page.request.post("/api/public/estimates/approve-job/approve", {
     form: { token: "approve-token" }

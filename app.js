@@ -302,6 +302,7 @@ let restoringJobDraft = false;
 let pendingWorkflowAction = "";
 let workflowActionMessage = null;
 let pendingPhotoCaptureRestore = null;
+let suppressFollowUpToggleSequence = 0;
 let detachedModalPhotoCameraInput = null;
 let pendingDetachedModalPhotoCamera = null;
 let detachedBeforePhotoCameraInput = null;
@@ -3955,7 +3956,7 @@ function renderJobDetail() {
   });
   jobDetail.querySelector("[data-preview-follow-up]")?.addEventListener("click", () => openFollowUpDialog(job));
   jobDetail.querySelector("[data-suppress-follow-up]")?.addEventListener("change", (event) => {
-    runAction(job.id, "suppress-estimate-follow-up", { suppressed: event.target.checked });
+    toggleEstimateFollowUpSuppression(job.id, event.target.checked);
   });
   attachPhotoViewerHandlers(jobDetail);
   jobDetail.querySelector("[data-view-job-expenses]")?.addEventListener("click", () => viewExpensesForJob(job.id));
@@ -4060,6 +4061,55 @@ function formatFollowUpStatus(task, suppressed) {
   if (task.status === "sent") return `Follow-up sent ${formatNotificationDate(task.sentAt)} · ${task.source === "manual" ? "manual" : "auto"}.`;
   if (task.status === "cancelled") return `Follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
   return "No follow-up sent yet.";
+}
+
+async function toggleEstimateFollowUpSuppression(jobId, suppressed) {
+  const job = jobs.find((item) => item.id === jobId);
+  if (!job) return;
+
+  const requestSequence = ++suppressFollowUpToggleSequence;
+  const previousSuppressed = Boolean(job.suppressEstimateFollowUp);
+  const previousTasks = followUpTasks.map((task) => ({ ...task }));
+  job.suppressEstimateFollowUp = Boolean(suppressed);
+  if (job.suppressEstimateFollowUp) {
+    const now = new Date().toISOString();
+    followUpTasks = followUpTasks.map((task) => {
+      if (task.jobId !== jobId || task.status !== "pending" || !isFollowUpTaskType(task.type)) {
+        return task;
+      }
+      return {
+        ...task,
+        status: "cancelled",
+        cancelledReason: "suppressed",
+        updatedAt: now
+      };
+    });
+  }
+  workflowActionMessage = null;
+  renderJobDetail();
+
+  try {
+    const updated = await apiRequest(`/api/jobs/${jobId}/suppress-estimate-follow-up`, { suppressed });
+    if (requestSequence !== suppressFollowUpToggleSequence) return;
+
+    Object.assign(job, updated.job);
+    selectedJobId = updated.job.id;
+    await loadFollowUpTasks();
+    renderJobList();
+    renderJobDetail();
+  } catch (error) {
+    if (requestSequence !== suppressFollowUpToggleSequence) return;
+
+    job.suppressEstimateFollowUp = previousSuppressed;
+    followUpTasks = previousTasks;
+    workflowActionMessage = {
+      jobId,
+      type: "error",
+      message: error.message || "Unable to update follow-up suppression. Try again."
+    };
+    showToast(workflowActionMessage.message, "error");
+    renderJobDetail();
+  }
 }
 
 function readActionPayload(button) {
