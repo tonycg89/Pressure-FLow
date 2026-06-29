@@ -1647,12 +1647,18 @@ dialog:not(.modal) > form {
   overflow: hidden;
 }
 
+html.workflow-modal-open,
+body.workflow-modal-open,
 html.customer-dialog-open,
 body.customer-dialog-open {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   overscroll-behavior-y: none;
 }
 
+body.workflow-modal-open .modal[open],
+body.workflow-modal-open .modal[open] *,
 body.customer-dialog-open #customerDialog,
 body.customer-dialog-open #customerDialog * {
   touch-action: auto;
@@ -3181,10 +3187,12 @@ label {
 
 @media (max-width: 560px) {
   .modal {
-    top: 8px;
+    top: max(8px, env(safe-area-inset-top));
+    bottom: max(8px, env(safe-area-inset-bottom));
     transform: translateX(-50%);
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
+    height: auto;
     max-height: calc(100dvh - 16px);
     border-right: 0;
     border-left: 0;
@@ -3192,6 +3200,7 @@ label {
   }
 
   .modal > form {
+    height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
   }
 

@@ -173,6 +173,7 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
   await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#jobDialog");
+  await expectWorkflowModalLocksPageScroll(page, "#jobDialog");
   await page.locator("#jobForm [name='notes']").fill("Still editable after adding a mobile photo.");
   await expect(page.locator("#jobForm [name='notes']")).toHaveValue("Still editable after adding a mobile photo.");
   await expect(page.locator("#jobForm").getByRole("button", { name: "Create Job" })).toBeInViewport();
@@ -396,6 +397,29 @@ async function expectModalCardHasNoVisibleBlankTail(page, selector) {
   });
   expect(result.dialogBackground, `modal wrapper should be transparent: ${JSON.stringify(result, null, 2)}`).toBe("rgba(0, 0, 0, 0)");
   expect(result.tail, `modal card footer blank tail: ${JSON.stringify(result, null, 2)}`).toBeLessThanOrEqual(2);
+}
+
+async function expectWorkflowModalLocksPageScroll(page, selector) {
+  const result = await page.locator(selector).evaluate((dialog) => {
+    const body = document.body;
+    const html = document.documentElement;
+    const modalBody = dialog.querySelector(".modal__body");
+    return {
+      bodyLocked: body.classList.contains("workflow-modal-open"),
+      htmlLocked: html.classList.contains("workflow-modal-open"),
+      bodyOverflow: getComputedStyle(body).overflowY,
+      htmlOverflow: getComputedStyle(html).overflowY,
+      modalBodyOverflow: modalBody ? getComputedStyle(modalBody).overflowY : "",
+      modalBodyCanScroll: modalBody ? modalBody.scrollHeight > modalBody.clientHeight : false
+    };
+  });
+  expect(result, `workflow modal scroll lock: ${JSON.stringify(result, null, 2)}`).toMatchObject({
+    bodyLocked: true,
+    htmlLocked: true,
+    bodyOverflow: "hidden",
+    htmlOverflow: "hidden",
+    modalBodyOverflow: "auto"
+  });
 }
 
 async function installMapboxMocks(page) {

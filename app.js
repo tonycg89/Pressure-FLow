@@ -271,6 +271,7 @@ const photoViewerTitle = document.querySelector("#photoViewerTitle");
 const photoViewerImage = document.querySelector("#photoViewerImage");
 const receiptPhotoInput = document.querySelector("#receiptPhotoInput");
 const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
+const workflowModalDialogs = [jobDialog, customerDialog, expenseDialog, scheduleDialog, completionDialog, paymentDialog].filter(Boolean);
 let pendingScheduleResolve = null;
 let pendingCompletionResolve = null;
 let pendingPaymentResolve = null;
@@ -337,7 +338,9 @@ async function init() {
   customerForm.addEventListener("submit", saveCustomer);
   customerForm.addEventListener("input", saveCustomerDraft);
   customerForm.addEventListener("change", saveCustomerDraft);
-  customerDialog?.addEventListener("close", unlockCustomerDialogViewport);
+  workflowModalDialogs.forEach((dialog) => {
+    dialog.addEventListener("close", syncWorkflowModalViewportLock);
+  });
   document.addEventListener("touchstart", trackCustomerDialogTouchStart, { passive: true });
   document.addEventListener("touchmove", containCustomerDialogTouchMove, { passive: false });
   expenseForm.addEventListener("submit", saveExpense);
@@ -1644,7 +1647,7 @@ function openNewJob({ restoreDraft = true } = {}) {
   if (restoreDraft) {
     restoreJobDraft();
   }
-  jobDialog.showModal();
+  openWorkflowModal(jobDialog);
 }
 
 function openNewJobForCustomer(customer) {
@@ -1656,8 +1659,7 @@ function openNewJobForCustomer(customer) {
 function openNewCustomer() {
   customerForm.reset();
   resetCustomerDialog();
-  customerDialog.showModal();
-  lockCustomerDialogViewport();
+  openWorkflowModal(customerDialog);
   restoreCustomerDraft();
   stabilizeCustomerDialogViewport();
 }
@@ -1676,8 +1678,7 @@ function openEditCustomer() {
   customerForm.elements.notes.value = customer.notes || "";
   currentServiceAreaPhotos = [...(customer.serviceAreaPhotos || [])];
   renderServiceAreaPhotos();
-  customerDialog.showModal();
-  lockCustomerDialogViewport();
+  openWorkflowModal(customerDialog);
   saveCustomerDraft();
   stabilizeCustomerDialogViewport();
 }
@@ -1692,14 +1693,17 @@ function resetCustomerDialog() {
   renderServiceAreaPhotos();
 }
 
-function lockCustomerDialogViewport() {
-  document.documentElement.classList.add("customer-dialog-open");
-  document.body.classList.add("customer-dialog-open");
+function openWorkflowModal(dialog) {
+  dialog.showModal();
+  syncWorkflowModalViewportLock();
 }
 
-function unlockCustomerDialogViewport() {
-  document.documentElement.classList.remove("customer-dialog-open");
-  document.body.classList.remove("customer-dialog-open");
+function syncWorkflowModalViewportLock() {
+  const hasOpenWorkflowModal = workflowModalDialogs.some((dialog) => dialog.open);
+  document.documentElement.classList.toggle("workflow-modal-open", hasOpenWorkflowModal);
+  document.body.classList.toggle("workflow-modal-open", hasOpenWorkflowModal);
+  document.documentElement.classList.toggle("customer-dialog-open", customerDialog?.open || false);
+  document.body.classList.toggle("customer-dialog-open", customerDialog?.open || false);
 }
 
 function trackCustomerDialogTouchStart(event) {
@@ -1804,8 +1808,7 @@ function restoreInterruptedCustomerDraft() {
   renderCustomers();
   customerForm.reset();
   resetCustomerDialog();
-  customerDialog.showModal();
-  lockCustomerDialogViewport();
+  openWorkflowModal(customerDialog);
   restoreCustomerDraft();
   stabilizeCustomerDialogViewport();
 }
@@ -1863,7 +1866,7 @@ function openNewExpense() {
   expenseForm.elements.jobId.value = "";
   renderExpenseJobOptions();
   renderReceiptPhotos();
-  expenseDialog.showModal();
+  openWorkflowModal(expenseDialog);
 }
 
 async function saveExpense(event) {
@@ -1908,7 +1911,7 @@ function openEditExpense() {
   currentReceiptPhotos = [...(expense.receiptPhotos || [])];
   receiptPhotoInput.value = "";
   renderReceiptPhotos();
-  expenseDialog.showModal();
+  openWorkflowModal(expenseDialog);
 }
 
 function resetExpenseDialog() {
@@ -1962,7 +1965,7 @@ function openEditJob() {
   jobForm.elements.accessNotes.value = job.accessNotes || "";
   jobForm.elements.sensitiveAreas.value = job.sensitiveAreas || "";
   renderJobCustomerOptions();
-  jobDialog.showModal();
+  openWorkflowModal(jobDialog);
 }
 
 function resetJobDialog() {
@@ -2245,6 +2248,7 @@ function stabilizeOpenWorkflowDialog(source = null) {
   const dialog = source?.closest?.("dialog") || [customerDialog, jobDialog, expenseDialog, completionDialog].find((item) => item?.open);
   if (!dialog?.open) return;
 
+  syncWorkflowModalViewportLock();
   window.setTimeout(() => {
     requestAnimationFrame(() => {
       const modalBody = dialog.querySelector(".modal__body");
@@ -4512,7 +4516,7 @@ function openScheduleDialog() {
   scheduleForm.elements.durationHours.value = formatDurationHours(durationHours);
   scheduleForm.elements.scheduleDate.value = date;
   scheduleForm.elements.scheduleTime.value = time;
-  scheduleDialog.showModal();
+  openWorkflowModal(scheduleDialog);
 
   return new Promise((resolve) => {
     pendingScheduleResolve = resolve;
@@ -4581,7 +4585,7 @@ function openPaymentDialog(job, invoiceType) {
     const customerName = job?.customerName || "this job";
     paymentDialogSummary.textContent = `${customerName} | ${currency.format(amount)} | ${isDeposit ? "Deposit invoice" : "Final invoice"}`;
   }
-  paymentDialog.showModal();
+  openWorkflowModal(paymentDialog);
 
   return new Promise((resolve) => {
     pendingPaymentResolve = resolve;
@@ -4623,7 +4627,7 @@ function openCompletionDialog(job) {
     input.value = "";
   });
   renderCompletionPhotoPreviews();
-  completionDialog.showModal();
+  openWorkflowModal(completionDialog);
 
   return new Promise((resolve) => {
     pendingCompletionResolve = resolve;
