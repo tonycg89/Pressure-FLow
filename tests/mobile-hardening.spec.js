@@ -173,6 +173,15 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
   await page.locator("#lineItems .line-quantity").first().fill("1");
   await page.locator("#lineItems .line-rate").first().fill("275");
 
+  await page.locator("#jobForm [data-before-photo-camera]").first().evaluate((input) => {
+    input.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }));
+    input.closest("dialog").close();
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Photo Estimate Customer");
+  await expect(page.locator("#lineItems .line-rate").first()).toHaveValue("275");
+
   const photoPath = path.join(DATA_DIR, "estimate-before.png");
   await fs.writeFile(photoPath, Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",

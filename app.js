@@ -298,6 +298,7 @@ let showPostOnboardingGuidance = false;
 let restoringJobDraft = false;
 let pendingWorkflowAction = "";
 let workflowActionMessage = null;
+let pendingPhotoCaptureRestore = null;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -349,6 +350,7 @@ async function init() {
   expenseForm.addEventListener("submit", saveExpense);
   expenseForm.elements.amount?.addEventListener("input", formatExpenseAmountInput);
   serviceAreaPhotoInputs.forEach((input) => {
+    bindPhotoCaptureRestore(input);
     input.addEventListener("change", (event) => addCustomerPhotosFromInput(event));
   });
   addBeforePhotoButton?.addEventListener("click", () => addBeforePhotoRow());
@@ -391,9 +393,11 @@ async function init() {
   scheduleForm.addEventListener("submit", submitScheduleDialog);
   completionForm.addEventListener("submit", submitCompletionDialog);
   completionBeforePhotoInputs.forEach((input) => {
+    bindPhotoCaptureRestore(input);
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.before, renderCompletionPhotoPreviews));
   });
   completionAfterPhotoInputs.forEach((input) => {
+    bindPhotoCaptureRestore(input);
     input.addEventListener("change", (event) => addPhotosFromInput(event, currentCompletionPhotos.after, renderCompletionPhotoPreviews));
   });
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
@@ -1702,6 +1706,71 @@ function openWorkflowModal(dialog) {
   syncWorkflowModalViewportLock();
 }
 
+function bindPhotoCaptureRestore(input) {
+  if (!input || input.dataset.photoCaptureRestoreBound === "true") return;
+
+  input.dataset.photoCaptureRestoreBound = "true";
+  input.addEventListener("pointerdown", () => preparePhotoCaptureHandoff(input));
+  input.addEventListener("click", () => preparePhotoCaptureHandoff(input));
+  input.addEventListener("change", () => clearPendingPhotoCaptureRestore(input));
+}
+
+function preparePhotoCaptureHandoff(input) {
+  const dialog = input?.closest?.("dialog");
+  if (!dialog || !workflowModalDialogs.includes(dialog)) return;
+
+  if (dialog === jobDialog) saveJobDraft();
+  if (dialog === customerDialog) saveCustomerDraft();
+
+  clearPendingPhotoCaptureRestore();
+  pendingPhotoCaptureRestore = {
+    dialog,
+    input,
+    restore: () => restorePhotoCaptureDialog(input, dialog)
+  };
+
+  window.addEventListener("focus", pendingPhotoCaptureRestore.restore, { once: true });
+  window.addEventListener("pageshow", pendingPhotoCaptureRestore.restore, { once: true });
+  document.addEventListener("visibilitychange", pendingPhotoCaptureRestore.restore, { once: true });
+}
+
+function clearPendingPhotoCaptureRestore(input = null) {
+  if (!pendingPhotoCaptureRestore) return;
+  if (input && pendingPhotoCaptureRestore.input !== input) return;
+
+  window.removeEventListener("focus", pendingPhotoCaptureRestore.restore);
+  window.removeEventListener("pageshow", pendingPhotoCaptureRestore.restore);
+  document.removeEventListener("visibilitychange", pendingPhotoCaptureRestore.restore);
+  pendingPhotoCaptureRestore = null;
+}
+
+function restorePhotoCaptureDialog(input, dialog) {
+  clearPendingPhotoCaptureRestore(input);
+
+  window.setTimeout(() => {
+    if (!dialog.open) {
+      if (dialog === jobDialog) {
+        if (jobForm.dataset.editingId) {
+          openWorkflowModal(jobDialog);
+        } else {
+          jobForm.reset();
+          resetJobDialog();
+          renderJobCustomerOptions();
+          restoreJobDraft();
+          openWorkflowModal(jobDialog);
+        }
+      } else if (dialog === customerDialog && hasCustomerDraft()) {
+        customerForm.reset();
+        resetCustomerDialog();
+        restoreCustomerDraft();
+        openWorkflowModal(customerDialog);
+      }
+    }
+
+    stabilizeOpenWorkflowDialog(dialog.open ? input : null);
+  }, 0);
+}
+
 function syncWorkflowModalViewportLock() {
   const hasOpenWorkflowModal = workflowModalDialogs.some((dialog) => dialog.open);
   document.documentElement.classList.toggle("workflow-modal-open", hasOpenWorkflowModal);
@@ -2153,6 +2222,8 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
   const cameraInput = row.querySelector("[data-before-photo-camera]");
   select.value = beforePhotoSections.includes(selectedArea) ? selectedArea : beforePhotoSections[0] || "";
   select.addEventListener("change", () => handleBeforePhotoAreaChange(row));
+  bindPhotoCaptureRestore(uploadInput);
+  bindPhotoCaptureRestore(cameraInput);
   uploadInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
   cameraInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
   row.querySelector("[data-save-before-area]").addEventListener("click", () => saveBeforePhotoArea(row));
