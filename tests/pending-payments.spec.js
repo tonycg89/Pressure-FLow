@@ -39,6 +39,8 @@ test("pending payments can be manually confirmed with method and reference", asy
   await page.getByRole("button", { name: /Alex Rivera/ }).click();
   await page.getByRole("button", { name: "Schedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await expect(page.locator("#scheduleWeekGrid")).toBeVisible();
+  await expect(page.locator("#scheduleWeekGrid")).toContainText("Open");
   await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-10");
   await page.locator("#scheduleForm [name='scheduleTime']").fill("09:00");
   await page.locator("#scheduleForm [name='durationHours']").fill("2");
@@ -182,6 +184,30 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   const zoe = jobs.find((item) => item.id === "88888888-8888-4888-8888-888888888888");
   expect(zoe.status).toBe("Contract Signed");
   expect(zoe.squareDepositInvoiceId || "").toBe("");
+});
+
+test("schedule dialog blocks overlapping job times", async ({ page }) => {
+  await updateStoredJob("66666666-6666-4666-8666-666666666666", {
+    status: "Scheduled",
+    scheduledAt: "2026-06-10T10:00",
+    jobDurationMinutes: 180
+  });
+
+  await login(page);
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await page.getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-10");
+  await page.locator("#scheduleForm [name='scheduleTime']").fill("10:30");
+  await page.locator("#scheduleForm [name='durationHours']").fill("2");
+  await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job", exact: true }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await expect(page.locator("#scheduleConflictStatus")).toContainText("Already booked: Contract Carla");
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const zoe = jobs.find((item) => item.id === "88888888-8888-4888-8888-888888888888");
+  expect(zoe.status).toBe("Contract Signed");
 });
 
 test("contractor is blocked before sending final invoice when no payment methods are configured", async ({ page }) => {

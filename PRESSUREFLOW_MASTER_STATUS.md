@@ -416,6 +416,16 @@ Product guardrails:
 - Completion proof links and public document actions meet mobile touch target requirements.
 - Automated mobile browser coverage verifies form sizing, workflow action sizing, map control sizing, public document overflow, completion proof link sizing, public estimate rendering, and public pay/sign actions.
 
+## Schedule and Map Usability Fixes
+
+- Schedule Job now includes a compact week picker with booked job times and blocks overlapping schedule submissions.
+- Workspace Calendar keeps the Today button label and adds a visible complete-job count next to scheduled jobs.
+- Delete Job now updates the UI optimistically and rolls back if the server rejects the delete.
+- New Job cancel/draft behavior now avoids restoring only a selected customer without the customer details.
+- Login copy is shortened to "Sign in."
+- Measure From Map places Close Shape on the map and updates the displayed drawn square footage immediately after closing the polygon.
+- Browser coverage verifies calendar counts, schedule week picker visibility, overlap blocking, map close-area updates, and mobile modal/touch-target stability.
+
 ## Next
 
 - Deploy the latest P1/P2 public workflow, invoice payment, UX cleanup, Measure From Map stability, mobile hardening, Package 06C-2A UX fixes, and Package 06C-2B customer trust polish.

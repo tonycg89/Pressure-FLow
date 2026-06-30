@@ -57,7 +57,7 @@ const loginPage = `<!doctype html>
   <body>
     <main>
       <h1>PressureFlow</h1>
-      <p>Sign in to manage your pressure washing jobs.</p>
+      <p>Sign in.</p>
       <form method="post" action="/auth/login">
         <label>
           Email

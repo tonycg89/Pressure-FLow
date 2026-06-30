@@ -224,6 +224,11 @@ async function expectCloseShapeButtonClosesMockPolygon(page) {
         getCoordinates: () => [[[-117.3755, 33.9806], [-117.3754, 33.9806], [-117.3754, 33.9807]]]
       }
     };
+    window.__pressureFlowDraw.features = [{
+      type: "Feature",
+      properties: { areaMeters: 50 },
+      geometry: { type: "Polygon", coordinates: state.polygon.getCoordinates() }
+    }];
     const context = {
       map: {
         project: () => ({ x: 100, y: 100 })
@@ -234,7 +239,8 @@ async function expectCloseShapeButtonClosesMockPolygon(page) {
   });
   await page.locator("#closeMeasurementShapeButton").click();
   await expect.poll(() => page.evaluate(() => window.__drawClosed)).toBe(true);
-  await expect(page.locator("#measurementStatus")).toContainText("Shape closed");
+  await expect(page.locator("#measurementStatus")).toContainText("SqFt drawn");
+  await expect(page.locator("#measuredArea")).not.toHaveText("0 SqFt");
 }
 
 async function installMapboxMocks(page) {

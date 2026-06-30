@@ -232,6 +232,11 @@ const expenseDialogTitle = expenseDialog.querySelector(".dialog-header h2");
 const addServiceTypeButton = document.querySelector("#addServiceTypeButton");
 const scheduleDialog = document.querySelector("#scheduleDialog");
 const scheduleForm = document.querySelector("#scheduleForm");
+const scheduleWeekTitle = document.querySelector("#scheduleWeekTitle");
+const scheduleWeekGrid = document.querySelector("#scheduleWeekGrid");
+const scheduleWeekPrevButton = document.querySelector("#scheduleWeekPrevButton");
+const scheduleWeekNextButton = document.querySelector("#scheduleWeekNextButton");
+const scheduleConflictStatus = document.querySelector("#scheduleConflictStatus");
 const completionDialog = document.querySelector("#completionDialog");
 const completionForm = document.querySelector("#completionForm");
 const paymentDialog = document.querySelector("#paymentDialog");
@@ -286,6 +291,8 @@ const receiptPhotoInput = document.querySelector("#receiptPhotoInput");
 const receiptPhotoPreview = document.querySelector("#receiptPhotoPreview");
 const workflowModalDialogs = [jobDialog, customerDialog, expenseDialog, scheduleDialog, completionDialog, paymentDialog].filter(Boolean);
 let pendingScheduleResolve = null;
+let pendingScheduleJobId = "";
+let scheduleWeekCursorDate = startOfDay(new Date());
 let pendingCompletionResolve = null;
 let pendingPaymentResolve = null;
 let pendingFollowUpJobId = "";
@@ -308,6 +315,7 @@ let beforePhotoSections = [...defaultBeforePhotoSections];
 let onboardingCurrentStep = 0;
 let showPostOnboardingGuidance = false;
 let restoringJobDraft = false;
+let suppressJobDraftSave = false;
 let pendingWorkflowAction = "";
 let workflowActionMessage = null;
 let pendingPhotoCaptureRestore = null;
@@ -427,6 +435,14 @@ async function init() {
   clearBusinessLogoButton?.addEventListener("click", () => clearBusinessLogo(businessLogoInput));
   addUserButton?.addEventListener("click", addSettingsUser);
   scheduleForm.addEventListener("submit", submitScheduleDialog);
+  scheduleWeekPrevButton?.addEventListener("click", () => shiftScheduleWeek(-1));
+  scheduleWeekNextButton?.addEventListener("click", () => shiftScheduleWeek(1));
+  scheduleForm.elements.scheduleDate?.addEventListener("change", () => {
+    scheduleWeekCursorDate = startOfWeek(parseDateKey(scheduleForm.elements.scheduleDate.value) || scheduleWeekCursorDate);
+    renderScheduleWeekPicker();
+  });
+  scheduleForm.elements.scheduleTime?.addEventListener("change", renderScheduleWeekPicker);
+  scheduleForm.elements.durationHours?.addEventListener("input", renderScheduleWeekPicker);
   completionForm.addEventListener("submit", submitCompletionDialog);
   completionBeforePhotoInputs.forEach((input) => {
     bindPhotoCaptureRestore(input);
@@ -449,7 +465,10 @@ async function init() {
   scheduleForm.querySelectorAll("[data-duration-step]").forEach((button) => {
     button.addEventListener("click", adjustScheduleDuration);
   });
-  scheduleDialog.addEventListener("cancel", () => resolveScheduleDialog(null));
+  scheduleDialog.addEventListener("cancel", () => {
+    pendingScheduleJobId = "";
+    resolveScheduleDialog(null);
+  });
   completionDialog.addEventListener("cancel", () => resolveCompletionDialog(null));
   paymentDialog?.addEventListener("cancel", () => resolvePaymentDialog(null));
   paymentForm?.addEventListener("submit", submitPaymentDialog);
@@ -2158,7 +2177,7 @@ function resetJobDialog() {
 }
 
 function saveJobDraft() {
-  if (restoringJobDraft || jobForm.dataset.editingId) return;
+  if (restoringJobDraft || suppressJobDraftSave || jobForm.dataset.editingId) return;
 
   const fields = Object.fromEntries(new FormData(jobForm).entries());
   const draft = {
@@ -2202,6 +2221,15 @@ function restoreJobDraft() {
     after: [...(draft.jobPhotos?.after || [])]
   };
   discountSelect.value = String(draft.discountPercent || "0");
+  const restoredCustomerId = jobForm.elements.customerId?.value || "";
+  const restoredCustomer = restoredCustomerId
+    ? customers.find((customer) => customer.id === restoredCustomerId)
+    : null;
+  if (restoredCustomer) {
+    fillJobCustomerFields(restoredCustomer);
+  } else if (jobCustomerSelect) {
+    jobCustomerSelect.value = "";
+  }
   renderJobPhotoPreviews();
   updateEstimateTotals();
   restoringJobDraft = false;
@@ -2441,9 +2469,13 @@ function closeDialogFromButton(event) {
   if (!dialog) return;
 
   if (dialog === jobDialog) {
+    suppressJobDraftSave = true;
     clearJobDraft();
     jobForm.reset();
     resetJobDialog();
+    window.setTimeout(() => {
+      suppressJobDraftSave = false;
+    }, 0);
   }
 
   if (dialog === customerDialog) {
@@ -2456,6 +2488,7 @@ function closeDialogFromButton(event) {
   }
 
   if (dialog === scheduleDialog) {
+    pendingScheduleJobId = "";
     resolveScheduleDialog(null);
   }
 
@@ -2834,7 +2867,9 @@ function closeActiveMeasurementShape() {
     point: firstPoint,
     featureTarget: { properties: { coord_path: "0.0" } }
   });
-  measurementStatus.textContent = "Shape closed. Add or update the named area.";
+  window.setTimeout(() => {
+    updateMeasurementFromDraw();
+  }, 0);
 }
 
 function getDrawPolygonCoordinateCount(state) {
@@ -3017,6 +3052,9 @@ function updateMeasurementFromDraw() {
     zoom: mapboxMap.getZoom(),
     capturedAt: new Date().toISOString()
   };
+  if (measuredArea && !(currentMeasurement.areas || []).length) {
+    measuredArea.textContent = `${squareFeet.toLocaleString("en-US")} SqFt`;
+  }
   measurementStatus.textContent = `${squareFeet.toLocaleString("en-US")} SqFt drawn. Add or update the named area.`;
 }
 
@@ -3350,10 +3388,8 @@ function renderCalendar() {
   const visibleJobs = getCalendarVisibleJobs(scheduledJobs);
   const rangeTitle = getCalendarRangeTitle();
   calendarRangeTitle.textContent = rangeTitle;
-  if (calendarTodayButton) {
-    calendarTodayButton.textContent = rangeTitle;
-  }
-  calendarJobCount.textContent = `${visibleJobs.length} scheduled job${visibleJobs.length === 1 ? "" : "s"}`;
+  const completedVisibleJobs = visibleJobs.filter(isJobComplete);
+  calendarJobCount.textContent = `${visibleJobs.length} scheduled job${visibleJobs.length === 1 ? "" : "s"} | ${completedVisibleJobs.length} complete`;
 
   if (!scheduledJobs.length) {
     calendarGrid.className = "calendar-grid calendar-grid--empty";
@@ -4963,7 +4999,7 @@ async function runAction(jobId, action, actionPayload = {}) {
   }
 
   if (action === "schedule") {
-    const schedule = await openScheduleDialog();
+    const schedule = await openScheduleDialog(jobs.find((item) => item.id === jobId));
     if (!schedule) return;
 
     payload.scheduledAt = schedule.scheduledAt;
@@ -5035,13 +5071,20 @@ async function deleteJob(jobId) {
   const confirmed = confirm(`Delete ${job.customerName}'s job? This removes it from PressureFlow.`);
   if (!confirmed) return;
 
+  const previousJobs = [...jobs];
+  const previousSelectedJobId = selectedJobId;
+  jobs = jobs.filter((item) => item.id !== jobId);
+  selectedJobId = jobs[0]?.id ?? null;
+  render();
+  showToast("Job deleted.", "success");
+
   try {
     await apiRequest(`/api/jobs/${jobId}`, {}, "DELETE");
-    jobs = jobs.filter((item) => item.id !== jobId);
-    selectedJobId = jobs[0]?.id ?? null;
-    await loadJobs();
   } catch (error) {
-    alert(error.message);
+    jobs = previousJobs;
+    selectedJobId = previousSelectedJobId;
+    render();
+    showToast(error.message || "Unable to delete job. It has been restored.", "error");
   }
 }
 
@@ -5152,14 +5195,20 @@ function getDefaultScheduleValue() {
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-function openScheduleDialog() {
+function openScheduleDialog(job = null) {
   const defaultValue = getDefaultScheduleValue();
   const [date, time] = defaultValue.split("T");
   const durationHours = Math.max(Number(settings.defaultJobDurationMinutes || 180) / 60, 0.25);
 
+  pendingScheduleJobId = job?.id || "";
+  if (scheduleConflictStatus) {
+    scheduleConflictStatus.textContent = "";
+  }
   scheduleForm.elements.durationHours.value = formatDurationHours(durationHours);
   scheduleForm.elements.scheduleDate.value = date;
   scheduleForm.elements.scheduleTime.value = time;
+  scheduleWeekCursorDate = startOfWeek(parseDateKey(date) || new Date());
+  renderScheduleWeekPicker();
   openWorkflowModal(scheduleDialog);
 
   return new Promise((resolve) => {
@@ -5172,6 +5221,7 @@ function submitScheduleDialog(event) {
 
   if (event.submitter?.value === "cancel") {
     scheduleDialog.close();
+    pendingScheduleJobId = "";
     resolveScheduleDialog(null);
     return;
   }
@@ -5184,7 +5234,16 @@ function submitScheduleDialog(event) {
     return;
   }
 
+  const conflict = findScheduleConflict(`${scheduleDate}T${scheduleTime}`, Math.round(durationHours * 60), pendingScheduleJobId);
+  if (conflict) {
+    if (scheduleConflictStatus) {
+      scheduleConflictStatus.textContent = `Already booked: ${conflict.customerName} at ${formatCalendarTime(parseCalendarDate(conflict.scheduledAt))}. Choose another time.`;
+    }
+    return;
+  }
+
   scheduleDialog.close();
+  pendingScheduleJobId = "";
   resolveScheduleDialog({
     scheduledAt: `${scheduleDate}T${scheduleTime}`,
     jobDurationMinutes: Math.round(durationHours * 60)
@@ -5195,6 +5254,89 @@ function adjustScheduleDuration(event) {
   const input = scheduleForm.elements.durationHours;
   const step = Number(event.currentTarget.dataset.durationStep || 0);
   input.value = formatDurationHours(normalizeDurationHours(input.value) + step);
+  renderScheduleWeekPicker();
+}
+
+function renderScheduleWeekPicker() {
+  if (!scheduleWeekGrid || !scheduleWeekTitle || !scheduleForm) return;
+
+  const selectedDate = parseDateKey(scheduleForm.elements.scheduleDate.value);
+  if (selectedDate && !isDateInRange(selectedDate, scheduleWeekCursorDate, addDays(scheduleWeekCursorDate, 7))) {
+    scheduleWeekCursorDate = startOfWeek(selectedDate);
+  }
+
+  const weekStart = startOfWeek(scheduleWeekCursorDate);
+  const weekEnd = addDays(weekStart, 6);
+  const selectedKey = scheduleForm.elements.scheduleDate.value || "";
+  const todayKey = getDateKey(new Date());
+  const grouped = groupJobsByDate(getScheduledJobs());
+  const pendingStart = `${scheduleForm.elements.scheduleDate.value}T${scheduleForm.elements.scheduleTime.value}`;
+  const pendingMinutes = Math.round(normalizeDurationHours(scheduleForm.elements.durationHours.value) * 60);
+  const conflict = selectedKey && scheduleForm.elements.scheduleTime.value
+    ? findScheduleConflict(pendingStart, pendingMinutes, pendingScheduleJobId)
+    : null;
+
+  scheduleWeekCursorDate = weekStart;
+  scheduleWeekTitle.textContent = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  if (scheduleConflictStatus) {
+    scheduleConflictStatus.textContent = conflict
+      ? `Conflict: ${conflict.customerName} is already booked at ${formatCalendarTime(parseCalendarDate(conflict.scheduledAt))}.`
+      : "";
+  }
+
+  scheduleWeekGrid.innerHTML = Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(weekStart, index);
+    const key = getDateKey(date);
+    const dayJobs = grouped.get(key) || [];
+    const isSelected = key === selectedKey;
+    const classes = [
+      "schedule-week-day",
+      isSelected ? "selected" : "",
+      key === todayKey ? "today" : "",
+      dayJobs.length ? "booked" : ""
+    ].filter(Boolean).join(" ");
+    return `
+      <button class="${classes}" type="button" data-schedule-date="${key}">
+        <span class="schedule-week-day__name">${formatCalendarWeekday(date)}</span>
+        <strong>${date.getDate()}</strong>
+        <span class="schedule-week-day__count">${dayJobs.length ? `${dayJobs.length} booked` : "Open"}</span>
+        <span class="schedule-week-day__jobs">
+          ${dayJobs.slice(0, 3).map((job) => `
+            <span>${formatCalendarTime(parseCalendarDate(job.scheduledAt))} ${escapeHtml(job.customerName)}</span>
+          `).join("")}
+          ${dayJobs.length > 3 ? `<span>+${dayJobs.length - 3} more</span>` : ""}
+        </span>
+      </button>
+    `;
+  }).join("");
+
+  scheduleWeekGrid.querySelectorAll("[data-schedule-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      scheduleForm.elements.scheduleDate.value = button.dataset.scheduleDate;
+      renderScheduleWeekPicker();
+    });
+  });
+}
+
+function shiftScheduleWeek(direction) {
+  scheduleWeekCursorDate = addDays(startOfWeek(scheduleWeekCursorDate), direction * 7);
+  renderScheduleWeekPicker();
+}
+
+function findScheduleConflict(scheduledAt, durationMinutes, excludedJobId = "") {
+  const start = parseCalendarDate(scheduledAt);
+  const minutes = Number(durationMinutes || 0);
+  if (!start || minutes <= 0) return null;
+
+  const end = new Date(start.getTime() + minutes * 60000);
+  return getScheduledJobs().find((job) => {
+    if (job.id === excludedJobId) return false;
+    const existingStart = parseCalendarDate(job.scheduledAt);
+    if (!existingStart) return false;
+    const existingMinutes = Number(job.jobDurationMinutes || settings.defaultJobDurationMinutes || 180);
+    const existingEnd = new Date(existingStart.getTime() + existingMinutes * 60000);
+    return start < existingEnd && end > existingStart;
+  }) || null;
 }
 
 function normalizeDurationHours(value) {
@@ -5303,6 +5445,16 @@ function getStatusClass(status) {
   if (status === "Paid") return "done";
   if (status === "Deposit Sent" || status === "Final Invoice Sent") return "blocked";
   return "";
+}
+
+function isJobComplete(job) {
+  const completedIndex = statuses.indexOf("Completed");
+  const statusIndex = statuses.indexOf(job?.status);
+  return Boolean(
+    job?.squareFinalPaidAt ||
+    job?.status === "Paid" ||
+    (completedIndex >= 0 && statusIndex >= completedIndex)
+  );
 }
 
 init();

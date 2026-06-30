@@ -491,14 +491,6 @@ label.compact-select {
   gap: 6px;
 }
 
-.calendar-current-button {
-  min-width: 180px;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .segmented-control {
   padding: 3px;
   border: 1px solid var(--border);
@@ -2691,6 +2683,94 @@ label {
   line-height: 1.4;
 }
 
+.schedule-week-picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.schedule-week-header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 8px;
+  align-items: center;
+}
+
+.schedule-week-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.schedule-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.schedule-week-day {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 116px;
+  padding: 9px 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schedule-week-day.selected {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 18%, transparent);
+}
+
+.schedule-week-day.today {
+  background: #f2f7f5;
+}
+
+.schedule-week-day.booked {
+  border-color: color-mix(in srgb, var(--status-warning-text) 28%, var(--line));
+}
+
+.schedule-week-day__name,
+.schedule-week-day__count,
+.schedule-week-day__jobs {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.schedule-week-day strong {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.schedule-week-day__jobs {
+  display: grid;
+  gap: 3px;
+  min-height: 32px;
+}
+
+.schedule-week-day__jobs span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-conflict-status {
+  color: var(--status-danger-text);
+  font-weight: 800;
+}
+
 .export-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2980,6 +3060,10 @@ label {
   align-items: end;
 }
 
+.measurement-map-shell {
+  position: relative;
+}
+
 .measurement-map {
   min-height: 520px;
   overflow: hidden;
@@ -3005,9 +3089,14 @@ label {
 }
 
 .measurement-close-shape-button {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
   min-height: 44px;
   border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
   background: var(--secondary);
+  box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
 }
 
 .measurement-summary {
@@ -3562,6 +3651,32 @@ label {
 
   .measurement-map {
     min-height: 360px;
+  }
+
+  .schedule-week-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-week-day {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 76px;
+  }
+
+  .schedule-week-day__name,
+  .schedule-week-day strong,
+  .schedule-week-day__count {
+    grid-column: 1;
+  }
+
+  .schedule-week-day__jobs {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+  }
+
+  .measurement-close-shape-button {
+    right: 10px;
+    bottom: 10px;
   }
 
   .measurement-map .mapboxgl-ctrl {

@@ -98,9 +98,9 @@ test("calendar view shows scheduled jobs by month week and day", async ({ page }
   await page.getByRole("button", { name: "Calendar" }).click();
   await expect(page.locator("#calendarView")).toBeVisible();
   await expect(page.locator("#calendarRangeTitle")).toBeVisible();
-  await expect(page.locator("#calendarTodayButton")).toHaveText(new RegExp(new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })));
-  await expect(page.locator("#calendarTodayButton")).not.toHaveText("Today");
+  await expect(page.locator("#calendarTodayButton")).toHaveText("Today");
   await expect(page.locator("#calendarJobCount")).toContainText("2 scheduled jobs");
+  await expect(page.locator("#calendarJobCount")).toContainText("0 complete");
   await expect(page.locator("#calendarGrid")).toContainText("Blank Sent");
   await expect(page.locator("#calendarGrid")).toContainText("Blank Accepted");
 

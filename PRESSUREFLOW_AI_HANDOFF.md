@@ -385,6 +385,18 @@ Empty API response handling improved after deployed estimate-send alert:
 - Tests added/updated: job action failure with an empty HTTP 502 response shows `The server returned an empty response HTTP 502. Please try again.`
 - Tests run: `node --check app.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (5 passed); `npm.cmd run check`; `npm.cmd run test:browser` (64 passed).
 
+Schedule, delete, login, and Measure From Map usability fixes:
+
+- Schedule Job now includes a compact weekly availability picker that shows booked times and blocks overlapping submissions before the schedule action is sent.
+- Workspace Calendar keeps the Today control label and shows scheduled plus complete counts for the visible range.
+- Delete Job now removes the job from the UI immediately after confirmation and rolls back if the server delete fails.
+- New Job cancel/draft handling clears cancelled drafts and repopulates saved customer details if a stale draft contains only the customer id.
+- Login copy is shortened to "Sign in."
+- Measure From Map places Close Shape inside the map area and updates the displayed drawn SqFt immediately after closing the polygon.
+- Files changed: `index.html`, `app.js`, `styles.css`, `http-utils.js`, `tests\dashboard-analytics.spec.js`, `tests\pending-payments.spec.js`, `tests\measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Tests added/updated: calendar Today/count expectations, schedule week picker visibility, schedule overlap blocking, and map Close Shape SqFt update.
+- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (6 passed); `npm.cmd run test:browser -- tests/pending-payments.spec.js` (10 passed); `npm.cmd run test:browser -- tests/measurement-map.spec.js` (2 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (9 passed); `npm.cmd run smoke:test-user-safety`.
+
 ## 6. Audit Environment Requirements
 
 Required for audits:
