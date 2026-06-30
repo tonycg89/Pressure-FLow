@@ -3348,7 +3348,11 @@ function renderCalendar() {
 
   const scheduledJobs = getScheduledJobs();
   const visibleJobs = getCalendarVisibleJobs(scheduledJobs);
-  calendarRangeTitle.textContent = getCalendarRangeTitle();
+  const rangeTitle = getCalendarRangeTitle();
+  calendarRangeTitle.textContent = rangeTitle;
+  if (calendarTodayButton) {
+    calendarTodayButton.textContent = rangeTitle;
+  }
   calendarJobCount.textContent = `${visibleJobs.length} scheduled job${visibleJobs.length === 1 ? "" : "s"}`;
 
   if (!scheduledJobs.length) {
