@@ -63,6 +63,39 @@ test("settings save shows lightweight success feedback", async ({ page }) => {
   expect(settings.businessLogoDataUrl).toMatch(/^data:image\/png;base64,/);
 });
 
+test("customer save auth failures show session toast without losing the draft", async ({ page }) => {
+  const dialogs = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+
+  await login(page);
+  await page.route("**/api/customers", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Authentication required." })
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await page.locator("#customerForm [name='customerName']").fill("Session Draft Customer");
+  await page.locator("#customerForm [name='email']").fill("session.draft@example.com");
+  await page.locator("#customerForm").getByRole("button", { name: "Save Customer" }).click();
+
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await expect(page.locator("#customerForm [name='customerName']")).toHaveValue("Session Draft Customer");
+  await expect(page.locator(".toast")).toContainText("Your session expired. Sign in again to save changes.");
+  await expect(page.locator(".toast").getByRole("button", { name: "Sign in" })).toBeVisible();
+  expect(dialogs).toEqual([]);
+});
+
 test("settings opens from each main view and view headings stay current", async ({ page }) => {
   await login(page);
 

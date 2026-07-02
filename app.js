@@ -2033,7 +2033,8 @@ async function saveCustomer(event) {
       });
     }
   } catch (error) {
-    alert(error.message);
+    if (handleAuthenticationRequired(error)) return;
+    showToast(error.message || "Customer was not saved. Try again.", "error");
   }
 }
 
@@ -5136,6 +5137,7 @@ async function apiRequest(url, payload, method = "POST") {
   try {
     response = await fetch(url, {
       method,
+      credentials: "same-origin",
       headers,
       body: JSON.stringify(payload)
     });
@@ -5150,21 +5152,48 @@ async function readJsonResponse(response, fallbackMessage = "Request failed.") {
   const rawText = await response.text();
   const statusText = response.status ? ` HTTP ${response.status}` : "";
   if (!rawText.trim()) {
-    throw new Error(`The server returned an empty response${statusText}. Please try again.`);
+    throw createHttpError(`The server returned an empty response${statusText}. Please try again.`, response);
   }
 
   let data;
   try {
     data = JSON.parse(rawText);
   } catch {
-    throw new Error(`The server returned an unreadable response${statusText}. Please try again.`);
+    throw createHttpError(`The server returned an unreadable response${statusText}. Please try again.`, response);
   }
 
   if (!response.ok) {
-    throw new Error(data.error || `${fallbackMessage}${statusText}`);
+    const message = response.status === 401
+      ? "Your session expired. Sign in again to save changes."
+      : data.error || `${fallbackMessage}${statusText}`;
+    throw createHttpError(message, response, data);
   }
 
   return data;
+}
+
+function createHttpError(message, response, data = null) {
+  const error = new Error(message);
+  error.status = response?.status || 0;
+  error.data = data;
+  if (error.status === 401) {
+    error.code = "auth_required";
+  }
+  return error;
+}
+
+function handleAuthenticationRequired(error) {
+  if (error?.status !== 401 && error?.code !== "auth_required") {
+    return false;
+  }
+
+  showToast("Your session expired. Sign in again to save changes.", "error", {
+    label: "Sign in",
+    onClick: () => {
+      window.location.href = "/login";
+    }
+  });
+  return true;
 }
 
 function buildReminderMessage(job) {
