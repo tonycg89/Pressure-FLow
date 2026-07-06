@@ -83,6 +83,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07C-2 backup, recovery, and data safety audit is complete.
 - Package 07C-3 operational monitoring and error visibility is complete.
 - Package 08A-1 mobile photo upload flow stabilization is complete.
+- Package 08E estimate email/calendar decoupling is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -96,6 +97,17 @@ Package 08A-1 mobile photo upload flow stabilization status:
 - Customer save and job create submit paths show immediate button loading with delayed status feedback for slower saves without changing API payloads, backend validation, auth, tenant isolation, integrations, storage format, or database behavior.
 - Tests run: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` passed 11/11.
 - Full regression note: `npm.cmd run test:browser` passed 75/76. The one failure reproduced independently in `tests/destructive-workflows.spec.js` and is unrelated to Package 08A-1: the contract page renders `Signed` while the test expects `Signed agreement`.
+
+Package 08E estimate email/calendar decoupling status:
+
+- Completed July 6, 2026.
+- `email-delivery.js` now sends Google/Gmail email through `integrations/gmail.js`; it no longer imports Gmail behavior from `integrations/google.js`.
+- `integrations/google.js` remains the Google OAuth/calendar module for auth URL, token exchange, and calendar event creation. Calendar token/auth errors are scoped to scheduling/calendar actions.
+- Estimate send and resend no longer convert email failures into successful API responses. If `sendEstimateEmail` rejects, the job action rejects, the frontend catch path shows an error toast, and no false "resent" success toast is shown.
+- SMTP email delivery is verified independent of missing/expired Google Calendar state. Google/Gmail email failures use email-specific reconnect copy; calendar failures use scheduling-specific reconnect copy.
+- Settings copy now tells users to connect Google/Gmail or switch to SMTP for email, instead of requiring Calendar for automated emails.
+- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/estimate-email-decoupling.spec.js` (4 passed); `npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/follow-up-automation.spec.js tests/pending-payments.spec.js` (39 passed).
+- Full regression note: `npm.cmd run test:browser` passed 79/80. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
 
 Phase 07D deployment sandbox verification status:
 

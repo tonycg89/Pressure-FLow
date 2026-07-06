@@ -1288,7 +1288,7 @@ function fillSettingsForm() {
   }
   renderBusinessLogoPreview();
 
-  const googleText = settings.hasGoogleRefreshToken ? " Google Calendar connected." : settings.hasGoogleClientSecret ? " Google secret saved. Connect Calendar next." : "";
+  const googleText = settings.hasGoogleRefreshToken ? " Google connected for Gmail and calendar actions." : settings.hasGoogleClientSecret ? " Google secret saved. Connect Google next for Gmail or calendar actions." : "";
   settingsStatus.textContent = googleText || "PressureFlow invoices will use the payment methods saved above.";
 }
 
@@ -1300,7 +1300,7 @@ function renderIntegrationStatuses() {
         : "SMTP selected. Save an SMTP/app password before sending email."
       : settings.hasGoogleRefreshToken
         ? "Google/Gmail sending is connected."
-        : "Google/Gmail selected. Connect Google Calendar to send automated emails.";
+        : "Google/Gmail selected. Connect Google or switch to SMTP before sending automated emails.";
   }
   if (squareIntegrationStatus) {
     squareIntegrationStatus.textContent = settings.hasSquareAccessToken
@@ -5218,7 +5218,11 @@ async function runAction(jobId, action, actionPayload = {}) {
       }
     }
     if (action === "resend-estimate-email") {
-      showToast(`Estimate resent to ${updated.job.email}.`);
+      if (updated.job.estimateEmailStatus === "failed") {
+        showToast(updated.job.estimateEmailError || "Estimate email did not send. Check email settings and try again.", "error");
+      } else {
+        showToast(`Estimate resent to ${updated.job.email}.`);
+      }
     }
     if (action === "send-contract" || action === "resend-contract-email") {
       showToast(`Contract sent to ${updated.job.email}.`);

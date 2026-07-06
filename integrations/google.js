@@ -1,4 +1,3 @@
-const { buildMimeEmailBase64Url, formatEmailAddressHeader } = require("./email");
 const { getDepositCents } = require("../billing");
 const { addMinutesToLocalDateTime, withPacificOffset } = require("../scheduling");
 
@@ -62,37 +61,6 @@ async function getGoogleAccessToken(settings) {
   }
 
   return data.access_token;
-}
-
-async function sendGmailEmail(settings, message) {
-  const accessToken = await getGoogleAccessToken(settings);
-  const senderAddress = settings.businessEmail || settings.googleCalendarId || "";
-  const raw = buildMimeEmailBase64Url({
-    from: formatEmailAddressHeader(senderAddress, settings.businessName),
-    to: message.to,
-    subject: message.subject,
-    textBody: message.textBody,
-    htmlBody: message.htmlBody,
-    attachments: message.attachments || []
-  });
-
-  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ raw }),
-    signal: googleRequestTimeoutSignal()
-  });
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const messageText = data.error?.message || data.error_description || "Google email send failed.";
-    throw new Error(`${messageText} Reconnect Google Calendar from Settings so PressureFlow can send estimate emails.`);
-  }
-
-  return data;
 }
 
 async function createGoogleCalendarEventRequest(settings, event) {
@@ -173,7 +141,7 @@ function requireGoogleSettings(settings, requireRefreshToken) {
 
 function normalizeGoogleAuthErrorMessage(data, fallback) {
   if (data?.error === "invalid_grant") {
-    return "Google access has expired or was revoked. Open Settings and click Connect Google Calendar again so PressureFlow can send estimate emails.";
+    return "Google Calendar access has expired or was revoked. Open Settings and click Connect Google again before scheduling jobs.";
   }
 
   return fallback;
@@ -188,6 +156,5 @@ module.exports = {
   createGoogleCalendarEvent,
   createGoogleCalendarEventRequest,
   exchangeGoogleCode,
-  getGoogleAccessToken,
-  sendGmailEmail
+  getGoogleAccessToken
 };

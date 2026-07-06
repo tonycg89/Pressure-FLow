@@ -8,7 +8,7 @@ const {
   buildPressureFlowInvoiceEmailMessage,
   buildScheduleConfirmationEmailMessage
 } = require("./email-content");
-const { sendGmailEmail } = require("./integrations/google");
+const { sendGmailEmail } = require("./integrations/gmail");
 const { sendSmtpEmail } = require("./integrations/smtp");
 const {
   createOperationalLogger,
@@ -97,10 +97,10 @@ async function sendCustomerEmail(settings, message, context = {}) {
 
   if (process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY === "true") {
     if (settings.emailSendProvider !== "smtp" && !settings.googleRefreshToken && !isAuditGoogleMockEnabled()) {
-      const error = new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+      const error = new Error("Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP.");
       logger.error("email_send_failed", {
         ...logContext,
-        reason: "google_not_connected",
+        reason: "google_email_not_connected",
         error
       });
       throw error;

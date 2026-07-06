@@ -103,15 +103,7 @@ function createJobActionHandler({
       if (!isEmailDelivery) {
         job.estimateTextPreparedAt = new Date().toISOString();
       } else {
-        try {
-          await sendEstimateEmail(job, settings);
-        } catch (error) {
-          await clearRevokedGoogleToken(settings, error, writeSettings);
-          job.estimateEmailStatus = "failed";
-          job.estimateEmailError = error.message || "Estimate email could not be sent.";
-          job.estimateEmailFailedAt = new Date().toISOString();
-          return;
-        }
+        await sendEstimateEmail(job, settings);
         job.estimateEmailStatus = "sent";
         job.estimateEmailError = "";
         job.estimateEmailFailedAt = "";
@@ -340,15 +332,6 @@ function normalizePaymentMethod(value) {
   return allowed.has(method) ? method : "Other";
 }
 
-async function clearRevokedGoogleToken(settings, error, writeSettings) {
-  if (error?.code !== "GOOGLE_AUTH_REVOKED" || !settings?.googleRefreshToken || typeof writeSettings !== "function") {
-    return;
-  }
-
-  settings.googleRefreshToken = "";
-  await writeSettings(settings);
-}
-
 function normalizeNumber(value, fallback, min, max) {
   const number = Number(value ?? fallback);
   if (!Number.isFinite(number)) {
@@ -406,7 +389,6 @@ function isEmailDeliveryAction(action) {
 }
 
 module.exports = {
-  clearRevokedGoogleToken,
   createJobActionHandler,
   normalizeNumber,
   shouldCreateGoogleCalendarEvent
