@@ -10,11 +10,7 @@
     { name: "Roof Wash", unit: "SqFt", price: 0.4 },
     { name: "Gutter Cleaning", unit: "LNF", price: 1 },
     { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
-    { name: "Trash Can Cleaning", unit: "Qty", price: 15 },
-    { name: "Weekly Pool Service", unit: "Visit", price: 95 },
-    { name: "Chemical Balancing", unit: "Service Call", price: 65 },
-    { name: "Filter Cleaning", unit: "Each", price: 85 },
-    { name: "Green Pool Cleanup", unit: "Flat Rate", price: 350 }
+    { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
   ];
 
   const onboardingServiceLibrary = [
@@ -22,7 +18,6 @@
     { category: "Pressure Washing", name: "Driveway Cleaning", unit: "SqFt", price: 0.22 },
     { category: "Pressure Washing", name: "Sidewalk Cleaning", unit: "SqFt", price: 0.18 },
     { category: "Pressure Washing", name: "Patio Cleaning", unit: "SqFt", price: 0.25 },
-    { category: "Pressure Washing", name: "Pool Deck Cleaning", unit: "SqFt", price: 0.28 },
     { category: "Pressure Washing", name: "Paver Cleaning", unit: "SqFt", price: 0.3 },
     { category: "Pressure Washing", name: "House Washing", unit: "SqFt", price: 0.25 },
     { category: "Pressure Washing", name: "Soft Washing", unit: "SqFt", price: 0.28 },
@@ -42,23 +37,6 @@
     { category: "Landscaping", name: "Weed Removal", unit: "Hours", price: 55 },
     { category: "Landscaping", name: "Leaf Cleanup", unit: "Hours", price: 60 },
     { category: "Landscaping", name: "Sprinkler Repair", unit: "Each", price: 95 },
-    { category: "Pool Service", name: "Weekly Pool Service", unit: "Visit", price: 95 },
-    { category: "Pool Service", name: "Chemical Balancing", unit: "Service Call", price: 65 },
-    { category: "Pool Service", name: "Filter Cleaning", unit: "Each", price: 85 },
-    { category: "Pool Service", name: "Filter Replacement", unit: "Each", price: 175 },
-    { category: "Pool Service", name: "Pool Vacuuming", unit: "Visit", price: 80 },
-    { category: "Pool Service", name: "Pool Brush Service", unit: "Visit", price: 75 },
-    { category: "Pool Service", name: "Green Pool Cleanup", unit: "Flat Rate", price: 350 },
-    { category: "Pool Service", name: "Pool Startup", unit: "Flat Rate", price: 275 },
-    { category: "Pool Service", name: "Pool Shutdown", unit: "Flat Rate", price: 225 },
-    { category: "Pool Service", name: "Salt Cell Cleaning", unit: "Each", price: 95 },
-    { category: "Pool Service", name: "Salt Cell Replacement", unit: "Each", price: 325 },
-    { category: "Pool Service", name: "Equipment Inspection", unit: "Service Call", price: 125 },
-    { category: "Pool Service", name: "Pump Replacement", unit: "Each", price: 650 },
-    { category: "Pool Service", name: "Pool Light Replacement", unit: "Each", price: 240 },
-    { category: "Pool Service", name: "Pool Tile Cleaning", unit: "LNF", price: 8 },
-    { category: "Pool Service", name: "Acid Wash", unit: "Flat Rate", price: 700 },
-    { category: "Pool Service", name: "Pool Drain and Refill", unit: "Flat Rate", price: 450 },
     { category: "Handyman", name: "General Handyman Labor", unit: "Hours", price: 75 },
     { category: "Handyman", name: "Drywall Patch", unit: "Each", price: 125 },
     { category: "Handyman", name: "Fixture Replacement", unit: "Each", price: 85 },
@@ -84,16 +62,15 @@
     { category: "Misc", name: "Christmas Light Removal", unit: "LNF", price: 1.5 }
   ];
 
-  const onboardingServiceCategories = ["Pressure Washing", "Pool Service", "Landscaping", "Handyman", "Construction", "Misc"];
+  const onboardingServiceCategories = ["Pressure Washing", "Landscaping", "Handyman", "Construction", "Misc"];
 
   const builtInServiceTypes = [
     "Driveway cleaning",
     "House wash",
     "Roof wash",
-    "Weekly pool service",
-    "Pool equipment service",
     "Commercial exterior",
-    "Bundle"
+    "Bundle",
+    "Other"
   ];
 
   window.PressureFlowServiceCatalog = {

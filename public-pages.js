@@ -445,6 +445,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
         <h1>${title}</h1>
         <div class="doc__meta">
           <span>${escapeHtml(invoiceNumber)}</span>
+          <span>${escapeHtml(job.serviceType || "Service")}</span>
           <span>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)}</span>
           <span>${escapeHtml(job.address)}</span>
         </div>
@@ -460,6 +461,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
         </section>
         <section>
           <h2>Service</h2>
+          <p><strong>${escapeHtml(job.serviceType || "Service")}</strong></p>
           <table class="table">
             <tbody>
               ${(job.lineItems || []).map((item) => `
@@ -642,6 +644,7 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
   const details = [
     ["Business", businessName],
     ["Client", job.customerName],
+    ["Job Title", job.serviceType || "Service"],
     ["Service Address", job.address],
     ["Approved Estimate", `${businessName} estimate approved online`],
     ["Estimated Price", `$${Number(job.estimate || 0).toFixed(2)}`],

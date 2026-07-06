@@ -112,35 +112,106 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);
 });
 
-test("pool service onboarding seeds pool catalog and per-hour custom unit is available", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(TEST_USER.email);
-  await page.getByLabel("Password").fill(TEST_USER.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+test("custom Other job title saves and pool services are absent from selectable UI", async ({ page, context }) => {
+  await loginAndCompleteOnboarding(page);
 
-  await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
-  await page.locator("#onboardingForm [name='businessName']").fill("Bluewater Pool Care");
-  await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Pool Service");
-  await page.locator("#onboardingForm [name='businessEmail']").fill("owner@bluewater.test");
-  await page.locator("#onboardingNextButton").click();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#settingsDialog")).toBeVisible();
+  await expect(page.locator("#settingsForm [name='serviceIndustry']")).not.toContainText("Pool Service");
+  await page.locator("#settingsDialog details.onboarding-settings").click();
+  await expect(page.locator("#onboardingServiceList")).not.toContainText(/Pool|pool/);
+  await page.locator("#settingsForm [name='zellePayment']").fill("casey-payments@example.com");
+  await page.locator("#settingsForm").getByRole("button", { name: "Save Settings" }).click();
+  await expect(page.locator("#settingsDialog")).toBeHidden();
 
-  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Pool Service");
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Weekly Pool Service'] input[type='checkbox']")).toBeChecked();
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Chemical Balancing'] input[type='checkbox']")).toBeChecked();
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Acid Wash'] input[type='checkbox']")).not.toBeChecked();
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Weekly Pool Service']")).toContainText("Rate (per Visit)");
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await page.locator("#customerForm [name='customerName']").fill("Casey Walker");
+  await page.locator("#customerForm [name='email']").fill("casey.walker@example.com");
+  await page.locator("#customerForm [name='phone']").fill("(555) 888-4141");
+  await page.locator("#customerForm [name='streetAddress']").fill("404 Park Lane");
+  await page.locator("#customerForm [name='city']").fill("Riverside");
+  await page.locator("#customerForm [name='state']").fill("CA");
+  await page.locator("#customerForm [name='zip']").fill("92501");
+  await page.locator("#customerForm").getByRole("button", { name: "Save Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeHidden();
+  const customerToast = page.locator(".toast").filter({ hasText: "Customer created successfully." });
+  await expect(customerToast).toBeVisible();
+  await customerToast.getByRole("button", { name: "Create a job for this customer" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expect(page.locator("#jobForm [name='serviceType']")).not.toContainText(/Pool|pool/);
+  await expect.poll(() => page.locator("#jobForm [name='serviceType'] option").evaluateAll((options) => options.at(-1)?.textContent)).toBe("Other");
+  await page.locator("#jobForm [name='serviceType']").selectOption("Other");
+  await expect(page.locator("#customJobTitleField")).toBeVisible();
+  await expect(page.locator("#jobForm [name='customJobTitle']")).toHaveJSProperty("required", true);
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
 
-  await page.locator("#onboardingNextButton").click();
-  await page.getByRole("button", { name: "Save Setup" }).click();
-  await expect(page.locator("#sidebarBusinessName")).toHaveText("Bluewater Pool Care");
+  await page.locator("#jobForm [name='customJobTitle']").fill("Playground Equipment Cleaning");
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+  await expect(page.locator("#jobList")).toContainText("Playground Equipment Cleaning");
+  await expect(page.locator("#jobDetail")).toContainText("Playground Equipment Cleaning");
 
-  await page.getByRole("button", { name: "Pipeline" }).click();
-  await page.getByRole("button", { name: "New Job" }).click();
-  await expect(page.locator("#lineItems .line-item-row").first()).toContainText("Weekly Pool Service");
-  await expect(page.locator("#estimateTotal")).toHaveText("$0.00");
-  await page.getByRole("button", { name: "Add Custom Service" }).click();
-  await expect(page.locator("#customServiceDialog")).toBeVisible();
-  await expect(page.locator("#customServiceForm [name='unit']")).toContainText("Per hour");
+  await page.getByRole("button", { name: "Customers" }).click();
+  await expect(page.locator("#customerList")).toContainText("Casey Walker");
+  await page.locator("#customerList").getByRole("button", { name: /Casey Walker/ }).click();
+  await expect(page.locator("#customerDetail")).toContainText("Playground Equipment Cleaning");
+
+  await page.getByRole("button", { name: "Pipeline", exact: true }).click();
+  const responsePromise = page.waitForResponse((response) => response.url().includes("/api/jobs/") && response.url().endsWith("/send-square-estimate"));
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
+  const response = await responsePromise;
+  expect(response.ok()).toBeTruthy();
+  const { job } = await response.json();
+  expect(job.serviceType).toBe("Playground Equipment Cleaning");
+
+  const publicPage = await context.newPage();
+  await publicPage.goto(job.estimateApprovalUrl);
+  await expect(publicPage.getByRole("heading", { name: /Playground Equipment Cleaning for Casey Walker/ })).toBeVisible();
+  await publicPage.close();
+
+  const approval = await page.request.post(`/api/public/estimates/${job.id}/approve`, {
+    form: { token: job.estimateApprovalToken }
+  });
+  expect(approval.ok()).toBeTruthy();
+  let jobsResponse = await page.request.get("/api/jobs");
+  expect(jobsResponse.ok()).toBeTruthy();
+  let jobsPayload = await jobsResponse.json();
+  let updatedJob = jobsPayload.jobs.find((item) => item.id === job.id);
+  expect(updatedJob.contractApprovalUrl).toBeTruthy();
+
+  const contractPage = await context.newPage();
+  await contractPage.goto(updatedJob.contractApprovalUrl);
+  await expect(contractPage.locator("body")).toContainText("Playground Equipment Cleaning");
+  await contractPage.close();
+
+  const signature = await page.request.post(`/api/public/contracts/${job.id}/sign`, {
+    form: {
+      token: updatedJob.contractApprovalToken,
+      signerName: "Casey Walker",
+      signedDate: "2026-07-06"
+    }
+  });
+  expect(signature.ok()).toBeTruthy();
+  const sessionResponse = await page.request.get("/api/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+  const invoice = await page.request.post(`/api/jobs/${job.id}/send-deposit-invoice-text`, {
+    headers: { "x-csrf-token": session.csrfToken },
+    data: {}
+  });
+  const invoicePayload = await invoice.json();
+  expect(invoice.ok(), JSON.stringify(invoicePayload)).toBeTruthy();
+  updatedJob = invoicePayload.job;
+  expect(updatedJob.squareDepositInvoiceUrl).toBeTruthy();
+
+  const invoicePage = await context.newPage();
+  await invoicePage.goto(updatedJob.squareDepositInvoiceUrl);
+  await expect(invoicePage.locator("body")).toContainText("Playground Equipment Cleaning");
+  await invoicePage.close();
 });
 
 async function loginAndCompleteOnboarding(page) {
@@ -158,6 +229,7 @@ async function loginAndCompleteOnboarding(page) {
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
   await expect(page.locator("#onboardingForm [name='businessName']")).toHaveAttribute("placeholder", "e.g. Johnson Exterior Cleaning");
+  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).not.toContainText("Pool Service");
   await expect(page.locator("#onboardingWizardStatus")).toHaveText("Add the business basics that appear on estimates, invoices, and customer messages.");
 
   await page.locator("#onboardingForm [name='businessName']").fill("Johnson Exterior Cleaning");
@@ -177,6 +249,7 @@ async function loginAndCompleteOnboarding(page) {
   await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeVisible();
   await expect(page.locator("#onboardingWizardStatus")).toHaveText("Choose the services and starter rates this account should use for new estimates.");
   await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
+  await expect(page.locator("#onboardingWizardServiceList")).not.toContainText(/Pool|pool/);
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
   await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Sprinkler Repair'] input[type='checkbox']")).not.toBeChecked();
   const firstCategory = page.locator("#onboardingWizardServiceList details.service-category").first();

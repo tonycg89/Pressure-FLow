@@ -84,6 +84,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07C-3 operational monitoring and error visibility is complete.
 - Package 08A-1 mobile photo upload flow stabilization is complete.
 - Package 08B customer/property/job data isolation is complete.
+- Package 08D job title/service catalog cleanup is complete.
 - Package 08E estimate email/calendar decoupling is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
@@ -108,6 +109,16 @@ Package 08B customer/property/job data isolation status:
 - Frontend Measure From Map reloads saved measurements from the current job/customer context instead of the formatted address field.
 - Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js` (6 passed).
 - Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+
+Package 08D job title/service catalog cleanup status:
+
+- Completed July 6, 2026.
+- Job title dropdown now has final `Other` option. Selecting it reveals required `Enter Job Title`; the custom title is normalized back into `job.serviceType`, preserving existing backend/storage contracts.
+- Custom job titles now display through the existing service-title surfaces, with explicit title display added to job detail, public contract project details, and public invoice pages.
+- Pool-specific selectable defaults were removed from the current beta UI/catalog: onboarding/settings industries, built-in service catalog, onboarding service categories/library, and built-in job-title options. Historical pool/custom jobs are still displayable because unknown saved titles remain valid record values.
+- Browser regression now creates `Playground Equipment Cleaning` via `Other`, verifies validation, job list/detail, customer history, public estimate, public contract, and public deposit invoice, and asserts pool services are absent from selectable onboarding/settings/job UI.
+- Tests run: `npm.cmd run check`; `node --check public-pages.js`; `node --check assets\service-catalog.js`; `npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/pending-payments.spec.js` (24 passed).
+- Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; targeted rerun of `tests/destructive-workflows.spec.js` passed 3/4 with the same failure.
 
 Package 08E estimate email/calendar decoupling status:
 

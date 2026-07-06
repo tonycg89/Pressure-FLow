@@ -32,6 +32,7 @@ const BUSINESS_LOGO_MAX_DATA_URL_BYTES = 1500000;
 const BUSINESS_LOGO_MAX_DIMENSION = 900;
 const JOB_FORM_DRAFT_KEY = "pressureflow.jobFormDraft.v1";
 const CUSTOMER_FORM_DRAFT_KEY = "pressureflow.customerFormDraft.v1";
+const OTHER_JOB_TITLE_VALUE = "Other";
 
 const {
   buildFullAddress,
@@ -227,6 +228,7 @@ const templateUploadForm = document.querySelector("#templateUploadForm");
 const templateFileInput = document.querySelector("#templateFileInput");
 const templateUploadStatus = document.querySelector("#templateUploadStatus");
 const jobDialogTitle = jobDialog.querySelector(".dialog-header h2");
+const customJobTitleField = document.querySelector("#customJobTitleField");
 const customerDialogTitle = customerDialog.querySelector(".dialog-header h2");
 const expenseDialogTitle = expenseDialog.querySelector(".dialog-header h2");
 const addServiceTypeButton = document.querySelector("#addServiceTypeButton");
@@ -378,6 +380,7 @@ async function init() {
   jobForm.addEventListener("submit", createJob);
   jobForm.addEventListener("input", saveJobDraft);
   jobForm.addEventListener("change", saveJobDraft);
+  jobForm.elements.serviceType?.addEventListener("change", () => syncCustomJobTitleField());
   customerForm.addEventListener("submit", saveCustomer);
   customerForm.addEventListener("input", saveCustomerDraft);
   customerForm.addEventListener("change", saveCustomerDraft);
@@ -637,9 +640,10 @@ function formatRateUnit(unit = "") {
   return `per ${label}`;
 }
 
-function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?.value || "") {
+function renderServiceTypeOptions(selectedValue) {
   const field = jobForm?.elements.serviceType;
   if (!field) return;
+  const hasExplicitValue = arguments.length > 0;
 
   if (field.tagName !== "SELECT") {
     if (selectedValue) {
@@ -648,9 +652,29 @@ function renderServiceTypeOptions(selectedValue = jobForm?.elements.serviceType?
     return;
   }
 
-  const currentValue = selectedValue || field.value || serviceTypes[0] || "";
-  field.innerHTML = serviceTypes.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  field.value = serviceTypes.includes(currentValue) ? currentValue : serviceTypes[0] || "";
+  const options = [...serviceTypes.filter((name) => name !== OTHER_JOB_TITLE_VALUE), OTHER_JOB_TITLE_VALUE];
+  const existingValue = options.includes(field.value) ? field.value : "";
+  const currentValue = hasExplicitValue ? selectedValue : existingValue || options[0] || "";
+  const desiredValue = currentValue || options[0] || "";
+  const isKnownValue = options.includes(desiredValue);
+  field.innerHTML = options.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+  field.value = isKnownValue ? desiredValue : OTHER_JOB_TITLE_VALUE;
+  syncCustomJobTitleField(isKnownValue ? "" : desiredValue);
+}
+
+function syncCustomJobTitleField(customValue = "") {
+  const titleSelect = jobForm?.elements.serviceType;
+  const customInput = jobForm?.elements.customJobTitle;
+  if (!titleSelect || !customInput || !customJobTitleField) return;
+
+  const isOther = titleSelect.value === OTHER_JOB_TITLE_VALUE;
+  customJobTitleField.hidden = !isOther;
+  customInput.required = isOther;
+  if (customValue) {
+    customInput.value = customValue;
+  } else if (!isOther) {
+    customInput.value = "";
+  }
 }
 
 function renderBeforePhotoSectionOptions(selectedValue = "") {
@@ -1685,6 +1709,15 @@ async function createJob(event) {
   syncAddressFields(jobForm);
   const formData = new FormData(jobForm);
   const job = Object.fromEntries(formData.entries());
+  if (job.serviceType === OTHER_JOB_TITLE_VALUE) {
+    const customTitle = String(job.customJobTitle || "").trim();
+    if (!customTitle) {
+      jobForm.elements.customJobTitle?.reportValidity();
+      return;
+    }
+    job.serviceType = customTitle;
+  }
+  delete job.customJobTitle;
   job.lineItems = getEstimateLineItems();
   job.measurement = job.lineItems.some((item) => item.name === "Pressure Washing") ? currentMeasurement : {};
   job.jobPhotos = currentJobPhotos;
@@ -1766,6 +1799,7 @@ function openNewJob({ restoreDraft = true } = {}) {
   jobForm.reset();
   resetJobDialog();
   renderJobCustomerOptions();
+  syncCustomJobTitleField();
   if (restoreDraft) {
     restoreJobDraft();
   }
@@ -2341,6 +2375,7 @@ function restoreJobDraft() {
     if (!field || field.type === "file") return;
     field.value = value;
   });
+  syncCustomJobTitleField(draft.fields.customJobTitle || "");
   renderLineItems(Array.isArray(draft.lineItems) && draft.lineItems.length
     ? draft.lineItems
     : [{ ...defaultEstimateService, quantity: 0 }]);
@@ -4394,6 +4429,7 @@ function renderJobDetail() {
   jobDetail.innerHTML = `
     <section class="detail-section">
       <h4>${escapeHtml(job.customerName)}</h4>
+      <p>${escapeHtml(job.serviceType || "Job")}</p>
       <p>${escapeHtml(job.email)} | ${escapeHtml(job.phone)}</p>
       <p>${escapeHtml(job.address)}</p>
     </section>

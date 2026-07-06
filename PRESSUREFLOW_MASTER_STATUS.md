@@ -4,7 +4,7 @@ Last Updated: July 6, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, and Package 08E estimate email/calendar decoupling.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08D job title/service catalog cleanup, and Package 08E estimate email/calendar decoupling.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -75,6 +75,7 @@ Product guardrails:
 - Package 07C-3 operational monitoring and error visibility
 - Package 08A-1 mobile photo upload flow stabilization
 - Package 08B customer/property/job data isolation
+- Package 08D job title and service catalog cleanup
 - Package 08E estimate email/calendar decoupling
 - Contract initials requirement removed
 - Central AI Handoff file
@@ -98,6 +99,16 @@ Product guardrails:
 - Added a browser regression covering two customers at the exact same address, verifying Alpha's job and saved service area stay with Alpha while Beta shows no inherited jobs or measurements.
 - Verification: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js` passed 6/6.
 - Full regression: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+
+## Package 08D Job Title / Service Catalog Cleanup
+
+- Completed July 6, 2026.
+- Job title selection now includes final option `Other`; choosing it reveals required `Enter Job Title` input, then saves the custom value into the existing `serviceType` field so dashboards, pipeline, customer history, estimates, contracts, invoices, and emails use the same stored title.
+- Historical jobs with old/custom titles continue rendering; unknown saved titles open in edit mode as `Other` with the saved title populated.
+- Pool-specific selectable defaults were removed from onboarding industries, settings industries, built-in job title options, built-in service catalog, and onboarding service library/categories. Custom service creation remains available.
+- Public contract and invoice pages now show the job title explicitly in addition to line items.
+- Verification: `npm.cmd run check`; `node --check public-pages.js`; `node --check assets\service-catalog.js`; `npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/pending-payments.spec.js` passed 24/24.
+- Full regression: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; targeted rerun of `tests/destructive-workflows.spec.js` passed 3/4 with the same failure.
 
 ## Package 08E Estimate Email / Calendar Decoupling
 
