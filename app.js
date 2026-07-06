@@ -324,6 +324,8 @@ let detachedModalPhotoCameraInput = null;
 let pendingDetachedModalPhotoCamera = null;
 let detachedBeforePhotoCameraInput = null;
 let pendingBeforePhotoCameraRow = null;
+let detachedModalPhotoPickerInput = null;
+let pendingDetachedModalPhotoPicker = null;
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -388,6 +390,7 @@ async function init() {
   expenseForm.elements.amount?.addEventListener("input", formatExpenseAmountInput);
   serviceAreaPhotoInputs.forEach((input) => {
     bindPhotoCaptureRestore(input);
+    input.closest(".photo-action-button")?.addEventListener("click", (event) => openDetachedCustomerPhotoPicker(event, input));
     input.addEventListener("change", (event) => addCustomerPhotosFromInput(event));
   });
   serviceAreaPhotoCameraButton?.addEventListener("click", () => openDetachedModalPhotoCamera({
@@ -398,7 +401,7 @@ async function init() {
     afterAdd: saveCustomerDraft
   }));
   addBeforePhotoButton?.addEventListener("click", () => addBeforePhotoRow());
-  receiptPhotoInput.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
+  receiptPhotoInput?.addEventListener("change", (event) => addPhotosFromInput(event, currentReceiptPhotos, renderReceiptPhotos));
   addLineItemButton.addEventListener("click", () => addLineItemRow());
   customServiceButton?.addEventListener("click", openCustomServiceDialog);
   customServiceForm?.addEventListener("submit", addCustomService);
@@ -1690,9 +1693,15 @@ async function createJob(event) {
   const editingId = jobForm.dataset.editingId;
 
   try {
-    const saved = editingId
-      ? await apiRequest(`/api/jobs/${editingId}`, job, "PATCH")
-      : await apiRequest("/api/jobs", job);
+    const saved = await withSubmitLoadingState(jobForm, {
+      button: event.submitter,
+      pendingText: editingId ? "Saving..." : "Creating...",
+      statusText: editingId ? "Saving job..." : "Creating job..."
+    }, () => (
+      editingId
+        ? apiRequest(`/api/jobs/${editingId}`, job, "PATCH")
+        : apiRequest("/api/jobs", job)
+    ));
     selectedJobId = saved.job.id;
     clearJobDraft();
     jobForm.reset();
@@ -1710,6 +1719,46 @@ async function createJob(event) {
     }
   } catch (error) {
     showToast(error.message || "Job was not saved. Check the estimate and try again.", "error");
+  }
+}
+
+async function withSubmitLoadingState(form, options, work) {
+  const submitButton = options.button?.matches?.("button[type='submit'], input[type='submit']")
+    ? options.button
+    : form.querySelector("button[type='submit'], input[type='submit']");
+  const originalText = submitButton?.tagName === "BUTTON" ? submitButton.textContent : submitButton?.value;
+  form.setAttribute("aria-busy", "true");
+  if (submitButton) {
+    submitButton.disabled = true;
+    if (submitButton.tagName === "BUTTON") {
+      submitButton.textContent = options.pendingText || "Saving...";
+    } else {
+      submitButton.value = options.pendingText || "Saving...";
+    }
+  }
+  let status = null;
+  const timer = window.setTimeout(() => {
+    status = document.createElement("p");
+    status.className = "workflow-action-status";
+    status.setAttribute("role", "status");
+    status.textContent = options.statusText || "Saving...";
+    form.querySelector(".modal__footer")?.prepend(status);
+  }, 300);
+
+  try {
+    return await work();
+  } finally {
+    window.clearTimeout(timer);
+    form.removeAttribute("aria-busy");
+    if (submitButton) {
+      submitButton.disabled = false;
+      if (submitButton.tagName === "BUTTON") {
+        submitButton.textContent = originalText;
+      } else {
+        submitButton.value = originalText;
+      }
+    }
+    status?.remove();
   }
 }
 
@@ -1843,6 +1892,62 @@ function openDetachedModalPhotoCamera(options) {
   options.beforeOpen?.();
   pendingDetachedModalPhotoCamera = { ...options, dialog };
   getDetachedModalPhotoCameraInput().click();
+}
+
+function openDetachedModalPhotoPicker(options) {
+  const dialog = options.source?.closest?.("dialog");
+  if (!dialog?.open) return;
+
+  options.beforeOpen?.();
+  pendingDetachedModalPhotoPicker = { ...options, dialog };
+  const input = getDetachedModalPhotoPickerInput();
+  input.multiple = options.multiple !== false;
+  input.click();
+}
+
+function getDetachedModalPhotoPickerInput() {
+  if (detachedModalPhotoPickerInput) return detachedModalPhotoPickerInput;
+
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
+  input.dataset.detachedModalPhotoPickerInput = "true";
+  input.style.position = "fixed";
+  input.style.width = "1px";
+  input.style.height = "1px";
+  input.style.opacity = "0";
+  input.style.pointerEvents = "none";
+  input.style.left = "-10000px";
+  input.addEventListener("change", handleDetachedModalPhotoPickerChange);
+  document.body.append(input);
+  detachedModalPhotoPickerInput = input;
+  return input;
+}
+
+async function handleDetachedModalPhotoPickerChange(event) {
+  const input = event.target;
+  const pending = pendingDetachedModalPhotoPicker;
+  const files = Array.from(input.files || []);
+  pendingDetachedModalPhotoPicker = null;
+
+  if (!pending || !files.length) {
+    input.value = "";
+    stabilizeOpenWorkflowDialog(pending?.source || pending?.dialog || null);
+    return;
+  }
+
+  try {
+    await withDeferredPhotoLoadingIndicator(pending.source, async () => {
+      await addPhotoFiles(files, pending.target, pending.metadata || {});
+      input.value = "";
+      pending.renderCallback?.();
+      pending.afterAdd?.();
+    });
+  } finally {
+    input.value = "";
+    stabilizeOpenWorkflowDialog(pending.source || pending.dialog);
+  }
 }
 
 function getDetachedModalPhotoCameraInput() {
@@ -2016,9 +2121,15 @@ async function saveCustomer(event) {
   const editingId = customerForm.dataset.editingId;
 
   try {
-    const saved = editingId
-      ? await apiRequest(`/api/customers/${editingId}`, payload, "PATCH")
-      : await apiRequest("/api/customers", payload);
+    const saved = await withSubmitLoadingState(customerForm, {
+      button: event.submitter,
+      pendingText: editingId ? "Saving..." : "Saving...",
+      statusText: "Saving customer..."
+    }, () => (
+      editingId
+        ? apiRequest(`/api/customers/${editingId}`, payload, "PATCH")
+        : apiRequest("/api/customers", payload)
+    ));
     selectedCustomerId = saved.customer.id;
     customerForm.reset();
     clearCustomerDraft();
@@ -2043,6 +2154,23 @@ async function addCustomerPhotosFromInput(event) {
     renderServiceAreaPhotos();
     saveCustomerDraft();
     stabilizeCustomerDialogViewport();
+  });
+}
+
+function openDetachedCustomerPhotoPicker(event, input) {
+  if (!customerDialog?.open) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  openDetachedModalPhotoPicker({
+    source: input.closest(".photo-action-button") || input,
+    target: currentServiceAreaPhotos,
+    renderCallback: renderServiceAreaPhotos,
+    beforeOpen: saveCustomerDraft,
+    afterAdd: () => {
+      saveCustomerDraft();
+      stabilizeCustomerDialogViewport();
+    }
   });
 }
 
@@ -2249,10 +2377,13 @@ async function addPhotosFromInput(event, target, renderCallback, metadata = {}) 
   if (!files.length) return;
 
   try {
-    await addPhotoFiles(files, target, metadata);
-    event.target.value = "";
-    renderCallback();
+    await withDeferredPhotoLoadingIndicator(event.target, async () => {
+      await addPhotoFiles(files, target, metadata);
+      event.target.value = "";
+      renderCallback();
+    });
   } finally {
+    event.target.value = "";
     stabilizeOpenWorkflowDialog(event.target);
   }
 }
@@ -2260,6 +2391,35 @@ async function addPhotosFromInput(event, target, renderCallback, metadata = {}) 
 async function addPhotoFiles(files, target, metadata = {}) {
   const photos = await Promise.all(files.map((file) => fileToPhoto(file, metadata)));
   target.push(...photos);
+}
+
+async function withDeferredPhotoLoadingIndicator(source, work) {
+  const uploader = source?.closest?.(".photo-uploader");
+  let status = uploader?.querySelector("[data-photo-processing-status]");
+  let shown = false;
+  const timer = window.setTimeout(() => {
+    if (!uploader) return;
+    if (!status) {
+      status = document.createElement("p");
+      status.className = "photo-processing-status";
+      status.dataset.photoProcessingStatus = "true";
+      status.setAttribute("role", "status");
+      status.textContent = "Preparing photo...";
+      uploader.append(status);
+    }
+    uploader.setAttribute("aria-busy", "true");
+    shown = true;
+  }, 300);
+
+  try {
+    return await work();
+  } finally {
+    window.clearTimeout(timer);
+    if (shown) {
+      uploader?.removeAttribute("aria-busy");
+      status?.remove();
+    }
+  }
 }
 
 function renderServiceAreaPhotos() {
@@ -2351,10 +2511,36 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
   select.value = beforePhotoSections.includes(selectedArea) ? selectedArea : beforePhotoSections[0] || "";
   select.addEventListener("change", () => handleBeforePhotoAreaChange(row));
   bindPhotoCaptureRestore(uploadInput);
+  uploadInput.closest(".photo-action-button")?.addEventListener("click", (event) => openDetachedBeforePhotoPicker(event, row));
   uploadInput.addEventListener("change", (event) => addBeforePhotosFromRow(event, row));
   cameraButton.addEventListener("click", () => openDetachedBeforePhotoCamera(row));
   row.querySelector("[data-save-before-area]").addEventListener("click", () => saveBeforePhotoArea(row));
   beforePhotoRows.append(row);
+}
+
+function openDetachedBeforePhotoPicker(event, row) {
+  if (!row || !jobDialog.open) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  const select = row.querySelector("[data-before-photo-section-select]");
+  if (select.value === "__new_area__") {
+    handleBeforePhotoAreaChange(row);
+    return;
+  }
+
+  const section = select.value || "Before";
+  openDetachedModalPhotoPicker({
+    source: row.querySelector("[data-before-photo-upload]")?.closest(".photo-action-button") || row,
+    target: currentJobPhotos.before,
+    metadata: { section },
+    renderCallback: renderJobPhotoPreviews,
+    beforeOpen: saveJobDraft,
+    afterAdd: () => {
+      saveJobDraft();
+      addBeforePhotoRow(section);
+    }
+  });
 }
 
 function openDetachedBeforePhotoCamera(row) {

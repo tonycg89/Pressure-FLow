@@ -1,10 +1,10 @@
 # PressureFlow Master Status
 
-Last Updated: June 19, 2026
+Last Updated: July 6, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, and Package 07C-3 operational monitoring/error visibility.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, and Package 08A-1 mobile photo upload flow stabilization.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -73,8 +73,19 @@ Product guardrails:
 - Package 07C-1 environment and deployment readiness audit
 - Package 07C-2 backup, recovery, and data safety audit
 - Package 07C-3 operational monitoring and error visibility
+- Package 08A-1 mobile photo upload flow stabilization
 - Contract initials requirement removed
 - Central AI Handoff file
+
+## Package 08A-1 Mobile Photo Upload Flow Stabilization
+
+- Completed July 6, 2026.
+- Customer gallery photo upload now uses a detached body-level file picker, matching the stable camera handoff pattern instead of invoking Android Chrome's gallery picker from inside the active workflow dialog.
+- Job before-photo gallery upload now uses the same detached picker pattern, preserves the in-progress job draft before native picker handoff, restores modal scroll/focus state after upload, and keeps camera capture unchanged.
+- Photo processing uses delayed feedback after 300ms and async canvas blob encoding where available to reduce perceived lockups from large gallery images.
+- Customer save and job create submit paths now show immediate button loading with delayed status feedback for slower saves without changing backend payloads, auth, tenant isolation, validation, integrations, or database behavior.
+- Verification: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` passed 11/11 including customer gallery, customer camera, before-photo gallery, before-photo camera, scrollability, draft preservation, and create/save completion.
+- Broader regression: `npm.cmd run test:browser` passed 75/76. The remaining failure is the pre-existing/out-of-scope `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; rerunning `npm.cmd run test:browser -- tests/destructive-workflows.spec.js` reproduced the same unrelated failure.
 
 ## UI Packages Complete
 

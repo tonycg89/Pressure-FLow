@@ -82,8 +82,20 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07C-1 environment and deployment readiness audit is complete.
 - Package 07C-2 backup, recovery, and data safety audit is complete.
 - Package 07C-3 operational monitoring and error visibility is complete.
+- Package 08A-1 mobile photo upload flow stabilization is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
+
+Package 08A-1 mobile photo upload flow stabilization status:
+
+- Completed July 6, 2026.
+- Customer gallery uploads and job before-photo gallery uploads now use a detached body-level picker instead of opening the native gallery from a file input inside an active workflow dialog. This matches the stable camera handoff pattern and prevents Android Chrome from leaving a dark overlay, invisible overlay, or broken dialog scroll state behind.
+- Camera capture remains on the existing detached capture inputs and was not functionally changed.
+- Draft protection runs before native picker handoff for customer and job flows; job before-photo gallery upload restores the draft, preview, scroll/focus state, and allows create/save to continue.
+- Photo processing now shows a loading indicator only if work exceeds 300ms and uses async canvas blob encoding where supported to reduce perceived lockup from large gallery images.
+- Customer save and job create submit paths show immediate button loading with delayed status feedback for slower saves without changing API payloads, backend validation, auth, tenant isolation, integrations, storage format, or database behavior.
+- Tests run: npm.cmd run check passed; npm.cmd run test:browser -- tests/mobile-hardening.spec.js passed 11/11.
+- Full regression note: npm.cmd run test:browser passed 75/76. The one failure reproduced independently in tests/destructive-workflows.spec.js and is unrelated to Package 08A-1: the contract page renders Signed while the test expects Signed agreement.
 
 Phase 07D deployment sandbox verification status:
 

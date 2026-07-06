@@ -166,6 +166,49 @@ test("mobile customer photo capture keeps the modal usable and preserves the dra
   await expectModalCardHasNoVisibleBlankTail(page, "#customerDialog");
 });
 
+test("mobile customer gallery upload keeps the modal usable and can save", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await login(page);
+
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await page.locator("#customerForm [name='customerName']").fill("Gallery Upload Customer");
+  await page.locator("#customerForm [name='email']").fill("gallery.customer@example.com");
+  await page.locator("#customerForm [name='phone']").fill("(555) 777-4545");
+  await page.locator("#customerForm [name='streetAddress']").fill("402 Gallery Safe Way");
+  await page.locator("#customerForm [name='city']").fill("Riverside");
+  await page.locator("#customerForm [name='state']").fill("CA");
+  await page.locator("#customerForm [name='zip']").fill("92501");
+  await page.locator("#customerForm [name='notes']").fill("Draft survives gallery handoff.");
+
+  const photoPath = path.join(DATA_DIR, "service-area-gallery.png");
+  await fs.writeFile(photoPath, Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64"
+  ));
+
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.locator("#customerForm .photo-action-button.primary").click();
+  const chooser = await chooserPromise;
+  await expect(page.locator("body > [data-detached-modal-photo-picker-input]")).toHaveCount(1);
+  await chooser.setFiles(photoPath);
+
+  await expect(page.locator("#serviceAreaPhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#customerDialog");
+  await expect(page.locator("#customerForm [name='notes']")).toHaveValue("Draft survives gallery handoff.");
+  await page.locator("#customerForm [name='notes']").fill("Still editable after gallery upload.");
+  await expect(page.locator("#customerForm [name='notes']")).toHaveValue("Still editable after gallery upload.");
+  await expect(page.locator("#customerForm").getByRole("button", { name: "Save Customer" })).toBeInViewport();
+  await expectModalCardHasNoVisibleBlankTail(page, "#customerDialog");
+  await expectNoViewportOverflow(page, "customer modal after gallery service-area photo");
+
+  await page.locator("#customerForm").getByRole("button", { name: "Save Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeHidden();
+  await expect(page.locator("body")).toContainText("Gallery Upload Customer");
+});
+
 test("mobile estimate photo capture keeps the job modal editable and scrollable", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await login(page);
@@ -210,6 +253,50 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
   await expect(page.locator("#jobForm").getByRole("button", { name: "Create Job" })).toBeInViewport();
   await expectModalCardHasNoVisibleBlankTail(page, "#jobDialog");
   await expectNoViewportOverflow(page, "job modal after estimate photo");
+});
+
+test("mobile before-photo gallery upload keeps job draft editable and can create", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='customerName']").fill("Gallery Estimate Customer");
+  await page.locator("#jobForm [name='email']").fill("gallery.estimate@example.com");
+  await page.locator("#jobForm [name='phone']").fill("(555) 777-5656");
+  await page.locator("#jobForm [name='streetAddress']").fill("403 Gallery Job Way");
+  await page.locator("#jobForm [name='city']").fill("Riverside");
+  await page.locator("#jobForm [name='state']").fill("CA");
+  await page.locator("#jobForm [name='zip']").fill("92501");
+  await page.locator("#lineItems .line-quantity").first().fill("1");
+  await page.locator("#lineItems .line-rate").first().fill("275");
+
+  const photoPath = path.join(DATA_DIR, "estimate-before-gallery.png");
+  await fs.writeFile(photoPath, Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "base64"
+  ));
+
+  const chooserPromise = page.waitForEvent("filechooser");
+  await page.locator("#jobForm [data-before-photo-upload]").first().locator("xpath=..").click();
+  const chooser = await chooserPromise;
+  await expect(page.locator("body > [data-detached-modal-photo-picker-input]")).toHaveCount(1);
+  await chooser.setFiles(photoPath);
+
+  await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expectDialogFitsViewport(page, "#jobDialog");
+  await expectWorkflowModalLocksPageScroll(page, "#jobDialog");
+  await page.locator("#jobForm [name='notes']").fill("Still editable after adding a gallery photo.");
+  await expect(page.locator("#jobForm [name='notes']")).toHaveValue("Still editable after adding a gallery photo.");
+  await expect(page.locator("#jobForm").getByRole("button", { name: "Create Job" })).toBeInViewport();
+  await expectModalCardHasNoVisibleBlankTail(page, "#jobDialog");
+  await expectNoViewportOverflow(page, "job modal after estimate gallery photo");
+
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+  await expect(page.locator("body")).toContainText("Gallery Estimate Customer");
 });
 
 test("settings and workflow modals fit a 375px mobile viewport", async ({ page }) => {
