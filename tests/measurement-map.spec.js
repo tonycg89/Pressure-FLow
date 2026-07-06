@@ -73,6 +73,61 @@ test("reusing a saved customer service area does not duplicate the customer file
   expect(customers[0].propertyMeasurements[0].sourceJobId).toBe("job-2");
 });
 
+test("same-address customers keep jobs and saved measurements isolated", async ({ page }) => {
+  await login(page);
+
+  await createCustomer(page, {
+    name: "Address Twin Alpha",
+    email: "alpha.same-address@example.com",
+    street: "500 Shared Address Way"
+  });
+  await openCustomer(page, "Address Twin Alpha");
+  await page.locator("#customerDetail").getByRole("button", { name: "Create Job From Customer" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
+  const alphaLineItem = page.locator("#lineItems .line-item-row").first();
+  await alphaLineItem.locator(".line-service").selectOption("Pressure Washing");
+  await alphaLineItem.locator(".line-measure").click();
+  await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
+  await drawMockPolygon(page, "alpha-driveway", 100);
+  await page.locator("#saveMeasurementAreaButton").click();
+  await page.locator("#useMeasurementButton").click();
+  await expect(page.locator("#measurementDialog")).toBeHidden();
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+
+  await page.getByRole("button", { name: "Customers" }).click();
+  await createCustomer(page, {
+    name: "Address Twin Beta",
+    email: "beta.same-address@example.com",
+    street: "500 Shared Address Way"
+  });
+
+  await openCustomer(page, "Address Twin Beta");
+  await expect(page.locator("#customerDetail")).toContainText("No jobs yet");
+  await expect(page.locator("#customerDetail")).toContainText("No saved map measurements yet");
+  await expect(page.locator("#customerDetail")).not.toContainText("Driveway cleaning");
+  await expect(page.locator("#customerDetail")).not.toContainText("Service area 1");
+
+  await openCustomer(page, "Address Twin Alpha");
+  await expect(page.locator("#customerDetail")).toContainText("Driveway cleaning");
+  await expect(page.locator("#customerDetail")).toContainText("Service area 1");
+  await expect(page.locator("#customerDetail")).toContainText("1,076 SqFt");
+
+  await openCustomer(page, "Address Twin Beta");
+  await page.locator("#customerDetail").getByRole("button", { name: "Create Job From Customer" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
+  const betaLineItem = page.locator("#lineItems .line-item-row").first();
+  await betaLineItem.locator(".line-service").selectOption("Pressure Washing");
+  await betaLineItem.locator(".line-measure").click();
+  await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
+  await expect(page.locator("#savedMeasurementsPanel")).toBeHidden();
+  await expect(page.locator("#savedMeasurementsList")).not.toContainText("Service area 1");
+});
+
 test("measure from map re-arms polygon drawing after adding and updating areas", async ({ page }) => {
   await login(page);
 
@@ -174,6 +229,27 @@ async function drawMockPolygon(page, id, areaMeters) {
     }];
     window.__pressureFlowMapHandlers["draw.create"]();
   }, { id, areaMeters });
+}
+
+async function createCustomer(page, { name, email, street }) {
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "New Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeVisible();
+  await page.locator("#customerForm [name='customerName']").fill(name);
+  await page.locator("#customerForm [name='email']").fill(email);
+  await page.locator("#customerForm [name='phone']").fill("(555) 777-0101");
+  await page.locator("#customerForm [name='streetAddress']").fill(street);
+  await page.locator("#customerForm [name='city']").fill("Riverside");
+  await page.locator("#customerForm [name='state']").fill("CA");
+  await page.locator("#customerForm [name='zip']").fill("92501");
+  await page.locator("#customerForm").getByRole("button", { name: "Save Customer" }).click();
+  await expect(page.locator("#customerDialog")).toBeHidden();
+}
+
+async function openCustomer(page, name) {
+  await page.getByRole("button", { name: "Customers" }).click();
+  await page.locator("#customerList").getByRole("button", { name: new RegExp(name) }).click();
+  await expect(page.locator("#customerDetail")).toContainText(name);
 }
 
 async function expectDrawMode(page, mode) {

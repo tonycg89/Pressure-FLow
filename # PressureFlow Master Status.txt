@@ -3,7 +3,7 @@ PressureFlow Master Status
 Last Updated: July 6, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, and Package 08E estimate email/calendar decoupling.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, and Package 08E estimate email/calendar decoupling.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -69,6 +69,7 @@ Completed Safety / Readiness Work:
 - Package 07C-2 backup, recovery, and data safety audit
 - Package 07C-3 operational monitoring and error visibility
 - Package 08A-1 mobile photo upload flow stabilization
+- Package 08B customer/property/job data isolation
 - Package 08E estimate email/calendar decoupling
 - Contract initials requirement removed
 - Central AI Handoff file
@@ -81,6 +82,15 @@ Package 08A-1 Mobile Photo Upload Flow Stabilization:
 - Customer save and job create submit paths now show immediate button loading with delayed status feedback for slower saves without changing backend payloads, auth, tenant isolation, validation, integrations, or database behavior.
 - Verification: npm.cmd run check passed; npm.cmd run test:browser -- tests/mobile-hardening.spec.js passed 11/11 including customer gallery, customer camera, before-photo gallery, before-photo camera, scrollability, draft preservation, and create/save completion.
 - Broader regression: npm.cmd run test:browser passed 75/76. The remaining failure is the pre-existing/out-of-scope tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed; rerunning npm.cmd run test:browser -- tests/destructive-workflows.spec.js reproduced the same unrelated failure.
+
+Package 08B Customer / Property / Job Data Isolation:
+- Completed July 6, 2026.
+- Customer detail job history now uses job.customerId only; same email or same normalized address no longer attach another customer's jobs to the open customer record.
+- Saved map measurement lookup now requires customerId or a job that resolves to customerId; /api/property-measurements no longer uses address as an ownership key.
+- Measurement sync now attaches saved measurement data only to the job's explicit customer. Unlinked measured jobs can still create their own customer record, but same-address or same-email customers are not reused implicitly.
+- Added a browser regression covering two customers at the exact same address, verifying Alpha's job and saved service area stay with Alpha while Beta shows no inherited jobs or measurements.
+- Verification: npm.cmd run check passed; npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js passed 6/6.
+- Full regression: npm.cmd run test:browser passed 80/81. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 
 Package 08E Estimate Email / Calendar Decoupling:
 - Completed July 6, 2026.

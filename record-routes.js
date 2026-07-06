@@ -42,8 +42,12 @@ function createRecordRoutes({
     }
 
     if (request.method === "GET" && url.pathname === "/api/property-measurements") {
-      const address = url.searchParams.get("address") || "";
-      sendJson(response, 200, { measurements: await findSavedMeasurements(address) });
+      sendJson(response, 200, {
+        measurements: await findSavedMeasurements({
+          customerId: url.searchParams.get("customerId") || "",
+          jobId: url.searchParams.get("jobId") || ""
+        })
+      });
       return true;
     }
 

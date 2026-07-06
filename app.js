@@ -2927,9 +2927,7 @@ function openMeasurementDialog(row) {
   measurementDialog.showModal();
   setTimeout(() => {
     initializeMeasurementMap();
-    if (measurementAddress.value) {
-      loadSavedMeasurementsForAddress(measurementAddress.value);
-    }
+    loadSavedMeasurementsForCurrentJob();
   }, 50);
 }
 
@@ -3090,20 +3088,28 @@ async function geocodeMeasurementAddress() {
   measurementStatus.textContent = "Draw a polygon around the surface.";
 }
 
-async function loadSavedMeasurementsForAddress(address) {
-  const normalizedAddress = String(address || "").trim();
-  if (!normalizedAddress) {
+async function loadSavedMeasurementsForCurrentJob() {
+  const customerId = getMeasurementCustomerId();
+  const jobId = jobForm.dataset.editingId || "";
+  if (!customerId && !jobId) {
     renderSavedMeasurements([]);
     return;
   }
 
   try {
-    const response = await fetch(`/api/property-measurements?address=${encodeURIComponent(normalizedAddress)}`);
+    const params = new URLSearchParams();
+    if (customerId) params.set("customerId", customerId);
+    if (jobId) params.set("jobId", jobId);
+    const response = await fetch(`/api/property-measurements?${params.toString()}`);
     const data = await readJsonResponse(response, "Unable to load saved measurements.");
     renderSavedMeasurements(data.measurements || []);
   } catch {
     renderSavedMeasurements([]);
   }
+}
+
+function getMeasurementCustomerId() {
+  return jobForm.elements.customerId?.value || "";
 }
 
 function renderSavedMeasurements(measurements) {
@@ -3207,7 +3213,7 @@ async function deleteSavedMeasurementFromMap(customerId, measurementId, areaKey)
     updateMeasurementTotal();
     renderMeasurementAreas();
     refreshMeasurementMapDisplay();
-    await loadSavedMeasurementsForAddress(measurementAddress.value);
+    await loadSavedMeasurementsForCurrentJob();
     measurementStatus.textContent = "Saved service area deleted.";
   } catch (error) {
     alert(error.message);
@@ -5011,12 +5017,7 @@ function formatLeadSource(value) {
 }
 
 function getCustomerJobs(customer) {
-  const addressKey = normalizeKey(customer.address);
-  return jobs.filter((job) => (
-    job.customerId === customer.id ||
-    (customer.email && job.email === customer.email) ||
-    (addressKey && normalizeKey(job.address) === addressKey)
-  ));
+  return jobs.filter((job) => job.customerId === customer.id);
 }
 
 function attachPhotoViewerHandlers(container) {

@@ -60,7 +60,7 @@ test("authenticated tenant APIs list, export, settings, templates, measurements,
   expect(csv).not.toContain("Tenant B Job");
   expect(csv).not.toContain("tenant-b-secret@example.com");
 
-  const measurements = await apiJson(page, "/api/property-measurements?address=200%20Shared%20Lane%2C%20Riverside%2C%20CA%2092501");
+  const measurements = await apiJson(page, "/api/property-measurements?customerId=a-customer");
   const measurementsText = JSON.stringify(measurements);
   expect(measurementsText).toContain("Tenant A Saved Area");
   expect(measurementsText).not.toContain("Tenant B Saved Area");

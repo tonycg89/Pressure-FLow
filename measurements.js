@@ -6,15 +6,16 @@ const {
 } = require("./records");
 
 function createMeasurementHandlers({ readCustomers, readJobs, writeCustomers }) {
-  async function findSavedMeasurements(address) {
-    const target = normalizeAddressKey(address);
-    if (!target) {
+  async function findSavedMeasurements({ customerId = "", jobId = "" } = {}) {
+    const customers = await readCustomers();
+    const ownerCustomerId = customerId || await getCustomerIdForJob(jobId);
+    if (!ownerCustomerId) {
       return [];
     }
 
     const seen = new Set();
-    const customerMeasurements = (await readCustomers())
-      .filter((customer) => normalizeAddressKey(customer.address) === target)
+    const customerMeasurements = customers
+      .filter((customer) => customer.id === ownerCustomerId)
       .flatMap((customer) => (customer.propertyMeasurements || []).flatMap((item) =>
         expandSavedMeasurementAreas({
           id: item.id,
@@ -39,17 +40,22 @@ function createMeasurementHandlers({ readCustomers, readJobs, writeCustomers }) 
       .slice(0, 24);
   }
 
+  async function getCustomerIdForJob(jobId) {
+    if (!jobId) {
+      return "";
+    }
+
+    const job = (await readJobs()).find((item) => item.id === jobId);
+    return job?.customerId || "";
+  }
+
   async function syncJobMeasurementToCustomerFile(job) {
     if (!job.measurement?.geojson || !job.measurement?.squareFeet) {
       return;
     }
 
     const customers = await readCustomers();
-    let customer = customers.find((item) =>
-      item.id === job.customerId ||
-      (job.email && item.email === job.email) ||
-      (normalizeAddressKey(item.address) && normalizeAddressKey(item.address) === normalizeAddressKey(job.address))
-    );
+    let customer = customers.find((item) => item.id === job.customerId);
 
     if (!customer) {
       customer = normalizeCustomer({

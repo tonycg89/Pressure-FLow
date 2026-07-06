@@ -83,6 +83,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07C-2 backup, recovery, and data safety audit is complete.
 - Package 07C-3 operational monitoring and error visibility is complete.
 - Package 08A-1 mobile photo upload flow stabilization is complete.
+- Package 08B customer/property/job data isolation is complete.
 - Package 08E estimate email/calendar decoupling is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
@@ -97,6 +98,16 @@ Package 08A-1 mobile photo upload flow stabilization status:
 - Customer save and job create submit paths show immediate button loading with delayed status feedback for slower saves without changing API payloads, backend validation, auth, tenant isolation, integrations, storage format, or database behavior.
 - Tests run: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` passed 11/11.
 - Full regression note: `npm.cmd run test:browser` passed 75/76. The one failure reproduced independently in `tests/destructive-workflows.spec.js` and is unrelated to Package 08A-1: the contract page renders `Signed` while the test expects `Signed agreement`.
+
+Package 08B customer/property/job data isolation status:
+
+- Completed July 6, 2026.
+- Customer detail job lists now bind to `job.customerId` only. Same email or same normalized address no longer cause one customer's jobs to appear under another customer.
+- Saved property measurements now load by `customerId` or by `jobId` resolving to `customerId`. Address query matching was removed from `/api/property-measurements` so same-address customers do not share saved measurement areas.
+- Job measurement sync now attaches measurement history only to the job's explicit `customerId`. Legacy unlinked measured jobs can still create an isolated customer record, but they do not claim same-address customers.
+- Frontend Measure From Map reloads saved measurements from the current job/customer context instead of the formatted address field.
+- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js` (6 passed).
+- Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
 
 Package 08E estimate email/calendar decoupling status:
 
