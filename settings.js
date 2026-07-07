@@ -25,6 +25,7 @@ const privateSettingKeys = new Set([
   "googleClientSecret",
   "googleRefreshToken"
 ]);
+const deprecatedPoolServicePattern = /\bpool\b/i;
 
 function publicSettings(settings, options = {}) {
   const publicValues = omitPrivateSettings(settings);
@@ -262,15 +263,19 @@ function normalizeCustomServices(value) {
       unit: normalizeServiceUnit(service.unit),
       price: normalizeMoneyNumber(service.price, 0, 1_000_000)
     }))
-    .filter((service) => service.name)
+    .filter((service) => service.name && !isDeprecatedPoolSelectableName(service.name))
     .slice(0, 100);
 }
 
 function normalizeStringList(value) {
   return [...new Set((Array.isArray(value) ? value : [])
     .map((item) => String(item || "").trim().slice(0, 100))
-    .filter(Boolean))]
+    .filter((item) => item && !isDeprecatedPoolSelectableName(item)))]
     .slice(0, 100);
+}
+
+function isDeprecatedPoolSelectableName(name) {
+  return deprecatedPoolServicePattern.test(String(name || ""));
 }
 
 function normalizeServiceUnit(value) {

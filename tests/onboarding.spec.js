@@ -142,6 +142,34 @@ test("custom Other job title saves and pool services are absent from selectable 
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expect(page.locator("#jobForm [name='serviceType']")).not.toContainText(/Pool|pool/);
   await expect.poll(() => page.locator("#jobForm [name='serviceType'] option").evaluateAll((options) => options.at(-1)?.textContent)).toBe("Other");
+  await page.locator("#jobDialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+
+  await page.evaluate(() => {
+    localStorage.setItem("pressureflow.jobFormDraft.v1", JSON.stringify({
+      savedAt: new Date().toISOString(),
+      fields: {
+        serviceType: "Weekly Pool Service",
+        customJobTitle: "",
+        customerName: "Casey Walker",
+        email: "casey.walker@example.com",
+        phone: "(555) 888-4141",
+        streetAddress: "404 Park Lane",
+        city: "Riverside",
+        state: "CA",
+        zip: "92501",
+        depositPercent: "25"
+      },
+      lineItems: []
+    }));
+  });
+  await page.getByRole("button", { name: "Pipeline", exact: true }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await expect(page.locator("#jobForm [name='serviceType']")).not.toContainText(/Pool|pool/);
+  await expect(page.locator("#jobForm [name='serviceType']")).not.toHaveValue("Weekly Pool Service");
+  await expect.poll(() => page.locator("#jobForm [name='serviceType'] option").evaluateAll((options) => options.at(-1)?.textContent)).toBe("Other");
+
   await page.locator("#jobForm [name='serviceType']").selectOption("Other");
   await expect(page.locator("#customJobTitleField")).toBeVisible();
   await expect(page.locator("#jobForm [name='customJobTitle']")).toHaveJSProperty("required", true);

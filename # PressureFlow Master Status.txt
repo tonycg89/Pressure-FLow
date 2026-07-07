@@ -1,9 +1,9 @@
 PressureFlow Master Status
 
-Last Updated: July 6, 2026
+Last Updated: July 7, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, and Package 08E estimate email/calendar decoupling.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, and Package 08F post-08A-E stability/root-cause investigation.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -73,6 +73,7 @@ Completed Safety / Readiness Work:
 - Package 08C conditional saved measurements display
 - Package 08D job title and service catalog cleanup
 - Package 08E estimate email/calendar decoupling
+- Package 08F post-08A-E stability/root-cause investigation
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -122,6 +123,19 @@ Package 08E Estimate Email / Calendar Decoupling:
 - Settings status copy now refers to Google/Gmail or SMTP email setup instead of telling users to reconnect Calendar for automated email.
 - Verification: npm.cmd run check passed; npm.cmd run test:browser -- tests/estimate-email-decoupling.spec.js passed 4/4; npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/follow-up-automation.spec.js tests/pending-payments.spec.js passed 39/39.
 - Full regression: npm.cmd run test:browser passed 79/80. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+
+Package 08F Post-08A-E Stability / 502 Root Cause Investigation:
+- Completed July 7, 2026.
+- Estimate/job action routes now catch and log action failures with job_action_failed context before returning structured JSON errors.
+- Estimate action regression now verifies malformed estimate action requests return JSON instead of an empty response body; frontend empty-response handling remains covered separately.
+- 0% deposits now survive app defaults, settings forms, public contract rendering, public invoice rendering, and Postgres row mapping. Public contracts show $0.00 (0%), no deposit invoice is created for zero-deposit jobs, and final invoices show the full balance.
+- Legacy pool-named custom services/job titles are filtered from selectable UI on load and stripped during settings normalization; stale local job drafts with Weekly Pool Service no longer poison the Create Job dropdown. Historical saved jobs still render their stored title.
+- Map empty service-area state no longer uses the plus-style empty icon, and the separate map Status summary row is hidden while internal status text remains available for workflow feedback/tests.
+- Root cause: several bugs came from truthiness fallbacks (|| 25) that treated valid 0 as missing; duplicated display/persistence calculations instead of billing helpers; stale persisted browser/server settings surviving catalog cleanup; and tests focused on happy paths rather than deployed-like malformed/error responses and stale draft state.
+- Guardrails: use nullish coalescing for numeric defaults, centralize money/deposit calculations through billing.js, sanitize deprecated selectable defaults at both settings-save and UI-load boundaries, keep action-level structured logging, and add regression tests for failure-path JSON shape plus stale localStorage/settings data whenever workflow forms change.
+- Files touched: app.js, db.js, index.html, public-pages.js, server.js, settings.js, tests/dashboard-analytics.spec.js, tests/measurement-map.spec.js, tests/onboarding.spec.js, tests/pending-payments.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check app.js; node --check public-pages.js; node --check server.js; node --check db.js; node --check settings.js; node --check tests\dashboard-analytics.spec.js; node --check tests\pending-payments.spec.js; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/pending-payments.spec.js tests/onboarding.spec.js tests/measurement-map.spec.js tests/estimate-email-decoupling.spec.js passed 29/29.
+- Full regression: npm.cmd run test:browser passed 82/83. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 
 UI Packages Complete:
 - 01 Design System Foundation

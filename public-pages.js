@@ -411,6 +411,7 @@ function renderProofPhotoGrid(photos) {
 function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const isDeposit = invoiceType === "deposit";
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
+  const depositPercent = getDepositPercent(job);
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
   const businessName = getBusinessName(settings);
   const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
@@ -470,7 +471,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
                   <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
                 </tr>
               `).join("")}
-              <tr><td>${isDeposit ? `Deposit (${Number(job.depositPercent || 25)}%)` : "Final balance after deposit"}</td><td class="num">$${amount.toFixed(2)}</td></tr>
+              <tr><td>${isDeposit ? `Deposit (${depositPercent}%)` : "Final balance after deposit"}</td><td class="num">$${amount.toFixed(2)}</td></tr>
             </tbody>
           </table>
         </section>
@@ -541,8 +542,8 @@ function renderContractSigningPage(job, options = {}) {
       <td>$${Number(item.total || 0).toFixed(2)}</td>
     </tr>
   `).join("");
-  const depositAmount = Number(job.estimate || 0) * (Number(job.depositPercent || 25) / 100);
-  const finalAmount = Math.max(Number(job.estimate || 0) - depositAmount, 0);
+  const depositAmount = getDepositCents(job) / 100;
+  const finalAmount = getFinalBalanceCents(job) / 100;
   const alreadySigned = Boolean(job.contractSignedAt);
 
   return `<!doctype html>
@@ -641,6 +642,7 @@ function renderContractTerms(job, options = {}) {
 
 function renderContractProjectDetails(job, depositAmount, settings = {}) {
   const businessName = getBusinessName(settings);
+  const depositPercent = getDepositPercent(job);
   const details = [
     ["Business", businessName],
     ["Client", job.customerName],
@@ -648,7 +650,7 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
     ["Service Address", job.address],
     ["Approved Estimate", `${businessName} estimate approved online`],
     ["Estimated Price", `$${Number(job.estimate || 0).toFixed(2)}`],
-    ["Deposit", `$${depositAmount.toFixed(2)} (${Number(job.depositPercent || 25)}%)`],
+    ["Deposit", `$${depositAmount.toFixed(2)} (${depositPercent}%)`],
     ["Scheduled Date", job.scheduledAt || "To be scheduled after deposit payment"]
   ];
 
@@ -665,6 +667,11 @@ function renderContractProjectDetails(job, depositAmount, settings = {}) {
       </tbody>
     </table>
   </section>`;
+}
+
+function getDepositPercent(job) {
+  const percent = Number(job.depositPercent ?? 25);
+  return Number.isFinite(percent) ? percent : 25;
 }
 
 function contractSigningScript() {

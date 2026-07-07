@@ -722,10 +722,27 @@ async function handleApi(request, response, url) {
 
       const input = await readRequestBody(request);
       input._baseUrl = getAppBaseUrl(request);
-      await applyAction(job, action, input);
-      job.updatedAt = new Date().toISOString();
-      await writeJobs(jobs);
-      sendJson(response, 200, { job });
+      try {
+        await applyAction(job, action, input);
+        job.updatedAt = new Date().toISOString();
+        await writeJobs(jobs);
+        sendJson(response, 200, { job });
+      } catch (error) {
+        const statusCode = error.statusCode || 500;
+        operationalLogger.error("job_action_failed", {
+          action,
+          accountId: job.accountId || getWorkspaceId(),
+          jobId: job.id,
+          statusCode,
+          error
+        });
+        if (!response.headersSent) {
+          const message = statusCode >= 500 && process.env.NODE_ENV === "production"
+            ? "Unexpected server error."
+            : error.message || "Unexpected server error.";
+          sendError(response, statusCode, message);
+        }
+      }
     });
     return;
   }

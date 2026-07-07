@@ -170,6 +170,37 @@ test("job action failures with empty server responses show a clear retry message
   await expect(page.locator(".workflow-action-status.error")).toHaveText("The server returned an empty response HTTP 502. Please try again.");
 });
 
+test("estimate action route returns structured JSON for malformed requests", async ({ page }) => {
+  const jobsPath = path.join(DATA_DIR, "jobs.json");
+  const jobs = JSON.parse(await fs.readFile(jobsPath, "utf8"));
+  jobs.push(job("lead-structured-error", "Lead Structured Error", "", "Lead", 150));
+  await fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2));
+
+  await login(page);
+  const sessionResponse = await page.request.get("/api/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+  const response = await page.evaluate(async (csrfToken) => {
+    const result = await fetch("/api/jobs/lead-structured-error/send-square-estimate", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-csrf-token": csrfToken
+      },
+      body: "{bad-json"
+    });
+    return {
+      status: result.status,
+      contentType: result.headers.get("content-type"),
+      body: await result.text()
+    };
+  }, session.csrfToken);
+
+  expect(response.status).toBe(400);
+  expect(response.contentType).toContain("application/json");
+  expect(JSON.parse(response.body)).toEqual({ error: "Invalid JSON request body." });
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);

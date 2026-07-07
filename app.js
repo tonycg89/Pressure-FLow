@@ -33,6 +33,7 @@ const BUSINESS_LOGO_MAX_DIMENSION = 900;
 const JOB_FORM_DRAFT_KEY = "pressureflow.jobFormDraft.v1";
 const CUSTOMER_FORM_DRAFT_KEY = "pressureflow.customerFormDraft.v1";
 const OTHER_JOB_TITLE_VALUE = "Other";
+const deprecatedPoolServicePattern = /\bpool\b/i;
 
 const {
   buildFullAddress,
@@ -598,21 +599,27 @@ function applySettingsDefaults() {
 }
 
 function getDefaultDepositPercent() {
-  return settings.defaultDepositEnabled === false ? 0 : settings.defaultDepositPercent || 25;
+  return settings.defaultDepositEnabled === false ? 0 : settings.defaultDepositPercent ?? 25;
 }
 
 function syncServiceCatalog() {
-  const customServices = Array.isArray(settings.customServices) ? settings.customServices : [];
+  const customServices = (Array.isArray(settings.customServices) ? settings.customServices : [])
+    .filter((service) => !isDeprecatedPoolSelectableName(service?.name));
   serviceCatalog = [...new Map([...builtInServiceCatalog, ...customServices]
     .map((service) => [String(service.name || "").toLowerCase(), service])).values()];
   defaultEstimateService = getDefaultEstimateService(customServices);
   serviceTypes = [...builtInServiceTypes, ...(settings.customServiceTypes || [])]
+    .filter((name) => !isDeprecatedPoolSelectableName(name))
     .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
   beforePhotoSections = [...beforePhotoSections, ...(settings.customPhotoSections || [])]
     .filter((name, index, all) => all.findIndex((item) => item.toLowerCase() === String(name || "").toLowerCase()) === index);
   renderServiceTypeOptions();
   renderBeforePhotoSectionOptions();
   renderOnboardingServices();
+}
+
+function isDeprecatedPoolSelectableName(name) {
+  return deprecatedPoolServicePattern.test(String(name || ""));
 }
 
 function getDefaultEstimateService(customServices = []) {
@@ -1094,7 +1101,7 @@ function fillOnboardingForm() {
   onboardingForm.elements.businessEmail.value = settings.businessEmail || "";
   onboardingForm.elements.businessPhone.value = settings.businessPhone || "";
   onboardingForm.elements.defaultDepositEnabled.value = settings.defaultDepositEnabled === false ? "false" : "true";
-  onboardingForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
+  onboardingForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent ?? 25;
   onboardingForm.elements.emailSendProvider.value = settings.emailSendProvider || "google";
   syncOnboardingDepositVisibility();
   renderBusinessLogoPreview();
@@ -1254,7 +1261,7 @@ function fillSettingsForm() {
   settingsForm.elements.businessEmail.value = settings.businessEmail || "";
   settingsForm.elements.businessPhone.value = settings.businessPhone || "";
   settingsForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
-  settingsForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent || 25;
+  settingsForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent ?? 25;
   settingsForm.elements.defaultJobDurationMinutes.value = settings.defaultJobDurationMinutes || 180;
   settingsForm.elements.zellePayment.value = settings.zellePayment || "";
   settingsForm.elements.cashAppPayment.value = settings.cashAppPayment || "";
@@ -2375,7 +2382,14 @@ function restoreJobDraft() {
     if (!field || field.type === "file") return;
     field.value = value;
   });
-  syncCustomJobTitleField(draft.fields.customJobTitle || "");
+  const restoredServiceType = isDeprecatedPoolSelectableName(draft.fields.serviceType)
+    ? ""
+    : draft.fields.serviceType || "";
+  const restoredCustomTitle = isDeprecatedPoolSelectableName(draft.fields.customJobTitle)
+    ? ""
+    : draft.fields.customJobTitle || "";
+  renderServiceTypeOptions(restoredServiceType);
+  syncCustomJobTitleField(restoredCustomTitle);
   renderLineItems(Array.isArray(draft.lineItems) && draft.lineItems.length
     ? draft.lineItems
     : [{ ...defaultEstimateService, quantity: 0 }]);
@@ -3344,7 +3358,12 @@ function renderMeasurementAreas() {
 
   const areas = currentMeasurement.areas || [];
   if (!areas.length) {
-    measurementAreaList.innerHTML = renderEmptyState("No service areas added yet", "Draw and save an area to add it here.");
+    measurementAreaList.innerHTML = `
+      <div class="empty-state measurement-empty-state">
+        <p class="empty-state__title">No service areas added yet</p>
+        <p class="empty-state__hint">Draw and save an area to add it here.</p>
+      </div>
+    `;
     return;
   }
 

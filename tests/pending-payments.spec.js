@@ -186,6 +186,41 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   expect(zoe.squareDepositInvoiceId || "").toBe("");
 });
 
+test("zero percent deposit keeps public contract and final invoice at full balance", async ({ page }) => {
+  await updateTestSettings({
+    paymentInstructions: "Please pay the final balance after completion."
+  });
+  await updateStoredJob("88888888-8888-4888-8888-888888888888", {
+    status: "Completed",
+    contractApprovalToken: "zero-contract-token",
+    contractApprovalUrl: "http://127.0.0.1:3173/contract/88888888-8888-4888-8888-888888888888?token=zero-contract-token"
+  });
+
+  await page.goto("/contract/88888888-8888-4888-8888-888888888888?token=zero-contract-token");
+  await expect(page.getByRole("row", { name: /Deposit \$0\.00 \(0%\)/ })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Deposit Due Before Scheduling$0.00");
+  await expect(page.locator("body")).toContainText("Final Balance After Completion$350.00");
+  await expect(page.locator("body")).not.toContainText("(25%)");
+
+  await login(page);
+  const sessionResponse = await page.request.get("/api/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+  const invoice = await page.request.post("/api/jobs/88888888-8888-4888-8888-888888888888/send-final-invoice-text", {
+    headers: { "x-csrf-token": session.csrfToken },
+    data: {}
+  });
+  const invoicePayload = await invoice.json();
+  expect(invoice.ok(), JSON.stringify(invoicePayload)).toBeTruthy();
+  expect(invoicePayload.job.squareDepositInvoiceId || "").toBe("");
+  expect(invoicePayload.job.squareFinalInvoiceUrl).toBeTruthy();
+
+  await page.goto(invoicePayload.job.squareFinalInvoiceUrl);
+  await expect(page.getByRole("heading", { name: "Final Invoice" })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Final balance after deposit \$350\.00/ })).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Deposit (25%)");
+});
+
 test("schedule dialog blocks overlapping job times", async ({ page }) => {
   await updateStoredJob("66666666-6666-4666-8666-666666666666", {
     status: "Scheduled",

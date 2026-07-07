@@ -87,6 +87,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 08C conditional saved measurements display is complete.
 - Package 08D job title/service catalog cleanup is complete.
 - Package 08E estimate email/calendar decoupling is complete.
+- Package 08F post-08A-E stability/root-cause investigation is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -142,6 +143,20 @@ Package 08E estimate email/calendar decoupling status:
 - Settings copy now tells users to connect Google/Gmail or switch to SMTP for email, instead of requiring Calendar for automated emails.
 - Tests run: npm.cmd run check; npm.cmd run test:browser -- tests/estimate-email-decoupling.spec.js (4 passed); npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/follow-up-automation.spec.js tests/pending-payments.spec.js (39 passed).
 - Full regression note: npm.cmd run test:browser passed 79/80. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+
+Package 08F post-08A-E stability/root-cause investigation status:
+
+- Completed July 7, 2026.
+- Estimate/job action routes now log job_action_failed with action/account/job/status context and return structured JSON errors from the action route catch path.
+- Estimate action regression verifies malformed estimate action requests return JSON instead of an empty body; existing frontend coverage still verifies empty upstream 502 responses show clear retry copy and never success.
+- 0% deposit handling now uses nullish defaults and billing helpers across app defaults, settings forms, public contract totals, public invoice totals, and Postgres row mapping.
+- Zero-deposit jobs do not create deposit invoices and final invoices show the full balance.
+- Legacy pool-named custom services/job titles are filtered from selectable UI and stripped during settings normalization; stale local job drafts containing Weekly Pool Service no longer remove Other or restore a pool title into the Create Job dropdown. Historical saved job titles still render.
+- Map empty service-area UI no longer shows the plus-style icon, and the separate visible Status summary row is hidden.
+- Root cause analysis: recurring breakages came from truthiness fallbacks treating valid 0 as missing, duplicated deposit math outside billing.js, stale localStorage/settings data surviving catalog cleanup, and tests missing deployed-like malformed/error responses plus stale browser draft state.
+- Guardrails: use ?? for numeric defaults, centralize billing math, sanitize deprecated selectable defaults at save and load boundaries, keep action-level operational logging, and add tests for error JSON shape, stale persisted UI state, and zero-value business rules whenever workflow packages touch shared forms.
+- Tests run: npm.cmd run check; node --check app.js; node --check public-pages.js; node --check server.js; node --check db.js; node --check settings.js; node --check tests\dashboard-analytics.spec.js; node --check tests\pending-payments.spec.js; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/pending-payments.spec.js tests/onboarding.spec.js tests/measurement-map.spec.js tests/estimate-email-decoupling.spec.js (29 passed).
+- Full regression note: npm.cmd run test:browser passed 82/83. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 
 Phase 07D deployment sandbox verification status:
 
