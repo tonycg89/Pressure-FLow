@@ -4,7 +4,8 @@ Last Updated: July 7, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, and Package 08F post-08A-E stability/root-cause investigation.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, and Package 09A engineering governance hardening.
+- Permanent engineering standards and product principles now apply to all future packages through `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -79,6 +80,7 @@ Product guardrails:
 - Package 08D job title and service catalog cleanup
 - Package 08E estimate email/calendar decoupling
 - Package 08F post-08A-E stability/root-cause investigation
+- Package 09A engineering governance hardening
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -147,6 +149,15 @@ Product guardrails:
 - Files touched: `app.js`, `db.js`, `index.html`, `public-pages.js`, `server.js`, `settings.js`, `tests/dashboard-analytics.spec.js`, `tests/measurement-map.spec.js`, `tests/onboarding.spec.js`, `tests/pending-payments.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
 - Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check public-pages.js`; `node --check server.js`; `node --check db.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\pending-payments.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/pending-payments.spec.js tests/onboarding.spec.js tests/measurement-map.spec.js tests/estimate-email-decoupling.spec.js` passed 29/29.
 - Full regression: `npm.cmd run test:browser` passed 82/83. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+
+## Package 09A Engineering Governance Hardening
+
+- Completed July 7, 2026.
+- Added `PRESSUREFLOW_ENGINEERING_STANDARDS.md` as the mandatory engineering standards document for future packages, covering shared business logic, numeric defaults, structured errors, data compatibility, workflow stability, testing, deployment/environment review, and closeout reporting.
+- Added `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` as the mandatory product decision document for future packages, reinforcing pressure washing/exterior cleaning beta focus, contractor-first UX, trust/clarity, data ownership, beta readiness, and feature discipline.
+- Updated governance and handoff files so future AI/Codex agents must review both standards documents before implementation and document any exceptions in package closeouts.
+- No app behavior, app source, tests, styles, routes, integrations, or product functionality changed for this package.
+- Verification: `git diff --check` passed.
 
 ## UI Packages Complete
 

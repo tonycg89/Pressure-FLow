@@ -11,6 +11,8 @@ This file is the shared source of truth for Codex, Claude, v0, ChatGPT, and any 
 - Outside AI output is design/spec input, not production code.
 - All Claude/v0 recommendations must be reviewed, scoped, and adapted before Codex implements anything.
 - Preserve backend logic, auth, validation, tenant isolation, integrations, database behavior, and existing workflows unless an explicit approved task says otherwise.
+- Before implementing any future package, review `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`. All package work must comply with those documents.
+- Package closeouts must include the required stability/closeout report items from `PRESSUREFLOW_ENGINEERING_STANDARDS.md`, including files changed, behavior changed, tests run, pass/fail results, known unrelated failures, root cause, guardrails, remaining risks, and documentation updated.
 
 Priority order:
 
@@ -88,6 +90,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 08D job title/service catalog cleanup is complete.
 - Package 08E estimate email/calendar decoupling is complete.
 - Package 08F post-08A-E stability/root-cause investigation is complete.
+- Package 09A engineering governance hardening is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -157,6 +160,17 @@ Package 08F post-08A-E stability/root-cause investigation status:
 - Guardrails: use `??` for numeric defaults, centralize billing math, sanitize deprecated selectable defaults at save and load boundaries, keep action-level operational logging, and add tests for error JSON shape, stale persisted UI state, and zero-value business rules whenever workflow packages touch shared forms.
 - Tests run: `npm.cmd run check`; `node --check app.js`; `node --check public-pages.js`; `node --check server.js`; `node --check db.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\pending-payments.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/pending-payments.spec.js tests/onboarding.spec.js tests/measurement-map.spec.js tests/estimate-email-decoupling.spec.js` (29 passed).
 - Full regression note: `npm.cmd run test:browser` passed 82/83. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+
+Package 09A engineering governance hardening status:
+
+- Completed July 7, 2026.
+- Added `PRESSUREFLOW_ENGINEERING_STANDARDS.md` as a mandatory engineering standards document for all future packages.
+- Added `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` as a mandatory product decision principles document for all future packages.
+- Updated `PRESSUREFLOW_GOVERNANCE.md` so future development packages must comply with the engineering standards and future product decisions must align with the product principles.
+- Future AI/Codex agents must review both standards documents before implementation and must document any exceptions in package closeout reports.
+- Package closeouts must include the required stability/closeout items: files changed, behavior changed, tests run, pass/fail results, known unrelated failures, root cause, guardrails, remaining risks, and documentation updated.
+- No app behavior, app source, tests, styles, routes, integrations, or product functionality changed for this package.
+- Verification: `git diff --check` passed.
 
 Phase 07D deployment sandbox verification status:
 

@@ -4,6 +4,11 @@
 
 This project folder now contains the central coordination files for PressureFlow:
 
+- `PRESSUREFLOW_GOVERNANCE.md`
+- `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
+- `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
+- `PRESSUREFLOW_MASTER_STATUS.md`
+- `PRESSUREFLOW_AI_HANDOFF.md`
 - `# PressureFlow Project Governance.txt`
 - `# PressureFlow AI Handoff.txt`
 - `# PressureFlow Master Status.txt`
@@ -11,6 +16,15 @@ This project folder now contains the central coordination files for PressureFlow
 These files should be updated after every major project milestone when their contents are affected.
 
 External advisors such as Claude, v0, and ChatGPT may provide recommendations, but implementation decisions must follow this governance file, the master status file, and the approved project roadmap.
+
+---
+
+## Required Engineering and Product Standards
+
+- All future development packages must comply with `PRESSUREFLOW_ENGINEERING_STANDARDS.md`.
+- All future product decisions must align with `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
+- Package closeout reports must identify any exceptions.
+- These standards are mandatory unless explicitly overridden and documented.
 
 ---
 
