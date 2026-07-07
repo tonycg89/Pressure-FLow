@@ -62,6 +62,8 @@ function createJobActionHandler({
 
     if (action === "schedule") {
       const settings = await readSettings();
+      const previousScheduledAt = job.scheduledAt || "";
+      const previousJobDurationMinutes = job.jobDurationMinutes;
       const scheduledAt = input.scheduledAt || "";
       if (!isValidLocalDateTime(scheduledAt)) {
         throw validationError("Schedule date/time must be a real date and time.");
@@ -85,8 +87,16 @@ function createJobActionHandler({
       if (calendarEvent.htmlLink !== undefined) {
         job.googleCalendarEventUrl = calendarEvent.htmlLink || "";
       }
-      await sendScheduleConfirmationEmail(job, settings, input._baseUrl);
-      await sendAdminTextAlertSafe(`PressureFlow: Job scheduled for ${formatAlertCustomer(job)}. ${formatScheduledWindow(job)}.`);
+      const scheduleChanged = hasScheduleChanged(previousScheduledAt, previousJobDurationMinutes, scheduledAt, duration);
+      if (!previousScheduledAt || scheduleChanged) {
+        await sendScheduleConfirmationEmail(job, settings, input._baseUrl, {
+          isReschedule: Boolean(previousScheduledAt),
+          previousScheduledAt,
+          previousJobDurationMinutes
+        });
+        const alertAction = previousScheduledAt ? "rescheduled" : "scheduled";
+        await sendAdminTextAlertSafe(`PressureFlow: Job ${alertAction} for ${formatAlertCustomer(job)}. ${formatScheduledWindow(job)}.`);
+      }
     }
 
     if (action === "send-square-estimate" || action === "resend-estimate-email" || action === "send-estimate-text") {
@@ -349,6 +359,15 @@ function validationError(message) {
   const error = new Error(message);
   error.statusCode = 400;
   return error;
+}
+
+function hasScheduleChanged(previousScheduledAt, previousJobDurationMinutes, nextScheduledAt, nextJobDurationMinutes) {
+  if (!previousScheduledAt) return true;
+  const previousTime = String(previousScheduledAt || "").slice(0, 16);
+  const nextTime = String(nextScheduledAt || "").slice(0, 16);
+  if (previousTime !== nextTime) return true;
+  if (previousJobDurationMinutes === undefined || previousJobDurationMinutes === null || previousJobDurationMinutes === "") return false;
+  return Number(previousJobDurationMinutes) !== Number(nextJobDurationMinutes);
 }
 
 function shouldCreateGoogleCalendarEvent(settings = {}) {

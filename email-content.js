@@ -271,19 +271,26 @@ function buildCompletionNoticeEmailMessage(job, settings) {
   };
 }
 
-function buildScheduleConfirmationEmailMessage(job, settings, baseUrl, inviteAttachment, scheduleText, instructions) {
+function buildScheduleConfirmationEmailMessage(job, settings, baseUrl, inviteAttachment, scheduleText, instructions, options = {}) {
   const businessName = getBusinessName(settings);
+  const isReschedule = Boolean(options.isReschedule);
+  const previousScheduleText = options.previousScheduleText || "";
   return {
     to: job.email,
-    subject: `${businessName} schedule confirmation - ${job.address}`,
+    subject: isReschedule
+      ? `${businessName} appointment rescheduled - ${job.address}`
+      : `${businessName} schedule confirmation - ${job.address}`,
     textBody: [
       `Hi ${job.customerName},`,
       "",
-      `Your ${businessName} service has been scheduled.`,
+      isReschedule
+        ? `Your ${businessName} appointment has been updated.`
+        : `Your ${businessName} service has been scheduled.`,
       "",
       `Service: ${job.serviceType}`,
       `Address: ${job.address}`,
-      `Scheduled time: ${scheduleText}`,
+      ...(isReschedule && previousScheduleText ? [`Previous scheduled time: ${previousScheduleText}`] : []),
+      `${isReschedule ? "New scheduled time" : "Scheduled time"}: ${scheduleText}`,
       "",
       "Day-of-service instructions:",
       ...instructions.map((item) => `- ${item}`),
@@ -291,7 +298,10 @@ function buildScheduleConfirmationEmailMessage(job, settings, baseUrl, inviteAtt
       "Thank you,",
       businessName
     ].join("\n"),
-    htmlBody: renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions),
+    htmlBody: renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions, {
+      isReschedule,
+      previousScheduleText
+    }),
     attachments: [inviteAttachment]
   };
 }
@@ -638,16 +648,22 @@ function renderReviewRequestEmailHtml(job, settings, textBody, reviewLinks) {
   });
 }
 
-function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions) {
+function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleText, instructions, options = {}) {
   const businessName = getBusinessName(settings);
+  const isReschedule = Boolean(options.isReschedule);
+  const previousScheduleText = options.previousScheduleText || "";
   return renderEmailShell({
     settings,
     baseUrl,
-    preheader: `Your ${businessName} service at ${job.address} has been scheduled.`,
-    title: "Schedule Confirmation",
+    preheader: isReschedule
+      ? `Your ${businessName} service at ${job.address} has been rescheduled.`
+      : `Your ${businessName} service at ${job.address} has been scheduled.`,
+    title: isReschedule ? "Appointment Rescheduled" : "Schedule Confirmation",
     body: `
       <p style="margin:0 0 14px;color:${emailTheme.text}">Hi ${escapeHtml(job.customerName)},</p>
-      <p style="margin:0 0 14px;color:${emailTheme.text}">Your ${escapeHtml(businessName)} service has been scheduled.</p>
+      <p style="margin:0 0 14px;color:${emailTheme.text}">${isReschedule
+        ? `Your ${escapeHtml(businessName)} appointment has been updated.`
+        : `Your ${escapeHtml(businessName)} service has been scheduled.`}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:18px 0;background:${emailTheme.background};border:1px solid ${emailTheme.border};border-radius:10px">
         <tbody>
           <tr>
@@ -658,8 +674,14 @@ function renderScheduleConfirmationEmailHtml(job, settings, baseUrl, scheduleTex
             <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Address</td>
             <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(job.address)}</td>
           </tr>
+          ${isReschedule && previousScheduleText ? `
           <tr>
-            <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Scheduled time</td>
+            <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">Previous scheduled time</td>
+            <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(previousScheduleText)}</td>
+          </tr>
+          ` : ""}
+          <tr>
+            <td style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.muted};font-size:13px;line-height:18px;font-weight:700">${isReschedule ? "New scheduled time" : "Scheduled time"}</td>
             <td align="right" style="padding:14px 16px;border-top:1px solid ${emailTheme.border};font-family:Arial,sans-serif;color:${emailTheme.text};font-size:14px;line-height:18px;font-weight:700">${escapeHtml(scheduleText)}</td>
           </tr>
         </tbody>

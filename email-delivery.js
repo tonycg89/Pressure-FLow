@@ -59,8 +59,15 @@ function createEmailDelivery({ logger = createOperationalLogger(), warn = consol
     }
   }
 
-  async function sendScheduleConfirmationEmail(job, settings, baseUrl) {
+  async function sendScheduleConfirmationEmail(job, settings, baseUrl, options = {}) {
     const scheduleText = formatScheduledWindow(job);
+    const previousScheduleText = options.previousScheduledAt
+      ? formatScheduledWindow({
+        ...job,
+        scheduledAt: options.previousScheduledAt,
+        jobDurationMinutes: options.previousJobDurationMinutes ?? job.jobDurationMinutes
+      })
+      : "";
     const instructions = getDayOfServiceInstructions(settings);
     await sendCustomerEmail(settings, buildScheduleConfirmationEmailMessage(
       job,
@@ -68,8 +75,12 @@ function createEmailDelivery({ logger = createOperationalLogger(), warn = consol
       baseUrl,
       buildScheduleInviteAttachment(job, settings),
       scheduleText,
-      instructions
-    ), { ...emailContext("schedule_confirmation", job, settings), logger });
+      instructions,
+      {
+        isReschedule: Boolean(options.isReschedule),
+        previousScheduleText
+      }
+    ), { ...emailContext(options.isReschedule ? "schedule_reschedule" : "schedule_confirmation", job, settings), logger });
   }
 
   return {

@@ -2,7 +2,9 @@ const { test, expect } = require("@playwright/test");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { buildScheduleConfirmationEmailMessage } = require("../email-content");
 const { createGoogleCalendarEvent } = require("../integrations/google");
+const { createJobActionHandler } = require("../job-actions");
 
 const DATA_DIR = path.resolve(__dirname, "..", ".tmp", "playwright-data");
 const TEST_USER = {
@@ -369,6 +371,157 @@ test("calendar reschedule updates existing events and recreates stale event ids"
   } finally {
     global.fetch = originalFetch;
   }
+});
+
+test("schedule email copy distinguishes initial schedule from reschedule", () => {
+  const settings = {
+    businessName: "Johnson Exterior Cleaning",
+    serviceIndustry: "Pressure Washing"
+  };
+  const job = {
+    ...baseScheduleJob(),
+    customerName: "Schedule Tester",
+    scheduledAt: "2026-06-11T13:30",
+    jobDurationMinutes: 90
+  };
+  const inviteAttachment = { fileName: "invite.ics", contentType: "text/calendar", content: "BEGIN:VCALENDAR" };
+
+  const initial = buildScheduleConfirmationEmailMessage(
+    job,
+    settings,
+    "https://example.com",
+    inviteAttachment,
+    "Thursday, June 11, 2026, 1:30 PM - 3:00 PM PDT",
+    ["Close all windows."]
+  );
+
+  expect(initial.subject).toBe("Johnson Exterior Cleaning schedule confirmation - 100 Main Street, Riverside, CA 92501");
+  expect(initial.textBody).toContain("Your Johnson Exterior Cleaning service has been scheduled.");
+  expect(initial.textBody).toContain("Scheduled time: Thursday, June 11, 2026, 1:30 PM - 3:00 PM PDT");
+  expect(initial.textBody).not.toContain("Previous scheduled time");
+  expect(initial.htmlBody).toContain("Schedule Confirmation");
+
+  const reschedule = buildScheduleConfirmationEmailMessage(
+    job,
+    settings,
+    "https://example.com",
+    inviteAttachment,
+    "Thursday, June 11, 2026, 1:30 PM - 3:00 PM PDT",
+    ["Close all windows."],
+    {
+      isReschedule: true,
+      previousScheduleText: "Wednesday, June 10, 2026, 9:00 AM - 11:00 AM PDT"
+    }
+  );
+
+  expect(reschedule.subject).toBe("Johnson Exterior Cleaning appointment rescheduled - 100 Main Street, Riverside, CA 92501");
+  expect(reschedule.textBody).toContain("Your Johnson Exterior Cleaning appointment has been updated.");
+  expect(reschedule.textBody).toContain("Previous scheduled time: Wednesday, June 10, 2026, 9:00 AM - 11:00 AM PDT");
+  expect(reschedule.textBody).toContain("New scheduled time: Thursday, June 11, 2026, 1:30 PM - 3:00 PM PDT");
+  expect(reschedule.textBody).toContain("Service: Driveway cleaning");
+  expect(reschedule.htmlBody).toContain("Appointment Rescheduled");
+  expect(reschedule.htmlBody).toContain("Previous scheduled time");
+  expect(reschedule.htmlBody).toContain("New scheduled time");
+});
+
+test("schedule action sends initial email reschedule email and skips duplicate same-time submits", async () => {
+  const sentScheduleEmails = [];
+  const calendarCalls = [];
+  const adminAlerts = [];
+  const { applyAction } = createJobActionHandler({
+    createGoogleCalendarEvent: async (_settings, job) => {
+      calendarCalls.push({
+        scheduledAt: job.scheduledAt,
+        googleCalendarEventId: job.googleCalendarEventId || ""
+      });
+      return { id: job.googleCalendarEventId || `event-${calendarCalls.length}`, htmlLink: `https://calendar.example/${calendarCalls.length}` };
+    },
+    createPressureFlowInvoice: async () => ({}),
+    readSettings: async () => ({
+      businessName: "Johnson Exterior Cleaning",
+      googleClientId: "client",
+      googleClientSecret: "secret",
+      googleRefreshToken: "refresh-token",
+      googleRedirectUri: "https://example.com/auth/google/callback"
+    }),
+    randomToken: () => "token",
+    sendAdminTextAlertSafe: async (message) => {
+      adminAlerts.push(message);
+    },
+    sendContractEmail: async () => {},
+    sendEstimateEmail: async () => {},
+    sendScheduleConfirmationEmail: async (job, _settings, _baseUrl, options) => {
+      sentScheduleEmails.push({
+        scheduledAt: job.scheduledAt,
+        duration: job.jobDurationMinutes,
+        options
+      });
+    },
+    writeSettings: async () => {}
+  });
+  const job = {
+    ...baseScheduleJob(),
+    status: "Contract Signed"
+  };
+
+  await applyAction(job, "schedule", {
+    scheduledAt: "2026-06-10T09:00",
+    jobDurationMinutes: 120,
+    _baseUrl: "https://example.com"
+  });
+  expect(sentScheduleEmails).toHaveLength(1);
+  expect(sentScheduleEmails[0]).toMatchObject({
+    scheduledAt: "2026-06-10T09:00",
+    duration: 120,
+    options: {
+      isReschedule: false,
+      previousScheduledAt: ""
+    }
+  });
+  expect(adminAlerts[0]).toContain("Job scheduled");
+
+  await applyAction(job, "schedule", {
+    scheduledAt: "2026-06-11T13:30",
+    jobDurationMinutes: 90,
+    _baseUrl: "https://example.com"
+  });
+  expect(sentScheduleEmails).toHaveLength(2);
+  expect(sentScheduleEmails[1]).toMatchObject({
+    scheduledAt: "2026-06-11T13:30",
+    duration: 90,
+    options: {
+      isReschedule: true,
+      previousScheduledAt: "2026-06-10T09:00",
+      previousJobDurationMinutes: 120
+    }
+  });
+  expect(adminAlerts[1]).toContain("Job rescheduled");
+
+  await applyAction(job, "schedule", {
+    scheduledAt: "2026-06-12T08:30",
+    jobDurationMinutes: 180,
+    _baseUrl: "https://example.com"
+  });
+  expect(sentScheduleEmails).toHaveLength(3);
+  expect(sentScheduleEmails[2]).toMatchObject({
+    scheduledAt: "2026-06-12T08:30",
+    duration: 180,
+    options: {
+      isReschedule: true,
+      previousScheduledAt: "2026-06-11T13:30",
+      previousJobDurationMinutes: 90
+    }
+  });
+
+  await applyAction(job, "schedule", {
+    scheduledAt: "2026-06-12T08:30",
+    jobDurationMinutes: 180,
+    _baseUrl: "https://example.com"
+  });
+  expect(sentScheduleEmails).toHaveLength(3);
+  expect(adminAlerts).toHaveLength(3);
+  expect(calendarCalls).toHaveLength(4);
+  expect(job.googleCalendarEventId).toBe("event-1");
 });
 
 test("schedule action route returns structured JSON for malformed payload and missing jobs", async ({ page }) => {
