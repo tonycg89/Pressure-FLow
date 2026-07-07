@@ -168,6 +168,31 @@ function createJobActionHandler({
       await sendManualEstimateFollowUp(job, settings);
     }
 
+    if (action === "send-review-request") {
+      const settings = await readSettings();
+      if (job.status !== "Paid" || !job.squareFinalPaidAt) {
+        throw actionError("Review request is available after the final invoice is marked paid.", {
+          statusCode: 400,
+          code: "REVIEW_REQUEST_NOT_READY"
+        });
+      }
+      if (!hasReviewRequestLink(settings)) {
+        throw actionError("Add at least one review link in Settings before sending a review request.", {
+          statusCode: 409,
+          code: "REVIEW_LINKS_NOT_CONFIGURED"
+        });
+      }
+      if (job.reviewRequestSentAt) {
+        throw actionError("Review request was already sent for this job.", {
+          statusCode: 409,
+          code: "REVIEW_REQUEST_ALREADY_SENT"
+        });
+      }
+      await sendManualEstimateFollowUp(job, settings, "review_request");
+      job.reviewRequestSentAt = new Date().toISOString();
+      await sendAdminTextAlertSafe(`PressureFlow: Review request sent for ${formatAlertCustomer(job)}.`);
+    }
+
     if (action === "cancel-estimate-follow-up") {
       await cancelManualFollowUp(job);
     }
@@ -359,6 +384,18 @@ function validationError(message) {
   const error = new Error(message);
   error.statusCode = 400;
   return error;
+}
+
+function actionError(message, { statusCode = 400, code = "" } = {}) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  error.exposeToClient = true;
+  return error;
+}
+
+function hasReviewRequestLink(settings = {}) {
+  return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
 }
 
 function hasScheduleChanged(previousScheduledAt, previousJobDurationMinutes, nextScheduledAt, nextJobDurationMinutes) {

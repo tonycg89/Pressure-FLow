@@ -161,9 +161,9 @@ function createFollowUpHandlers({
     return changed;
   }
 
-  async function sendManualEstimateFollowUp(job, settings) {
-    const type = getActiveFollowUpType(job);
-    if (!canSendFollowUp(job, type)) {
+  async function sendManualEstimateFollowUp(job, settings, requestedType = "") {
+    const type = requestedType || getActiveFollowUpType(job, settings);
+    if (!canSendFollowUp(job, type, settings)) {
       throw new Error("Follow-up is not available for this job.");
     }
     if (job.suppressEstimateFollowUp) {
@@ -171,8 +171,8 @@ function createFollowUpHandlers({
     }
 
     const accountId = itemWorkspaceId(job);
-    await cancelPendingFollowUp(job.id, "manual_sent", accountId, type);
     await sendEstimateFollowUpEmail(job, settings, type);
+    await cancelPendingFollowUp(job.id, "manual_sent", accountId, type);
     const sentTask = createSentTask(job, accountId, "manual", type);
     const tasks = await readScopedTasks(accountId);
     await writeScopedTasks([...tasks, sentTask], accountId);
@@ -287,8 +287,8 @@ function getDelayMs(settings, type = FOLLOW_UP_TYPE) {
   return hours * 60 * 60 * 1000;
 }
 
-function canSendFollowUp(job, type = getActiveFollowUpType(job)) {
-  return Boolean(FOLLOW_UP_CONFIG[type]?.canSend(job));
+function canSendFollowUp(job, type = getActiveFollowUpType(job), settings = {}) {
+  return Boolean(FOLLOW_UP_CONFIG[type]?.canSend(job, settings));
 }
 
 function isFollowUpEnabled(settings = {}, type = FOLLOW_UP_TYPE) {
@@ -340,12 +340,12 @@ function createSentTask(job, accountId, source, type = FOLLOW_UP_TYPE) {
   };
 }
 
-function getActiveFollowUpType(job) {
+function getActiveFollowUpType(job, settings = {}) {
   if (FOLLOW_UP_CONFIG.estimate_followup.canSend(job)) return FOLLOW_UP_TYPES.estimate;
   if (FOLLOW_UP_CONFIG.contract_followup.canSend(job)) return FOLLOW_UP_TYPES.contract;
   if (FOLLOW_UP_CONFIG.deposit_followup.canSend(job)) return FOLLOW_UP_TYPES.deposit;
   if (FOLLOW_UP_CONFIG.invoice_followup.canSend(job)) return FOLLOW_UP_TYPES.invoice;
-  if (FOLLOW_UP_CONFIG.review_request.canSend(job, {})) return FOLLOW_UP_TYPES.review;
+  if (FOLLOW_UP_CONFIG.review_request.canSend(job, settings)) return FOLLOW_UP_TYPES.review;
   return FOLLOW_UP_TYPE;
 }
 

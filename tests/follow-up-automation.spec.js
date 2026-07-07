@@ -4,6 +4,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { buildFollowUpEmailMessage } = require("../email-content");
 const { createFollowUpHandlers } = require("../follow-ups");
+const { createJobActionHandler } = require("../job-actions");
 
 const DATA_DIR = path.resolve(__dirname, "..", ".tmp", "playwright-data");
 const TEST_USER = {
@@ -342,6 +343,111 @@ test("deposit and final invoice follow-ups cancel on payment", async ({ page }) 
   expect(reviewTask).toMatchObject({ status: "pending", source: "auto" });
 });
 
+test("manual review request sends after final payment and cancels pending auto review", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Completed Finn/ }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
+  await expect(page.locator(".toast")).toContainText("Final invoice sent to completed.finn@example.com.");
+  await page.getByRole("button", { name: "Mark Paid" }).click();
+  await expect(page.locator("#paymentDialog")).toBeVisible();
+  await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
+
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toBeVisible();
+  await expect(page.locator("#jobDetail")).toContainText("Auto review request scheduled");
+  await page.getByRole("button", { name: "Send Review Request" }).click();
+  await expect(page.locator(".toast").filter({ hasText: "Review request sent to completed.finn@example.com." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review Request Sent" })).toBeVisible();
+  await expect(page.locator("#jobDetail")).toContainText("Review request sent");
+
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === "completed-job");
+  expect(job.reviewRequestSentAt).toBeTruthy();
+
+  const tasks = await readTasks();
+  const autoTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "review_request" && item.source === "auto");
+  const manualTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "review_request" && item.source === "manual");
+  expect(autoTask).toMatchObject({ status: "cancelled", cancelledReason: "manual_sent" });
+  expect(manualTask).toMatchObject({ status: "sent" });
+});
+
+test("manual review request requires a configured review link", async ({ page }) => {
+  await updateTestSettings({
+    googleReviewUrl: "",
+    yelpReviewUrl: "",
+    facebookReviewUrl: "",
+    otherReviewUrl: ""
+  });
+  await updateStoredJob("completed-job", {
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-04T12:00:00.000Z",
+    squareFinalInvoiceStatus: "PAID"
+  });
+
+  await login(page);
+  await page.goto("/#view=pipeline&job=completed-job");
+  await expect(page.locator("#jobDetail")).toContainText("Completed Finn");
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toBeVisible();
+  await expect(page.locator("#jobDetail")).toContainText("Add a review link in Settings before sending.");
+  await page.getByRole("button", { name: "Send Review Request" }).click();
+
+  await expect(page.locator(".workflow-action-status.error")).toContainText("Add at least one review link in Settings before sending a review request.");
+  await expect(page.locator(".toast").filter({ hasText: "Review request sent" })).toHaveCount(0);
+
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === "completed-job");
+  expect(job.reviewRequestSentAt || "").toBe("");
+});
+
+test("failed manual review request does not show success or cancel auto follow-up", async ({ page }) => {
+  await updateStoredJob("completed-job", {
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-04T12:00:00.000Z",
+    squareFinalInvoiceStatus: "PAID"
+  });
+  await fs.writeFile(path.join(DATA_DIR, "follow-up-tasks.json"), JSON.stringify([
+    followUpTask("review-task", "completed-job", "review_request")
+  ], null, 2));
+
+  await login(page);
+  await page.route("**/api/jobs/completed-job/send-review-request", async (route) => {
+    await route.fulfill({
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "SMTP mailbox rejected the review request." })
+    });
+  });
+
+  await page.goto("/#view=pipeline&job=completed-job");
+  await expect(page.locator("#jobDetail")).toContainText("Completed Finn");
+  await page.getByRole("button", { name: "Send Review Request" }).click();
+
+  await expect(page.locator(".workflow-action-status.error")).toContainText("SMTP mailbox rejected the review request.");
+  await expect(page.locator(".toast").filter({ hasText: "Review request sent" })).toHaveCount(0);
+
+  const tasks = await readTasks();
+  const autoTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "review_request");
+  expect(autoTask).toMatchObject({ status: "pending" });
+});
+
+test("already sent review request displays a sent state without encouraging duplicates", async ({ page }) => {
+  await updateStoredJob("completed-job", {
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-04T12:00:00.000Z",
+    squareFinalInvoiceStatus: "PAID",
+    reviewRequestSentAt: "2026-06-04T13:00:00.000Z"
+  });
+
+  await login(page);
+  await page.goto("/#view=pipeline&job=completed-job");
+  await expect(page.locator("#jobDetail")).toContainText("Completed Finn");
+
+  await expect(page.getByRole("button", { name: "Review Request Sent" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toHaveCount(0);
+  await expect(page.locator("#jobDetail")).toContainText("Review request sent");
+});
+
 test("review request follow-up sends after final payment and records sent marker", async () => {
   const sent = [];
   let jobs = [{
@@ -382,6 +488,61 @@ test("review request follow-up sends after final payment and records sent marker
   expect(jobs[0].reviewRequestSentAt).toBeTruthy();
 });
 
+test("manual review request action only suppresses automation after email send succeeds", async () => {
+  const sent = [];
+  let tasks = [followUpTask("review-task", "review-job", "review_request")];
+  const job = {
+    ...leadJob("review-job", "Review Rita"),
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-03T12:00:00.000Z",
+    reviewRequestSentAt: ""
+  };
+  const handler = createJobActionHandler({
+    createGoogleCalendarEvent: async () => ({}),
+    createPressureFlowInvoice: async () => ({}),
+    readSettings: async () => testSettings(),
+    randomToken: () => "token",
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => {},
+    sendEstimateEmail: async () => {},
+    sendManualEstimateFollowUp: async (_job, _settings, type) => {
+      sent.push(type);
+      tasks = tasks.map((task) => task.type === type ? { ...task, status: "cancelled", cancelledReason: "manual_sent" } : task);
+    },
+    sendScheduleConfirmationEmail: async () => {},
+    writeSettings: async () => {}
+  });
+
+  await handler.applyAction(job, "send-review-request", {});
+
+  expect(sent).toEqual(["review_request"]);
+  expect(job.reviewRequestSentAt).toBeTruthy();
+  expect(tasks[0]).toMatchObject({ status: "cancelled", cancelledReason: "manual_sent" });
+
+  const failingJob = {
+    ...job,
+    id: "failing-review-job",
+    reviewRequestSentAt: ""
+  };
+  const failingHandler = createJobActionHandler({
+    createGoogleCalendarEvent: async () => ({}),
+    createPressureFlowInvoice: async () => ({}),
+    readSettings: async () => testSettings(),
+    randomToken: () => "token",
+    sendAdminTextAlertSafe: async () => {},
+    sendContractEmail: async () => {},
+    sendEstimateEmail: async () => {},
+    sendManualEstimateFollowUp: async () => {
+      throw new Error("SMTP mailbox rejected the review request.");
+    },
+    sendScheduleConfirmationEmail: async () => {},
+    writeSettings: async () => {}
+  });
+
+  await expect(failingHandler.applyAction(failingJob, "send-review-request", {})).rejects.toThrow("SMTP mailbox rejected the review request.");
+  expect(failingJob.reviewRequestSentAt || "").toBe("");
+});
+
 test("review request email includes 5-star copy and configured links", () => {
   const job = {
     ...leadJob("review-copy-job", "Review Robin"),
@@ -411,6 +572,23 @@ async function readTasks() {
 
 async function readJobs() {
   return JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+}
+
+async function updateStoredJob(jobId, partial) {
+  const jobs = await readJobs();
+  const job = jobs.find((item) => item.id === jobId);
+  Object.assign(job, partial);
+  await fs.writeFile(path.join(DATA_DIR, "jobs.json"), JSON.stringify(jobs, null, 2));
+}
+
+async function updateTestSettings(partial) {
+  const usersPath = path.join(DATA_DIR, "users.json");
+  const users = JSON.parse(await fs.readFile(usersPath, "utf8"));
+  users[0].settings = {
+    ...users[0].settings,
+    ...partial
+  };
+  await fs.writeFile(usersPath, JSON.stringify(users, null, 2));
 }
 
 async function resetTestData() {

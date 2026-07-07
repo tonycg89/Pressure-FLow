@@ -3,7 +3,7 @@ PressureFlow Master Status
 Last Updated: July 7, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, Package 09B owner validation blockers, Package 09C scheduling server error hardening, Package 09D reschedule not-found root cause, and Package 09E reschedule confirmation email distinction.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, Package 09B owner validation blockers, Package 09C scheduling server error hardening, Package 09D reschedule not-found root cause, Package 09E reschedule confirmation email distinction, and Package 09F manual review request send action.
 - Permanent engineering standards and product principles now apply to all future packages through PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
@@ -80,6 +80,7 @@ Completed Safety / Readiness Work:
 - Package 09C scheduling server error hardening
 - Package 09D reschedule not-found root cause
 - Package 09E reschedule confirmation email distinction
+- Package 09F manual review request send action
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -205,6 +206,23 @@ Package 09E Reschedule Confirmation Email Distinction:
 - Verification: npm.cmd run check passed; node --check job-actions.js; node --check email-delivery.js; node --check email-content.js; node --check tests\pending-payments.spec.js; npm.cmd run test:browser -- tests/pending-payments.spec.js passed 19/19; git diff --check passed.
 - Full regression: npm.cmd run test:browser passed 94/95. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 - Remaining risks: production should be rechecked after redeploy with a real email provider to confirm the delivered email subject/preheader render clearly in Gmail/SMTP clients. If a contractor resubmits the same appointment only to resend a confirmation, the new behavior intentionally suppresses that duplicate email.
+
+Package 09F Manual Review Request Send Action:
+- Completed July 7, 2026.
+- Standards followed: PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md were reviewed before implementation.
+- Root cause/product gap: review request automation existed only as a delayed follow-up after final payment, so owner validation felt unfinished because a contractor could mark the final invoice paid but could not immediately ask the customer for a review.
+- Behavior changed: paid jobs now show a visible Send Review Request action in the job Automation section. The action uses the existing review request email template/settings and the existing follow-up send/log path.
+- Review link validation: at least one review link is required. If none are configured, the UI shows a setup prompt and the backend returns a structured 409 setup error: Add at least one review link in Settings before sending a review request.
+- Manual send behavior: success toast appears only after the API confirms send. Manual send stamps job.reviewRequestSentAt, logs a manual sent follow-up task, and cancels the pending automated review_request task with manual_sent so automation does not send a duplicate later.
+- Failure behavior: if email send fails, no success toast appears, reviewRequestSentAt is not set, and pending automated review follow-up remains pending.
+- Already-sent behavior: jobs with reviewRequestSentAt show Review Request Sent and do not show a new send button, avoiding accidental duplicate requests.
+- Existing delayed automation remains unchanged for jobs where manual send is not used.
+- Existing estimate, invoice, scheduling, payment, and public workflow behavior remains unchanged.
+- Tests added/updated: final-paid job shows manual send, manual send succeeds and cancels pending auto review, missing review links show setup error, failed send shows failure/no success and preserves pending automation, already-sent state, delayed auto review still sends when manual is not used, and backend manual send only suppresses automation after email succeeds.
+- Files touched: app.js, follow-ups.js, job-actions.js, tests/follow-up-automation.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check app.js; node --check job-actions.js; node --check follow-ups.js; node --check tests\follow-up-automation.spec.js; npm.cmd run test:browser -- tests/follow-up-automation.spec.js passed 20/20; git diff --check passed.
+- Full regression: npm.cmd run test:browser passed 99/100. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+- Remaining risks: redeployed production should be checked with the owner account's real email provider and real review links to confirm the delivered review request email and link rendering. Resend behavior was intentionally not added for 09F; already-sent jobs show a sent state to avoid accidental duplicate review requests.
 
 UI Packages Complete:
 - 01 Design System Foundation

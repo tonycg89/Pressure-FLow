@@ -95,6 +95,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 09C scheduling server error hardening is complete.
 - Package 09D reschedule not-found root cause is complete.
 - Package 09E reschedule confirmation email distinction is complete.
+- Package 09F manual review request send action is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -233,6 +234,24 @@ Package 09E reschedule confirmation email distinction status:
 - Verification: npm.cmd run check passed; node --check job-actions.js; node --check email-delivery.js; node --check email-content.js; node --check tests\pending-payments.spec.js; focused browser tests npm.cmd run test:browser -- tests/pending-payments.spec.js passed 19/19; git diff --check passed.
 - Full regression: npm.cmd run test:browser passed 94/95. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 - Remaining risks: redeployed production should be checked with the owner account's real email provider to confirm Gmail/SMTP clients display the new reschedule subject/preheader clearly. The product now intentionally suppresses unchanged same-time confirmation resends.
+
+Package 09F manual review request send action status:
+
+- Completed July 7, 2026.
+- Standards followed: PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md were reviewed before implementation.
+- Root cause/product gap: final payment scheduled a delayed automated review request, but there was no contractor-facing action to request a review immediately. Owner validation therefore hit an unnecessary waiting gap after final payment.
+- Behavior changed: paid jobs now show Send Review Request in the job Automation section. The action sends the existing configured review request email immediately using the existing review request template/settings/link configuration.
+- Review link validation: at least one of Google/Yelp/Facebook/Other review link is required. Missing links show setup guidance in the UI and return a structured backend 409 error directing the contractor to Settings.
+- Manual send behavior: success toast appears only after confirmed backend success. On success, the job gets reviewRequestSentAt, a manual sent review_request task is logged, and any pending automated review request for the job is cancelled with manual_sent.
+- Failure behavior: failed sends show the backend error, never show success, do not set reviewRequestSentAt, and do not cancel the pending automated review request.
+- Already-sent behavior: jobs with reviewRequestSentAt show Review Request Sent and do not show a new send button. Resend behavior was intentionally not added in this package to avoid accidental duplicate review requests.
+- Existing delayed automation still works for jobs where manual send is not used.
+- Existing estimate/email, contract, invoice, and payment workflows remain unchanged.
+- Tests added/updated: final paid job shows manual review action, manual send success, missing review-link setup error, failed send no-success behavior, pending automation cancellation after manual success, pending automation preservation after failed send, already-sent display state, and delayed auto review still sending without manual action.
+- Files touched: app.js, follow-ups.js, job-actions.js, tests/follow-up-automation.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check app.js; node --check job-actions.js; node --check follow-ups.js; node --check tests\follow-up-automation.spec.js; focused browser tests npm.cmd run test:browser -- tests/follow-up-automation.spec.js passed 20/20; git diff --check passed.
+- Full regression: npm.cmd run test:browser passed 99/100. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+- Remaining risks: redeployed production should be checked with the owner account's real email provider and configured review links to verify delivery and link rendering in the actual customer email client.
 
 Phase 07D deployment sandbox verification status:
 

@@ -1042,15 +1042,21 @@ function openSettings(options = {}) {
     paymentTarget?.querySelector("input, select, textarea, button")?.focus();
     return;
   }
+  if (options.section === "review") {
+    const reviewTarget = settingsForm?.elements.googleReviewUrl?.closest(".field") || settingsForm?.elements.reviewRequestSubject?.closest(".field");
+    reviewTarget?.scrollIntoView({ block: "center" });
+    reviewTarget?.querySelector("input, select, textarea, button")?.focus();
+    return;
+  }
   settingsDialog.querySelector(".modal__close, input, select, textarea, button")?.focus();
 }
 
 function handleSettingsPaymentClick(event) {
-  const trigger = event.target.closest("[data-open-settings-payment]");
+  const trigger = event.target.closest("[data-open-settings-payment], [data-open-settings-review]");
   if (!trigger) return;
 
   event.preventDefault();
-  openSettings({ section: "payment" });
+  openSettings({ section: trigger.matches("[data-open-settings-review]") ? "review" : "payment" });
 }
 
 function handleFirstCustomerClick(event) {
@@ -4512,6 +4518,7 @@ function renderJobDetail() {
         ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
+        ${renderReviewRequestControls(job, hasPendingWorkflowAction)}
         ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>
       </div>
@@ -4580,7 +4587,8 @@ function viewExpensesForJob(jobId) {
 
 function renderEstimateFollowUpControls(job) {
   const followUpType = getActiveFollowUpType(job);
-  if (!followUpType && !getLatestFollowUpTask(job.id)) {
+  const latestTask = getLatestFollowUpTask(job.id);
+  if (!followUpType && (!latestTask || latestTask.type === "review_request")) {
     return "";
   }
 
@@ -4598,6 +4606,39 @@ function renderEstimateFollowUpControls(job) {
       ${followUpType && task?.status === "pending" && !suppressed ? `<button class="link-button" type="button" data-action="cancel-estimate-follow-up">Cancel scheduled follow-up</button>` : ""}
     </div>
   `;
+}
+
+function renderReviewRequestControls(job, hasPendingWorkflowAction = false) {
+  const task = getLatestFollowUpTask(job.id, "review_request");
+  const isPaid = job.status === "Paid" || Boolean(job.squareFinalPaidAt);
+  if (!isPaid && !job.reviewRequestSentAt && !task) {
+    return "";
+  }
+
+  const sentAt = job.reviewRequestSentAt || (task?.type === "review_request" && task.status === "sent" ? task.sentAt : "");
+  const hasReviewLinks = hasConfiguredReviewLink();
+  const sending = pendingWorkflowAction === `${job.id}:send-review-request`;
+  const disabled = hasPendingWorkflowAction || Boolean(sentAt);
+  return `
+    <div class="follow-up-control review-request-control">
+      <p class="field__help">${escapeHtml(formatReviewRequestStatus(task, sentAt))}</p>
+      ${sentAt
+        ? `<button class="action-button secondary" type="button" disabled>Review Request Sent</button>`
+        : `<button class="action-button secondary" type="button" data-action="send-review-request" ${disabled ? "disabled" : ""}>${sending ? "Sending..." : "Send Review Request"}</button>`}
+      ${!sentAt && !hasReviewLinks ? `<p class="field__help error-text">Add a review link in Settings before sending.</p><button class="link-button" type="button" data-open-settings-review>Configure review links</button>` : ""}
+    </div>
+  `;
+}
+
+function hasConfiguredReviewLink() {
+  return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
+}
+
+function formatReviewRequestStatus(task, sentAt = "") {
+  if (sentAt) return `Review request sent ${formatNotificationDate(sentAt)}.`;
+  if (task?.status === "pending") return `Auto review request scheduled for ${formatNotificationDate(task.scheduledFor)}.`;
+  if (task?.status === "cancelled") return `Review request follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
+  return "Review request is ready after final payment.";
 }
 
 function getLatestFollowUpTask(jobId, preferredType = "") {
@@ -5315,6 +5356,9 @@ async function runAction(jobId, action, actionPayload = {}) {
     }
     if (action === "send-completion-notice-email") {
       showToast(`Completion notice sent to ${updated.job.email}.`);
+    }
+    if (action === "send-review-request") {
+      showToast(`Review request sent to ${updated.job.email}.`);
     }
     await loadFollowUpTasks();
     await loadJobs();
