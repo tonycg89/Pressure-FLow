@@ -108,6 +108,13 @@ test("authenticated cross-tenant writes, deletes, actions, and linked records fa
   const foreignInvoiceAction = await postJson(page, "/api/jobs/b-job/send-deposit-invoice", csrfToken, {});
   expect(foreignInvoiceAction.status()).toBe(404);
 
+  const foreignScheduleAction = await postJson(page, "/api/jobs/b-job/schedule", csrfToken, {
+    scheduledAt: "2026-06-18T09:00",
+    jobDurationMinutes: 120
+  });
+  expect(foreignScheduleAction.status()).toBe(404);
+  expect(await foreignScheduleAction.json()).toEqual({ error: "Job not found." });
+
   const crossTenantExpenseCreate = await postJson(page, "/api/expenses", csrfToken, {
     vendor: "Cross Tenant Vendor",
     category: "Supplies",

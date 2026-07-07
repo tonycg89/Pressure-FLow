@@ -79,8 +79,12 @@ function createJobActionHandler({
       job.scheduledAt = scheduledAt;
       job.scheduledEventAt = new Date().toISOString();
       job.jobDurationMinutes = duration;
-      job.googleCalendarEventId = calendarEvent.id;
-      job.googleCalendarEventUrl = calendarEvent.htmlLink || "";
+      if (calendarEvent.id !== undefined) {
+        job.googleCalendarEventId = calendarEvent.id;
+      }
+      if (calendarEvent.htmlLink !== undefined) {
+        job.googleCalendarEventUrl = calendarEvent.htmlLink || "";
+      }
       await sendScheduleConfirmationEmail(job, settings, input._baseUrl);
       await sendAdminTextAlertSafe(`PressureFlow: Job scheduled for ${formatAlertCustomer(job)}. ${formatScheduledWindow(job)}.`);
     }

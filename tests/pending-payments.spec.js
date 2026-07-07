@@ -303,6 +303,74 @@ test("calendar setup, auth, and event failures expose structured scheduling erro
   }
 });
 
+test("calendar reschedule updates existing events and recreates stale event ids", async () => {
+  const originalFetch = global.fetch;
+  const settings = {
+    googleClientId: "client",
+    googleClientSecret: "secret",
+    googleRedirectUri: "https://example.com/auth/google/callback",
+    googleRefreshToken: "connected-token"
+  };
+
+  try {
+    const updateRequests = [];
+    global.fetch = async (url, options = {}) => {
+      updateRequests.push({ url: String(url), method: options.method || "GET" });
+      if (String(url).includes("/token")) {
+        return { ok: true, json: async () => ({ access_token: "access-token" }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({ id: "existing-event", htmlLink: "https://calendar.example/existing-event" })
+      };
+    };
+
+    const updated = await createGoogleCalendarEvent({
+      ...settings,
+      googleCalendarId: "primary"
+    }, {
+      ...baseScheduleJob(),
+      googleCalendarEventId: "existing-event"
+    }, "2026-06-10T09:00", 120);
+
+    expect(updated).toMatchObject({ id: "existing-event" });
+    expect(updateRequests.some((request) => request.method === "PATCH" && request.url.includes("/events/existing-event"))).toBeTruthy();
+
+    const staleRequests = [];
+    global.fetch = async (url, options = {}) => {
+      staleRequests.push({ url: String(url), method: options.method || "GET" });
+      if (String(url).includes("/token")) {
+        return { ok: true, json: async () => ({ access_token: "access-token" }) };
+      }
+      if ((options.method || "GET") === "PATCH") {
+        return {
+          ok: false,
+          status: 404,
+          json: async () => ({ error: { message: "Not found" } })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ id: "replacement-event", htmlLink: "https://calendar.example/replacement-event" })
+      };
+    };
+
+    const recreated = await createGoogleCalendarEvent({
+      ...settings,
+      googleCalendarId: "primary"
+    }, {
+      ...baseScheduleJob(),
+      googleCalendarEventId: "stale-event"
+    }, "2026-06-11T13:30", 90);
+
+    expect(recreated).toMatchObject({ id: "replacement-event" });
+    expect(staleRequests.some((request) => request.method === "PATCH" && request.url.includes("/events/stale-event"))).toBeTruthy();
+    expect(staleRequests.some((request) => request.method === "POST" && request.url.includes("/events"))).toBeTruthy();
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("schedule action route returns structured JSON for malformed payload and missing jobs", async ({ page }) => {
   await login(page);
   const sessionResponse = await page.request.get("/api/session");
@@ -324,6 +392,42 @@ test("schedule action route returns structured JSON for malformed payload and mi
   expect(missing.status()).toBe(404);
   expect(missing.headers()["content-type"]).toContain("application/json");
   await expect(missing.json()).resolves.toEqual({ error: "Job not found." });
+});
+
+test("scheduled jobs can be rescheduled without an existing calendar event id", async ({ page }) => {
+  await updateStoredJob("88888888-8888-4888-8888-888888888888", {
+    status: "Scheduled",
+    scheduledAt: "2026-06-10T09:00",
+    scheduledEventAt: "2026-06-01T12:00:00.000Z",
+    jobDurationMinutes: 120,
+    googleCalendarEventId: "",
+    googleCalendarEventUrl: ""
+  });
+
+  await login(page);
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await expect(page.getByRole("button", { name: "Reschedule Job" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Reschedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await expect(page.locator("#scheduleForm [name='scheduleDate']")).toHaveValue("2026-06-10");
+  await expect(page.locator("#scheduleForm [name='scheduleTime']")).toHaveValue("09:00");
+
+  await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-11");
+  await page.locator("#scheduleForm [name='scheduleTime']").fill("13:30");
+  await page.locator("#scheduleForm [name='durationHours']").fill("1.5");
+  await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job", exact: true }).click();
+
+  await expect(page.locator("#scheduleDialog")).toBeHidden();
+  await expect(page.locator("#jobDetail")).toContainText("Scheduled");
+  await expect(page.locator("#jobDetail")).toContainText("June 11, 2026, 1:30 PM");
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const zoe = jobs.find((item) => item.id === "88888888-8888-4888-8888-888888888888");
+  expect(zoe.status).toBe("Scheduled");
+  expect(zoe.scheduledAt).toBe("2026-06-11T13:30");
+  expect(zoe.jobDurationMinutes).toBe(90);
 });
 
 test("frontend displays structured scheduling failures without a false success toast", async ({ page }) => {
@@ -349,6 +453,40 @@ test("frontend displays structured scheduling failures without a false success t
   await expect(page.locator(".workflow-action-status.error")).toContainText("Google Calendar is not connected yet.");
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
   await expect(page.locator(".toast").filter({ hasText: "Job scheduled" })).toHaveCount(0);
+});
+
+test("frontend displays specific reschedule failures instead of generic not found", async ({ page }) => {
+  await updateStoredJob("88888888-8888-4888-8888-888888888888", {
+    status: "Scheduled",
+    scheduledAt: "2026-06-10T09:00",
+    scheduledEventAt: "2026-06-01T12:00:00.000Z",
+    jobDurationMinutes: 120,
+    googleCalendarEventId: "stale-event"
+  });
+
+  await login(page);
+
+  await page.route("**/api/jobs/88888888-8888-4888-8888-888888888888/schedule", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Google Calendar calendar was not found. Open Settings and confirm the Calendar ID or reconnect Google Calendar." })
+    });
+  });
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await page.getByRole("button", { name: "Reschedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-11");
+  await page.locator("#scheduleForm [name='scheduleTime']").fill("13:30");
+  await page.locator("#scheduleForm [name='durationHours']").fill("1.5");
+  await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job", exact: true }).click();
+
+  await expect(page.locator(".workflow-action-status.error")).toContainText("Google Calendar calendar was not found.");
+  await expect(page.locator(".workflow-action-status.error")).not.toHaveText("Not found");
+  await expect(page.locator("#jobDetail")).toContainText("Scheduled");
+  await expect(page.locator(".toast").filter({ hasText: /Job (scheduled|rescheduled)/ })).toHaveCount(0);
 });
 
 test("contractor is blocked before sending final invoice when no payment methods are configured", async ({ page }) => {

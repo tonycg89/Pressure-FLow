@@ -95,10 +95,37 @@ async function createGoogleCalendarEventRequest(settings, event) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw createCalendarError(
-      data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`,
-      { code: "GOOGLE_CALENDAR_EVENT_CREATE_FAILED" }
-    );
+    throw calendarEventResponseError(response, data, "create");
+  }
+
+  return data;
+}
+
+async function updateGoogleCalendarEventRequest(settings, eventId, event) {
+  const accessToken = await getGoogleAccessToken(settings);
+  const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
+  const encodedEventId = encodeURIComponent(eventId);
+  let response;
+  try {
+    response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodedEventId}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(event),
+      signal: googleRequestTimeoutSignal()
+    });
+  } catch (error) {
+    throw createCalendarError("Google Calendar event update failed. Check the Calendar connection and try rescheduling again.", {
+      code: "GOOGLE_CALENDAR_EVENT_UPDATE_REQUEST_FAILED",
+      cause: error
+    });
+  }
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw calendarEventResponseError(response, data, "update");
   }
 
   return data;
@@ -121,7 +148,7 @@ async function createGoogleCalendarEvent(settings, job, scheduledAt, durationMin
 
   const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
   const endDateTime = withPacificOffset(addMinutesToLocalDateTime(scheduledAt.slice(0, 16), durationMinutes));
-  return createGoogleCalendarEventRequest(settings, {
+  const event = {
     summary: `${job.serviceType} - ${job.customerName}`,
     location: job.address,
     description: [
@@ -147,7 +174,19 @@ async function createGoogleCalendarEvent(settings, job, scheduledAt, durationMin
     reminders: {
       useDefault: true
     }
-  });
+  };
+
+  if (job.googleCalendarEventId) {
+    try {
+      return await updateGoogleCalendarEventRequest(settings, job.googleCalendarEventId, event);
+    } catch (error) {
+      if (error.code !== "GOOGLE_CALENDAR_EVENT_NOT_FOUND") {
+        throw error;
+      }
+    }
+  }
+
+  return createGoogleCalendarEventRequest(settings, event);
 }
 
 function requireGoogleSettings(settings, requireRefreshToken) {
@@ -184,6 +223,30 @@ function googleRequestTimeoutSignal() {
   return AbortSignal.timeout(15000);
 }
 
+function calendarEventResponseError(response, data, operation) {
+  const rawMessage = data.error?.message || data.error || `Google Calendar event ${operation} failed with status ${response.status}.`;
+  const normalizedMessage = String(rawMessage || "").trim();
+
+  if (response.status === 404) {
+    if (operation === "update") {
+      return createCalendarError("Google Calendar event was not found. PressureFlow will recreate the calendar event for this job.", {
+        statusCode: 409,
+        code: "GOOGLE_CALENDAR_EVENT_NOT_FOUND"
+      });
+    }
+    return createCalendarError("Google Calendar calendar was not found. Open Settings and confirm the Calendar ID or reconnect Google Calendar.", {
+      statusCode: 409,
+      code: "GOOGLE_CALENDAR_NOT_FOUND"
+    });
+  }
+
+  return createCalendarError(normalizedMessage, {
+    code: operation === "update"
+      ? "GOOGLE_CALENDAR_EVENT_UPDATE_FAILED"
+      : "GOOGLE_CALENDAR_EVENT_CREATE_FAILED"
+  });
+}
+
 function createCalendarError(message, { statusCode = 502, code = "GOOGLE_CALENDAR_ACTION_FAILED", cause = null } = {}) {
   const error = new Error(message);
   error.statusCode = statusCode;
@@ -201,5 +264,6 @@ module.exports = {
   createGoogleCalendarEventRequest,
   createCalendarError,
   exchangeGoogleCode,
-  getGoogleAccessToken
+  getGoogleAccessToken,
+  updateGoogleCalendarEventRequest
 };

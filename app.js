@@ -5127,7 +5127,7 @@ function getNextAction(job) {
       : { label: "Schedule Job", action: "schedule" },
     "Deposit Sent": { label: "Mark Deposit Paid", action: "mark-deposit-paid" },
     "Deposit Paid": { label: "Schedule Job", action: "schedule" },
-    "Scheduled": null,
+    "Scheduled": { label: "Reschedule Job", action: "schedule" },
     "Completed": null,
     "Final Invoice Sent": { label: "Mark Paid", action: "mark-paid" }
   };
@@ -5492,7 +5492,7 @@ function getDefaultScheduleValue() {
 }
 
 function openScheduleDialog(job = null) {
-  const defaultValue = getDefaultScheduleValue();
+  const defaultValue = job?.scheduledAt || getDefaultScheduleValue();
   const [date, time] = defaultValue.split("T");
   const durationHours = Math.max(Number(settings.defaultJobDurationMinutes || 180) / 60, 0.25);
 

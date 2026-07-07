@@ -93,6 +93,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 09A engineering governance hardening is complete.
 - Package 09B owner validation blockers: map draft state and estimate server error is complete.
 - Package 09C scheduling server error hardening is complete.
+- Package 09D reschedule not-found root cause is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -201,6 +202,20 @@ Package 09C scheduling server error hardening status:
 - Verification: npm.cmd run check passed; node --check integrations\google.js; node --check tests\pending-payments.spec.js; npm.cmd run test:browser -- tests/pending-payments.spec.js passed 14/14.
 - Full regression: npm.cmd run test:browser passed 89/90. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 - Remaining risks: redeployed production still needs an owner-account scheduling check to verify the real Google Calendar connection either schedules successfully or returns the new structured Calendar reconnect/setup error. A schedule-confirmation email failure after Calendar succeeds will surface via the existing 09B structured email errors.
+
+Package 09D reschedule not-found root cause status:
+
+- Completed July 7, 2026.
+- Standards followed: PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md were reviewed before implementation.
+- Exact source of Not found: the app did not have a separate reschedule action. Scheduled jobs did not expose a reschedule action in the UI, the schedule dialog defaulted to a new time instead of the existing appointment, and Calendar sync only created events. A stale googleCalendarEventId or invalid Calendar ID could therefore let Google Calendar's raw 404 Not found leak into the workflow without identifying whether the missing record was the local job, Google event, or Calendar.
+- Fix: scheduled jobs now show Reschedule Job and reuse the existing schedule action. The schedule modal pre-fills the saved scheduled date/time. Google Calendar scheduling now upserts: PATCH an existing event ID, recreate the event if Google says the stored event is missing, and return a structured Calendar setup error if the configured Calendar itself is missing.
+- Local metadata behavior: when Calendar sync is skipped, local rescheduling no longer overwrites existing googleCalendarEventId or googleCalendarEventUrl with undefined.
+- Ownership behavior: schedule/reschedule remains scoped through the tenant-aware job action route. Missing, stale, and cross-tenant job IDs return structured {"error":"Job not found."} and fail closed.
+- Tests added/updated: Calendar update success, stale Google event recreate, malformed schedule payload, missing schedule job lookup, scheduled-job reschedule with no Calendar event ID, specific frontend reschedule failure display, no false success toast, and cross-tenant schedule action rejection.
+- Files touched: app.js, job-actions.js, integrations/google.js, tests/pending-payments.spec.js, tests/tenant-security.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check integrations\google.js; node --check job-actions.js; node --check app.js; node --check tests\pending-payments.spec.js; node --check tests\tenant-security.spec.js; focused browser tests npm.cmd run test:browser -- tests/pending-payments.spec.js tests/tenant-security.spec.js passed 20/20; git diff --check passed.
+- Full regression: npm.cmd run test:browser passed 92/93. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+- Remaining risks: redeployed production still needs an owner-account reschedule check with the real Google Calendar connection. Expected outcomes are successful reschedule, structured Calendar setup error for an invalid Calendar ID, or automatic event recreation for stale stored event IDs.
 
 Phase 07D deployment sandbox verification status:
 
