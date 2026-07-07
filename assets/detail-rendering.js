@@ -88,7 +88,7 @@
     function renderCustomerMeasurements(measurements) {
       const reusable = expandCustomerMeasurementAreas(measurements);
       if (!reusable.length) {
-        return renderEmptyState("No saved map measurements yet", "Saved measurements will appear here.");
+        return "";
       }
 
       return reusable.map((item) => `

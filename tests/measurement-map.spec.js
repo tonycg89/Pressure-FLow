@@ -106,7 +106,8 @@ test("same-address customers keep jobs and saved measurements isolated", async (
 
   await openCustomer(page, "Address Twin Beta");
   await expect(page.locator("#customerDetail")).toContainText("No jobs yet");
-  await expect(page.locator("#customerDetail")).toContainText("No saved map measurements yet");
+  await expect(page.locator("#customerDetail")).not.toContainText("Saved Map Measurements");
+  await expect(page.locator("#customerDetail")).not.toContainText("No saved map measurements yet");
   await expect(page.locator("#customerDetail")).not.toContainText("Driveway cleaning");
   await expect(page.locator("#customerDetail")).not.toContainText("Service area 1");
 
@@ -126,6 +127,17 @@ test("same-address customers keep jobs and saved measurements isolated", async (
   await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
   await expect(page.locator("#savedMeasurementsPanel")).toBeHidden();
   await expect(page.locator("#savedMeasurementsList")).not.toContainText("Service area 1");
+  await page.locator("#measurementDialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("#measurementDialog")).toBeHidden();
+  await page.locator("#jobDialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+
+  await openCustomer(page, "Address Twin Alpha");
+  await expect(page.locator("#customerDetail")).toContainText("Saved Map Measurements");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#customerDetail [data-delete-measurement]").click();
+  await expect(page.locator("#customerDetail")).not.toContainText("Saved Map Measurements");
+  await expect(page.locator("#customerDetail")).not.toContainText("Service area 1");
 });
 
 test("measure from map re-arms polygon drawing after adding and updating areas", async ({ page }) => {

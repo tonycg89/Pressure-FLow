@@ -84,6 +84,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07C-3 operational monitoring and error visibility is complete.
 - Package 08A-1 mobile photo upload flow stabilization is complete.
 - Package 08B customer/property/job data isolation is complete.
+- Package 08C conditional saved measurements display is complete.
 - Package 08D job title/service catalog cleanup is complete.
 - Package 08E estimate email/calendar decoupling is complete.
 - Contract initials requirement removal is complete.
@@ -108,6 +109,17 @@ Package 08B customer/property/job data isolation status:
 - Job measurement sync now attaches measurement history only to the job's explicit customerId. Legacy unlinked measured jobs can still create an isolated customer record, but they do not claim same-address customers.
 - Frontend Measure From Map reloads saved measurements from the current job/customer context instead of the formatted address field.
 - Tests run: npm.cmd run check; npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js (6 passed).
+- Full regression note: npm.cmd run test:browser passed 80/81. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+
+Package 08C conditional saved measurements display status:
+
+- Completed July 6, 2026.
+- Customer detail now renders Saved Map Measurements only when the selected customer has saved measurement areas. Empty customers and customers with jobs but no measurements show no heading, placeholder, or empty container.
+- renderCustomerMeasurements now returns an empty string for zero expanded saved areas, preserving the UI visibility rule for any direct caller.
+- Job detail measurement rows were reviewed and already hidden when job.measurement.squareFeet is absent; measurement storage, editing, deletion, map drawing, and calculations were not changed.
+- Browser regression now verifies no-section behavior for customers with no saved areas, normal display for saved areas, same-address isolation, and immediate removal after the final saved area is deleted.
+- Files touched: app.js, assets/detail-rendering.js, tests/measurement-map.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Tests run: npm.cmd run check; node --check app.js; node --check assets\detail-rendering.js; npm.cmd run test:browser -- tests/measurement-map.spec.js (3 passed).
 - Full regression note: npm.cmd run test:browser passed 80/81. The remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
 
 Package 08D job title/service catalog cleanup status:

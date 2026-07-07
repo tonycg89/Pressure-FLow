@@ -4769,6 +4769,13 @@ function renderCustomerDetail() {
   }
 
   const relatedJobs = getCustomerJobs(customer);
+  const savedMeasurementAreas = expandCustomerMeasurementAreas(customer.propertyMeasurements || []);
+  const savedMeasurementsSection = savedMeasurementAreas.length ? `
+    <section class="detail-section">
+      <h4>Saved Map Measurements</h4>
+      ${renderCustomerMeasurements(customer.propertyMeasurements || [])}
+    </section>
+  ` : "";
   customerDetail.innerHTML = `
     <section class="detail-section">
       <h4>${escapeHtml(customer.customerName)}</h4>
@@ -4782,10 +4789,7 @@ function renderCustomerDetail() {
       ${renderPhotoGrid(getCustomerServiceAreaPhotos(customer))}
     </section>
 
-    <section class="detail-section">
-      <h4>Saved Map Measurements</h4>
-      ${renderCustomerMeasurements(customer.propertyMeasurements || [])}
-    </section>
+    ${savedMeasurementsSection}
 
     <section class="detail-section">
       <h4>Notes</h4>

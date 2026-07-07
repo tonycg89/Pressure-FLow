@@ -4,7 +4,7 @@ Last Updated: July 6, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08D job title/service catalog cleanup, and Package 08E estimate email/calendar decoupling.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, and Package 08E estimate email/calendar decoupling.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
 - Do not start broad UI redesign beyond approved v0 audit findings.
@@ -75,6 +75,7 @@ Product guardrails:
 - Package 07C-3 operational monitoring and error visibility
 - Package 08A-1 mobile photo upload flow stabilization
 - Package 08B customer/property/job data isolation
+- Package 08C conditional saved measurements display
 - Package 08D job title and service catalog cleanup
 - Package 08E estimate email/calendar decoupling
 - Contract initials requirement removed
@@ -98,6 +99,17 @@ Product guardrails:
 - Measurement sync now attaches saved measurement data only to the job's explicit customer. Unlinked measured jobs can still create their own customer record, but same-address or same-email customers are not reused implicitly.
 - Added a browser regression covering two customers at the exact same address, verifying Alpha's job and saved service area stay with Alpha while Beta shows no inherited jobs or measurements.
 - Verification: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js` passed 6/6.
+- Full regression: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+
+## Package 08C Conditional Saved Measurements Display
+
+- Completed July 6, 2026.
+- Customer detail now renders the `Saved Map Measurements` section only when the selected customer has one or more expanded saved measurement areas.
+- The customer measurement renderer now returns no empty placeholder for zero saved measurements, preventing empty containers or `No saved map measurements yet` copy from appearing.
+- Job detail measurement rows were reviewed and already hidden when a job has no measurement data, so no storage, editing, deletion, map drawing, or calculation behavior was changed.
+- Browser regression now verifies same-address customers with no measurements show no saved-measurements section, customers with saved areas show the section normally, and deleting the final saved area removes the section immediately.
+- Files touched: `app.js`, `assets/detail-rendering.js`, `tests/measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Verification: `npm.cmd run check`; `node --check app.js`; `node --check assets\detail-rendering.js`; `npm.cmd run test:browser -- tests/measurement-map.spec.js` passed 3/3.
 - Full regression: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
 
 ## Package 08D Job Title / Service Catalog Cleanup
