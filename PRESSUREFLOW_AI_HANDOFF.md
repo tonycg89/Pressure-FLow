@@ -92,6 +92,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 08F post-08A-E stability/root-cause investigation is complete.
 - Package 09A engineering governance hardening is complete.
 - Package 09B owner validation blockers: map draft state and estimate server error is complete.
+- Package 09C scheduling server error hardening is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -186,6 +187,20 @@ Package 09B owner validation blockers status:
 - Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check server.js`; `node --check email-delivery.js`; `node --check integrations\gmail.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\measurement-map.spec.js`; `node --check tests\estimate-email-decoupling.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/estimate-email-decoupling.spec.js tests/measurement-map.spec.js` passed 19/19.
 - Full regression: `npm.cmd run test:browser` passed 85/87. Remaining failures: known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; and one full-suite-only onboarding timing failure that passed on targeted rerun with `npm.cmd run test:browser -- tests/onboarding.spec.js -g "custom Other job title"`.
 - Remaining risks: redeployed production still needs an owner-account estimate send check to confirm the real email provider path either sends or returns the new structured setup/provider error; stale deployed assets/browser cache can temporarily show old behavior.
+
+Package 09C scheduling server error hardening status:
+
+- Completed July 7, 2026.
+- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
+- Root cause: scheduling still called Google Calendar through raw integration errors. The shared job-action wrapper from 08F could return JSON, but production masking still turned known Calendar setup/auth/event failures into generic `Unexpected server error.` unless the thrown error was marked client-safe.
+- Fix: `integrations/google.js` now creates structured Calendar errors with `statusCode`, `code`, and `exposeToClient` for missing Calendar setup, missing refresh token, expired/revoked token, token endpoint failure, Calendar API event creation failure, and direct schedule payload validation.
+- Answers to investigation: scheduling was throwing ordinary Calendar errors; the Calendar integration was returning raw failures; the frontend was already able to display structured errors from `apiRequest`; malformed payload and missing job paths already returned JSON but now have focused coverage; Gmail and Calendar messages remain separate, and Calendar token/scope failures now use Calendar-specific reconnect copy.
+- Frontend behavior: failed scheduling shows the structured workflow error and does not show a success toast. Valid scheduling remains covered by the existing pending-payments workflow test.
+- Tests added/updated: Calendar setup/auth/event structured errors, malformed schedule payload JSON, missing schedule job lookup, frontend structured scheduling error display, and no false success toast.
+- Files touched: `integrations/google.js`, `tests/pending-payments.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Verification: `npm.cmd run check` passed; `node --check integrations\google.js`; `node --check tests\pending-payments.spec.js`; `npm.cmd run test:browser -- tests/pending-payments.spec.js` passed 14/14.
+- Full regression: `npm.cmd run test:browser` passed 89/90. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+- Remaining risks: redeployed production still needs an owner-account scheduling check to verify the real Google Calendar connection either schedules successfully or returns the new structured Calendar reconnect/setup error. A schedule-confirmation email failure after Calendar succeeds will surface via the existing 09B structured email errors.
 
 Phase 07D deployment sandbox verification status:
 

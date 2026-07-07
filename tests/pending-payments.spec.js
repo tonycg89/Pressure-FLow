@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 const crypto = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { createGoogleCalendarEvent } = require("../integrations/google");
 
 const DATA_DIR = path.resolve(__dirname, "..", ".tmp", "playwright-data");
 const TEST_USER = {
@@ -245,6 +246,111 @@ test("schedule dialog blocks overlapping job times", async ({ page }) => {
   expect(zoe.status).toBe("Contract Signed");
 });
 
+test("calendar setup, auth, and event failures expose structured scheduling errors", async () => {
+  const job = baseScheduleJob();
+
+  await expect(createGoogleCalendarEvent({
+    googleClientId: "client",
+    googleClientSecret: "secret",
+    googleRedirectUri: "https://example.com/auth/google/callback"
+  }, job, "2026-06-10T09:00", 120)).rejects.toMatchObject({
+    statusCode: 409,
+    code: "GOOGLE_CALENDAR_NOT_CONFIGURED",
+    exposeToClient: true
+  });
+
+  const originalFetch = global.fetch;
+  try {
+    global.fetch = async () => ({
+      ok: false,
+      json: async () => ({ error: "invalid_grant" })
+    });
+    await expect(createGoogleCalendarEvent({
+      googleClientId: "client",
+      googleClientSecret: "secret",
+      googleRedirectUri: "https://example.com/auth/google/callback",
+      googleRefreshToken: "expired-token"
+    }, job, "2026-06-10T09:00", 120)).rejects.toMatchObject({
+      statusCode: 409,
+      code: "GOOGLE_CALENDAR_AUTH_REVOKED",
+      exposeToClient: true
+    });
+
+    let requestCount = 0;
+    global.fetch = async () => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return { ok: true, json: async () => ({ access_token: "access-token" }) };
+      }
+      return {
+        ok: false,
+        status: 403,
+        json: async () => ({ error: { message: "Calendar API has not been used in project." } })
+      };
+    };
+    await expect(createGoogleCalendarEvent({
+      googleClientId: "client",
+      googleClientSecret: "secret",
+      googleRedirectUri: "https://example.com/auth/google/callback",
+      googleRefreshToken: "connected-token"
+    }, job, "2026-06-10T09:00", 120)).rejects.toMatchObject({
+      statusCode: 502,
+      code: "GOOGLE_CALENDAR_EVENT_CREATE_FAILED",
+      exposeToClient: true
+    });
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("schedule action route returns structured JSON for malformed payload and missing jobs", async ({ page }) => {
+  await login(page);
+  const sessionResponse = await page.request.get("/api/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+
+  const malformed = await page.request.post("/api/jobs/88888888-8888-4888-8888-888888888888/schedule", {
+    headers: { "x-csrf-token": session.csrfToken },
+    data: { scheduledAt: "not-a-date", jobDurationMinutes: 120 }
+  });
+  expect(malformed.status()).toBe(400);
+  expect(malformed.headers()["content-type"]).toContain("application/json");
+  await expect(malformed.json()).resolves.toEqual({ error: "Schedule date/time must be a real date and time." });
+
+  const missing = await page.request.post("/api/jobs/missing-schedule-job/schedule", {
+    headers: { "x-csrf-token": session.csrfToken },
+    data: { scheduledAt: "2026-06-10T09:00", jobDurationMinutes: 120 }
+  });
+  expect(missing.status()).toBe(404);
+  expect(missing.headers()["content-type"]).toContain("application/json");
+  await expect(missing.json()).resolves.toEqual({ error: "Job not found." });
+});
+
+test("frontend displays structured scheduling failures without a false success toast", async ({ page }) => {
+  await login(page);
+
+  await page.route("**/api/jobs/88888888-8888-4888-8888-888888888888/schedule", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Google Calendar is not connected yet. Open Settings and click Connect Google Calendar." })
+    });
+  });
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await page.getByRole("button", { name: "Schedule Job" }).click();
+  await expect(page.locator("#scheduleDialog")).toBeVisible();
+  await page.locator("#scheduleForm [name='scheduleDate']").fill("2026-06-10");
+  await page.locator("#scheduleForm [name='scheduleTime']").fill("09:00");
+  await page.locator("#scheduleForm [name='durationHours']").fill("2");
+  await page.locator("#scheduleForm").getByRole("button", { name: "Schedule Job", exact: true }).click();
+
+  await expect(page.locator(".workflow-action-status.error")).toContainText("Google Calendar is not connected yet.");
+  await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
+  await expect(page.locator(".toast").filter({ hasText: "Job scheduled" })).toHaveCount(0);
+});
+
 test("contractor is blocked before sending final invoice when no payment methods are configured", async ({ page }) => {
   await login(page);
 
@@ -298,6 +404,20 @@ async function updateStoredJob(jobId, partial) {
   const job = jobs.find((item) => item.id === jobId);
   Object.assign(job, partial);
   await fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2));
+}
+
+function baseScheduleJob() {
+  return {
+    id: "schedule-unit-job",
+    customerName: "Schedule Tester",
+    email: "schedule@example.com",
+    phone: "(555) 111-2222",
+    address: "100 Main Street, Riverside, CA 92501",
+    serviceType: "Driveway cleaning",
+    estimate: 250,
+    depositPercent: 25,
+    lineItems: [{ name: "Driveway cleaning", quantity: 1, unit: "QTY", total: 250 }]
+  };
 }
 
 async function resetTestData() {

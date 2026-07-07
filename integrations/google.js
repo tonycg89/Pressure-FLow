@@ -40,24 +40,33 @@ async function exchangeGoogleCode(settings, code) {
 
 async function getGoogleAccessToken(settings) {
   requireGoogleSettings(settings, true);
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: settings.googleClientId,
-      client_secret: settings.googleClientSecret,
-      refresh_token: settings.googleRefreshToken,
-      grant_type: "refresh_token"
-    }),
-    signal: googleRequestTimeoutSignal()
-  });
+  let response;
+  try {
+    response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: settings.googleClientId,
+        client_secret: settings.googleClientSecret,
+        refresh_token: settings.googleRefreshToken,
+        grant_type: "refresh_token"
+      }),
+      signal: googleRequestTimeoutSignal()
+    });
+  } catch (error) {
+    throw createCalendarError("Google Calendar could not be reached. Check the Google connection and try scheduling again.", {
+      code: "GOOGLE_CALENDAR_TOKEN_REQUEST_FAILED",
+      cause: error
+    });
+  }
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     const message = data.error_description || data.error || "Google access token refresh failed.";
-    const error = new Error(normalizeGoogleAuthErrorMessage(data, message));
-    error.code = data.error === "invalid_grant" ? "GOOGLE_AUTH_REVOKED" : "GOOGLE_AUTH_ERROR";
-    throw error;
+    throw createCalendarError(normalizeGoogleAuthErrorMessage(data, message), {
+      statusCode: data.error === "invalid_grant" ? 409 : 502,
+      code: data.error === "invalid_grant" ? "GOOGLE_CALENDAR_AUTH_REVOKED" : "GOOGLE_CALENDAR_AUTH_ERROR"
+    });
   }
 
   return data.access_token;
@@ -66,19 +75,30 @@ async function getGoogleAccessToken(settings) {
 async function createGoogleCalendarEventRequest(settings, event) {
   const accessToken = await getGoogleAccessToken(settings);
   const calendarId = encodeURIComponent(settings.googleCalendarId || "primary");
-  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(event),
-    signal: googleRequestTimeoutSignal()
-  });
+  let response;
+  try {
+    response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(event),
+      signal: googleRequestTimeoutSignal()
+    });
+  } catch (error) {
+    throw createCalendarError("Google Calendar event creation failed. Check the Calendar connection and try scheduling again.", {
+      code: "GOOGLE_CALENDAR_EVENT_REQUEST_FAILED",
+      cause: error
+    });
+  }
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`);
+    throw createCalendarError(
+      data.error?.message || data.error || `Google Calendar event creation failed with status ${response.status}.`,
+      { code: "GOOGLE_CALENDAR_EVENT_CREATE_FAILED" }
+    );
   }
 
   return data;
@@ -86,11 +106,17 @@ async function createGoogleCalendarEventRequest(settings, event) {
 
 async function createGoogleCalendarEvent(settings, job, scheduledAt, durationMinutes) {
   if (!scheduledAt) {
-    throw new Error("Schedule date/time is required.");
+    throw createCalendarError("Schedule date/time is required.", {
+      statusCode: 400,
+      code: "INVALID_SCHEDULE_PAYLOAD"
+    });
   }
 
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(scheduledAt))) {
-    throw new Error("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.");
+    throw createCalendarError("Schedule date/time is invalid. Use a value like 2026-06-05T09:00.", {
+      statusCode: 400,
+      code: "INVALID_SCHEDULE_PAYLOAD"
+    });
   }
 
   const startDateTime = withPacificOffset(scheduledAt.slice(0, 16));
@@ -126,17 +152,24 @@ async function createGoogleCalendarEvent(settings, job, scheduledAt, durationMin
 
 function requireGoogleSettings(settings, requireRefreshToken) {
   if (!settings.googleClientId) {
-    throw new Error("Google client ID is missing. Open Settings and save your Google client ID.");
+    throwCalendarSetupError("Google client ID is missing. Open Settings and save your Google client ID.");
   }
   if (!settings.googleClientSecret) {
-    throw new Error("Google client secret is missing. Open Settings and save your Google client secret.");
+    throwCalendarSetupError("Google client secret is missing. Open Settings and save your Google client secret.");
   }
   if (!settings.googleRedirectUri) {
-    throw new Error("Google redirect URI is missing.");
+    throwCalendarSetupError("Google redirect URI is missing. Open Settings and save your Google redirect URI.");
   }
   if (requireRefreshToken && !settings.googleRefreshToken) {
-    throw new Error("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
+    throwCalendarSetupError("Google Calendar is not connected yet. Open Settings and click Connect Google Calendar.");
   }
+}
+
+function throwCalendarSetupError(message) {
+  throw createCalendarError(message, {
+    statusCode: 409,
+    code: "GOOGLE_CALENDAR_NOT_CONFIGURED"
+  });
 }
 
 function normalizeGoogleAuthErrorMessage(data, fallback) {
@@ -151,10 +184,22 @@ function googleRequestTimeoutSignal() {
   return AbortSignal.timeout(15000);
 }
 
+function createCalendarError(message, { statusCode = 502, code = "GOOGLE_CALENDAR_ACTION_FAILED", cause = null } = {}) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  error.exposeToClient = true;
+  if (cause) {
+    error.cause = cause;
+  }
+  return error;
+}
+
 module.exports = {
   buildGoogleAuthUrl,
   createGoogleCalendarEvent,
   createGoogleCalendarEventRequest,
+  createCalendarError,
   exchangeGoogleCode,
   getGoogleAccessToken
 };

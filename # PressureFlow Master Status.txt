@@ -3,7 +3,7 @@ PressureFlow Master Status
 Last Updated: July 7, 2026
 
 Current Phase:
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, and Package 09B owner validation blockers.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, Package 09B owner validation blockers, and Package 09C scheduling server error hardening.
 - Permanent engineering standards and product principles now apply to all future packages through PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable, and after Render environment updates/redeploy /health returned the current expected {"ok":true,"service":"pressureflow"} payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
@@ -77,6 +77,7 @@ Completed Safety / Readiness Work:
 - Package 08F post-08A-E stability/root-cause investigation
 - Package 09A engineering governance hardening
 - Package 09B owner validation blockers: map draft state and estimate server error
+- Package 09C scheduling server error hardening
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -160,6 +161,19 @@ Package 09B Owner Validation Blockers: Map Draft State + Estimate Server Error:
 - Verification: npm.cmd run check passed; node --check app.js; node --check server.js; node --check email-delivery.js; node --check integrations\gmail.js; node --check tests\dashboard-analytics.spec.js; node --check tests\measurement-map.spec.js; node --check tests\estimate-email-decoupling.spec.js; npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/estimate-email-decoupling.spec.js tests/measurement-map.spec.js passed 19/19; npm.cmd run test:browser -- tests/onboarding.spec.js -g "custom Other job title" passed 1/1 after a full-suite timing failure in that test.
 - Full regression: npm.cmd run test:browser passed 85/87. Remaining failures: the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed; and a full-suite-only onboarding timing failure where the setup dialog stayed visible, which passed on immediate targeted rerun.
 - Remaining risks: deployed production should be rechecked after redeploy to confirm the owner account's real email provider configuration now returns the structured setup/provider error or sends successfully; browser cache/stale deployed assets can still make the owner see old behavior until the new build is active.
+
+Package 09C Scheduling Server Error Hardening:
+- Completed July 7, 2026.
+- Standards followed: PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md were reviewed before implementation.
+- Root cause: scheduling already used the shared job-action wrapper, but Google Calendar setup/auth/event failures were raw thrown errors from integrations/google.js. In production those known failures could be masked by the server's generic 500 behavior as Unexpected server error. instead of actionable Calendar reconnect/setup guidance.
+- Behavior changed: Calendar setup, missing refresh token, expired/revoked token, token endpoint failure, Calendar API event creation failure, and direct Calendar schedule payload validation now throw structured errors with statusCode, code, and exposeToClient. Unknown production 500s remain masked and safely logged.
+- Frontend behavior: app.js already displays structured backend errors from apiRequest; scheduling failure tests now verify the workflow status shows the Calendar message and no success toast appears after failed scheduling.
+- Existing estimate/email behavior remains unchanged.
+- Tests added/updated: Calendar setup/auth/event structured errors, malformed schedule action payload JSON, missing schedule job lookup, frontend structured scheduling error display, and no false success toast. Existing scheduling success coverage remains in tests/pending-payments.spec.js.
+- Files touched: integrations/google.js, tests/pending-payments.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check integrations\google.js; node --check tests\pending-payments.spec.js; npm.cmd run test:browser -- tests/pending-payments.spec.js passed 14/14.
+- Full regression: npm.cmd run test:browser passed 89/90. Remaining failure is the known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed.
+- Remaining risks: deployed production should be rechecked after redeploy with the owner account's real Google connection to confirm Calendar scopes/token state either schedule successfully or return the new structured Calendar reconnect/setup error. If schedule-confirmation email fails after Calendar succeeds, existing 09B email structured errors will surface that separate email setup problem.
 
 UI Packages Complete:
 - 01 Design System Foundation
