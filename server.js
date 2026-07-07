@@ -737,7 +737,7 @@ async function handleApi(request, response, url) {
           error
         });
         if (!response.headersSent) {
-          const message = statusCode >= 500 && process.env.NODE_ENV === "production"
+          const message = statusCode >= 500 && process.env.NODE_ENV === "production" && !error.exposeToClient
             ? "Unexpected server error."
             : error.message || "Unexpected server error.";
           sendError(response, statusCode, message);

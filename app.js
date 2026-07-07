@@ -427,6 +427,7 @@ async function init() {
   savedMeasurementsPanel?.addEventListener("toggle", () => {
     savedMeasurementsPanel.dataset.userToggled = "true";
   });
+  measurementDialog?.addEventListener("close", discardUnsavedMeasurementDrawing);
   saveMeasurementAreaButton?.addEventListener("click", saveMeasurementArea);
   closeMeasurementShapeButton?.addEventListener("click", closeActiveMeasurementShape);
   clearMeasurementButton.addEventListener("click", clearMeasurementPolygon);
@@ -2966,6 +2967,7 @@ function openMeasurementDialog(row) {
 
   currentMeasurement = normalizeMeasurementForEditing(currentMeasurement);
   activeMeasurementAreaId = currentMeasurement.areas[0]?.id || "";
+  discardUnsavedMeasurementDrawing();
   syncAddressFields(jobForm);
   measurementAddress.value = jobForm.elements.address.value || currentMeasurement.address || "";
   updateMeasurementTotal();
@@ -3309,6 +3311,20 @@ function clearMeasurementPolygon() {
   updateMeasurementFromDraw();
 }
 
+function discardUnsavedMeasurementDrawing() {
+  if (!mapboxDraw) return;
+
+  const savedIds = new Set((currentMeasurement.areas || []).map((area) => String(area.id)));
+  const features = mapboxDraw.getAll?.().features || [];
+  const hasUnsavedFeature = features.some((feature) => !savedIds.has(String(feature.id)));
+  if (!hasUnsavedFeature) return;
+
+  mapboxDraw.deleteAll();
+  activeMeasurementDrawState = null;
+  activeMeasurementDrawContext = null;
+  loadMeasurementAreasIntoDraw();
+}
+
 function saveMeasurementArea() {
   const feature = getEditableMeasurementFeature();
   if (!feature) {
@@ -3566,7 +3582,8 @@ function useMeasurement() {
   updateMeasurementFromDraw();
   const editableFeature = getEditableMeasurementFeature();
   if (editableFeature) {
-    saveMeasurementArea();
+    alert("Save the drawn service area before using the measurement.");
+    return;
   }
   if (!currentMeasurement.squareFeet) {
     alert("Add at least one service area before using the measurement.");

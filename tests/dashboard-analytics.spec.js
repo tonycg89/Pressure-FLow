@@ -201,6 +201,45 @@ test("estimate action route returns structured JSON for malformed requests", asy
   expect(JSON.parse(response.body)).toEqual({ error: "Invalid JSON request body." });
 });
 
+test("estimate action route returns structured JSON when job lookup fails", async ({ page }) => {
+  await login(page);
+  const sessionResponse = await page.request.get("/api/session");
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+
+  const response = await page.request.post("/api/jobs/missing-estimate-job/send-square-estimate", {
+    headers: { "x-csrf-token": session.csrfToken },
+    data: {}
+  });
+
+  expect(response.status()).toBe(404);
+  expect(response.headers()["content-type"]).toContain("application/json");
+  await expect(response.json()).resolves.toEqual({ error: "Job not found." });
+});
+
+test("estimate action frontend shows backend email failure without success toast", async ({ page }) => {
+  const jobsPath = path.join(DATA_DIR, "jobs.json");
+  const jobs = JSON.parse(await fs.readFile(jobsPath, "utf8"));
+  jobs.push(job("lead-email-config-failure", "Lead Email Config Failure", "", "Lead", 150));
+  await fs.writeFile(jobsPath, JSON.stringify(jobs, null, 2));
+
+  await login(page);
+
+  await page.route("**/api/jobs/lead-email-config-failure/send-square-estimate", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP." })
+    });
+  });
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: /Lead Email Config Failure/ }).click();
+  await page.getByRole("button", { name: "Send by Email" }).first().click();
+  await expect(page.locator(".workflow-action-status.error")).toContainText("Google/Gmail is not connected yet.");
+  await expect(page.locator(".toast").filter({ hasText: "Estimate sent" })).toHaveCount(0);
+});
+
 async function login(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(TEST_USER.email);

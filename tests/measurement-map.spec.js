@@ -140,6 +140,68 @@ test("same-address customers keep jobs and saved measurements isolated", async (
   await expect(page.locator("#customerDetail")).not.toContainText("Service area 1");
 });
 
+test("unsaved map drawings clear across job contexts while saved areas persist only for their customer", async ({ page }) => {
+  await login(page);
+
+  await createCustomer(page, {
+    name: "Draft Map Alpha",
+    email: "draft.alpha@example.com",
+    street: "700 Draft Alpha Way"
+  });
+  await openCustomer(page, "Draft Map Alpha");
+  await page.locator("#customerDetail").getByRole("button", { name: "Create Job From Customer" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
+  const alphaLineItem = page.locator("#lineItems .line-item-row").first();
+  await alphaLineItem.locator(".line-service").selectOption("Pressure Washing");
+  await alphaLineItem.locator(".line-measure").click();
+  await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => Boolean(window.__pressureFlowDraw))).toBe(true);
+  await drawMockPolygon(page, "alpha-unsaved-draft", 90);
+  await expect(page.locator("#measurementStatus")).toContainText("969 SqFt drawn");
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("Save the drawn service area before using the measurement.");
+    dialog.accept();
+  });
+  await page.locator("#useMeasurementButton").click();
+  await expect(page.locator("#measurementDialog")).toBeVisible();
+  await page.locator("#measurementDialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("#measurementDialog")).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.__pressureFlowDraw.getAll().features.length)).toBe(0);
+  await page.locator("#jobDialog").getByRole("button", { name: "Cancel" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+
+  await createCustomer(page, {
+    name: "Draft Map Beta",
+    email: "draft.beta@example.com",
+    street: "800 Draft Beta Way"
+  });
+  await openCustomer(page, "Draft Map Beta");
+  await page.locator("#customerDetail").getByRole("button", { name: "Create Job From Customer" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
+  const betaLineItem = page.locator("#lineItems .line-item-row").first();
+  await betaLineItem.locator(".line-service").selectOption("Pressure Washing");
+  await betaLineItem.locator(".line-measure").click();
+  await expect(page.locator("#measurementDialog")).toBeVisible();
+  await expect(page.locator("#measurementAreaList .measurement-area-card")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__pressureFlowDraw.getAll().features.length)).toBe(0);
+  await drawMockPolygon(page, "beta-saved-area", 100);
+  await page.locator("#saveMeasurementAreaButton").click();
+  await page.locator("#useMeasurementButton").click();
+  await expect(page.locator("#measurementDialog")).toBeHidden();
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+  await expect(page.locator("#customerDetail")).toContainText("Service area 1");
+
+  await openCustomer(page, "Draft Map Alpha");
+  await expect(page.locator("#customerDetail")).not.toContainText("Service area 1");
+
+  await openCustomer(page, "Draft Map Beta");
+  await expect(page.locator("#customerDetail")).toContainText("Service area 1");
+  await expect(page.locator("#customerDetail")).toContainText("1,076 SqFt");
+});
+
 test("measure from map re-arms polygon drawing after adding and updating areas", async ({ page }) => {
   await login(page);
 

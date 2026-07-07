@@ -58,17 +58,24 @@ async function getGoogleEmailAccessToken(settings) {
 
 function requireGoogleEmailSettings(settings) {
   if (!settings.googleClientId) {
-    throw new Error("Google client ID is missing. Open Settings and save your Google client ID.");
+    throwEmailConfigError("Google client ID is missing. Open Settings and save your Google client ID.");
   }
   if (!settings.googleClientSecret) {
-    throw new Error("Google client secret is missing. Open Settings and save your Google client secret.");
+    throwEmailConfigError("Google client secret is missing. Open Settings and save your Google client secret.");
   }
   if (!settings.googleRedirectUri) {
-    throw new Error("Google redirect URI is missing.");
+    throwEmailConfigError("Google redirect URI is missing. Open Settings and save your Google redirect URI.");
   }
   if (!settings.googleRefreshToken) {
-    throw new Error("Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP.");
+    throwEmailConfigError("Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP.");
   }
+}
+
+function throwEmailConfigError(message) {
+  const error = new Error(message);
+  error.statusCode = 409;
+  error.code = "EMAIL_PROVIDER_NOT_CONFIGURED";
+  throw error;
 }
 
 function normalizeGoogleEmailAuthErrorMessage(data, fallback) {

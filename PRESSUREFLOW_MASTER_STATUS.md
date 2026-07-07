@@ -4,7 +4,7 @@ Last Updated: July 7, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, and Package 09A engineering governance hardening.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, and Package 09B owner validation blockers.
 - Permanent engineering standards and product principles now apply to all future packages through `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
@@ -81,6 +81,7 @@ Product guardrails:
 - Package 08E estimate email/calendar decoupling
 - Package 08F post-08A-E stability/root-cause investigation
 - Package 09A engineering governance hardening
+- Package 09B owner validation blockers: map draft state and estimate server error
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -158,6 +159,20 @@ Product guardrails:
 - Updated governance and handoff files so future AI/Codex agents must review both standards documents before implementation and document any exceptions in package closeouts.
 - No app behavior, app source, tests, styles, routes, integrations, or product functionality changed for this package.
 - Verification: `git diff --check` passed.
+
+## Package 09B Owner Validation Blockers: Map Draft State + Estimate Server Error
+
+- Completed July 7, 2026.
+- Estimate send root cause: after Package 08F, the action wrapper returned structured JSON, but production-safe 500 masking still collapsed known email delivery/configuration failures into generic `Unexpected server error.` copy because those errors did not carry client-safe status/message metadata.
+- Estimate send fix: email delivery failures now carry safe `statusCode`, `code`, and `exposeToClient` metadata; missing Google/Gmail setup returns a structured 409 setup error, provider send failures return structured email delivery errors, and the job action wrapper still masks non-client-safe production 500s.
+- Estimate workflow behavior: frontend failure handling continues to show the backend error in the workflow status area and does not show a success toast after failed estimate sends.
+- Map draft root cause: the reusable Mapbox Draw instance could keep an unsaved drawn feature between measurement dialog opens, and `Use Measurement` silently converted an editable unsaved polygon into a saved job measurement instead of requiring explicit `Add Drawn Area`.
+- Map draft fix: unsaved draw features are discarded on measurement dialog close and before opening the map in a new context; `Use Measurement` now requires the contractor to save the drawn service area first. Explicitly saved areas still persist and remain scoped by customer/job ID.
+- Tests added/updated: estimate email structured setup error, malformed request JSON, missing job lookup JSON, frontend no-success-on-email-failure, unsaved map drawing cleanup across job/customer contexts, explicit saved measurement persistence, and no saved measurement leakage.
+- Files touched: `app.js`, `email-delivery.js`, `integrations/gmail.js`, `server.js`, `tests/dashboard-analytics.spec.js`, `tests/estimate-email-decoupling.spec.js`, `tests/measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check server.js`; `node --check email-delivery.js`; `node --check integrations\gmail.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\measurement-map.spec.js`; `node --check tests\estimate-email-decoupling.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/estimate-email-decoupling.spec.js tests/measurement-map.spec.js` passed 19/19; `npm.cmd run test:browser -- tests/onboarding.spec.js -g "custom Other job title"` passed 1/1 after a full-suite timing failure in that test.
+- Full regression: `npm.cmd run test:browser` passed 85/87. Remaining failures: the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; and a full-suite-only onboarding timing failure where the setup dialog stayed visible, which passed on immediate targeted rerun.
+- Remaining risks: deployed production should be rechecked after redeploy to confirm the owner account's real email provider configuration now returns the structured setup/provider error or sends successfully; browser cache/stale deployed assets can still make the owner see old behavior until the new build is active.
 
 ## UI Packages Complete
 

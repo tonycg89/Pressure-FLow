@@ -97,7 +97,10 @@ async function sendCustomerEmail(settings, message, context = {}) {
 
   if (process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY === "true") {
     if (settings.emailSendProvider !== "smtp" && !settings.googleRefreshToken && !isAuditGoogleMockEnabled()) {
-      const error = new Error("Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP.");
+      const error = createEmailDeliveryError(
+        "Google/Gmail is not connected yet. Open Settings and connect Google before sending customer emails, or switch email delivery to SMTP.",
+        { statusCode: 409, code: "EMAIL_PROVIDER_NOT_CONNECTED" }
+      );
       logger.error("email_send_failed", {
         ...logContext,
         reason: "google_email_not_connected",
@@ -120,6 +123,7 @@ async function sendCustomerEmail(settings, message, context = {}) {
 
     return await sendGmailEmail(settings, message);
   } catch (error) {
+    markEmailDeliveryError(error);
     logger.error("email_send_failed", {
       ...logContext,
       error
@@ -142,8 +146,24 @@ function isAuditGoogleMockEnabled() {
   return process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK === "true";
 }
 
+function createEmailDeliveryError(message, { statusCode = 502, code = "EMAIL_DELIVERY_FAILED" } = {}) {
+  const error = new Error(message);
+  markEmailDeliveryError(error, { statusCode, code });
+  return error;
+}
+
+function markEmailDeliveryError(error, { statusCode = 502, code = "EMAIL_DELIVERY_FAILED" } = {}) {
+  if (!error || typeof error !== "object") return error;
+  error.statusCode = error.statusCode || statusCode;
+  error.code = error.code || code;
+  error.exposeToClient = true;
+  return error;
+}
+
 module.exports = {
   createEmailDelivery,
+  createEmailDeliveryError,
   isAuditGoogleMockEnabled,
+  markEmailDeliveryError,
   sendCustomerEmail
 };

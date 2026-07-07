@@ -61,6 +61,29 @@ test("missing Google email connection reports email setup, not Calendar reconnec
   }
 });
 
+test("missing Google email connection exposes a structured email setup error", async () => {
+  const previousSkip = process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY;
+  const previousMock = process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK;
+  process.env.PRESSUREFLOW_SKIP_EMAIL_DELIVERY = "true";
+  process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = "false";
+
+  try {
+    await expect(sendCustomerEmail({
+      emailSendProvider: "google",
+      googleClientId: "client",
+      googleClientSecret: "secret",
+      googleRedirectUri: "https://example.com/auth/google/callback"
+    }, message, { emailType: "estimate" })).rejects.toMatchObject({
+      statusCode: 409,
+      exposeToClient: true,
+      code: "EMAIL_PROVIDER_NOT_CONNECTED"
+    });
+  } finally {
+    restoreEnv("PRESSUREFLOW_SKIP_EMAIL_DELIVERY", previousSkip);
+    restoreEnv("PRESSUREFLOW_AUDIT_GOOGLE_MOCK", previousMock);
+  }
+});
+
 test("Google email and Calendar token failures use separate action-specific messages", async () => {
   const originalFetch = global.fetch;
   global.fetch = async () => ({

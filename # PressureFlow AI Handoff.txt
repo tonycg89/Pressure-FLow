@@ -91,6 +91,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 08E estimate email/calendar decoupling is complete.
 - Package 08F post-08A-E stability/root-cause investigation is complete.
 - Package 09A engineering governance hardening is complete.
+- Package 09B owner validation blockers: map draft state and estimate server error is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -171,6 +172,20 @@ Package 09A engineering governance hardening status:
 - Package closeouts must include the required stability/closeout items: files changed, behavior changed, tests run, pass/fail results, known unrelated failures, root cause, guardrails, remaining risks, and documentation updated.
 - No app behavior, app source, tests, styles, routes, integrations, or product functionality changed for this package.
 - Verification: git diff --check passed.
+
+Package 09B owner validation blockers status:
+
+- Completed July 7, 2026.
+- Standards followed: PRESSUREFLOW_ENGINEERING_STANDARDS.md and PRESSUREFLOW_PRODUCT_PRINCIPLES.md were reviewed before implementation.
+- Estimate send root cause: known email provider/config failures were still surfaced as generic production Unexpected server error. messages because they were ordinary thrown errors without client-safe status/message metadata. Package 08F made the action response structured, but it still masked 500-class messages unless explicitly marked safe.
+- Estimate send fix: email-delivery.js now marks email delivery/setup failures with statusCode, code, and exposeToClient; integrations/gmail.js marks missing Google/Gmail config as a 409 setup error; server.js exposes only errors marked client-safe while keeping unknown production 500s generic. job_action_failed and email_send_failed logs retain safe action/provider context.
+- Map draft root cause: the Mapbox Draw object is reused across measurement dialog sessions. Unsaved draw features could remain in that draw instance between modal contexts, and Use Measurement auto-saved an editable unsaved polygon into the job measurement, making a draft shape look persistent without an explicit save action.
+- Map draft fix: unsaved draw features are discarded when the measurement dialog closes and before it opens in another context. Use Measurement now requires Add Drawn Area first. Saved measurement areas still persist only after explicit save and remain scoped by customer/job ID.
+- Tests added/updated: structured email setup error metadata, malformed estimate action JSON, missing job lookup JSON, frontend no-success-on-email-failure, unsaved map drawing cleanup across job/customer contexts, explicit saved measurement persistence, and saved measurement non-leakage.
+- Files touched: app.js, email-delivery.js, integrations/gmail.js, server.js, tests/dashboard-analytics.spec.js, tests/estimate-email-decoupling.spec.js, tests/measurement-map.spec.js, PRESSUREFLOW_MASTER_STATUS.md, PRESSUREFLOW_AI_HANDOFF.md, # PressureFlow Master Status.txt, and # PressureFlow AI Handoff.txt.
+- Verification: npm.cmd run check passed; node --check app.js; node --check server.js; node --check email-delivery.js; node --check integrations\gmail.js; node --check tests\dashboard-analytics.spec.js; node --check tests\measurement-map.spec.js; node --check tests\estimate-email-decoupling.spec.js; focused browser tests npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/estimate-email-decoupling.spec.js tests/measurement-map.spec.js passed 19/19.
+- Full regression: npm.cmd run test:browser passed 85/87. Remaining failures: known unrelated tests/destructive-workflows.spec.js contract copy assertion expecting Signed agreement while the page renders Signed; and one full-suite-only onboarding timing failure that passed on targeted rerun with npm.cmd run test:browser -- tests/onboarding.spec.js -g "custom Other job title".
+- Remaining risks: redeployed production still needs an owner-account estimate send check to confirm the real email provider path either sends or returns the new structured setup/provider error; stale deployed assets/browser cache can temporarily show old behavior.
 
 Phase 07D deployment sandbox verification status:
 
