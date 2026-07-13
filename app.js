@@ -659,7 +659,9 @@ function updateSolarCalculator() {
   const annualProduction = kw * productionPerKw;
   const extraKwh = annualProduction * recovered;
   const annualUsage = monthlyUsage * 12;
-  const selfConsumptionFraction = annualProduction > 0 ? Math.min(1, annualUsage / annualProduction) : 1;
+  const selfConsumptionFraction = annualProduction > 0 || annualUsage > 0
+    ? annualUsage / Math.max(annualUsage + annualProduction, 1)
+    : 1;
   const exportFraction = 1 - selfConsumptionFraction;
   const activeExportRate = solarCalculatorState.nem === "nem2" ? retailRate : exportRate;
   const blendedRate = selfConsumptionFraction * retailRate + exportFraction * activeExportRate;
