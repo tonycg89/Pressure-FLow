@@ -78,7 +78,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07A-4A payment configuration enforcement is complete.
 - Package 07A-4B first-run and post-action guidance is complete.
 - Package 07A-4C mobile and field usability fixes are complete.
-- Package 10A frontend-only Tools tab and solar panel cleaning savings calculator is complete. It adds a Tools workspace view, ports the supplied solar cleaning savings calculator into native PressureFlow HTML/CSS/JS, and does not change backend logic, auth, tenant isolation, integrations, or database behavior.
+- Package 10A frontend-only Tools library and isolated solar panel cleaning savings calculator is complete. It adds a Tools workspace view with a selectable solar estimator card, opens the calculator in its own focused workspace, ports the supplied solar cleaning savings calculator into native PressureFlow HTML/CSS/JS, and does not change backend logic, auth, tenant isolation, integrations, or database behavior.
 - Package 07A-4D customer clarity and Pool Service expansion is complete.
 - Package 07B-1 multi-tenant security audit is complete.
 - Package 07B-2 webhook and external integration security audit is complete.

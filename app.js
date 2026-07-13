@@ -156,6 +156,8 @@ const solarUsageInput = document.querySelector("#solarUsageInput");
 const solarFrequencyButtons = document.querySelectorAll("[data-solar-frequency]");
 const solarEnvironmentButtons = document.querySelectorAll("[data-solar-environment]");
 const solarNemButtons = document.querySelectorAll("[data-solar-nem]");
+const toolsLibrary = document.querySelector("#toolsLibrary");
+const solarCalculatorWorkspace = document.querySelector("#solarCalculatorWorkspace");
 let toastContainer = null;
 
 function renderEmptyState(title, hint = "") {
@@ -372,6 +374,12 @@ async function init() {
       updateSolarCalculator();
     });
   });
+  document.querySelectorAll("[data-open-tool]").forEach((button) => {
+    button.addEventListener("click", openToolWorkspace);
+  });
+  document.querySelectorAll("[data-close-tool]").forEach((button) => {
+    button.addEventListener("click", closeToolWorkspace);
+  });
   updateSolarCalculator();
   calendarPrevButton?.addEventListener("click", () => shiftCalendarPeriod(-1));
   calendarTodayButton?.addEventListener("click", () => {
@@ -553,6 +561,9 @@ function setActiveView(view) {
     panel.hidden = panel.dataset.viewPanel !== validView;
   });
   closeNotificationDropdown();
+  if (validView !== "tools") {
+    closeToolWorkspace();
+  }
 }
 
 function restoreWorkspaceStateFromHash() {
@@ -591,6 +602,27 @@ function saveWorkspaceStateToHash() {
   const nextHash = `#${params.toString()}`;
   if (window.location.hash !== nextHash) {
     history.replaceState(null, "", nextHash);
+  }
+}
+
+function openToolWorkspace(event) {
+  const tool = event.currentTarget.dataset.openTool;
+  if (tool !== "solar-calculator") return;
+  if (toolsLibrary) {
+    toolsLibrary.hidden = true;
+  }
+  if (solarCalculatorWorkspace) {
+    solarCalculatorWorkspace.hidden = false;
+  }
+  updateSolarCalculator();
+}
+
+function closeToolWorkspace() {
+  if (toolsLibrary) {
+    toolsLibrary.hidden = false;
+  }
+  if (solarCalculatorWorkspace) {
+    solarCalculatorWorkspace.hidden = true;
   }
 }
 
