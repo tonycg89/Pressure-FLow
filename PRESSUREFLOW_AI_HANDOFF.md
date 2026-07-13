@@ -78,6 +78,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 07A-4A payment configuration enforcement is complete.
 - Package 07A-4B first-run and post-action guidance is complete.
 - Package 07A-4C mobile and field usability fixes are complete.
+- Package 10A frontend-only Tools tab and solar panel cleaning savings calculator is complete. It adds a `Tools` workspace view, ports the supplied solar cleaning savings calculator into native PressureFlow HTML/CSS/JS, and does not change backend logic, auth, tenant isolation, integrations, or database behavior.
 - Package 07A-4D customer clarity and Pool Service expansion is complete.
 - Package 07B-1 multi-tenant security audit is complete.
 - Package 07B-2 webhook and external integration security audit is complete.
@@ -96,6 +97,7 @@ Claude and v0 should not produce drop-in production code for this project. If th
 - Package 09D reschedule not-found root cause is complete.
 - Package 09E reschedule confirmation email distinction is complete.
 - Package 09F manual review request send action is complete.
+- Package 09G review request button visibility fix is complete.
 - Contract initials requirement removal is complete.
 - Test-user readiness checks pass with the documented environment setup.
 
@@ -252,6 +254,22 @@ Package 09F manual review request send action status:
 - Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 20/20; `git diff --check` passed.
 - Full regression: `npm.cmd run test:browser` passed 99/100. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
 - Remaining risks: redeployed production should be checked with the owner account's real email provider and configured review links to verify delivery and link rendering in the actual customer email client.
+
+Package 09G review request button visibility fix status:
+
+- Completed July 7, 2026.
+- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
+- Root cause: 09F placed the manual review request action inside the lower Automation section and gated visibility on only `job.status === "Paid"` or `squareFinalPaidAt`. That made the action easy to miss after final payment and failed records that represented final payment with `squareFinalInvoiceStatus === "PAID"` or final payment records.
+- Exact visibility condition fixed: `renderReviewRequestControls` previously required `job.status === "Paid" || Boolean(job.squareFinalPaidAt)` and was nested in Automation. It now uses shared final-paid signal handling and renders in a dedicated `Review Request` section immediately after payment history.
+- Behavior changed: final-paid jobs show a dedicated Review Request section with `Send Review Request`, setup guidance, or `Review Request Sent`. The action remains visible after reload and does not require waiting for delayed automation.
+- Paid-state detection now includes `Paid` status, `squareFinalPaidAt`, `squareFinalInvoiceStatus === "PAID"`, or an existing final payment record across frontend, backend manual review action, and follow-up send rules.
+- Review link detection follows the current settings model: Google, Yelp, Facebook, or Other review link. A website/custom URL saved in `Other review link` counts as configured.
+- Existing 09F manual-send behavior is preserved: successful manual send marks `reviewRequestSentAt`, logs a manual sent review task, and cancels pending auto review; failures do not show success or suppress automation.
+- Tests added/updated: full final-paid workflow visibility, dedicated Review Request section, visibility after reload, Other review link detection, final invoice paid status/payment record visibility, no-link setup guidance, successful sent-state transition, and existing delayed automation coverage.
+- Files touched: `app.js`, `follow-ups.js`, `job-actions.js`, `tests/follow-up-automation.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 21/21; `git diff --check` passed.
+- Full regression: `npm.cmd run test:browser` passed 100/101. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+- Remaining risks: redeployed production should be checked in the owner account after saving review links, marking final invoice paid, and reloading the job detail to confirm the dedicated Review Request section remains visible.
 
 Phase 07D deployment sandbox verification status:
 

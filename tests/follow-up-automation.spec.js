@@ -354,8 +354,14 @@ test("manual review request sends after final payment and cancels pending auto r
   await expect(page.locator("#paymentDialog")).toBeVisible();
   await page.locator("#paymentDialog").getByRole("button", { name: "Confirm Payment" }).click();
 
+  await expect(page.locator(".review-request-section")).toBeVisible();
+  await expect(page.locator(".review-request-section")).toContainText("Review Request");
   await expect(page.getByRole("button", { name: "Send Review Request" })).toBeVisible();
   await expect(page.locator("#jobDetail")).toContainText("Auto review request scheduled");
+  await page.reload();
+  await expect(page.locator("#jobDetail")).toContainText("Completed Finn");
+  await expect(page.locator(".review-request-section")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toBeVisible();
   await page.getByRole("button", { name: "Send Review Request" }).click();
   await expect(page.locator(".toast").filter({ hasText: "Review request sent to completed.finn@example.com." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Review Request Sent" })).toBeVisible();
@@ -370,6 +376,39 @@ test("manual review request sends after final payment and cancels pending auto r
   const manualTask = tasks.find((item) => item.jobId === "completed-job" && item.type === "review_request" && item.source === "manual");
   expect(autoTask).toMatchObject({ status: "cancelled", cancelledReason: "manual_sent" });
   expect(manualTask).toMatchObject({ status: "sent" });
+});
+
+test("other review link counts as configured and final paid status alone shows the manual action", async ({ page }) => {
+  await updateTestSettings({
+    googleReviewUrl: "",
+    yelpReviewUrl: "",
+    facebookReviewUrl: "",
+    otherReviewUrl: "https://johnson.example.com/reviews"
+  });
+  await updateStoredJob("completed-job", {
+    status: "Completed",
+    squareFinalPaidAt: "",
+    squareFinalInvoiceStatus: "PAID",
+    paymentRecords: [{
+      invoiceType: "final",
+      source: "manual",
+      method: "Cash",
+      reference: "paid-offline",
+      amount: 200,
+      paidAt: "2026-06-04T12:00:00.000Z"
+    }]
+  });
+
+  await login(page);
+  await page.goto("/#view=pipeline&job=completed-job");
+  await expect(page.locator("#jobDetail")).toContainText("Completed Finn");
+  await expect(page.locator(".review-request-section")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toBeVisible();
+  await expect(page.locator("#jobDetail")).not.toContainText("Add a review link in Settings before sending.");
+
+  await page.getByRole("button", { name: "Send Review Request" }).click();
+  await expect(page.locator(".toast").filter({ hasText: "Review request sent to completed.finn@example.com." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review Request Sent" })).toBeVisible();
 });
 
 test("manual review request requires a configured review link", async ({ page }) => {

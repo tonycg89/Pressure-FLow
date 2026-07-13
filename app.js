@@ -151,6 +151,11 @@ const notificationToggle = document.querySelector("#notificationToggle");
 const notificationDropdown = document.querySelector("#notificationDropdown");
 const notificationCount = document.querySelector("#notificationCount");
 const notificationClearAll = document.querySelector("#notificationClearAll");
+const solarPanelsInput = document.querySelector("#solarPanelsInput");
+const solarUsageInput = document.querySelector("#solarUsageInput");
+const solarFrequencyButtons = document.querySelectorAll("[data-solar-frequency]");
+const solarEnvironmentButtons = document.querySelectorAll("[data-solar-environment]");
+const solarNemButtons = document.querySelectorAll("[data-solar-nem]");
 let toastContainer = null;
 
 function renderEmptyState(title, hint = "") {
@@ -329,6 +334,11 @@ let detachedBeforePhotoCameraInput = null;
 let pendingBeforePhotoCameraRow = null;
 let detachedModalPhotoPickerInput = null;
 let pendingDetachedModalPhotoPicker = null;
+const solarCalculatorState = {
+  environment: "moderate",
+  frequency: "biannual",
+  nem: "nbt"
+};
 const onboardingStepHelperText = [
   "Add the business basics that appear on estimates, invoices, and customer messages.",
   "Choose the services and starter rates this account should use for new estimates.",
@@ -342,6 +352,27 @@ async function init() {
   statusFilter.addEventListener("change", render);
   dashboardTimeframe.addEventListener("change", renderDashboard);
   dashboardBreakdown?.addEventListener("change", renderDashboard);
+  solarPanelsInput?.addEventListener("input", updateSolarCalculator);
+  solarUsageInput?.addEventListener("input", updateSolarCalculator);
+  solarFrequencyButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      solarCalculatorState.frequency = button.dataset.solarFrequency || "biannual";
+      updateSolarCalculator();
+    });
+  });
+  solarEnvironmentButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      solarCalculatorState.environment = button.dataset.solarEnvironment || "moderate";
+      updateSolarCalculator();
+    });
+  });
+  solarNemButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      solarCalculatorState.nem = button.dataset.solarNem || "nbt";
+      updateSolarCalculator();
+    });
+  });
+  updateSolarCalculator();
   calendarPrevButton?.addEventListener("click", () => shiftCalendarPeriod(-1));
   calendarTodayButton?.addEventListener("click", () => {
     calendarCursorDate = startOfDay(new Date());
@@ -560,6 +591,68 @@ function saveWorkspaceStateToHash() {
   const nextHash = `#${params.toString()}`;
   if (window.location.hash !== nextHash) {
     history.replaceState(null, "", nextHash);
+  }
+}
+
+function updateSolarCalculator() {
+  if (!solarPanelsInput || !solarUsageInput) return;
+
+  const wattsPerPanel = 400;
+  const productionPerKw = 1500;
+  const retailRate = 0.345;
+  const exportRate = 0.065;
+  const baselineLoss = { low: 0.05, moderate: 0.10, high: 0.20 };
+  const residualLoss = { annual: 0.015, biannual: 0.013, quarterly: 0.0115 };
+  const visitsPerYear = { annual: 1, biannual: 2, quarterly: 4 };
+  const pricePerPanel = 8;
+  const minVisitPrice = 125;
+
+  solarFrequencyButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.solarFrequency === solarCalculatorState.frequency);
+  });
+  solarEnvironmentButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.solarEnvironment === solarCalculatorState.environment);
+  });
+  solarNemButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.solarNem === solarCalculatorState.nem);
+  });
+
+  const panels = Number.parseInt(solarPanelsInput.value, 10) || 0;
+  const monthlyUsage = Number.parseInt(solarUsageInput.value, 10) || 0;
+  const kw = (panels * wattsPerPanel) / 1000;
+  const loss = baselineLoss[solarCalculatorState.environment] ?? baselineLoss.moderate;
+  const residual = residualLoss[solarCalculatorState.frequency] ?? residualLoss.biannual;
+  const visits = visitsPerYear[solarCalculatorState.frequency] ?? visitsPerYear.biannual;
+  const recovered = Math.max(loss - residual, 0);
+  const annualProduction = kw * productionPerKw;
+  const extraKwh = annualProduction * recovered;
+  const annualUsage = monthlyUsage * 12;
+  const selfConsumptionFraction = annualProduction > 0 ? Math.min(1, annualUsage / annualProduction) : 1;
+  const exportFraction = 1 - selfConsumptionFraction;
+  const activeExportRate = solarCalculatorState.nem === "nem2" ? retailRate : exportRate;
+  const blendedRate = selfConsumptionFraction * retailRate + exportFraction * activeExportRate;
+  const grossSavings = extraKwh * blendedRate;
+  const visitCost = Math.max(minVisitPrice, panels * pricePerPanel);
+  const annualCleaningCost = visitCost * visits;
+  const netSavings = grossSavings - annualCleaningCost;
+
+  setText("#solarPanelsOutput", `${panels} panel${panels === 1 ? "" : "s"}`);
+  setText("#solarUsageOutput", `${monthlyUsage.toLocaleString()} kWh`);
+  setText("#solarKwOutput", `${kw.toFixed(1)} kW`);
+  setText("#solarEfficiencyOutput", `${(recovered * 100).toFixed(1)}%`);
+  setText("#solarKwhOutput", `${Math.round(extraKwh).toLocaleString()} kWh`);
+  setText("#solarSplitOutput", `${Math.round(selfConsumptionFraction * 100)}% / ${Math.round(exportFraction * 100)}%`);
+  setText("#solarRateOutput", `$${blendedRate.toFixed(3)}/kWh`);
+  setText("#solarGrossOutput", currency.format(Math.round(grossSavings)));
+  setText("#solarCostOutput", currency.format(Math.round(annualCleaningCost)));
+  setText("#solarNetOutput", `${netSavings < 0 ? "-" : ""}${currency.format(Math.round(Math.abs(netSavings)))}`);
+  setText("#solarBaselineOutput", `${Math.round(loss * 100)}%`);
+}
+
+function setText(selector, value) {
+  const element = document.querySelector(selector);
+  if (element) {
+    element.textContent = value;
   }
 }
 
@@ -4502,6 +4595,8 @@ function renderJobDetail() {
 
     ${renderPaymentHistory(job)}
 
+    ${renderReviewRequestSection(job, hasPendingWorkflowAction)}
+
     <section class="detail-section">
       <h4>Workflow</h4>
       <div class="timeline">
@@ -4518,7 +4613,6 @@ function renderJobDetail() {
         ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
         ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
-        ${renderReviewRequestControls(job, hasPendingWorkflowAction)}
         ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>
       </div>
@@ -4608,9 +4702,22 @@ function renderEstimateFollowUpControls(job) {
   `;
 }
 
+function renderReviewRequestSection(job, hasPendingWorkflowAction = false) {
+  const controls = renderReviewRequestControls(job, hasPendingWorkflowAction);
+  if (!controls) {
+    return "";
+  }
+  return `
+    <section class="detail-section review-request-section">
+      <h4>Review Request</h4>
+      ${controls}
+    </section>
+  `;
+}
+
 function renderReviewRequestControls(job, hasPendingWorkflowAction = false) {
   const task = getLatestFollowUpTask(job.id, "review_request");
-  const isPaid = job.status === "Paid" || Boolean(job.squareFinalPaidAt);
+  const isPaid = isFinalInvoicePaid(job);
   if (!isPaid && !job.reviewRequestSentAt && !task) {
     return "";
   }
@@ -4628,6 +4735,15 @@ function renderReviewRequestControls(job, hasPendingWorkflowAction = false) {
       ${!sentAt && !hasReviewLinks ? `<p class="field__help error-text">Add a review link in Settings before sending.</p><button class="link-button" type="button" data-open-settings-review>Configure review links</button>` : ""}
     </div>
   `;
+}
+
+function isFinalInvoicePaid(job = {}) {
+  return Boolean(
+    job.status === "Paid" ||
+    job.squareFinalPaidAt ||
+    job.squareFinalInvoiceStatus === "PAID" ||
+    (Array.isArray(job.paymentRecords) && job.paymentRecords.some((payment) => payment.invoiceType === "final"))
+  );
 }
 
 function hasConfiguredReviewLink() {

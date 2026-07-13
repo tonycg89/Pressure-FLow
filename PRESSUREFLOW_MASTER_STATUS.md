@@ -1,10 +1,10 @@
 # PressureFlow Master Status
 
-Last Updated: July 7, 2026
+Last Updated: July 13, 2026
 
 ## Current Phase
 
-- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, Package 09B owner validation blockers, Package 09C scheduling server error hardening, Package 09D reschedule not-found root cause, Package 09E reschedule confirmation email distinction, and Package 09F manual review request send action.
+- PressureFlow has completed the approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, Packages 07A-4A through 07A-4D, Package 07B-1 multi-tenant security audit, Package 07B-2 webhook/external integration security audit, Package 07C-1 environment/deployment readiness audit, Package 07C-2 backup/recovery/data safety audit, Package 07C-3 operational monitoring/error visibility, Package 08A-1 mobile photo upload flow stabilization, Package 08B customer/property/job data isolation, Package 08C conditional saved measurements display, Package 08D job title/service catalog cleanup, Package 08E estimate email/calendar decoupling, Package 08F post-08A-E stability/root-cause investigation, Package 09A engineering governance hardening, Package 09B owner validation blockers, Package 09C scheduling server error hardening, Package 09D reschedule not-found root cause, Package 09E reschedule confirmation email distinction, Package 09F manual review request send action, Package 09G review request button visibility fix, and the Package 10A frontend-only Tools tab with solar panel cleaning savings calculator.
 - Permanent engineering standards and product principles now apply to all future packages through `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
 - Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The documented Render URL is reachable and, after Render environment updates/redeploy, `/health` returns the current expected `{"ok":true,"service":"pressureflow"}` payload. 07D-1 deployed core app verification, 07D-2 deployed public customer workflow verification, 07D-3 deployed Mapbox workflow verification, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Decision: GO for a limited 3-5 contractor founder-led beta using manual payment recording while Stripe/Square provider webhook verification remains pending and clearly marked as in-progress.
 - Customer-facing public pages and email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
@@ -86,6 +86,8 @@ Product guardrails:
 - Package 09D reschedule not-found root cause
 - Package 09E reschedule confirmation email distinction
 - Package 09F manual review request send action
+- Package 09G review request button visibility fix
+- Package 10A frontend-only Tools tab and solar panel cleaning savings calculator
 - Contract initials requirement removed
 - Central AI Handoff file
 
@@ -240,6 +242,23 @@ Product guardrails:
 - Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 20/20; `git diff --check` passed.
 - Full regression: `npm.cmd run test:browser` passed 99/100. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
 - Remaining risks: redeployed production should be checked with the owner account's real email provider and real review links to confirm the delivered review request email and link rendering. Resend behavior was intentionally not added for 09F; already-sent jobs show a sent state to avoid accidental duplicate review requests.
+
+## Package 09G Review Request Button Visibility Fix
+
+- Completed July 7, 2026.
+- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
+- Root cause: Package 09F rendered the manual review request action only inside the lower `Automation` section and used a narrow paid predicate (`job.status === "Paid"` or `squareFinalPaidAt`). In the owner walkthrough the action could be missed after final payment, and records carrying only a paid final invoice status/payment record did not match the visibility condition.
+- Exact condition that prevented visibility: `renderReviewRequestControls` required `job.status === "Paid" || Boolean(job.squareFinalPaidAt)` and was nested under Automation. It did not consider `squareFinalInvoiceStatus === "PAID"` or final payment records, and it was not in an obvious paid/final-invoice area.
+- Behavior changed: job detail now renders a dedicated `Review Request` section immediately after payment history when a job is final-paid, when a review request has already been sent, or when a review request task exists. This makes `Send Review Request`, setup guidance, or `Review Request Sent` visible without waiting for delayed automation.
+- Paid-state detection now aligns across frontend, backend manual action, and follow-up send rules: `Paid` status, `squareFinalPaidAt`, `squareFinalInvoiceStatus === "PAID"`, or a final payment record all count as final-paid.
+- Review link detection remains the current settings model: Google, Yelp, Facebook, or Other review link. A website/custom URL entered in `Other review link` counts as configured and enables the action.
+- Setup behavior: if no review links exist, the dedicated section still appears with setup guidance and a `Configure review links` shortcut to Settings.
+- Existing manual send, already-sent state, pending automation cancellation, delayed automation, estimate, scheduling, invoice, and payment flows remain unchanged.
+- Tests added/updated: full final-paid workflow shows the dedicated Review Request section, button remains visible after page reload, Other review link counts as configured, final invoice paid status/payment record alone shows the manual action, no-link setup guidance remains visible, successful send changes to `Review Request Sent`, and delayed automation remains covered.
+- Files touched: `app.js`, `follow-ups.js`, `job-actions.js`, `tests/follow-up-automation.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
+- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 21/21; `git diff --check` passed.
+- Full regression: `npm.cmd run test:browser` passed 100/101. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
+- Remaining risks: redeployed production should be checked in the owner account after saving review links, marking final invoice paid, reloading the job detail, and confirming the dedicated Review Request section is visible.
 
 ## UI Packages Complete
 

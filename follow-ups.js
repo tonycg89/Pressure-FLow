@@ -44,7 +44,7 @@ const FOLLOW_UP_CONFIG = {
     sentAtField: "squareFinalPaidAt",
     sentMarkerField: "reviewRequestSentAt",
     statusLabel: "review request",
-    canSend: (job, settings = {}) => job?.status === "Paid" && job.squareFinalPaidAt && !job.reviewRequestSentAt && hasReviewRequestLink(settings),
+    canSend: (job, settings = {}) => isFinalInvoicePaid(job) && !job.reviewRequestSentAt && hasReviewRequestLink(settings),
     cancelReason: (job) => {
       if (!job) return "job_missing";
       if (job.reviewRequestSentAt) return "sent";
@@ -300,6 +300,15 @@ function isFollowUpEnabled(settings = {}, type = FOLLOW_UP_TYPE) {
 
 function hasReviewRequestLink(settings = {}) {
   return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
+}
+
+function isFinalInvoicePaid(job = {}) {
+  return Boolean(
+    job.status === "Paid" ||
+    job.squareFinalPaidAt ||
+    job.squareFinalInvoiceStatus === "PAID" ||
+    (Array.isArray(job.paymentRecords) && job.paymentRecords.some((payment) => payment.invoiceType === "final"))
+  );
 }
 
 function getCancellationReason(job, tasks, type = FOLLOW_UP_TYPE, settings = {}) {

@@ -537,6 +537,177 @@ label.compact-select {
   min-height: 420px;
 }
 
+.tools-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 18px;
+  margin-top: 26px;
+  align-items: start;
+}
+
+.solar-tool-panel,
+.solar-results-panel,
+.solar-tool-notes {
+  display: grid;
+  gap: 18px;
+}
+
+.solar-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.solar-tool-control,
+.solar-tool-slider {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.solar-tool-control:nth-child(4),
+.solar-tool-slider {
+  grid-column: 1 / -1;
+}
+
+.solar-tool-label,
+.solar-tool-slider__row {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.solar-tool-slider__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.solar-tool-slider__row strong {
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.solar-tool-slider small {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.solar-tool-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--primary);
+}
+
+.solar-tool-segments {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.solar-tool-segments--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.solar-tool-option {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  gap: 2px;
+  padding: 8px;
+  text-align: center;
+  white-space: normal;
+}
+
+.solar-tool-option span {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  opacity: 0.78;
+}
+
+.solar-results-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.solar-metric {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+}
+
+.solar-metric span {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.solar-metric strong {
+  color: var(--foreground);
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 28px;
+}
+
+.solar-metric--highlight {
+  background: var(--status-success-bg);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+
+.solar-metric--highlight span,
+.solar-metric--highlight strong {
+  color: var(--status-success-text);
+}
+
+.solar-metric--highlight strong {
+  font-size: 28px;
+  line-height: 34px;
+}
+
+.solar-tool-notes {
+  margin-top: 18px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.solar-tool-notes p {
+  margin: 0;
+}
+
+.solar-tool-notes details {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.solar-tool-notes summary {
+  color: var(--foreground);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.solar-tool-notes ol {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.solar-tool-notes li + li {
+  margin-top: 5px;
+}
+
 .calendar-grid--empty {
   display: grid;
   place-items: center;
@@ -3414,6 +3585,10 @@ label {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .tools-layout {
+    grid-template-columns: 1fr;
+  }
+
   .content-grid {
     grid-template-columns: 1fr;
   }
@@ -3497,6 +3672,25 @@ label {
   .calendar-nav button,
   .segmented-control__button {
     flex: 1 1 0;
+  }
+
+  .solar-tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .solar-tool-segments,
+  .solar-tool-segments--two {
+    grid-template-columns: 1fr;
+  }
+
+  .solar-tool-option {
+    min-height: 48px;
+  }
+
+  .solar-tool-slider__row {
+    align-items: start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .calendar-panel-header {

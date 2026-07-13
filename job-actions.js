@@ -170,7 +170,7 @@ function createJobActionHandler({
 
     if (action === "send-review-request") {
       const settings = await readSettings();
-      if (job.status !== "Paid" || !job.squareFinalPaidAt) {
+      if (!isFinalInvoicePaid(job)) {
         throw actionError("Review request is available after the final invoice is marked paid.", {
           statusCode: 400,
           code: "REVIEW_REQUEST_NOT_READY"
@@ -396,6 +396,15 @@ function actionError(message, { statusCode = 400, code = "" } = {}) {
 
 function hasReviewRequestLink(settings = {}) {
   return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
+}
+
+function isFinalInvoicePaid(job = {}) {
+  return Boolean(
+    job.status === "Paid" ||
+    job.squareFinalPaidAt ||
+    job.squareFinalInvoiceStatus === "PAID" ||
+    (Array.isArray(job.paymentRecords) && job.paymentRecords.some((payment) => payment.invoiceType === "final"))
+  );
 }
 
 function hasScheduleChanged(previousScheduledAt, previousJobDurationMinutes, nextScheduledAt, nextJobDurationMinutes) {

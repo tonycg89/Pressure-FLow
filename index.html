@@ -61,6 +61,14 @@
             </svg>
             <span>Expenses</span>
           </button>
+          <button class="nav-item" type="button" title="Tools" data-view="tools">
+            <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
+              <path d="M4 19V5"></path>
+              <path d="M4 19h16"></path>
+              <path d="M8 15l3-3 3 2 5-6"></path>
+            </svg>
+            <span>Tools</span>
+          </button>
           <button id="settingsButton" class="nav-item" type="button" title="Settings" aria-haspopup="dialog" aria-controls="settingsDialog" aria-expanded="false" aria-pressed="false">
             <svg class="nav-icon" aria-hidden="true" viewBox="0 0 24 24">
               <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
@@ -415,6 +423,134 @@
             </div>
             <div id="expenseDetail" class="job-detail"></div>
           </aside>
+        </section>
+      </section>
+
+      <section class="workspace workspace-view" id="toolsView" data-view-panel="tools" hidden>
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Tools</p>
+            <h2>Tools</h2>
+            <p class="dashboard-subtitle">Run quick field calculators without leaving PressureFlow.</p>
+          </div>
+        </header>
+
+        <section class="tools-layout" aria-labelledby="solarCalculatorTitle">
+          <section class="panel solar-tool-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Solar Cleaning</p>
+                <h3 id="solarCalculatorTitle">Solar panel cleaning savings</h3>
+                <p class="dashboard-subtitle">Compare cleaning frequencies and estimate annual net savings for California customers.</p>
+              </div>
+            </div>
+
+            <div class="solar-tool-grid">
+              <section class="solar-tool-control" aria-labelledby="solarFrequencyLabel">
+                <p id="solarFrequencyLabel" class="solar-tool-label">Cleaning frequency</p>
+                <div class="segmented-control solar-tool-segments" role="group" aria-label="Cleaning frequency">
+                  <button class="segmented-control__button solar-tool-option" type="button" data-solar-frequency="annual">Annual <span>1x/yr</span></button>
+                  <button class="segmented-control__button solar-tool-option active" type="button" data-solar-frequency="biannual">Biannual <span>2x/yr</span></button>
+                  <button class="segmented-control__button solar-tool-option" type="button" data-solar-frequency="quarterly">Quarterly <span>4x/yr</span></button>
+                </div>
+              </section>
+
+              <section class="solar-tool-control" aria-labelledby="solarEnvironmentLabel">
+                <p id="solarEnvironmentLabel" class="solar-tool-label">Customer environment</p>
+                <div class="segmented-control solar-tool-segments" role="group" aria-label="Customer environment">
+                  <button class="segmented-control__button solar-tool-option" type="button" data-solar-environment="low">Coastal <span>low dust</span></button>
+                  <button class="segmented-control__button solar-tool-option active" type="button" data-solar-environment="moderate">Inland <span>moderate dust</span></button>
+                  <button class="segmented-control__button solar-tool-option" type="button" data-solar-environment="high">Desert <span>high dust</span></button>
+                </div>
+              </section>
+
+              <label class="solar-tool-slider">
+                <span class="solar-tool-slider__row">
+                  <span>Avg. monthly usage</span>
+                  <strong id="solarUsageOutput">940 kWh</strong>
+                </span>
+                <input id="solarUsageInput" type="range" min="300" max="2000" step="10" value="940">
+                <small>Use the customer's 12-month average from their utility bill. CA typical is about 940 kWh/mo.</small>
+              </label>
+
+              <section class="solar-tool-control" aria-labelledby="solarNemLabel">
+                <p id="solarNemLabel" class="solar-tool-label">Net metering plan</p>
+                <div class="segmented-control solar-tool-segments solar-tool-segments--two" role="group" aria-label="Net metering plan">
+                  <button class="segmented-control__button solar-tool-option active" type="button" data-solar-nem="nbt">NEM 3.0 / NBT <span>most systems since 2023</span></button>
+                  <button class="segmented-control__button solar-tool-option" type="button" data-solar-nem="nem2">Grandfathered NEM 2.0 <span>exports at retail rate</span></button>
+                </div>
+              </section>
+
+              <label class="solar-tool-slider">
+                <span class="solar-tool-slider__row">
+                  <span>Number of panels</span>
+                  <strong id="solarPanelsOutput">14 panels</strong>
+                </span>
+                <input id="solarPanelsInput" type="range" min="6" max="50" step="1" value="14">
+                <small><span id="solarKwOutput">5.6 kW</span> system, assuming 400W panels. Typical CA homes run 14-28 panels.</small>
+              </label>
+            </div>
+          </section>
+
+          <aside class="panel solar-results-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Estimate</p>
+                <h3>Projected savings</h3>
+              </div>
+            </div>
+            <div class="solar-results-grid">
+              <article class="solar-metric">
+                <span>Efficiency recovered</span>
+                <strong id="solarEfficiencyOutput">-</strong>
+              </article>
+              <article class="solar-metric">
+                <span>Extra energy per year</span>
+                <strong id="solarKwhOutput">-</strong>
+              </article>
+              <article class="solar-metric">
+                <span>Self-consumed vs exported</span>
+                <strong id="solarSplitOutput">-</strong>
+              </article>
+              <article class="solar-metric">
+                <span>Blended value per kWh</span>
+                <strong id="solarRateOutput">-</strong>
+              </article>
+              <article class="solar-metric">
+                <span>Gross energy savings</span>
+                <strong id="solarGrossOutput">-</strong>
+              </article>
+              <article class="solar-metric">
+                <span>Est. annual cleaning cost</span>
+                <strong id="solarCostOutput">-</strong>
+              </article>
+              <article class="solar-metric solar-metric--highlight">
+                <span>Net annual savings, after cleaning</span>
+                <strong id="solarNetOutput">-</strong>
+              </article>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel solar-tool-notes">
+          <p>
+            Based on 400W panels, about 1,500 kWh/kW/year CA solar output, and residual soiling loss that falls with cleaning frequency (annual about 1.5%, biannual about 1.3%, quarterly about 1.15%) relative to the uncleaned baseline for this environment (<span id="solarBaselineOutput">10%</span>).
+          </p>
+          <p>
+            Extra energy is split between self-consumption valued at the estimated $0.345/kWh CA retail rate and grid export, valued at retail under grandfathered NEM 2.0 or about $0.065/kWh under NEM 3.0 / Net Billing Tariff. Cleaning cost assumes $8/panel per visit with a $125 minimum.
+          </p>
+          <details>
+            <summary>Sources and assumptions</summary>
+            <ol>
+              <li>NREL: soiling losses typically 3-5%, ranging up to 25% in high-soiling U.S. locations including parts of California.</li>
+              <li>Kleissl et al., UC San Diego: 186 California solar sites showed 7.4% efficiency loss after 145 days without rain or cleaning.</li>
+              <li>Aurora Solar / NREL soiling model: three cleanings per year reduces average annual soiling loss to roughly 1.2%.</li>
+              <li>U.S. EIA and California Public Utilities Commission: California average residential electricity rate about $0.345/kWh in 2026.</li>
+              <li>Industry pricing guides: professional solar panel cleaning typically runs $5-$15 per panel, with a $100-$175 minimum service fee.</li>
+              <li>California Public Utilities Commission / Aurora Solar: Net Billing Tariff exported solar is compensated at an avoided-cost rate averaging about $0.05-$0.08/kWh.</li>
+              <li>EnergySage: typical California residential electricity usage averages roughly 940 kWh per month.</li>
+            </ol>
+          </details>
         </section>
       </section>
     </main>
