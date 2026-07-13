@@ -666,6 +666,7 @@ function updateSolarCalculator() {
   const activeExportRate = solarCalculatorState.nem === "nem2" ? retailRate : exportRate;
   const blendedRate = selfConsumptionFraction * retailRate + exportFraction * activeExportRate;
   const grossSavings = extraKwh * blendedRate;
+  const retailEquivalentKwh = retailRate > 0 ? grossSavings / retailRate : 0;
   const visitCost = Math.max(minVisitPrice, panels * pricePerPanel);
   const annualCleaningCost = visitCost * visits;
   const netSavings = grossSavings - annualCleaningCost;
@@ -675,6 +676,7 @@ function updateSolarCalculator() {
   setText("#solarKwOutput", `${kw.toFixed(1)} kW`);
   setText("#solarEfficiencyOutput", `${(recovered * 100).toFixed(1)}%`);
   setText("#solarKwhOutput", `${Math.round(extraKwh).toLocaleString()} kWh`);
+  setText("#solarValuedKwhOutput", `${Math.round(retailEquivalentKwh).toLocaleString()} kWh`);
   setText("#solarSplitOutput", `${Math.round(selfConsumptionFraction * 100)}% / ${Math.round(exportFraction * 100)}%`);
   setText("#solarRateOutput", `$${blendedRate.toFixed(3)}/kWh`);
   setText("#solarGrossOutput", currency.format(Math.round(grossSavings)));
