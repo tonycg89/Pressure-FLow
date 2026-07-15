@@ -427,6 +427,8 @@ test("public documents remain within the mobile viewport and proof links are tap
 
   await page.goto("/proof/final-mobile-job?token=proof-mobile");
   await expect(page.locator("body")).toContainText("Photos included");
+  await expect(page.locator("body")).toContainText("Service Area Photo");
+  await expect(page.locator(".measurement-preview")).toBeVisible();
   await expect(page.locator("body")).toContainText("Customer copy");
 
   await page.goto("/proof/no-photo-mobile-job?token=proof-no-photo-mobile");
@@ -723,6 +725,7 @@ async function resetTestData() {
         after: [{ name: "after.jpg", dataUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" }]
       },
       measurement: {
+        staticImageUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
         squareFeet: 1250,
         areas: [{ name: "Front driveway edge and long side path", squareFeet: 1250 }]
       }

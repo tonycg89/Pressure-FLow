@@ -251,7 +251,7 @@ function renderEstimateApprovalWordTemplate(settings) {
 </html>`;
 }
 
-function renderMeasurementPreview(job) {
+function renderMeasurementPreview(job, heading = "Measured Surface") {
   if (!job.measurement?.staticImageUrl) {
     return "";
   }
@@ -265,7 +265,7 @@ function renderMeasurementPreview(job) {
     </ul>`
     : "";
   return `<section>
-    <h2>Measured Surface</h2>
+    <h2>${escapeHtml(heading)}</h2>
     <p>${escapeHtml(job.measurement.address || job.address)} | ${area} SqFt</p>
     ${areaRows}
     <div class="measurement-preview-wrap">
@@ -360,6 +360,7 @@ function renderCompletionProofPage(job, settings = {}) {
           </table>
         </section>
         ${renderCompletionServiceAreas(job)}
+        ${renderMeasurementPreview(job, "Service Area Photo")}
         ${before.length ? `<section>
           <h2>Before Photos</h2>
           ${renderProofPhotoGrid(before)}
