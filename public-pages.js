@@ -317,7 +317,7 @@ function renderCompletionProofPage(job, settings = {}) {
   const total = Number(job.estimate || 0);
   const hasPhotos = before.length || after.length;
   const isPaid = job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
-  const proofPills = ["Service completed", hasPhotos ? "Photos included" : "No photos included", "Customer copy"];
+  const proofPills = ["Service completed", hasPhotos ? "Photos included" : "", "Customer copy"].filter(Boolean);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -360,14 +360,14 @@ function renderCompletionProofPage(job, settings = {}) {
           </table>
         </section>
         ${renderCompletionServiceAreas(job)}
-        <section>
+        ${before.length ? `<section>
           <h2>Before Photos</h2>
           ${renderProofPhotoGrid(before)}
-        </section>
-        <section>
+        </section>` : ""}
+        ${after.length ? `<section>
           <h2>Completed Work Photos</h2>
           ${renderProofPhotoGrid(after)}
-        </section>
+        </section>` : ""}
       </div>
       <div class="print-actions doc__actions">
         <p class="doc__actions-note">Keep this completion proof for your records. Contact ${escapeHtml(getBusinessName(settings))} if anything needs review.</p>
@@ -397,7 +397,7 @@ function renderCompletionServiceAreas(job) {
 
 function renderProofPhotoGrid(photos) {
   if (!photos.length) {
-    return "<p>No photos were included with this service.</p>";
+    return "";
   }
 
   return `<div class="proof-grid doc__gallery">
@@ -411,6 +411,7 @@ function renderProofPhotoGrid(photos) {
 
 function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const isDeposit = invoiceType === "deposit";
+  const hasCompletionPhotos = Boolean((job.jobPhotos?.before || []).length || (job.jobPhotos?.after || []).length);
   const amount = isDeposit ? getDepositCents(job) / 100 : getFinalBalanceCents(job) / 100;
   const depositPercent = getDepositPercent(job);
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
@@ -484,7 +485,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
             ${renderCardPaymentForm(job, settings, invoiceType)}
           `}
         </section>
-        ${!isDeposit && job.completionProofUrl ? `<section class="proof-link"><strong>Completion photo record:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View before and after photos</a></section>` : ""}
+        ${!isDeposit && job.completionProofUrl && hasCompletionPhotos ? `<section class="proof-link"><strong>Completion photo record:</strong><br><a href="${escapeHtml(job.completionProofUrl)}">View before and after photos</a></section>` : ""}
       </div>
       <div class="doc__actions">
         <button class="btn btn--secondary" type="button" onclick="window.print()">Print or Save as PDF</button>

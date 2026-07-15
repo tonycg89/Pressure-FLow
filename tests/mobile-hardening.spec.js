@@ -430,8 +430,10 @@ test("public documents remain within the mobile viewport and proof links are tap
   await expect(page.locator("body")).toContainText("Customer copy");
 
   await page.goto("/proof/no-photo-mobile-job?token=proof-no-photo-mobile");
-  await expect(page.locator("body")).toContainText("No photos included");
-  await expect(page.locator("body")).toContainText("No photos were included with this service.");
+  await expect(page.locator("body")).not.toContainText("No photos included");
+  await expect(page.locator("body")).not.toContainText("No photos were included with this service.");
+  await expect(page.locator("body")).not.toContainText("Before Photos");
+  await expect(page.locator("body")).not.toContainText("Completed Work Photos");
   await expect(page.locator("body")).not.toContainText("Photos available");
 
   await page.goto("/contract/contract-mobile-job?token=contract-mobile");
