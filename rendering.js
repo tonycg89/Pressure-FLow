@@ -72,6 +72,8 @@ function estimatePageStyles() {
     .num,
     .tabular-nums { font-variant-numeric: tabular-nums; }
     .table .num { text-align: right; white-space: nowrap; }
+    .doc-table-scroll { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .doc-table-scroll .table { margin: 12px 0 0; }
     .doc-line-items,
     .doc-contract-scope { table-layout: auto; }
     .doc-line-items .doc-col-service { width: 38%; }
@@ -171,7 +173,8 @@ function estimatePageStyles() {
       select { min-height: 44px; }
       textarea { min-height: 104px; }
       .table,
-      table { display: block; max-width: 100%; overflow-x: auto; white-space: normal; -webkit-overflow-scrolling: touch; }
+      table { max-width: 100%; white-space: normal; }
+      .doc-table-scroll .table { display: table; max-width: none; overflow: visible; }
       .doc-line-items { min-width: 620px; }
       .doc-contract-scope { min-width: 520px; }
       th, td { padding: 10px 8px; white-space: normal; }

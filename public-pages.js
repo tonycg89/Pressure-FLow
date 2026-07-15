@@ -59,16 +59,18 @@ function renderEstimateApprovalPage(job, settings = {}) {
         </section>
         <section>
           <h2>Services included</h2>
-          <table class="table doc-line-items">
-            <colgroup>
-              <col class="doc-col-service">
-              <col class="doc-col-amount">
-              <col class="doc-col-rate">
-              <col class="doc-col-total">
-            </colgroup>
-            <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
-            <tbody>${lineRows}</tbody>
-          </table>
+          <div class="doc-table-scroll" role="region" aria-label="Services included table" tabindex="0">
+            <table class="table doc-line-items">
+              <colgroup>
+                <col class="doc-col-service">
+                <col class="doc-col-amount">
+                <col class="doc-col-rate">
+                <col class="doc-col-total">
+              </colgroup>
+              <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
+              <tbody>${lineRows}</tbody>
+            </table>
+          </div>
         </section>
         <section class="totals doc__totals">
           <div class="doc__total-row"><span>Subtotal</span><strong>$${subtotal.toFixed(2)}</strong></div>
@@ -577,15 +579,17 @@ function renderContractSigningPage(job, options = {}) {
 
         <section class="contract-section">
           <h2>Scope of Work</h2>
-          <table class="table doc-contract-scope">
-            <colgroup>
-              <col class="doc-col-service">
-              <col class="doc-col-amount">
-              <col class="doc-col-total">
-            </colgroup>
-            <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
-            <tbody>${lineRows}</tbody>
-          </table>
+          <div class="doc-table-scroll" role="region" aria-label="Scope of Work table" tabindex="0">
+            <table class="table doc-contract-scope">
+              <colgroup>
+                <col class="doc-col-service">
+                <col class="doc-col-amount">
+                <col class="doc-col-total">
+              </colgroup>
+              <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
+              <tbody>${lineRows}</tbody>
+            </table>
+          </div>
         </section>
 
         <section class="totals doc__totals">
