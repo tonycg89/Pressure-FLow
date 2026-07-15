@@ -4684,7 +4684,7 @@ function renderJobDetail() {
         ${workflowMessage ? `<p class="workflow-action-status ${workflowMessage.type === "error" ? "error" : "success"}" role="${workflowMessage.type === "error" ? "alert" : "status"}">${escapeHtml(workflowMessage.message)}</p>` : ""}
         ${renderInvoicePaymentWarning(nextAction, deliveryActions)}
         ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
-        ${nextAction ? `<button class="action-button" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
+        ${nextAction ? `<button class="action-button action-button--recommended" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}><span class="action-button__eyebrow">Next step</span><span>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</span></button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>

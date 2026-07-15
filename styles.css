@@ -1727,6 +1727,26 @@ textarea {
   font-weight: 700;
 }
 
+.action-button--recommended {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 56px;
+  border-color: color-mix(in srgb, var(--primary) 72%, var(--border));
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 8px 18px rgba(31, 122, 77, 0.18);
+}
+
+.action-button__eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 0.86;
+}
+
 .action-button.secondary {
   background: var(--muted);
   color: var(--foreground);
@@ -1742,6 +1762,10 @@ textarea {
 .action-button:hover,
 .action-button.secondary:hover {
   background: var(--muted);
+}
+
+.action-button--recommended:hover {
+  background: color-mix(in srgb, var(--primary) 88%, black);
 }
 
 .action-button.danger:hover {

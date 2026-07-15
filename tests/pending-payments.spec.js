@@ -40,6 +40,8 @@ test("pending payments can be manually confirmed with method and reference", asy
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Alex Rivera/ }).click();
+  await expect(page.locator(".action-button--recommended")).toContainText("Next step");
+  await expect(page.locator(".action-button--recommended")).toContainText("Schedule Job");
   await page.getByRole("button", { name: "Schedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeVisible();
   await expect(page.locator("#scheduleWeekGrid")).toBeVisible();
@@ -178,6 +180,8 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
   await expect(page.locator("#jobDetail")).toContainText("$0.00");
   await expect(page.getByRole("button", { name: "Schedule Job" })).toBeVisible();
+  await expect(page.locator(".action-button--recommended")).toContainText("Next step");
+  await expect(page.locator(".action-button--recommended")).toContainText("Schedule Job");
   await expect(page.locator("#jobDetail")).not.toContainText("Deposit Invoice");
 
   await page.getByRole("button", { name: "Schedule Job" }).click();
