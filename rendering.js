@@ -176,23 +176,38 @@ function estimatePageStyles() {
       textarea { min-height: 104px; }
       .table,
       table { max-width: 100%; white-space: normal; }
-      .doc-table-scroll { overflow-x: visible; }
-      .doc-table-scroll .table { display: table; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; table-layout: fixed; }
-      .doc-line-items .doc-col-service { width: 37%; }
-      .doc-line-items .doc-col-amount { width: 22%; }
-      .doc-line-items .doc-col-rate { width: 19%; }
-      .doc-line-items .doc-col-total { width: 22%; }
-      .doc-contract-scope .doc-col-service { width: 42%; }
-      .doc-contract-scope .doc-col-amount { width: 30%; }
-      .doc-contract-scope .doc-col-total { width: 28%; }
-      .doc-line-items th:last-child,
+      .doc-table-scroll { overflow: visible; }
+      .doc-line-items,
+      .doc-contract-scope { display: block; width: 100%; max-width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; table-layout: auto; }
+      .doc-line-items colgroup,
+      .doc-contract-scope colgroup,
+      .doc-line-items thead,
+      .doc-contract-scope thead { display: none; }
+      .doc-line-items tbody,
+      .doc-contract-scope tbody,
+      .doc-line-items tr,
+      .doc-contract-scope tr,
+      .doc-line-items td,
+      .doc-contract-scope td { display: block; width: 100%; max-width: 100%; }
+      .doc-line-items tr,
+      .doc-contract-scope tr { padding: 10px 0; border-bottom: 1px solid #d8dee8; }
+      .doc-line-items tr:last-child,
+      .doc-contract-scope tr:last-child { border-bottom: 0; }
+      .doc-line-items td,
+      .doc-contract-scope td { display: grid; grid-template-columns: minmax(82px, 34%) minmax(0, 1fr); gap: 8px; padding: 6px 10px; border-bottom: 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+      .doc-line-items td::before,
+      .doc-contract-scope td::before { color: #667085; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+      .doc-line-items td:nth-child(1)::before,
+      .doc-contract-scope td:nth-child(1)::before { content: "Service"; }
+      .doc-line-items td:nth-child(2)::before,
+      .doc-contract-scope td:nth-child(2)::before { content: "Amount"; }
+      .doc-line-items td:nth-child(3)::before { content: "Rate"; }
+      .doc-line-items td:nth-child(4)::before,
+      .doc-contract-scope td:nth-child(3)::before { content: "Total"; }
+      .doc-line-items .num,
+      .doc-contract-scope .num,
       .doc-line-items td:last-child,
-      .doc-contract-scope th:last-child,
-      .doc-contract-scope td:last-child { min-width: 0; white-space: normal; }
-      .doc-line-items th:nth-child(2),
-      .doc-line-items td:nth-child(2),
-      .doc-contract-scope th:nth-child(2),
-      .doc-contract-scope td:nth-child(2) { overflow-wrap: anywhere; }
+      .doc-contract-scope td:last-child { min-width: 0; text-align: left; white-space: normal; }
       th, td { padding: 8px 5px; white-space: normal; font-size: 12px; line-height: 1.3; }
       .doc__amount-due strong { font-size: 30px; }
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
