@@ -80,7 +80,7 @@ function throwEmailConfigError(message) {
 
 function normalizeGoogleEmailAuthErrorMessage(data, fallback) {
   if (data?.error === "invalid_grant") {
-    return "Google/Gmail access has expired or was revoked. Open Settings and reconnect Google before sending customer emails, or switch email delivery to SMTP.";
+    return "Google/Gmail access has expired or was revoked. Reconnect Google from Settings. If this keeps happening, publish the Google OAuth consent screen to Production; Testing mode can expire Gmail/Calendar refresh tokens after 7 days. You can also switch email delivery to SMTP.";
   }
 
   return fallback;

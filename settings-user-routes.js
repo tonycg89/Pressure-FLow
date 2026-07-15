@@ -108,10 +108,10 @@ function createSettingsUserRoutes({
 
       const settings = normalizeSettings(input, existing);
       if (!isOwnerSession()) {
-        settings.mapboxPublicToken = "";
-        settings.googleClientId = "";
-        settings.googleClientSecret = "";
-        settings.googleRedirectUri = "";
+        settings.mapboxPublicToken = existing.mapboxPublicToken || "";
+        settings.googleClientId = existing.googleClientId || "";
+        settings.googleClientSecret = existing.googleClientSecret || "";
+        settings.googleRedirectUri = existing.googleRedirectUri || "";
       }
       await writeSettings(settings);
       sendJson(response, 200, {

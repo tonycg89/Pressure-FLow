@@ -213,7 +213,7 @@ function throwCalendarSetupError(message) {
 
 function normalizeGoogleAuthErrorMessage(data, fallback) {
   if (data?.error === "invalid_grant") {
-    return "Google Calendar access has expired or was revoked. Open Settings and click Connect Google again before scheduling jobs.";
+    return "Google Calendar access has expired or was revoked. Reconnect Google from Settings. If this keeps happening, publish the Google OAuth consent screen to Production; Testing mode can expire Gmail/Calendar refresh tokens after 7 days.";
   }
 
   return fallback;

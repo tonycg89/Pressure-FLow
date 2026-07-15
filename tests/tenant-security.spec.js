@@ -165,7 +165,13 @@ test("authenticated cross-tenant writes, deletes, actions, and linked records fa
   expect(bTask.status).toBe("pending");
 
   const users = await readJson("users.json");
-  expect(users.find((user) => user.id === TENANT_A.id).settings.businessName).toBe("Tenant A Updated");
+  const tenantASettings = users.find((user) => user.id === TENANT_A.id).settings;
+  expect(tenantASettings.businessName).toBe("Tenant A Updated");
+  expect(tenantASettings.googleClientId).toBe("tenant-a-google-client");
+  expect(tenantASettings.googleClientSecret).toBe("tenant-a-google-secret");
+  expect(tenantASettings.googleRedirectUri).toBe("https://pressureflow.example/auth/google/callback");
+  expect(tenantASettings.googleRefreshToken).toBe("tenant-a-google-refresh-token");
+  expect(tenantASettings.mapboxPublicToken).toBe("tenant-a-mapbox-token");
   expect(users.find((user) => user.id === TENANT_B.id).settings.businessName).toBe(TENANT_B.businessName);
   expect(JSON.stringify(users.find((user) => user.id === TENANT_B.id).settings.customTemplates)).toContain("tenant-b-template");
 });
@@ -255,7 +261,12 @@ async function resetTestData() {
   ]);
   await writeJson("users.json", [
     userRecord(TENANT_A, {
-      customTemplates: [customTemplate("tenant-a-template", "Tenant A template")]
+      customTemplates: [customTemplate("tenant-a-template", "Tenant A template")],
+      googleClientId: "tenant-a-google-client",
+      googleClientSecret: "tenant-a-google-secret",
+      googleRedirectUri: "https://pressureflow.example/auth/google/callback",
+      googleRefreshToken: "tenant-a-google-refresh-token",
+      mapboxPublicToken: "tenant-a-mapbox-token"
     }),
     userRecord(TENANT_B, {
       customTemplates: [customTemplate("tenant-b-template", "Tenant B template")]

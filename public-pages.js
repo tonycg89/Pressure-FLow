@@ -59,7 +59,13 @@ function renderEstimateApprovalPage(job, settings = {}) {
         </section>
         <section>
           <h2>Services included</h2>
-          <table class="table">
+          <table class="table doc-line-items">
+            <colgroup>
+              <col class="doc-col-service">
+              <col class="doc-col-amount">
+              <col class="doc-col-rate">
+              <col class="doc-col-total">
+            </colgroup>
             <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
             <tbody>${lineRows}</tbody>
           </table>
@@ -571,7 +577,12 @@ function renderContractSigningPage(job, options = {}) {
 
         <section class="contract-section">
           <h2>Scope of Work</h2>
-          <table class="table">
+          <table class="table doc-contract-scope">
+            <colgroup>
+              <col class="doc-col-service">
+              <col class="doc-col-amount">
+              <col class="doc-col-total">
+            </colgroup>
             <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
             <tbody>${lineRows}</tbody>
           </table>

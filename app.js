@@ -1467,7 +1467,7 @@ function renderIntegrationStatuses() {
         ? "SMTP sending is saved for this account."
         : "SMTP selected. Save an SMTP/app password before sending email."
       : settings.hasGoogleRefreshToken
-        ? "Google/Gmail sending is connected."
+        ? "Google/Gmail sending is connected. For a permanent connection, the Google OAuth consent screen must be published to Production; Testing mode refresh tokens can expire after 7 days."
         : "Google/Gmail selected. Connect Google or switch to SMTP before sending automated emails.";
   }
   if (squareIntegrationStatus) {

@@ -72,6 +72,23 @@ function estimatePageStyles() {
     .num,
     .tabular-nums { font-variant-numeric: tabular-nums; }
     .table .num { text-align: right; white-space: nowrap; }
+    .doc-line-items,
+    .doc-contract-scope { table-layout: auto; }
+    .doc-line-items .doc-col-service { width: 38%; }
+    .doc-line-items .doc-col-amount { width: 19%; }
+    .doc-line-items .doc-col-rate { width: 21%; }
+    .doc-line-items .doc-col-total { width: 22%; }
+    .doc-contract-scope .doc-col-service { width: 52%; }
+    .doc-contract-scope .doc-col-amount { width: 22%; }
+    .doc-contract-scope .doc-col-total { width: 26%; }
+    .doc-line-items th:nth-child(2),
+    .doc-line-items td:nth-child(2),
+    .doc-contract-scope th:nth-child(2),
+    .doc-contract-scope td:nth-child(2) { overflow-wrap: normal; word-break: normal; }
+    .doc-line-items th:last-child,
+    .doc-line-items td:last-child,
+    .doc-contract-scope th:last-child,
+    .doc-contract-scope td:last-child { min-width: 112px; overflow-wrap: normal; word-break: normal; white-space: nowrap; }
     .status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; border-radius: 999px; background: #eef1ef; color: #5c635e; font-size: 12px; font-weight: 800; line-height: 1; }
     .status--success { background: #e3f2e9; color: #1f7a4d; }
     .status--warning { background: #fbf1dc; color: #9a6a00; }
@@ -155,6 +172,8 @@ function estimatePageStyles() {
       textarea { min-height: 104px; }
       .table,
       table { display: block; max-width: 100%; overflow-x: auto; white-space: normal; -webkit-overflow-scrolling: touch; }
+      .doc-line-items { min-width: 620px; }
+      .doc-contract-scope { min-width: 520px; }
       th, td { padding: 10px 8px; white-space: normal; }
       .doc__amount-due strong { font-size: 30px; }
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
