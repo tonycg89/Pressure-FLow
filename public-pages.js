@@ -81,9 +81,9 @@ function renderEstimateApprovalPage(job, settings = {}) {
       </div>
       <div class="doc__actions">
         <p class="doc__actions-note">Approve this estimate to let ${escapeHtml(getBusinessName(settings))} prepare your service agreement. You will review and sign the agreement before any deposit invoice is due.</p>
-        <form method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
+        <form id="estimateApproveForm" method="post" action="/api/public/estimates/${encodeURIComponent(job.id)}/approve">
           <input type="hidden" name="token" value="${escapeHtml(job.estimateApprovalToken)}">
-          <button class="btn" type="submit">Approve Estimate</button>
+          <button class="btn" type="submit" data-submitting-text="Approving estimate...">Approve Estimate</button>
         </form>
         <details class="reject-estimate">
           <summary>Decline Estimate</summary>
@@ -110,12 +110,14 @@ function renderEstimateApprovalPage(job, settings = {}) {
         </details>
       </div>
       ${renderDocumentFooter(settings)}
+      ${publicSubmitFeedbackScript()}
       <script>
         const rejectReason = document.querySelector("#estimateRejectReason");
         const otherWrap = document.querySelector("#estimateRejectOtherWrap");
         rejectReason?.addEventListener("change", () => {
           otherWrap.hidden = rejectReason.value !== "other";
         });
+        attachPublicSubmitFeedback("#estimateApproveForm");
       </script>
     </main>
   </body>
@@ -630,7 +632,7 @@ function renderContractSigningPage(job, options = {}) {
               Type your full name to sign
               <input id="signatureInput" name="signerName" required autocomplete="name" placeholder="Type your full legal name">
             </label>
-            <button class="btn" type="submit">Sign Agreement</button>
+            <button class="btn" type="submit" data-submitting-text="Signing agreement...">Sign Agreement</button>
           </form>
         </div>
         ${contractSigningScript()}
@@ -690,7 +692,8 @@ function getDepositPercent(job) {
 }
 
 function contractSigningScript() {
-  return `<script>
+  return `${publicSubmitFeedbackScript()}
+  <script>
     const signedDateInput = document.querySelector("#signedDateInput");
 
     if (signedDateInput) {
@@ -714,8 +717,33 @@ function contractSigningScript() {
       if (!signedDateInput?.value.trim()) {
         event.preventDefault();
         alert("Please click the signature date box before signing.");
+        return;
       }
+      setSubmittingState(event.currentTarget);
     });
+    attachPublicSubmitFeedback("#contractSignForm");
+  </script>`;
+}
+
+function publicSubmitFeedbackScript() {
+  return `<script>
+    function setSubmittingState(form) {
+      if (!form || form.dataset.submitting === "true") return;
+      form.dataset.submitting = "true";
+      const button = form.querySelector("button[type='submit']");
+      if (!button) return;
+      button.dataset.originalText = button.textContent.trim();
+      button.textContent = button.dataset.submittingText || "Working...";
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+    }
+
+    function attachPublicSubmitFeedback(selector) {
+      const form = document.querySelector(selector);
+      if (!form || form.dataset.feedbackAttached === "true") return;
+      form.dataset.feedbackAttached = "true";
+      form.addEventListener("submit", () => setSubmittingState(form));
+    }
   </script>`;
 }
 

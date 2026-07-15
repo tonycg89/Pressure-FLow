@@ -95,6 +95,8 @@ function estimatePageStyles() {
     .status--success { background: #e3f2e9; color: #1f7a4d; }
     .status--warning { background: #fbf1dc; color: #9a6a00; }
     .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 46px; border: 0; border-radius: 8px; background: #1c7c54; color: white; font: inherit; font-weight: 800; text-align: center; text-decoration: none; cursor: pointer; }
+    .btn:disabled,
+    button:disabled { opacity: 0.78; cursor: wait; }
     .btn--secondary { border: 1px solid #d8dee8; background: white; color: #202124; }
     .btn--danger { background: #fee4e2; color: #b42318; }
     .doc__callout { padding: 16px; border: 1px solid #b8e3dc; border-radius: 10px; background: #eef9f7; }
@@ -174,10 +176,24 @@ function estimatePageStyles() {
       textarea { min-height: 104px; }
       .table,
       table { max-width: 100%; white-space: normal; }
-      .doc-table-scroll .table { display: table; max-width: none; overflow: visible; }
-      .doc-line-items { min-width: 620px; }
-      .doc-contract-scope { min-width: 520px; }
-      th, td { padding: 10px 8px; white-space: normal; }
+      .doc-table-scroll { overflow-x: visible; }
+      .doc-table-scroll .table { display: table; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; table-layout: fixed; }
+      .doc-line-items .doc-col-service { width: 37%; }
+      .doc-line-items .doc-col-amount { width: 22%; }
+      .doc-line-items .doc-col-rate { width: 19%; }
+      .doc-line-items .doc-col-total { width: 22%; }
+      .doc-contract-scope .doc-col-service { width: 42%; }
+      .doc-contract-scope .doc-col-amount { width: 30%; }
+      .doc-contract-scope .doc-col-total { width: 28%; }
+      .doc-line-items th:last-child,
+      .doc-line-items td:last-child,
+      .doc-contract-scope th:last-child,
+      .doc-contract-scope td:last-child { min-width: 0; white-space: normal; }
+      .doc-line-items th:nth-child(2),
+      .doc-line-items td:nth-child(2),
+      .doc-contract-scope th:nth-child(2),
+      .doc-contract-scope td:nth-child(2) { overflow-wrap: anywhere; }
+      th, td { padding: 8px 5px; white-space: normal; font-size: 12px; line-height: 1.3; }
       .doc__amount-due strong { font-size: 30px; }
       .doc__gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .doc__gallery img { height: 128px; }
