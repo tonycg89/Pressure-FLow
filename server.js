@@ -548,7 +548,7 @@ async function handleApi(request, response, url) {
       "Agreement signed",
       hasDepositDue
         ? "Agreement signed. Your deposit invoice has been sent."
-        : "Agreement signed. No deposit is due at this time.",
+        : "Agreement signed. Check your inbox for schedule confirmation and pre-service instructions.",
       {
         type: "Agreement",
         settings: await readSettingsForJob(job),

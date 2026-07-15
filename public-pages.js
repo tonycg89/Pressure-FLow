@@ -478,7 +478,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
         </section>
         <section class="doc__pay">
           <h2>Payment Options</h2>
-          ${invoicePaid ? `<div class="doc__callout"><strong>Payment received</strong><p>This invoice is marked paid. No further payment is due for this invoice.</p></div>` : `
+          ${invoicePaid ? `<div class="doc__callout"><strong>Payment received</strong><p>${isDeposit ? "Check your inbox for schedule confirmation and pre-service instructions." : "This invoice is marked paid. No further payment is due for this invoice."}</p></div>` : `
             ${renderPaymentMethods(settings)}
             ${settings.paymentInstructions ? `<p>${escapeHtml(settings.paymentInstructions)}</p>` : ""}
             ${renderCardPaymentForm(job, settings, invoiceType)}

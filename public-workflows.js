@@ -178,12 +178,19 @@ function createPublicWorkflowHandlers({
         return null;
       }
 
-      if (job.contractSignedAt && job.squareDepositInvoiceId && job.squareDepositInvoiceUrl) {
+      if (job.contractSignedAt) {
+        if (getDepositCents(job) <= 0 && job.status === "Contract Signed") {
+          job.status = "Deposit Paid";
+          job.squareDepositInvoiceId = "";
+          job.squareDepositInvoiceUrl = "";
+          job.squareDepositInvoiceStatus = "";
+          job.updatedAt = new Date().toISOString();
+          await writeJobs(jobs);
+        }
         return job;
       }
 
       const settings = await readSettingsForJob(job);
-      requireConfiguredInvoicePaymentMethod(settings);
       const cleanSignerName = limitText(signerName, FIELD_LIMITS.publicSignerName);
       const cleanSignedDate = String(signedDate || "").trim();
       if (!cleanSignerName) {
@@ -201,6 +208,7 @@ function createPublicWorkflowHandlers({
 
       await cancelPendingFollowUp(job.id, "signed", itemWorkspaceId(job), "contract_followup");
       if (getDepositCents(job) > 0) {
+        requireConfiguredInvoicePaymentMethod(settings);
         const invoice = await createPressureFlowInvoice(job, settings, "deposit", getBaseUrlFromLink(job.contractApprovalUrl), {
           sendEmail: job.preferredDeliveryMethod !== "text"
         });
@@ -215,6 +223,7 @@ function createPublicWorkflowHandlers({
         job.squareDepositInvoiceId = "";
         job.squareDepositInvoiceUrl = "";
         job.squareDepositInvoiceStatus = "";
+        job.status = "Deposit Paid";
       }
       job.updatedAt = new Date().toISOString();
       await writeJobs(jobs);

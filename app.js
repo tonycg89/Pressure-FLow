@@ -4378,7 +4378,7 @@ function buildJobNotifications(job) {
       kind: "check",
       title: "Contract signed",
       customer: job.customerName,
-      detail: "Ready for deposit"
+      detail: getDeposit(job) > 0 ? "Ready for deposit" : "No deposit required"
     } : null,
     job.squareDepositPaidAt ? {
       id: `deposit-paid-${job.id}-${job.squareDepositPaidAt}`,
@@ -4649,6 +4649,7 @@ function renderJobDetail() {
       <div class="detail-row"><span>Estimate</span><strong>${currency.format(job.estimate)}</strong></div>
       ${renderEstimateItems(job)}
       <div class="detail-row"><span>Deposit</span><strong>${currency.format(getDeposit(job))}</strong></div>
+      ${getDeposit(job) <= 0 && job.contractSignedAt ? `<div class="detail-row"><span>Deposit status</span><strong>No deposit required or collected. Ready to schedule.</strong></div>` : ""}
       <div class="detail-row"><span>Final balance</span><strong>${currency.format(getFinalBalance(job))}</strong></div>
       ${renderMeasurementDetail(job)}
       <div class="detail-row"><span>Scheduled</span><strong>${escapeHtml(job.scheduledAt ? formatDisplayDateTime(job.scheduledAt) : "Not scheduled")}</strong></div>

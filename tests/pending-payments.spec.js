@@ -114,7 +114,7 @@ test("paid public invoices show a paid state without payment CTAs", async ({ pag
   await page.goto("/invoice/44444444-4444-4444-8444-444444444444?type=deposit&token=pf-deposit-test");
   await expect(page.getByRole("heading", { name: "Deposit Invoice" })).toBeVisible();
   await expect(page.locator("body")).toContainText("Payment received");
-  await expect(page.locator("body")).toContainText("No further payment is due for this invoice.");
+  await expect(page.locator("body")).toContainText("Check your inbox for schedule confirmation and pre-service instructions.");
   await expect(page.getByRole("button", { name: "Pay by Credit Card" })).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("Zelle");
 });
