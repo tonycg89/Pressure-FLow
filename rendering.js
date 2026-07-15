@@ -74,6 +74,14 @@ function estimatePageStyles() {
     .table .num { text-align: right; white-space: nowrap; }
     .doc-table-scroll { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .doc-table-scroll .table { margin: 12px 0 0; }
+    .doc-line-list { display: grid; gap: 10px; width: 100%; max-width: 100%; margin: 12px 0 0; }
+    .doc-line-card { display: grid; gap: 12px; width: 100%; max-width: 100%; min-width: 0; padding: 14px; border: 1px solid #d8dee8; border-radius: 10px; background: white; overflow: hidden; }
+    .doc-line-card__title { min-width: 0; color: #202124; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+    .doc-line-card__details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+    .doc-line-card__details--contract { grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr); }
+    .doc-line-card__details div { display: grid; gap: 4px; min-width: 0; }
+    .doc-line-card__details dt { color: #667085; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .doc-line-card__details dd { min-width: 0; margin: 0; color: #202124; font-weight: 700; overflow-wrap: anywhere; }
     .doc-line-items,
     .doc-contract-scope { table-layout: auto; }
     .doc-line-items .doc-col-service { width: 38%; }
@@ -174,6 +182,12 @@ function estimatePageStyles() {
       input,
       select { min-height: 44px; }
       textarea { min-height: 104px; }
+      .doc-line-card { padding: 12px; }
+      .doc-line-card__details,
+      .doc-line-card__details--contract { grid-template-columns: 1fr; gap: 8px; }
+      .doc-line-card__details div { grid-template-columns: minmax(78px, 30%) minmax(0, 1fr); gap: 8px; align-items: start; }
+      .doc-line-card__details dt { font-size: 10px; }
+      .doc-line-card__details dd { text-align: left; }
       .table,
       table { max-width: 100%; white-space: normal; }
       .doc-table-scroll { overflow: visible; }

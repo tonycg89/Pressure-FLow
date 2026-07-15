@@ -22,12 +22,14 @@ function renderEstimateApprovalPage(job, settings = {}) {
   const discountPercent = Number(job.discountPercent || 0);
   const discountAmount = subtotal * (discountPercent / 100);
   const lineRows = (job.lineItems || []).map((item) => `
-    <tr>
-      <td>${escapeHtml(item.name)}</td>
-      <td>${formatQuantityDisplay(item)}</td>
-      <td class="num">${formatRateDisplay(item)}</td>
-      <td class="num">$${Number(item.total || 0).toFixed(2)}</td>
-    </tr>
+    <article class="doc-line-card">
+      <div class="doc-line-card__title">${escapeHtml(item.name)}</div>
+      <dl class="doc-line-card__details">
+        <div><dt>Amount</dt><dd>${formatQuantityDisplay(item)}</dd></div>
+        <div><dt>Rate</dt><dd>${formatRateDisplay(item)}</dd></div>
+        <div><dt>Total</dt><dd>$${Number(item.total || 0).toFixed(2)}</dd></div>
+      </dl>
+    </article>
   `).join("");
 
   return `<!doctype html>
@@ -59,18 +61,7 @@ function renderEstimateApprovalPage(job, settings = {}) {
         </section>
         <section>
           <h2>Services included</h2>
-          <div class="doc-table-scroll" role="region" aria-label="Services included table" tabindex="0">
-            <table class="table doc-line-items">
-              <colgroup>
-                <col class="doc-col-service">
-                <col class="doc-col-amount">
-                <col class="doc-col-rate">
-                <col class="doc-col-total">
-              </colgroup>
-              <thead><tr><th>Service</th><th>Amount</th><th>Rate</th><th>Total</th></tr></thead>
-              <tbody>${lineRows}</tbody>
-            </table>
-          </div>
+          <div class="doc-line-list" aria-label="Services included">${lineRows}</div>
         </section>
         <section class="totals doc__totals">
           <div class="doc__total-row"><span>Subtotal</span><strong>$${subtotal.toFixed(2)}</strong></div>
@@ -546,11 +537,13 @@ function renderPaymentMethods(settings) {
 
 function renderContractSigningPage(job, options = {}) {
   const lineRows = (job.lineItems || []).map((item) => `
-    <tr>
-      <td>${escapeHtml(item.name)}</td>
-      <td>${formatQuantityDisplay(item)} at ${formatRateDisplay(item)}</td>
-      <td>$${Number(item.total || 0).toFixed(2)}</td>
-    </tr>
+    <article class="doc-line-card">
+      <div class="doc-line-card__title">${escapeHtml(item.name)}</div>
+      <dl class="doc-line-card__details doc-line-card__details--contract">
+        <div><dt>Amount</dt><dd>${formatQuantityDisplay(item)} at ${formatRateDisplay(item)}</dd></div>
+        <div><dt>Total</dt><dd>$${Number(item.total || 0).toFixed(2)}</dd></div>
+      </dl>
+    </article>
   `).join("");
   const depositAmount = getDepositCents(job) / 100;
   const finalAmount = getFinalBalanceCents(job) / 100;
@@ -581,17 +574,7 @@ function renderContractSigningPage(job, options = {}) {
 
         <section class="contract-section">
           <h2>Scope of Work</h2>
-          <div class="doc-table-scroll" role="region" aria-label="Scope of Work table" tabindex="0">
-            <table class="table doc-contract-scope">
-              <colgroup>
-                <col class="doc-col-service">
-                <col class="doc-col-amount">
-                <col class="doc-col-total">
-              </colgroup>
-              <thead><tr><th>Service</th><th>Amount</th><th>Total</th></tr></thead>
-              <tbody>${lineRows}</tbody>
-            </table>
-          </div>
+          <div class="doc-line-list" aria-label="Scope of Work">${lineRows}</div>
         </section>
 
         <section class="totals doc__totals">
