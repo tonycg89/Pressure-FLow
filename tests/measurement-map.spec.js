@@ -160,7 +160,7 @@ test("unsaved map drawings clear across job contexts while saved areas persist o
   await drawMockPolygon(page, "alpha-unsaved-draft", 90);
   await expect(page.locator("#measurementStatus")).toContainText("969 SqFt drawn");
   page.once("dialog", (dialog) => {
-    expect(dialog.message()).toContain("Save the drawn service area before using the measurement.");
+    expect(dialog.message()).toContain("Add at least one service area before using the measurement.");
     dialog.accept();
   });
   await page.locator("#useMeasurementButton").click();

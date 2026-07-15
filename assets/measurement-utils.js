@@ -7,7 +7,7 @@
     }
 
     function recalculateMeasurementTotals(measurement) {
-      const areas = Array.isArray(measurement.areas) ? measurement.areas : [];
+      const areas = dedupeMeasurementAreas(Array.isArray(measurement.areas) ? measurement.areas : []);
       const squareFeet = areas.reduce((sum, area) => sum + Number(area.squareFeet || 0), 0);
       const perimeterFeet = areas.reduce((sum, area) => sum + Number(area.perimeterFeet || 0), 0);
       const firstArea = areas[0] || {};
@@ -43,14 +43,14 @@
 
       const normalized = {
         ...measurement,
-        areas: areas.map((area, index) => ({
+        areas: dedupeMeasurementAreas(areas.map((area, index) => ({
           id: String(area.id || randomId()),
           name: String(area.name || area.label || `Service area ${index + 1}`).trim(),
           squareFeet: Number(area.squareFeet || 0),
           perimeterFeet: Number(area.perimeterFeet || 0),
           geojson: area.geojson,
           capturedAt: String(area.capturedAt || new Date().toISOString())
-        })).filter((area) => area.geojson && area.squareFeet > 0)
+        })).filter((area) => area.geojson && area.squareFeet > 0))
       };
 
       return recalculateMeasurementTotals(normalized);
@@ -71,9 +71,22 @@
       return JSON.stringify(geojson || {});
     }
 
+    function dedupeMeasurementAreas(areas = []) {
+      const seen = new Set();
+      return (areas || []).filter((area) => {
+        const key = measurementGeojsonKey(area.geojson) || `${area.name || ""}:${Math.round(Number(area.squareFeet || 0))}`;
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+    }
+
     return {
       buildMeasurementFeatureCollection,
       calculatePerimeterFeet,
+      dedupeMeasurementAreas,
       measurementGeojsonKey,
       normalizeMeasurementForEditing,
       recalculateMeasurementTotals

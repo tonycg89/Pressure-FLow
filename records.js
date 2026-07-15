@@ -328,7 +328,7 @@ function normalizeMeasurement(value) {
       }))
       .filter((area) => area.geojson && area.squareFeet > 0)
     : [];
-  const normalizedAreas = areas.length
+  const normalizedAreas = dedupeMeasurementAreas(areas.length
     ? areas
     : measurement.geojson && measurement.squareFeet
       ? [{
@@ -339,7 +339,7 @@ function normalizeMeasurement(value) {
         geojson: measurement.geojson,
         capturedAt: String(measurement.capturedAt || new Date().toISOString())
       }]
-      : [];
+      : []);
   if (!normalizedAreas.length && !measurement.geojson && !measurement.staticImageUrl) {
     return {};
   }
@@ -364,6 +364,18 @@ function normalizeMeasurement(value) {
     staticImageUrl: String(measurement.staticImageUrl || "").trim(),
     capturedAt: String(measurement.capturedAt || new Date().toISOString())
   };
+}
+
+function dedupeMeasurementAreas(areas = []) {
+  const seen = new Set();
+  return (areas || []).filter((area) => {
+    const key = JSON.stringify(area.geojson || {}) || `${area.name || ""}:${Math.round(Number(area.squareFeet || 0))}`;
+    if (!key || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function normalizeJobPhotos(value) {

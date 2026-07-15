@@ -70,7 +70,7 @@
             }]
             : [];
 
-        return areas.map((area) => ({
+        return dedupeMeasurementAreas(areas).map((area) => ({
           ...item,
           label: area.name || item.label || "Service area",
           areaKey: JSON.stringify(area.geojson || {}),
@@ -83,6 +83,18 @@
           }
         }));
       }).filter((item) => item.measurement?.squareFeet);
+    }
+
+    function dedupeMeasurementAreas(areas = []) {
+      const seen = new Set();
+      return (areas || []).filter((area) => {
+        const key = JSON.stringify(area.geojson || {}) || `${area.name || ""}:${Math.round(Number(area.squareFeet || 0))}`;
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
     }
 
     function renderCustomerMeasurements(measurements) {
@@ -172,8 +184,9 @@
         return "";
       }
 
-      const areaRows = Array.isArray(job.measurement.areas) && job.measurement.areas.length
-        ? job.measurement.areas.map((area) => `
+      const measurementAreas = dedupeMeasurementAreas(Array.isArray(job.measurement.areas) ? job.measurement.areas : []);
+      const areaRows = measurementAreas.length
+        ? measurementAreas.map((area) => `
           <div class="detail-row service-subarea">
             <span>${escapeHtml(area.name || "Service area")}</span>
             <strong>${Math.round(area.squareFeet || 0).toLocaleString("en-US")} SqFt</strong>

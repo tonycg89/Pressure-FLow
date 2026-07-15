@@ -82,6 +82,7 @@ const {
 
 const {
   calculatePerimeterFeet,
+  dedupeMeasurementAreas,
   measurementGeojsonKey,
   normalizeMeasurementForEditing,
   recalculateMeasurementTotals
@@ -3142,6 +3143,7 @@ function initializeMeasurementMap() {
     mapboxMap.on("draw.create", updateMeasurementFromDraw);
     mapboxMap.on("draw.update", updateMeasurementFromDraw);
     mapboxMap.on("draw.delete", updateMeasurementFromDraw);
+    mapboxMap.on("draw.modechange", syncMeasurementDrawControlState);
     mapboxMap.on("style.load", () => {
       setTimeout(updateMeasurementOverlay, 0);
     });
@@ -3150,6 +3152,7 @@ function initializeMeasurementMap() {
   }
 
   loadActiveMeasurementAreaIntoDraw();
+  syncMeasurementDrawControlState();
 }
 
 function createPressureFlowDrawModes() {
@@ -3507,6 +3510,7 @@ function saveMeasurementArea() {
 function renderMeasurementAreas() {
   if (!measurementAreaList) return;
 
+  currentMeasurement.areas = dedupeMeasurementAreas(currentMeasurement.areas || []);
   const areas = currentMeasurement.areas || [];
   if (!areas.length) {
     measurementAreaList.innerHTML = `
@@ -3652,9 +3656,12 @@ function loadEditableMeasurementAreaIntoDraw() {
   });
   if (activeMeasurementAreaId) {
     mapboxDraw.changeMode("simple_select", { featureIds: [activeMeasurementAreaId] });
+  } else if (!(currentMeasurement.areas || []).length) {
+    mapboxDraw.changeMode("draw_polygon");
   } else {
     mapboxDraw.changeMode("simple_select");
   }
+  syncMeasurementDrawControlState();
   setTimeout(() => {
     syncingMeasurementDraw = false;
   }, 0);
@@ -3668,9 +3675,11 @@ function resetMeasurementDrawForNextArea() {
   window.setTimeout(() => {
     try {
       mapboxDraw.changeMode("draw_polygon");
+      syncMeasurementDrawControlState();
     } catch {
       try {
         mapboxDraw.changeMode("simple_select");
+        syncMeasurementDrawControlState();
       } catch {
         // Mapbox Draw may ignore mode changes while the style is reloading.
       }
@@ -3701,6 +3710,24 @@ function getEditableMeasurementFeature() {
   return features.find((feature) => !savedIds.has(String(feature.id))) || null;
 }
 
+function syncMeasurementDrawControlState() {
+  if (!measurementMapElement || !mapboxDraw) return;
+
+  const activeMode = typeof mapboxDraw.getMode === "function" ? mapboxDraw.getMode() : "";
+  const polygonButton = measurementMapElement.querySelector(".mapbox-gl-draw_polygon");
+  const trashButton = measurementMapElement.querySelector(".mapbox-gl-draw_trash");
+  if (polygonButton) {
+    const isActive = activeMode === "draw_polygon";
+    polygonButton.classList.toggle("active", isActive);
+    polygonButton.setAttribute("aria-pressed", String(isActive));
+    polygonButton.setAttribute("title", isActive ? "Drawing service area" : "Draw service area");
+  }
+  if (trashButton) {
+    trashButton.setAttribute("aria-pressed", "false");
+    trashButton.setAttribute("title", "Delete selected shape");
+  }
+}
+
 function updateMeasurementTotal() {
   currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
   measuredArea.textContent = `${Math.round(currentMeasurement.squareFeet || 0).toLocaleString("en-US")} SqFt`;
@@ -3716,9 +3743,18 @@ function getNextMeasurementAreaName() {
 function useMeasurement() {
   updateMeasurementFromDraw();
   const editableFeature = getEditableMeasurementFeature();
-  if (editableFeature) {
-    alert("Save the drawn service area before using the measurement.");
+  currentMeasurement.areas = dedupeMeasurementAreas(currentMeasurement.areas || []);
+  currentMeasurement = recalculateMeasurementTotals(currentMeasurement);
+  if (editableFeature && activeMeasurementAreaId) {
+    alert("Update the selected service area before using the measurement.");
     return;
+  }
+  if (editableFeature && !currentMeasurement.squareFeet) {
+    alert("Add at least one service area before using the measurement.");
+    return;
+  }
+  if (editableFeature) {
+    discardUnsavedMeasurementDrawing();
   }
   if (!currentMeasurement.squareFeet) {
     alert("Add at least one service area before using the measurement.");

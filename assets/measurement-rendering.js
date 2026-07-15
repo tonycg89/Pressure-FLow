@@ -9,7 +9,7 @@
       onToggle,
       panel
     }) {
-      const reusable = measurements.filter((item) => item.measurement?.geojson && item.measurement?.squareFeet);
+      const reusable = dedupeMeasurements(measurements.filter((item) => item.measurement?.geojson && item.measurement?.squareFeet), measurementGeojsonKey);
       if (!reusable.length && list.children.length > 0) {
         return;
       }
@@ -47,6 +47,18 @@
           );
         });
         list.append(row);
+      });
+    }
+
+    function dedupeMeasurements(measurements = [], measurementGeojsonKey) {
+      const seen = new Set();
+      return (measurements || []).filter((item) => {
+        const key = measurementGeojsonKey(item.measurement?.geojson) || `${item.label || ""}:${Math.round(Number(item.measurement?.squareFeet || 0))}`;
+        if (!key || seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
       });
     }
 
