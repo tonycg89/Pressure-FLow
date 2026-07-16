@@ -418,6 +418,7 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
   const title = isDeposit ? "Deposit Invoice" : "Final Invoice";
   const businessName = getBusinessName(settings);
   const invoiceNumber = getPressureFlowInvoiceNumber(job, invoiceType);
+  const documentTypeLabel = isDeposit ? "Deposit Invoice" : invoiceNumber;
   const invoicePaid = isDeposit
     ? job.squareDepositInvoiceStatus === "PAID" || job.squareDepositPaidAt
     : job.squareFinalInvoiceStatus === "PAID" || job.squareFinalPaidAt;
@@ -445,10 +446,10 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
     <main class="doc">
       ${renderDocumentBrand(settings, getBaseUrlFromLink(job.squareDepositInvoiceUrl || job.squareFinalInvoiceUrl))}
       <header class="doc__intro">
-        <p class="eyebrow doc__type">${isDeposit ? "Deposit Invoice" : "Final Invoice"}</p>
+        <p class="eyebrow doc__type">${escapeHtml(documentTypeLabel)}</p>
         <h1>${title}</h1>
         <div class="doc__meta">
-          <span>${escapeHtml(invoiceNumber)}</span>
+          ${isDeposit ? `<span>${escapeHtml(invoiceNumber)}</span>` : ""}
           <span>${escapeHtml(job.serviceType || "Service")}</span>
           <span>${escapeHtml(businessName)} for ${escapeHtml(job.customerName)}</span>
           <span>${escapeHtml(job.address)}</span>

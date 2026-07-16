@@ -234,10 +234,12 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
 
   const cameraButton = page.locator("#jobForm [data-before-photo-camera]").first();
   await expect(cameraButton).toHaveJSProperty("tagName", "BUTTON");
+  await expect(cameraButton).toHaveAttribute("data-capture", "environment");
   const chooserPromise = page.waitForEvent("filechooser");
   await cameraButton.click();
   const chooser = await chooserPromise;
   await expect(page.locator("body > [data-detached-before-photo-camera-input]")).toHaveCount(1);
+  await expect(page.locator("body > [data-detached-before-photo-camera-input]")).toHaveAttribute("capture", "environment");
   const detachedInputIsOutsideDialog = await page.locator("body > [data-detached-before-photo-camera-input]").evaluate((input) => {
     return !input.closest("dialog");
   });
@@ -245,6 +247,7 @@ test("mobile estimate photo capture keeps the job modal editable and scrollable"
   await chooser.setFiles(photoPath);
 
   await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#jobForm [data-before-photo-row]")).toHaveCount(1);
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#jobDialog");
   await expectWorkflowModalLocksPageScroll(page, "#jobDialog");
@@ -285,6 +288,7 @@ test("mobile before-photo gallery upload keeps job draft editable and can create
   await chooser.setFiles(photoPath);
 
   await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
+  await expect(page.locator("#jobForm [data-before-photo-row]")).toHaveCount(1);
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#jobDialog");
   await expectWorkflowModalLocksPageScroll(page, "#jobDialog");

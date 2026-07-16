@@ -93,6 +93,9 @@ test("estimate decline cancels the pending estimate follow-up", async ({ page })
     form: { token: "reject-token", reason: "timing-not-right" }
   });
   expect(response.ok()).toBeTruthy();
+  const html = await response.text();
+  expect(html).toContain("Johnson Exterior Cleaning");
+  expect(html).not.toContain("Your Company");
 
   const tasks = await readTasks();
   const task = tasks.find((item) => item.jobId === "reject-job");
@@ -151,10 +154,10 @@ test("suppress follow-up toggle updates immediately while save is pending", asyn
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Followup Stone/ }).click();
-  const toggle = page.locator("[data-suppress-follow-up]");
+  const toggle = page.getByRole("checkbox", { name: "Suppress follow-up email" });
   await expect(toggle).not.toBeChecked();
 
-  await page.locator("label.follow-up-toggle-row").click();
+  await page.locator("label.follow-up-toggle-row").filter({ hasText: "Suppress follow-up email" }).click();
   await saveStarted;
   await expect(toggle).toBeChecked();
   await expect(page.locator("#jobDetail")).toContainText("Follow-up suppressed for this job.");
@@ -439,6 +442,31 @@ test("manual review request requires a configured review link", async ({ page })
   const jobs = await readJobs();
   const job = jobs.find((item) => item.id === "completed-job");
   expect(job.reviewRequestSentAt || "").toBe("");
+});
+
+test("review request suppression reads as suppressed instead of cancelled", async ({ page }) => {
+  await updateStoredJob("completed-job", {
+    status: "Paid",
+    squareFinalPaidAt: "2026-06-04T12:00:00.000Z",
+    squareFinalInvoiceStatus: "PAID",
+    suppressEstimateFollowUp: false
+  });
+  await fs.writeFile(path.join(DATA_DIR, "follow-up-tasks.json"), JSON.stringify([
+    followUpTask("review-suppress-task", "completed-job", "review_request")
+  ], null, 2));
+
+  await login(page);
+  await page.goto("/#view=pipeline&job=completed-job");
+  await expect(page.locator("#jobDetail")).toContainText("Auto review request scheduled");
+  await page.locator(".review-request-section label.follow-up-toggle-row").click();
+  await expect(page.locator(".review-request-section [data-suppress-follow-up]")).toBeChecked();
+  await expect(page.locator(".review-request-section")).toContainText("Review request suppressed for this job.");
+  await expect(page.locator(".review-request-section")).not.toContainText("Review request follow-up cancelled");
+  await expect(page.getByRole("button", { name: "Send Review Request" })).toBeDisabled();
+
+  const tasks = await readTasks();
+  const reviewTask = tasks.find((item) => item.id === "review-suppress-task");
+  expect(reviewTask).toMatchObject({ status: "cancelled", cancelledReason: "suppressed" });
 });
 
 test("failed manual review request does not show success or cancel auto follow-up", async ({ page }) => {

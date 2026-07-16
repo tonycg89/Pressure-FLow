@@ -2679,7 +2679,7 @@ function addBeforePhotoRow(selectedArea = beforePhotoSections[0] || "") {
         <label class="photo-action-button primary">Upload
           <input data-before-photo-upload type="file" accept="image/*" multiple>
         </label>
-        <button class="photo-action-button" type="button" data-before-photo-camera>Take Picture</button>
+      <button class="photo-action-button" type="button" data-before-photo-camera data-capture="environment">Take Picture</button>
       </div>
     </div>
     <div class="new-before-area" data-new-before-area hidden>
@@ -2743,7 +2743,7 @@ function getDetachedBeforePhotoCameraInput() {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
-  input.capture = "environment";
+  input.setAttribute("capture", "environment");
   input.dataset.detachedBeforePhotoCameraInput = "true";
   input.style.position = "fixed";
   input.style.width = "1px";
@@ -2776,7 +2776,6 @@ async function handleDetachedBeforePhotoCameraChange(event) {
     input.value = "";
     renderJobPhotoPreviews();
     saveJobDraft();
-    addBeforePhotoRow(section);
   } finally {
     stabilizeOpenWorkflowDialog(row);
   }
@@ -2805,7 +2804,6 @@ async function addBeforePhotosFromRow(event, row) {
   const section = select.value || "Before";
   await addPhotosFromInput(event, currentJobPhotos.before, renderJobPhotoPreviews, { section });
   saveJobDraft();
-  addBeforePhotoRow(section);
   stabilizeOpenWorkflowDialog(event.target);
 }
 
@@ -4684,7 +4682,7 @@ function renderJobDetail() {
         ${workflowMessage ? `<p class="workflow-action-status ${workflowMessage.type === "error" ? "error" : "success"}" role="${workflowMessage.type === "error" ? "alert" : "status"}">${escapeHtml(workflowMessage.message)}</p>` : ""}
         ${renderInvoicePaymentWarning(nextAction, deliveryActions)}
         ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
-        ${nextAction ? `<button class="action-button action-button--recommended" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}><span class="action-button__eyebrow">Next step</span><span>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</span></button>` : ""}
+        ${nextAction ? `<button class="action-button action-button--recommended" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>
@@ -4705,8 +4703,10 @@ function renderJobDetail() {
     button.addEventListener("click", () => runAction(job.id, button.dataset.action, readActionPayload(button)));
   });
   jobDetail.querySelector("[data-preview-follow-up]")?.addEventListener("click", () => openFollowUpDialog(job));
-  jobDetail.querySelector("[data-suppress-follow-up]")?.addEventListener("change", (event) => {
-    toggleEstimateFollowUpSuppression(job.id, event.target.checked);
+  jobDetail.querySelectorAll("[data-suppress-follow-up]").forEach((input) => {
+    input.addEventListener("change", (event) => {
+      toggleEstimateFollowUpSuppression(job.id, event.target.checked);
+    });
   });
   attachPhotoViewerHandlers(jobDetail);
   jobDetail.querySelector("[data-view-job-expenses]")?.addEventListener("click", () => viewExpensesForJob(job.id));
@@ -4798,13 +4798,19 @@ function renderReviewRequestControls(job, hasPendingWorkflowAction = false) {
   const sentAt = job.reviewRequestSentAt || (task?.type === "review_request" && task.status === "sent" ? task.sentAt : "");
   const hasReviewLinks = hasConfiguredReviewLink();
   const sending = pendingWorkflowAction === `${job.id}:send-review-request`;
-  const disabled = hasPendingWorkflowAction || Boolean(sentAt);
+  const suppressed = Boolean(job.suppressEstimateFollowUp);
+  const disabled = hasPendingWorkflowAction || Boolean(sentAt) || suppressed;
   return `
     <div class="follow-up-control review-request-control">
-      <p class="field__help">${escapeHtml(formatReviewRequestStatus(task, sentAt))}</p>
+      <label class="follow-up-toggle-row" title="Suppress review request">
+        <span>Suppress review request</span>
+        <input class="toggle-input" type="checkbox" data-suppress-follow-up ${suppressed ? "checked" : ""}>
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
+      <p class="field__help">${escapeHtml(formatReviewRequestStatus(task, sentAt, suppressed))}</p>
       ${sentAt
         ? `<button class="action-button secondary" type="button" disabled>Review Request Sent</button>`
-        : `<button class="action-button secondary" type="button" data-action="send-review-request" ${disabled ? "disabled" : ""}>${sending ? "Sending..." : "Send Review Request"}</button>`}
+        : `<button class="action-button action-button--recommended" type="button" data-action="send-review-request" ${disabled ? "disabled" : ""}>${sending ? "Sending..." : "Send Review Request"}</button>`}
       ${!sentAt && !hasReviewLinks ? `<p class="field__help error-text">Add a review link in Settings before sending.</p><button class="link-button" type="button" data-open-settings-review>Configure review links</button>` : ""}
     </div>
   `;
@@ -4823,10 +4829,11 @@ function hasConfiguredReviewLink() {
   return Boolean(settings.googleReviewUrl || settings.yelpReviewUrl || settings.facebookReviewUrl || settings.otherReviewUrl);
 }
 
-function formatReviewRequestStatus(task, sentAt = "") {
+function formatReviewRequestStatus(task, sentAt = "", suppressed = false) {
   if (sentAt) return `Review request sent ${formatNotificationDate(sentAt)}.`;
+  if (suppressed || task?.cancelledReason === "suppressed") return "Review request suppressed for this job.";
   if (task?.status === "pending") return `Auto review request scheduled for ${formatNotificationDate(task.scheduledFor)}.`;
-  if (task?.status === "cancelled") return `Review request follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
+  if (task?.status === "cancelled") return `Review request automation ended - ${formatFollowUpCancelReason(task.cancelledReason)}.`;
   return "Review request is ready after final payment.";
 }
 
@@ -4865,8 +4872,23 @@ function formatFollowUpStatus(task, suppressed) {
   if (!task) return "No follow-up sent yet.";
   if (task.status === "pending") return `Auto follow-up scheduled for ${formatNotificationDate(task.scheduledFor)} - ${getFollowUpTypeLabel(task.type)}.`;
   if (task.status === "sent") return `Follow-up sent ${formatNotificationDate(task.sentAt)} · ${task.source === "manual" ? "manual" : "auto"}.`;
-  if (task.status === "cancelled") return `Follow-up cancelled - ${task.cancelledReason || "cancelled"}.`;
+  if (task.status === "cancelled") return `Follow-up cancelled - ${formatFollowUpCancelReason(task.cancelledReason)}.`;
   return "No follow-up sent yet.";
+}
+
+function formatFollowUpCancelReason(reason = "") {
+  return {
+    approved: "estimate approved",
+    declined: "estimate declined",
+    signed: "contract signed",
+    paid: "payment received",
+    manual_cancelled: "manually cancelled",
+    manual_sent: "sent manually",
+    suppressed: "suppressed for this job",
+    sent: "already sent",
+    review_links_missing: "review links missing",
+    job_missing: "job missing"
+  }[reason] || "cancelled";
 }
 
 async function toggleEstimateFollowUpSuppression(jobId, suppressed) {
@@ -5073,7 +5095,7 @@ function renderCustomerDetail() {
     </section>
 
     <section class="detail-section">
-      <button class="action-button" type="button" data-create-job-from-customer="${escapeHtml(customer.id)}">Create Job From Customer</button>
+      <button class="action-button action-button--recommended" type="button" data-create-job-from-customer="${escapeHtml(customer.id)}">Create Job From Customer</button>
       <button class="action-button danger" type="button" data-delete-customer="${escapeHtml(customer.id)}">Delete Customer</button>
     </section>
   `;
@@ -5357,7 +5379,7 @@ function getNextAction(job) {
       : { label: "Schedule Job", action: "schedule" },
     "Deposit Sent": { label: "Mark Deposit Paid", action: "mark-deposit-paid" },
     "Deposit Paid": { label: "Schedule Job", action: "schedule" },
-    "Scheduled": { label: "Reschedule Job", action: "schedule" },
+    "Scheduled": { label: "Complete Job", action: "complete" },
     "Completed": null,
     "Final Invoice Sent": { label: "Mark Paid", action: "mark-paid" }
   };
@@ -5380,16 +5402,6 @@ function getDeliveryActions(job) {
   const canSendDepositInvoice = getDeposit(job) > 0 && (job.status === "Contract Signed" || Boolean(job.squareDepositInvoiceUrl));
   if (canSendDepositInvoice) {
     actions.push(deliveryAction("Deposit Invoice", job.squareDepositInvoiceUrl, "send-deposit-invoice", "resend-deposit-invoice-email", "send-deposit-invoice-text"));
-  }
-
-  const canComplete = job.status === "Scheduled";
-  if (canComplete) {
-    actions.push({
-      label: "Completion + Final Invoice",
-      emailAction: "complete",
-      textAction: "complete-text",
-      hasLink: Boolean(job.squareFinalInvoiceUrl || job.completionProofUrl)
-    });
   }
 
   const canSendFinalInvoice = job.status === "Completed" || Boolean(job.squareFinalInvoiceUrl);
@@ -5418,7 +5430,7 @@ function renderDeliveryActions(job, actions, hasPendingWorkflowAction) {
       <div class="delivery-action-group">
         <p>${escapeHtml(item.label)}</p>
         <div class="delivery-action-buttons">
-          <button class="action-button" type="button" data-action="${escapeHtml(item.emailAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${emailPending ? "Sending..." : `${item.hasLink ? "Resend" : "Send"} by Email`}</button>
+          <button class="action-button action-button--recommended" type="button" data-action="${escapeHtml(item.emailAction)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${emailPending ? "Sending..." : `${item.hasLink ? "Resend" : "Send"} by Email`}</button>
         </div>
       </div>
     `;
@@ -5428,6 +5440,7 @@ function renderDeliveryActions(job, actions, hasPendingWorkflowAction) {
 function getFallbackAction(job) {
   const actions = {
     "Deposit Sent": { label: "Open Deposit Invoice", action: "open-deposit-invoice" },
+    "Scheduled": { label: "Reschedule Job", action: "schedule" },
     "Final Invoice Sent": { label: "Open Final Invoice", action: "open-final-invoice" }
   };
 

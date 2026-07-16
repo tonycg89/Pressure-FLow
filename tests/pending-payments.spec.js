@@ -40,8 +40,7 @@ test("pending payments can be manually confirmed with method and reference", asy
 
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Alex Rivera/ }).click();
-  await expect(page.locator(".action-button--recommended")).toContainText("Next step");
-  await expect(page.locator(".action-button--recommended")).toContainText("Schedule Job");
+  await expect(page.getByRole("button", { name: "Schedule Job" })).toHaveClass(/action-button--recommended/);
   await page.getByRole("button", { name: "Schedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeVisible();
   await expect(page.locator("#scheduleWeekGrid")).toBeVisible();
@@ -96,6 +95,8 @@ test("public deposit and final invoices show configured payment methods", async 
 
   await page.goto("/invoice/55555555-5555-4555-8555-555555555555?type=final&token=pf-final-test");
   await expect(page.getByRole("heading", { name: "Final Invoice" })).toBeVisible();
+  await expect(page.locator(".doc__type")).toContainText(/^PPW-F-/);
+  await expect(page.locator(".doc__meta")).not.toContainText(/^PPW-F-/);
   await expect(page.locator("body")).toContainText("Zelle");
   await expect(page.locator("body")).toContainText("Cash App");
   await expect(page.locator("body")).toContainText("Venmo");
@@ -180,7 +181,6 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
   await expect(page.locator("#jobDetail")).toContainText("$0.00");
   await expect(page.getByRole("button", { name: "Schedule Job" })).toBeVisible();
-  await expect(page.locator(".action-button--recommended")).toContainText("Next step");
   await expect(page.locator(".action-button--recommended")).toContainText("Schedule Job");
   await expect(page.locator("#jobDetail")).not.toContainText("Deposit Invoice");
 
@@ -564,7 +564,9 @@ test("scheduled jobs can be rescheduled without an existing calendar event id", 
   await login(page);
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
+  await expect(page.getByRole("button", { name: "Complete Job" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reschedule Job" })).toBeVisible();
+  await expect(page.locator("#jobDetail")).not.toContainText("Next step");
 
   await page.getByRole("button", { name: "Reschedule Job" }).click();
   await expect(page.locator("#scheduleDialog")).toBeVisible();

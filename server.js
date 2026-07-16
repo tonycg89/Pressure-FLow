@@ -459,7 +459,12 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    sendHtml(response, 200, renderEstimateMessagePage("Estimate declined", "Thank you for letting us know. The business has recorded your response and may follow up if needed."));
+    const settings = await readSettingsForJob(result);
+    sendHtml(response, 200, renderEstimateMessagePage(
+      "Estimate declined",
+      "Thank you for letting us know. The business has recorded your response and may follow up if needed.",
+      { settings, baseUrl: getAppBaseUrl(request) }
+    ));
     return;
   }
 
@@ -826,8 +831,9 @@ function ignoresSessionForPublicWorkflow(pathname) {
 }
 
 const server = http.createServer(async (request, response) => {
+  let url;
   try {
-    const url = new URL(request.url, `http://${request.headers.host}`);
+    url = new URL(request.url, `http://${request.headers.host}`);
     const session = getValidSession(request);
     const authEnabled = await isAuthEnabled();
 
