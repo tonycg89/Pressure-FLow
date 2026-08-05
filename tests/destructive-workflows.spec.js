@@ -149,7 +149,7 @@ test("public contract signing rejects malformed posts and duplicate signatures s
   expect(depositTasks).toHaveLength(1);
 
   await page.goto("/contract/contract-destructive?token=contract-token");
-  await expect(page.locator("body")).toContainText("Signed agreement");
+  await expect(page.getByRole("heading", { name: "Pressure Washing Service Agreement" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign Agreement" })).toHaveCount(0);
   await page.goto("/contract/contract-destructive/executed?token=contract-token");
   await expect(page.getByRole("heading", { name: "Pressure Washing Service Agreement" })).toBeVisible();

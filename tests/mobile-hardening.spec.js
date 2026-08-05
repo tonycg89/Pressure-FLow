@@ -288,7 +288,7 @@ test("mobile before-photo gallery upload keeps job draft editable and can create
   await chooser.setFiles(photoPath);
 
   await expect(page.locator("#beforePhotoPreview figure")).toHaveCount(1);
-  await expect(page.locator("#jobForm [data-before-photo-row]")).toHaveCount(1);
+  await expect(page.locator("#jobForm [data-before-photo-row]")).toHaveCount(2);
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#jobDialog");
   await expectWorkflowModalLocksPageScroll(page, "#jobDialog");
@@ -347,7 +347,7 @@ test("settings and workflow modals fit a 375px mobile viewport", async ({ page }
   await page.getByRole("button", { name: "Close Schedule Job" }).click();
 
   await page.getByRole("button", { name: /Scheduled Mobile/ }).click();
-  await page.getByRole("button", { name: "Send by Email" }).first().click();
+  await page.getByRole("button", { name: "Complete Job" }).click();
   await expect(page.locator("#completionDialog")).toBeVisible();
   await expectDialogFitsViewport(page, "#completionDialog");
   await expectMinHeight(page.locator("#completionForm .photo-action-button").first(), 44);

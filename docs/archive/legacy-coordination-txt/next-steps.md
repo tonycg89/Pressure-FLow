@@ -1,3 +1,9 @@
+# Archive Notice
+
+This legacy lowercase planning file is archived for historical context only. The authoritative immediate execution queue is `NEXT_STEPS.md` at the repository root.
+
+---
+
 # Next Steps
 
 You have created access for Square Developer and Google Cloud. DocuSign is no longer needed because Square Contracts can handle contract signing.

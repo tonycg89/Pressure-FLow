@@ -102,9 +102,9 @@ test("Google email and Calendar token failures use separate action-specific mess
 
   try {
     await expect(sendGmailEmail(settings, message)).rejects.toThrow(/Google\/Gmail access has expired/);
-    await expect(sendGmailEmail(settings, message)).rejects.not.toThrow(/Calendar/);
+    await expect(sendGmailEmail(settings, message)).rejects.toThrow(/switch email delivery to SMTP/);
     await expect(createGoogleCalendarEvent(settings, baseJob(), "2026-07-07T09:00", 90)).rejects.toThrow(/Google Calendar access has expired/);
-    await expect(createGoogleCalendarEvent(settings, baseJob(), "2026-07-07T09:00", 90)).rejects.toThrow(/before scheduling jobs/);
+    await expect(createGoogleCalendarEvent(settings, baseJob(), "2026-07-07T09:00", 90)).rejects.toThrow(/publish the Google OAuth consent screen to Production/);
   } finally {
     global.fetch = originalFetch;
   }

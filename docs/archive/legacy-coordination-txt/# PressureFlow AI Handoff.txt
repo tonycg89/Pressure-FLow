@@ -1,3 +1,9 @@
+# Archive Notice
+
+This legacy `.txt` coordination file is archived for historical context only. The authoritative AI onboarding document is `PRESSUREFLOW_AI_HANDOFF.md` at the repository root.
+
+---
+
 # PressureFlow AI Handoff
 
 This file is the shared source of truth for Codex, Claude, v0, ChatGPT, and any other AI system working on PressureFlow. Read it before making recommendations, designs, plans, or code changes.

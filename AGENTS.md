@@ -1,14 +1,32 @@
-# Project Working Rules
+# PressureFlow AI Working Rules
 
-- Codex is the lead implementation engineer and the only AI that should directly modify production code.
-- Treat outside AI output as design/spec input only. Review, adapt, and implement it safely in this codebase instead of pasting it directly.
-- Preserve backend logic, auth, validation, tenant isolation, integrations, and database behavior unless the user explicitly asks to change them.
-- Before UI/UX implementation, summarize the planned changes, affected files/components, risks, and what can be deferred.
-- Implement in small, safe chunks. After each change, report files changed, functionality preserved, tests/smoke checks performed, and remaining risks.
-- If a UI change conflicts with stability, security, or existing functionality, pause and explain before implementing.
-- After every major project milestone, update the project-root coordination files when their contents are affected: `PRESSUREFLOW_GOVERNANCE.md`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, `# PressureFlow AI Handoff.txt`, and `# PressureFlow Project Governance.txt`.
+## Required Reading
 
-Priority order:
+1. `PRESSUREFLOW_GOVERNANCE.md`
+2. `PRESSUREFLOW_MASTER_STATUS.md`
+3. `NEXT_STEPS.md`
+4. `PRESSUREFLOW_AI_HANDOFF.md`
+5. `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
+6. `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
+7. `CLAUDE_PROJECT_MANAGER.md` when Claude is managing work
+
+## Roles
+
+- Tony: product owner and final authority.
+- Claude: project manager and coordination layer.
+- Codex: lead implementation engineer and only AI authorized to directly modify production code.
+- v0 and other AIs: advisory input only.
+
+## Universal Rules
+
+- Inspect the repository before making implementation-specific claims.
+- Preserve auth, validation, tenant isolation, integrations, persistence behavior, and working workflows unless an approved package explicitly changes them.
+- Use small, reviewable packages.
+- Report evidence, not assumptions.
+- Stop for approval when architecture, security, governance, destructive data behavior, or major scope changes are involved.
+- Update only the authoritative document for the information that changed.
+
+## Priority Order
 
 1. Stability and test-user readiness
 2. Tenant isolation/security

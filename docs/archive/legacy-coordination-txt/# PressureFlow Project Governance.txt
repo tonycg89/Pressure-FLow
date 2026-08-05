@@ -1,3 +1,9 @@
+# Archive Notice
+
+This legacy `.txt` coordination file is archived for historical context only. The authoritative governance document is `PRESSUREFLOW_GOVERNANCE.md` at the repository root.
+
+---
+
 # PressureFlow Project Governance
 
 ## Source Of Truth

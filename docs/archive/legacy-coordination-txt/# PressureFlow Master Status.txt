@@ -1,4 +1,10 @@
-PressureFlow Master Status
+# Archive Notice
+
+This legacy `.txt` coordination file is archived for historical context only. The authoritative current-state document is `PRESSUREFLOW_MASTER_STATUS.md` at the repository root.
+
+---
+
+# PressureFlow Master Status
 
 Last Updated: July 15, 2026
 

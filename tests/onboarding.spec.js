@@ -107,7 +107,11 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   const publicPage = await context.newPage();
   await publicPage.goto(job.estimateApprovalUrl);
   await expect(publicPage.getByRole("heading", { name: /Driveway cleaning for Alex Rivera/ })).toBeVisible();
-  await expect(publicPage.getByRole("row", { name: /Lawn Mowing 1000 SqFt \$0\.04 \/ SqFt \$40\.00/ })).toBeVisible();
+  const servicesIncluded = publicPage.locator(".doc-line-list[aria-label='Services included']");
+  await expect(servicesIncluded).toContainText("Lawn Mowing");
+  await expect(servicesIncluded).toContainText("1000 SqFt");
+  await expect(servicesIncluded).toContainText("$0.04 / SqFt");
+  await expect(servicesIncluded).toContainText("$40.00");
   await expect(publicPage.getByText("Estimate Only, not an actual Invoice.")).toBeVisible();
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);
 });

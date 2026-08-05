@@ -1,600 +1,120 @@
 # PressureFlow AI Handoff
 
-This file is the shared source of truth for Codex, Claude, v0, ChatGPT, and any other AI system working on PressureFlow. Read it before making recommendations, designs, plans, or code changes.
+This file is the repository onboarding context for AI systems working on PressureFlow. It summarizes the current stack, workflows, major subsystems, integration boundaries, security boundaries, testing expectations, and operational constraints.
 
-## 1. Project Governance
+Governance, current state, and immediate execution are owned by separate documents:
 
-- Codex is the lead implementation engineer and the only AI allowed to directly modify production code.
-- Claude may provide UX audit findings, workflow critique, copy suggestions, and prioritization input only.
-- v0 may provide UI/visual audit findings, layout critique, styling concepts, and component mockups only.
-- ChatGPT/project chat controls planning, decisions, sequencing, and approvals.
-- Outside AI output is design/spec input, not production code.
-- All Claude/v0 recommendations must be reviewed, scoped, and adapted before Codex implements anything.
-- Preserve backend logic, auth, validation, tenant isolation, integrations, database behavior, and existing workflows unless an explicit approved task says otherwise.
-- Before implementing any future package, review `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`. All package work must comply with those documents.
-- Package closeouts must include the required stability/closeout report items from `PRESSUREFLOW_ENGINEERING_STANDARDS.md`, including files changed, behavior changed, tests run, pass/fail results, known unrelated failures, root cause, guardrails, remaining risks, and documentation updated.
+- Governance: `PRESSUREFLOW_GOVERNANCE.md`
+- Current status: `PRESSUREFLOW_MASTER_STATUS.md`
+- Immediate queue: `NEXT_STEPS.md`
+- Claude operating procedure: `CLAUDE_PROJECT_MANAGER.md`
+- Engineering standards: `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
+- Product principles: `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
 
-Priority order:
+## 1. AI Role Context
 
-1. Stability and test-user readiness
-2. Tenant isolation/security
-3. Core workflow speed
-4. Mobile usability
-5. UI polish
-6. New feature building
+- Tony is product owner and final authority.
+- Claude is project manager, planning coordinator, documentation steward, implementation-package author, and review layer.
+- Claude does not directly modify production code.
+- Codex is the lead implementation engineer and the sole AI authorized to directly modify production code.
+- v0 and other AI systems provide advisory visual, UX, research, or specialist input only.
+
+All advisory output must be reviewed, scoped, and converted into an approved implementation package before Codex changes production code.
 
 ## 2. Current Stack
 
 PressureFlow is a plain Node/static frontend application.
 
-- HTML: `index.html`
+- Plain HTML: `index.html`
 - CSS: `styles.css`
-- Vanilla JavaScript: `app.js`
+- Vanilla browser JavaScript: `app.js`
 - Node.js backend: `server.js` plus modular route/helper files
 - Persistence: local JSON by default, Supabase/Postgres when `DATABASE_URL` is set
-- No React
-- No Next.js
-- No Tailwind CSS
-- No shadcn/ui
-- No Radix
-- No framework migration is approved
-
-## 3. AI Roles
-
-- Codex: implementation, code review, test execution, safe refactoring, final integration.
-- Claude: UX audit only. Claude should identify workflow friction, confusing copy, missing feedback, prioritization, and user journey issues.
-- v0: UI/visual audit only. v0 should identify visual hierarchy, spacing, layout, polish, consistency, and responsive issues.
-- ChatGPT/project chat: planning, decision control, approval gates, and priority calls.
-
-Claude and v0 should not produce drop-in production code for this project. If they include snippets, treat them as rough examples only.
-
-## 4. Completed Phases And Packages
-
-- Tenant isolation/security audit completed.
-- Validation and sanitization audit completed.
-- Integration credential and secrets audit completed.
-- Webhook secret hardening completed for Stripe and Square.
-- Smoke test plan created.
-- UI Packages 01-06 completed:
-  - Design system foundation
-  - Cards, KPI stat cards, empty states
-  - Form system phases
-  - Table foundation
-  - Modal foundation/dialog polish
-  - Dashboard, customer-facing documents, contract/print, and transactional email shells
-- Phase 06 email shell work is complete.
-- Pre-audit readiness is complete.
-- Test account Google connection readiness is complete.
-- Critical contract signing date fix is complete.
-- P1 public estimate / contract success and error page fix is complete.
-- Package 07B-3 payment method verification / invoice empty-state fix is complete.
-- Package 07B-4 small UX cleanup bundle is complete.
-- Package 07B-5 Measure From Map stability fixes are complete.
-- Package 07B-6 mobile beta hardening is complete.
-- Package 06C-2A critical v0 UX fixes are complete.
-- Package 06C-2B customer trust layer polish is complete.
-- Package 06C-2C final visual consistency polish is complete.
-- Package 07A-1 automated end-to-end destructive testing is complete.
-- Package 07A-4A payment configuration enforcement is complete.
-- Package 07A-4B first-run and post-action guidance is complete.
-- Package 07A-4C mobile and field usability fixes are complete.
-- Package 10A frontend-only Tools library and isolated solar panel cleaning savings calculator is complete. It adds a `Tools` workspace view with a selectable solar estimator card, opens the calculator in its own focused workspace, ports the supplied solar cleaning savings calculator into native PressureFlow HTML/CSS/JS, and does not change backend logic, auth, tenant isolation, integrations, or database behavior.
-- Package 10B map measurement usability and duplicate service-area cleanup is complete. It allows saved measurement totals to be used even if a new incomplete drawing is present, keeps edit-in-progress protection for selected saved areas, visibly marks the active polygon draw control, starts fresh measurement maps in draw mode, and dedupes repeated saved service areas in normalization and rendering. Gmail `invalid_grant` errors still require reconnecting Google from Settings because Google has rejected the stored refresh token.
-- Package 10C Google OAuth durability guardrails are complete. Non-owner Settings saves now preserve existing Google/Mapbox platform credentials instead of blanking them, Gmail/Calendar invalid-grant errors now explain that Google OAuth Testing mode can expire Gmail/Calendar refresh tokens after 7 days, and Settings copy tells operators to publish the OAuth consent screen to Production for a durable Google connection.
-- Package 10D-1 customer-facing mobile table layout is complete. Public estimate service tables and contract Scope of Work tables now use document-specific column groups, auto table layout, and mobile min-width scrolling so the estimate Amount column and service agreement Total column no longer collapse into 1-2 character wraps on phone viewports.
-- Package 07A-4D customer clarity and Pool Service expansion is complete.
-- Package 07B-1 multi-tenant security audit is complete.
-- Package 07B-2 webhook and external integration security audit is complete.
-- Package 07C-1 environment and deployment readiness audit is complete.
-- Package 07C-2 backup, recovery, and data safety audit is complete.
-- Package 07C-3 operational monitoring and error visibility is complete.
-- Package 08A-1 mobile photo upload flow stabilization is complete.
-- Package 08B customer/property/job data isolation is complete.
-- Package 08C conditional saved measurements display is complete.
-- Package 08D job title/service catalog cleanup is complete.
-- Package 08E estimate email/calendar decoupling is complete.
-- Package 08F post-08A-E stability/root-cause investigation is complete.
-- Package 09A engineering governance hardening is complete.
-- Package 09B owner validation blockers: map draft state and estimate server error is complete.
-- Package 09C scheduling server error hardening is complete.
-- Package 09D reschedule not-found root cause is complete.
-- Package 09E reschedule confirmation email distinction is complete.
-- Package 09F manual review request send action is complete.
-- Package 09G review request button visibility fix is complete.
-- Contract initials requirement removal is complete.
-- Test-user readiness checks pass with the documented environment setup.
-
-Package 08A-1 mobile photo upload flow stabilization status:
-
-- Completed July 6, 2026.
-- Customer gallery uploads and job before-photo gallery uploads now use a detached body-level picker instead of opening the native gallery from a file input inside an active workflow dialog. This matches the stable camera handoff pattern and prevents Android Chrome from leaving a dark overlay, invisible overlay, or broken dialog scroll state behind.
-- Camera capture remains on the existing detached capture inputs and was not functionally changed.
-- Draft protection runs before native picker handoff for customer and job flows; job before-photo gallery upload restores the draft, preview, scroll/focus state, and allows create/save to continue.
-- Photo processing now shows a loading indicator only if work exceeds 300ms and uses async canvas blob encoding where supported to reduce perceived lockup from large gallery images.
-- Customer save and job create submit paths show immediate button loading with delayed status feedback for slower saves without changing API payloads, backend validation, auth, tenant isolation, integrations, storage format, or database behavior.
-- Tests run: `npm.cmd run check` passed; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` passed 11/11.
-- Full regression note: `npm.cmd run test:browser` passed 75/76. The one failure reproduced independently in `tests/destructive-workflows.spec.js` and is unrelated to Package 08A-1: the contract page renders `Signed` while the test expects `Signed agreement`.
-
-Package 08B customer/property/job data isolation status:
-
-- Completed July 6, 2026.
-- Customer detail job lists now bind to `job.customerId` only. Same email or same normalized address no longer cause one customer's jobs to appear under another customer.
-- Saved property measurements now load by `customerId` or by `jobId` resolving to `customerId`. Address query matching was removed from `/api/property-measurements` so same-address customers do not share saved measurement areas.
-- Job measurement sync now attaches measurement history only to the job's explicit `customerId`. Legacy unlinked measured jobs can still create an isolated customer record, but they do not claim same-address customers.
-- Frontend Measure From Map reloads saved measurements from the current job/customer context instead of the formatted address field.
-- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js tests/tenant-security.spec.js` (6 passed).
-- Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-
-Package 08C conditional saved measurements display status:
-
-- Completed July 6, 2026.
-- Customer detail now renders `Saved Map Measurements` only when the selected customer has saved measurement areas. Empty customers and customers with jobs but no measurements show no heading, placeholder, or empty container.
-- `renderCustomerMeasurements` now returns an empty string for zero expanded saved areas, preserving the UI visibility rule for any direct caller.
-- Job detail measurement rows were reviewed and already hidden when `job.measurement.squareFeet` is absent; measurement storage, editing, deletion, map drawing, and calculations were not changed.
-- Browser regression now verifies no-section behavior for customers with no saved areas, normal display for saved areas, same-address isolation, and immediate removal after the final saved area is deleted.
-- Files touched: `app.js`, `assets/detail-rendering.js`, `tests/measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `npm.cmd run check`; `node --check app.js`; `node --check assets\detail-rendering.js`; `npm.cmd run test:browser -- tests/measurement-map.spec.js` (3 passed).
-- Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-
-Package 08D job title/service catalog cleanup status:
-
-- Completed July 6, 2026.
-- Job title dropdown now has final `Other` option. Selecting it reveals required `Enter Job Title`; the custom title is normalized back into `job.serviceType`, preserving existing backend/storage contracts.
-- Custom job titles now display through the existing service-title surfaces, with explicit title display added to job detail, public contract project details, and public invoice pages.
-- Pool-specific selectable defaults were removed from the current beta UI/catalog: onboarding/settings industries, built-in service catalog, onboarding service categories/library, and built-in job-title options. Historical pool/custom jobs are still displayable because unknown saved titles remain valid record values.
-- Browser regression now creates `Playground Equipment Cleaning` via `Other`, verifies validation, job list/detail, customer history, public estimate, public contract, and public deposit invoice, and asserts pool services are absent from selectable onboarding/settings/job UI.
-- Tests run: `npm.cmd run check`; `node --check public-pages.js`; `node --check assets\service-catalog.js`; `npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/pending-payments.spec.js` (24 passed).
-- Full regression note: `npm.cmd run test:browser` passed 80/81. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; targeted rerun of `tests/destructive-workflows.spec.js` passed 3/4 with the same failure.
-
-Package 08E estimate email/calendar decoupling status:
-
-- Completed July 6, 2026.
-- `email-delivery.js` now sends Google/Gmail email through `integrations/gmail.js`; it no longer imports Gmail behavior from `integrations/google.js`.
-- `integrations/google.js` remains the Google OAuth/calendar module for auth URL, token exchange, and calendar event creation. Calendar token/auth errors are scoped to scheduling/calendar actions.
-- Estimate send and resend no longer convert email failures into successful API responses. If `sendEstimateEmail` rejects, the job action rejects, the frontend catch path shows an error toast, and no false "resent" success toast is shown.
-- SMTP email delivery is verified independent of missing/expired Google Calendar state. Google/Gmail email failures use email-specific reconnect copy; calendar failures use scheduling-specific reconnect copy.
-- Settings copy now tells users to connect Google/Gmail or switch to SMTP for email, instead of requiring Calendar for automated emails.
-- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/estimate-email-decoupling.spec.js` (4 passed); `npm.cmd run test:browser -- tests/onboarding.spec.js tests/mobile-hardening.spec.js tests/follow-up-automation.spec.js tests/pending-payments.spec.js` (39 passed).
-- Full regression note: `npm.cmd run test:browser` passed 79/80. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-
-Package 08F post-08A-E stability/root-cause investigation status:
-
-- Completed July 7, 2026.
-- Estimate/job action routes now log `job_action_failed` with action/account/job/status context and return structured JSON errors from the action route catch path.
-- Estimate action regression verifies malformed estimate action requests return JSON instead of an empty body; existing frontend coverage still verifies empty upstream 502 responses show clear retry copy and never success.
-- 0% deposit handling now uses nullish defaults and billing helpers across app defaults, settings forms, public contract totals, public invoice totals, and Postgres row mapping.
-- Zero-deposit jobs do not create deposit invoices and final invoices show the full balance.
-- Legacy pool-named custom services/job titles are filtered from selectable UI and stripped during settings normalization; stale local job drafts containing `Weekly Pool Service` no longer remove `Other` or restore a pool title into the Create Job dropdown. Historical saved job titles still render.
-- Map empty service-area UI no longer shows the plus-style icon, and the separate visible Status summary row is hidden.
-- Root cause analysis: recurring breakages came from truthiness fallbacks treating valid `0` as missing, duplicated deposit math outside `billing.js`, stale localStorage/settings data surviving catalog cleanup, and tests missing deployed-like malformed/error responses plus stale browser draft state.
-- Guardrails: use `??` for numeric defaults, centralize billing math, sanitize deprecated selectable defaults at save and load boundaries, keep action-level operational logging, and add tests for error JSON shape, stale persisted UI state, and zero-value business rules whenever workflow packages touch shared forms.
-- Tests run: `npm.cmd run check`; `node --check app.js`; `node --check public-pages.js`; `node --check server.js`; `node --check db.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\pending-payments.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/pending-payments.spec.js tests/onboarding.spec.js tests/measurement-map.spec.js tests/estimate-email-decoupling.spec.js` (29 passed).
-- Full regression note: `npm.cmd run test:browser` passed 82/83. The remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-
-Package 09A engineering governance hardening status:
-
-- Completed July 7, 2026.
-- Added `PRESSUREFLOW_ENGINEERING_STANDARDS.md` as a mandatory engineering standards document for all future packages.
-- Added `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` as a mandatory product decision principles document for all future packages.
-- Updated `PRESSUREFLOW_GOVERNANCE.md` so future development packages must comply with the engineering standards and future product decisions must align with the product principles.
-- Future AI/Codex agents must review both standards documents before implementation and must document any exceptions in package closeout reports.
-- Package closeouts must include the required stability/closeout items: files changed, behavior changed, tests run, pass/fail results, known unrelated failures, root cause, guardrails, remaining risks, and documentation updated.
-- No app behavior, app source, tests, styles, routes, integrations, or product functionality changed for this package.
-- Verification: `git diff --check` passed.
-
-Package 09B owner validation blockers status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Estimate send root cause: known email provider/config failures were still surfaced as generic production `Unexpected server error.` messages because they were ordinary thrown errors without client-safe status/message metadata. Package 08F made the action response structured, but it still masked 500-class messages unless explicitly marked safe.
-- Estimate send fix: `email-delivery.js` now marks email delivery/setup failures with `statusCode`, `code`, and `exposeToClient`; `integrations/gmail.js` marks missing Google/Gmail config as a 409 setup error; `server.js` exposes only errors marked client-safe while keeping unknown production 500s generic. `job_action_failed` and `email_send_failed` logs retain safe action/provider context.
-- Map draft root cause: the Mapbox Draw object is reused across measurement dialog sessions. Unsaved draw features could remain in that draw instance between modal contexts, and `Use Measurement` auto-saved an editable unsaved polygon into the job measurement, making a draft shape look persistent without an explicit save action.
-- Map draft fix: unsaved draw features are discarded when the measurement dialog closes and before it opens in another context. `Use Measurement` now requires `Add Drawn Area` first. Saved measurement areas still persist only after explicit save and remain scoped by customer/job ID.
-- Tests added/updated: structured email setup error metadata, malformed estimate action JSON, missing job lookup JSON, frontend no-success-on-email-failure, unsaved map drawing cleanup across job/customer contexts, explicit saved measurement persistence, and saved measurement non-leakage.
-- Files touched: `app.js`, `email-delivery.js`, `integrations/gmail.js`, `server.js`, `tests/dashboard-analytics.spec.js`, `tests/estimate-email-decoupling.spec.js`, `tests/measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check server.js`; `node --check email-delivery.js`; `node --check integrations\gmail.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\measurement-map.spec.js`; `node --check tests\estimate-email-decoupling.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/estimate-email-decoupling.spec.js tests/measurement-map.spec.js` passed 19/19.
-- Full regression: `npm.cmd run test:browser` passed 85/87. Remaining failures: known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`; and one full-suite-only onboarding timing failure that passed on targeted rerun with `npm.cmd run test:browser -- tests/onboarding.spec.js -g "custom Other job title"`.
-- Remaining risks: redeployed production still needs an owner-account estimate send check to confirm the real email provider path either sends or returns the new structured setup/provider error; stale deployed assets/browser cache can temporarily show old behavior.
-
-Package 09C scheduling server error hardening status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Root cause: scheduling still called Google Calendar through raw integration errors. The shared job-action wrapper from 08F could return JSON, but production masking still turned known Calendar setup/auth/event failures into generic `Unexpected server error.` unless the thrown error was marked client-safe.
-- Fix: `integrations/google.js` now creates structured Calendar errors with `statusCode`, `code`, and `exposeToClient` for missing Calendar setup, missing refresh token, expired/revoked token, token endpoint failure, Calendar API event creation failure, and direct schedule payload validation.
-- Answers to investigation: scheduling was throwing ordinary Calendar errors; the Calendar integration was returning raw failures; the frontend was already able to display structured errors from `apiRequest`; malformed payload and missing job paths already returned JSON but now have focused coverage; Gmail and Calendar messages remain separate, and Calendar token/scope failures now use Calendar-specific reconnect copy.
-- Frontend behavior: failed scheduling shows the structured workflow error and does not show a success toast. Valid scheduling remains covered by the existing pending-payments workflow test.
-- Tests added/updated: Calendar setup/auth/event structured errors, malformed schedule payload JSON, missing schedule job lookup, frontend structured scheduling error display, and no false success toast.
-- Files touched: `integrations/google.js`, `tests/pending-payments.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check integrations\google.js`; `node --check tests\pending-payments.spec.js`; `npm.cmd run test:browser -- tests/pending-payments.spec.js` passed 14/14.
-- Full regression: `npm.cmd run test:browser` passed 89/90. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-- Remaining risks: redeployed production still needs an owner-account scheduling check to verify the real Google Calendar connection either schedules successfully or returns the new structured Calendar reconnect/setup error. A schedule-confirmation email failure after Calendar succeeds will surface via the existing 09B structured email errors.
-
-Package 09D reschedule not-found root cause status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Exact source of `Not found`: the app did not have a separate reschedule action. Scheduled jobs did not expose a reschedule action in the UI, the schedule dialog defaulted to a new time instead of the existing appointment, and Calendar sync only created events. A stale `googleCalendarEventId` or invalid Calendar ID could therefore let Google Calendar's raw 404 `Not found` leak into the workflow without identifying whether the missing record was the local job, Google event, or Calendar.
-- Fix: scheduled jobs now show `Reschedule Job` and reuse the existing schedule action. The schedule modal pre-fills the saved scheduled date/time. Google Calendar scheduling now upserts: PATCH an existing event ID, recreate the event if Google says the stored event is missing, and return a structured Calendar setup error if the configured Calendar itself is missing.
-- Local metadata behavior: when Calendar sync is skipped, local rescheduling no longer overwrites existing `googleCalendarEventId` or `googleCalendarEventUrl` with `undefined`.
-- Ownership behavior: schedule/reschedule remains scoped through the tenant-aware job action route. Missing, stale, and cross-tenant job IDs return structured `{"error":"Job not found."}` and fail closed.
-- Tests added/updated: Calendar update success, stale Google event recreate, malformed schedule payload, missing schedule job lookup, scheduled-job reschedule with no Calendar event ID, specific frontend reschedule failure display, no false success toast, and cross-tenant schedule action rejection.
-- Files touched: `app.js`, `job-actions.js`, `integrations/google.js`, `tests/pending-payments.spec.js`, `tests/tenant-security.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check integrations\google.js`; `node --check job-actions.js`; `node --check app.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\tenant-security.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/pending-payments.spec.js tests/tenant-security.spec.js` passed 20/20; `git diff --check` passed.
-- Full regression: `npm.cmd run test:browser` passed 92/93. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-- Remaining risks: redeployed production still needs an owner-account reschedule check with the real Google Calendar connection. Expected outcomes are successful reschedule, structured Calendar setup error for an invalid Calendar ID, or automatic event recreation for stale stored event IDs.
-
-Package 09E reschedule confirmation email distinction status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Root cause: reschedule used the same schedule action and email helper, but the action only called the helper after replacing `job.scheduledAt`. The email layer had no previous appointment context and always rendered the original schedule confirmation template. Same-time resubmits could also send another duplicate-looking customer confirmation.
-- Fix: `job-actions.js` now captures previous schedule date/time and duration before mutation, infers first schedule vs reschedule server-side, passes reschedule context to the email helper, and suppresses customer/admin notification when date/time and duration are unchanged.
-- Email copy changed: initial schedule still uses the normal schedule confirmation subject/body. Reschedule uses `appointment rescheduled` subject copy, `Appointment Rescheduled` HTML title, `Your appointment has been updated` body copy, and includes previous scheduled time plus new scheduled time when available.
-- Delivery behavior: exactly one customer schedule email is sent for initial schedule and for each changed reschedule. No customer schedule email is sent for an unchanged same-time/duration submit.
-- Calendar behavior: 09D Calendar upsert behavior is preserved. Existing Calendar events continue to patch/recreate through the same path, no duplicate Calendar event is intentionally created, and Calendar metadata is not erased when Calendar sync is skipped.
-- Existing estimate/email, contract, invoice, and payment workflows remain unchanged.
-- Tests added/updated: initial schedule template copy, reschedule template copy, first reschedule email selection, second reschedule email selection, previous/new time copy, same-time duplicate suppression, and continued Calendar patch/recreate coverage.
-- Files touched: `email-content.js`, `email-delivery.js`, `job-actions.js`, `tests/pending-payments.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check job-actions.js`; `node --check email-delivery.js`; `node --check email-content.js`; `node --check tests\pending-payments.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/pending-payments.spec.js` passed 19/19; `git diff --check` passed.
-- Full regression: `npm.cmd run test:browser` passed 94/95. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-- Remaining risks: redeployed production should be checked with the owner account's real email provider to confirm Gmail/SMTP clients display the new reschedule subject/preheader clearly. The product now intentionally suppresses unchanged same-time confirmation resends.
-
-Package 09F manual review request send action status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Root cause/product gap: final payment scheduled a delayed automated review request, but there was no contractor-facing action to request a review immediately. Owner validation therefore hit an unnecessary waiting gap after final payment.
-- Behavior changed: paid jobs now show `Send Review Request` in the job Automation section. The action sends the existing configured review request email immediately using the existing review request template/settings/link configuration.
-- Review link validation: at least one of Google/Yelp/Facebook/Other review link is required. Missing links show setup guidance in the UI and return a structured backend 409 error directing the contractor to Settings.
-- Manual send behavior: success toast appears only after confirmed backend success. On success, the job gets `reviewRequestSentAt`, a manual sent `review_request` task is logged, and any pending automated review request for the job is cancelled with `manual_sent`.
-- Failure behavior: failed sends show the backend error, never show success, do not set `reviewRequestSentAt`, and do not cancel the pending automated review request.
-- Already-sent behavior: jobs with `reviewRequestSentAt` show `Review Request Sent` and do not show a new send button. Resend behavior was intentionally not added in this package to avoid accidental duplicate review requests.
-- Existing delayed automation still works for jobs where manual send is not used.
-- Existing estimate, invoice, scheduling, payment, and public workflows remain unchanged.
-- Tests added/updated: final paid job shows manual review action, manual send success, missing review-link setup error, failed send no-success behavior, pending automation cancellation after manual success, pending automation preservation after failed send, already-sent display state, and delayed auto review still sending without manual action.
-- Files touched: `app.js`, `follow-ups.js`, `job-actions.js`, `tests/follow-up-automation.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 20/20; `git diff --check` passed.
-- Full regression: `npm.cmd run test:browser` passed 99/100. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-- Remaining risks: redeployed production should be checked with the owner account's real email provider and configured review links to verify delivery and link rendering in the actual customer email client.
-
-Package 09G review request button visibility fix status:
-
-- Completed July 7, 2026.
-- Standards followed: `PRESSUREFLOW_ENGINEERING_STANDARDS.md` and `PRESSUREFLOW_PRODUCT_PRINCIPLES.md` were reviewed before implementation.
-- Root cause: 09F placed the manual review request action inside the lower Automation section and gated visibility on only `job.status === "Paid"` or `squareFinalPaidAt`. That made the action easy to miss after final payment and failed records that represented final payment with `squareFinalInvoiceStatus === "PAID"` or final payment records.
-- Exact visibility condition fixed: `renderReviewRequestControls` previously required `job.status === "Paid" || Boolean(job.squareFinalPaidAt)` and was nested in Automation. It now uses shared final-paid signal handling and renders in a dedicated `Review Request` section immediately after payment history.
-- Behavior changed: final-paid jobs show a dedicated Review Request section with `Send Review Request`, setup guidance, or `Review Request Sent`. The action remains visible after reload and does not require waiting for delayed automation.
-- Paid-state detection now includes `Paid` status, `squareFinalPaidAt`, `squareFinalInvoiceStatus === "PAID"`, or an existing final payment record across frontend, backend manual review action, and follow-up send rules.
-- Review link detection follows the current settings model: Google, Yelp, Facebook, or Other review link. A website/custom URL saved in `Other review link` counts as configured.
-- Existing 09F manual-send behavior is preserved: successful manual send marks `reviewRequestSentAt`, logs a manual sent review task, and cancels pending auto review; failures do not show success or suppress automation.
-- Tests added/updated: full final-paid workflow visibility, dedicated Review Request section, visibility after reload, Other review link detection, final invoice paid status/payment record visibility, no-link setup guidance, successful sent-state transition, and existing delayed automation coverage.
-- Files touched: `app.js`, `follow-ups.js`, `job-actions.js`, `tests/follow-up-automation.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Verification: `npm.cmd run check` passed; `node --check app.js`; `node --check job-actions.js`; `node --check follow-ups.js`; `node --check tests\follow-up-automation.spec.js`; focused browser tests `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` passed 21/21; `git diff --check` passed.
-- Full regression: `npm.cmd run test:browser` passed 100/101. Remaining failure is the known unrelated `tests/destructive-workflows.spec.js` contract copy assertion expecting `Signed agreement` while the page renders `Signed`.
-- Remaining risks: redeployed production should be checked in the owner account after saving review links, marking final invoice paid, and reloading the job detail to confirm the dedicated Review Request section remains visible.
-
-Phase 07D deployment sandbox verification status:
-
-- Added `PRESSUREFLOW_SANDBOX_VERIFICATION.md` as the external-beta sandbox verification tracker with pass/fail/manual fields, external provider setup notes, rollback triggers, and beta go/no-go criteria.
-- Initial read-only check on June 17, 2026: `GET https://pressure-flow.onrender.com/health` returned HTTP 200 with the old `{"ok":true}` payload.
-- After Render environment updates/redeploy, `GET https://pressure-flow.onrender.com/health?codex=after-env-update` returned HTTP 200 with `{"ok":true,"service":"pressureflow"}`.
-- 07D-1 deployed core app verification used dedicated test user `codex@test.com` with the password intentionally not documented. Login/auth, protected routes, invalid login handling, session refresh, logout, settings save, manual payment setup, customer creation/readback, and job creation/readback passed.
-- 07D-1 estimate-send blocker resolved: the first deployed estimate send to the owner-approved test inbox returned 502 because Google Calendar/Gmail was not connected. The job failed closed with no `estimateSentAt` and no `estimateApprovalUrl`. After `codex.ppw@gmail.com` was added as a Google OAuth test user and connected through Settings, the retry succeeded.
-- 07D-1 deployed public URL check passed: generated estimate URL used `https://pressure-flow.onrender.com/estimate/...`, the public estimate page returned HTTP 200, rendered the test job, and did not show not-found copy.
-- Render logs identified the 07D-1 estimate-send cause: the test account was configured for Google email, but Google Calendar/Gmail was not connected. A subsequent Connect Google attempt was blocked by Google because the OAuth app is in Testing mode and the real Gmail account (`codex.ppw@gmail.com`) was not yet added as a Google OAuth test user.
-- Added a per-test-user onboarding checklist to `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`: create a dedicated PressureFlow test user, add the real Google account as a Google OAuth test user while the app is in Testing mode, confirm redirect URI, connect Google from Settings, configure manual payment instructions, run the smoke check, and clean up/rotate after testing.
-- 07D-2 deployed public workflow verification passed using real generated sandbox links on `https://pressure-flow.onrender.com`. Verified estimate load/approval/already-approved state, contract load/signing/already-signed state with no initials inputs, deposit invoice/manual paid state, scheduling after deposit paid, final invoice/manual paid state, completion proof/no-photo/payment-complete state, invalid/tampered estimate/contract/invoice/proof links, no localhost URLs, and final job state readback. No public tokens were documented.
-- 07D-2 tests run: `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js` (23 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (4 passed).
-- 07D-3 deployed Mapbox workflow verification passed using the deployed sandbox app on `https://pressure-flow.onrender.com`. Verified public Mapbox token delivery to the logged-in frontend without documenting the value, Mapbox GL/Draw/Turf asset loading, Mapbox style/tile/font/session requests, no visible authorization errors, desktop map opening from New Job, polygon drawing and 3,903 SqFt measurement, quantity/total update to `$975.75`, saved job measurement GeoJSON/perimeter/square-foot retention, 390px mobile/touch usability, and safe missing-token guard behavior. Headless Chromium logged generic Mapbox GL `Error` console entries with no failed requests and no visible workflow breakage; treat as non-blocking unless reproduced in a normal browser.
-- 07D-3 tests run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- tests/measurement-map.spec.js` (1 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (4 passed); `npm.cmd run test:browser` (59 passed). Updated `tests/measurement-map.spec.js` to wait for the mocked map draw instance before asserting, matching the app's delayed map initialization.
-- 07D-4 deployed Stripe/Square sandbox webhook verification is blocked for valid provider events because the deployed `codex@test.com` test account reported no Stripe secret key, no Stripe webhook secret, no Square access token, no Square location ID, and no Square webhook signature key. Deployed `/webhooks/stripe` and `/webhooks/square` missing/invalid signature requests returned HTTP 401 with generic JSON errors and no stack traces. No live credentials or live payments were used. Manual payment recording remains verified from 07D-2 and can be used temporarily only if Stripe/Square sandbox verification is explicitly deferred.
-- 07D-4 next steps: configure Stripe test secret key plus Stripe test webhook secret and point Stripe to `https://pressure-flow.onrender.com/webhooks/stripe`; configure Square sandbox access token, sandbox location ID, webhook signature key, and notification URL exactly `https://pressure-flow.onrender.com/webhooks/square`; then send/replay real provider sandbox events and review Render logs for safe `webhook_signature_rejected`, `webhook_event_processed`, and `webhook_event_ignored` entries.
-- 07D-4 tests run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- tests/webhook-security.spec.js tests/webhook-follow-up-hooks.spec.js` (6 passed); `npm.cmd run test:browser` (59 passed).
-- 07D-5 deployed persistence proof passed. Using `https://pressure-flow.onrender.com` and dedicated test user `codex@test.com`, Codex created safe labels `Persistence Test Customer 07D5-20260618055842` and `Persistence Restart Test 07D5-20260618055842`. Customer/job creation, saved 1,450 SqFt measurement data, estimate send/link generation, deployed estimate URL host, public estimate page load, refresh-style readback, logout/login readback, pre-restart `/health`, and post-Render-action readback passed. The test account currently reports no configured customer payment path, but that does not block this persistence proof.
-- 07D-5 remaining recommended manual check: review Render logs for local JSON fallback or production startup warnings after the restart/redeploy action. Do not document passwords, full public URLs, or tokens when finishing this check.
-- 07D-5 test run so far: `npm.cmd run smoke:test-user-safety` passed; the expected local Google-not-connected fixture log did not fail the smoke check.
-- 07D-6 beta go decision on June 18, 2026: GO for Beta Cohort #1. This is a small founder-led validation beta, not a broad production launch. Use 3-5 real contractors, no paid/stability promise, and close observation.
-- Known limitation accepted for Beta Cohort #1: real Stripe/Square provider webhook verification remains pending because deployed sandbox credentials/secrets are not configured. Do not advertise Stripe/Square payment automation as complete. Use manual payment instructions and manual payment recording unless Stripe/Square sandbox provider events are configured and verified first.
-- Phase 08 validation focus: workflow completion, time to value, confusion points, and repeated feature requests from real users.
-- Phase 08 beta cohort target: 2 pressure washing companies, 1 window cleaner, 1 pool service company, and 1 miscellaneous home-service contractor.
-- Do not build speculative expansions before this cohort unless real users expose a blocker: QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, or franchise support.
-- Still blocked/manual after redeploy: Stripe/Square sandbox credential setup and provider webhook acceptance, Render log review for local JSON fallback warnings, and ongoing beta feedback capture.
-- Local Phase 07D pre-deploy checks run: `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed).
-
-07C-3 operational monitoring and error visibility behavior:
-
-- Added `operational-logger.js`, a lightweight console-based safe logger. It emits JSON-shaped lines with `action`, safe operational context, and redacted error details. Secret-like keys, bearer tokens, webhook signatures, and URL token/signature/password/secret parameters are redacted.
-- Email failures in `email-delivery.js` now log `email_send_failed` with email type, accountId, jobId/customerId, provider, masked recipient, recipient domain, and safe error details. Audit skipped-email logs no longer print full customer email addresses or subjects.
-- Webhook visibility improved in `server.js` and `webhooks.js`: rejected signatures, invalid JSON payloads, unsupported events, unknown invoices/jobs, account mismatches, invoice mismatches, amount mismatches, already-paid duplicates, status-only events, and successful payment updates emit safe structured context.
-- Follow-up automation in `follow-ups.js` now logs scheduled, skipped, duplicate-reused, cancelled, auto-skipped, and failed send events with account/job/task/type/reason context.
-- Payment cancellation failures in `payment-workflows.js` now log safe account/job/invoice/integration context.
-- Production 500 request logging now uses the safe operational logger while keeping generic client-facing production errors.
-- Added `PRESSUREFLOW_OPERATIONS_RUNBOOK.md` with where-to-look-first guidance, log field explanations, troubleshooting steps for email/webhook/public link/automation/calendar/upload/500/health failures, and a post-deploy smoke checklist.
-- Updated `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` and `DEPLOYMENT.md` to reference the operations runbook and include post-deploy log review.
-- Activity trail review: important state changes remain visible through job state, follow-up tasks, Square webhook events, provider dashboards, and operational logs. A full in-app owner activity timeline is documented as future work.
-- Added `tests/operational-logger.spec.js` for redaction, email masking/domain helpers, log shape, email failure visibility without body/secrets/full recipient, and safe webhook ignored-event logging.
-- Tests run: `node --check operational-logger.js`; `node --check email-delivery.js`; `node --check follow-ups.js`; `node --check webhooks.js`; `node --check server.js`; `node --check tests\operational-logger.spec.js`; `npm.cmd run test:browser -- tests/operational-logger.spec.js tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (59 passed); `npm.cmd run test:browser -- tests/operational-logger.spec.js tests/webhook-security.spec.js`.
-- Remaining follow-up: consider a compact owner-only activity/audit timeline after beta support patterns prove it is needed.
-
-07C-2 backup, recovery, and data safety behavior:
-
-- Added `PRESSUREFLOW_BACKUP_RECOVERY.md` with the operator playbook for storage audit, backup expectations, recovery procedures, local JSON safety, destructive-action safeguards, export/data portability limits, and payment/webhook recovery.
-- Current production storage expectation remains Supabase/Postgres through `DATABASE_URL`; local JSON remains local/test or emergency maintenance only and production startup still fails closed without `DATABASE_URL` unless `PRESSUREFLOW_ALLOW_LOCAL_JSON_IN_PRODUCTION=true` is explicitly set.
-- Local JSON writes in `db.js` now write a temporary file, preserve the previous active file as `<name>.json.bak`, and then replace the active JSON file. Treat `.bak` files as local last-write safety nets, not production backups.
-- Data storage audited: accounts/users/settings, customers, jobs, estimates/contracts/invoices/payment records, expenses, follow-up tasks, saved measurements, inline logos/photos/files/templates, public tokens, webhook logs, and exports.
-- Destructive actions reviewed: customer, job, expense, saved measurement, custom template, logo, photos, follow-up cancellation, and manual payment actions have existing confirmation or staged-save behavior; server-side tenant scoping remains the security boundary.
-- Export behavior documented: `/api/export/jobs.csv` remains tenant-scoped; `/api/export/backup.json` is owner-only and limited to public settings/statuses/jobs, not a full restore/import system.
-- Payment/webhook recovery notes reference 07B-2 hardening: signed webhooks fail closed, stored invoice/account/type/amount validation is required, and duplicate paid webhooks are idempotent.
-- Updated `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` and `DEPLOYMENT.md` to point to the recovery playbook and clarify JSON `.bak` limits.
-- Added `tests/data-safety.spec.js`; updated `tests/environment-readiness.spec.js` for the explicit production local JSON maintenance override.
-- Tests run: `node --check db.js`; `node --check tests\data-safety.spec.js`; `node --check tests\environment-readiness.spec.js`; `npm.cmd run test:browser -- tests/data-safety.spec.js tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (54 passed).
-- Remaining deployment checks: confirm Supabase backup/PITR access, rehearse restore into staging, and expand backup export only after a restore/import design is approved.
-
-07C-1 environment and deployment readiness behavior:
-
-- Audited environment usage for `PORT`, `NODE_ENV`, auth/session secrets, database configuration, `APP_BASE_URL`, Google/Gmail/Calendar, account SMTP settings, Mapbox, Stripe, Square, Twilio, local/test data paths, and audit/test bypass flags.
-- Added `environment.js` with production startup validation. In `NODE_ENV=production`, startup fails closed when `SESSION_SECRET`, `DATABASE_URL`, or `APP_BASE_URL` are missing; when `APP_BASE_URL` is not `https://`; or when `ALLOW_AUTH_DISABLED`, `PRESSUREFLOW_SKIP_EMAIL_DELIVERY`, or `PRESSUREFLOW_AUDIT_GOOGLE_MOCK` are enabled.
-- Optional integration gaps log warnings without secret values: partial Google OAuth env, Stripe key without webhook secret, Square credentials without webhook signature key, Twilio alerts missing SMS variables, and missing Mapbox token.
-- `/health` returns safe JSON `{ ok: true, service: "pressureflow" }` and does not expose configuration details.
-- Unexpected production 500s return generic `Unexpected server error.` to clients while logging method/path and server-side message.
-- Added `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md` with required/optional env variables, sensitivity, defaults, feature dependencies, database setup, Google/Mapbox/payment/webhook/Twilio setup, post-deploy smoke tests, backup, and rollback notes. `DEPLOYMENT.md` now points to the checklist and documents startup validation.
-- Added `tests/environment-readiness.spec.js` for health check output, production missing-critical-env failures, production HTTPS base URL validation, and optional integration warnings.
-- Tests run: `node --check environment.js`; `node --check server.js`; `node --check tests\environment-readiness.spec.js`; `npm.cmd run test:browser -- tests/environment-readiness.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (52 passed).
-- Remaining deployment checks: set real production variables in Render/Supabase, verify `/health`, confirm production rejects test flags, verify deployed Stripe/Square webhook signatures, test Google OAuth callback, and confirm backups/rollback access before beta traffic.
-
-07B-2 webhook and external integration security behavior:
-
-- Audited `POST /webhooks/stripe`, `POST /webhooks/square`, public Stripe card handoff, webhook payment update handlers, invoice creation helpers, Stripe/Square integration helpers, and follow-up/email side effects triggered by payment events.
-- Stripe webhooks require a configured webhook secret plus a valid `stripe-signature`; Square webhooks require a configured webhook signature key plus `x-square-hmacsha256-signature`. Missing signatures, invalid signatures, and missing secrets fail closed with no job mutation.
-- Stripe payment events now validate metadata `accountId`, `jobId`, `invoiceType`, and `invoiceId` against stored job records before payment state can change. Square payment events resolve by stored invoice ID, then validate invoice type and amount against that job.
-- Duplicate paid webhooks are idempotent: already-paid invoices do not rewrite `paidAt`, replace payment records, re-cancel follow-ups, send duplicate admin alerts, or send duplicate completion emails.
-- Payment state integrity is enforced: deposit events only mark deposit invoices paid, final events only mark final invoices paid, amount mismatches are ignored without mutation, and missing/deleted jobs fail closed.
-- Fixed `webhooks.js` so webhook handlers validate stored invoice/account/amount state before side effects and skip duplicate already-paid events.
-- Added `tests/webhook-security.spec.js`; updated `tests/webhook-follow-up-hooks.spec.js` for stored invoice IDs and Stripe amounts. Tests cover Stripe/Square missing signature, invalid signature, missing secret, valid update, duplicate idempotency, forged metadata, unknown invoice, amount mismatch, and already-paid stability.
-- Required webhook configuration: per-account `stripeWebhookSecret` or `STRIPE_WEBHOOK_SECRET` fallback for Stripe; per-account `squareWebhookSignatureKey` for Square. Tests use mocked signed payloads and do not call live Stripe or Square APIs.
-- Tests run: `node --check webhooks.js`; `node --check tests\webhook-follow-up-hooks.spec.js`; `node --check tests\webhook-security.spec.js`; `npm.cmd run test:browser -- tests/webhook-follow-up-hooks.spec.js tests/webhook-security.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (48 passed).
-- Remaining deployment checks: configure Stripe/Square sandbox webhooks against the deployed URL, verify real provider signatures, confirm duplicate sandbox events remain idempotent, and confirm proxy headers preserve Square's notification URL exactly.
-
-07B-1 multi-tenant security audit behavior:
-
-- Audited authenticated records, job actions, settings/session/users, custom templates, exports, dashboard feeds, saved map measurements, follow-up automations, payment reminders, Square/Stripe webhooks, public estimate/contract/invoice/proof links, Stripe card handoff, completion photos, customer service-area photos, inline file metadata, and local/Postgres storage helpers.
-- Confirmed authenticated customer/job/expense/settings/template/export/dashboard flows are tenant-scoped server-side and fail closed for cross-tenant reads, writes, deletes, and job actions.
-- Confirmed public customer links require matching job ID plus token; tampered estimate, contract, invoice, and proof links return generic customer-safe pages without tenant branding or internal IDs.
-- Fixed a local JSON storage weakness in `db.js`: follow-up task reads and writes now honor `accountId` options in local mode, matching Postgres behavior. Before the fix, local/test `/api/follow-up-tasks` could list all tenants' tasks and scoped writes could overwrite foreign tasks.
-- Added `tests/tenant-security.spec.js` covering Tenant A/Tenant B isolation for lists, dashboard/API feeds, settings, templates, CSV export, saved measurements, follow-up tasks, cross-tenant mutations/deletes/actions, expense job links, public token tampering, valid public branding, and proof-photo isolation.
-- Tests run: `npm.cmd run test:browser -- tests/tenant-security.spec.js`; `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (44 passed).
-- Remaining deployment checks: verify real Square/Stripe webhook signatures and tenant routing in the deployed sandbox; re-audit any future external object-storage provider because current file/photo protection relies on inline records plus tenant-scoped parent records and public token checks.
-
-Invoice payment behavior:
-
-- Payment is configured when at least one customer payment path exists: Square access token plus Square location ID, Stripe secret key, Zelle, Cash App, Venmo, or manual payment instructions.
-- Deposit invoice sends, final invoice sends, completion-triggered final invoices, and public contract-signing deposit invoices are blocked server-side when no payment path is configured.
-- Public deposit and final invoices show configured Stripe card checkout, Zelle, Cash App, Venmo, and manual payment instructions.
-- Unconfigured payment methods do not render publicly.
-- Accounts with no configured payment methods show a customer-safe fallback asking customers to contact the business.
-- The contractor job detail view warns before invoice-sending actions when no payment methods are configured and includes a direct Settings/payment action.
-- The dashboard shows a setup reminder when payment options are missing, and onboarding Preferences explains that customers need at least one payment option before invoices are sent.
-
-07B UX cleanup behavior:
-
-- Core workflow success/info messages use non-blocking in-app toast feedback.
-- Notification bell icon renders visibly next to the unread count badge.
-- Open Jobs excludes fully paid jobs, including jobs with a final paid timestamp.
-- Scheduled date/time displays as readable text, while stored values remain unchanged.
-- Deferred Claude findings: Mark Deposit Paid confirmation behavior, broader public API response styling outside approved flows.
-
-Contract signing UX:
-
-- Public contracts no longer require customers to initial each clause.
-- Customers still must provide a signature date and type their full name to sign.
-- Public token validation, backend signing behavior, follow-up cancellation, deposit invoice creation, and deposit follow-up scheduling remain unchanged.
-- Browser coverage verifies contract signing succeeds without initials and invalid signing dates still land on the branded retry page.
-
-Measure From Map stability behavior:
-
-- After adding a drawn area, polygon drawing is re-armed so another area can be drawn immediately.
-- After updating an existing shape, Draw returns to a ready polygon mode.
-- Polygon closure requires a precise click near the starting vertex to reduce accidental closure.
-- Automated mocked browser coverage verifies add/update re-arm behavior, multi-area totals, persistence after save/reopen, and the close-tolerance override.
-- Manual deployed-map verification is still recommended before beta.
-
-Mobile beta hardening behavior:
-
-- Mobile form controls render at 16px on small screens to avoid iOS Safari focus zoom.
-- Major workflow actions, modal buttons, public document actions, and completion proof links meet 44px minimum mobile touch targets.
-- Measure From Map draw/delete controls and measurement actions meet 44px minimum touch targets.
-- Public invoice, contract, and completion proof pages constrain content to the mobile viewport while preserving all information.
-- Automated mobile browser coverage verifies these touch-target and overflow requirements.
-
-Package 06C-2A critical UX fix behavior:
-
-- Settings remains a single modal entry point and opens from Dashboard, Pipeline, Customers, Templates, and Expenses with pressed/expanded state and focus placement.
-- Dashboard, Pipeline, Customers, Templates, and Expenses each display their own active page heading.
-- Estimate builder line items no longer repeat SqFt/rate-like labels; line totals use a clear Line total label.
-- New Job, Settings, Customer, Expense, Schedule, Completion, Follow-up, custom service, photo viewer, measurement, and dynamic remove controls use intentional SVG icon buttons for close/remove affordances where applicable.
-- Expenses navigation uses the existing sidebar SVG icon pattern instead of a literal `$` icon.
-- Onboarding business-name placeholder is example-style copy, and onboarding helper/footer text updates by step.
-- Settings and New Job modals are constrained and usable at 375px mobile width with scrollable content and accessible close controls.
-- Files touched for this package: `index.html`, `styles.css`, `app.js`, `tests/dashboard-analytics.spec.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `npm.cmd run check`; `node --check tests\dashboard-analytics.spec.js`, `node --check tests\onboarding.spec.js`, `node --check tests\mobile-hardening.spec.js`; `npm.cmd run test:browser -- --workers=1 tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js`.
-- Known follow-up: in-app Browser visual verification could not attach in this Windows sandbox session; targeted Playwright coverage passed.
-
-Package 06C-2B customer trust layer behavior:
-
-- Customer-facing surfaces audited: public estimate approval/approved/declined/invalid pages, public contract signing/signed/executed/sign-error/invalid pages, deposit and final invoice pages, Stripe card-payment handoff form display, completion proof page, and estimate/contract/invoice/follow-up/schedule/completion email shells.
-- Shared public document shell now has consistent trust pills, summary cards, action notes, professional footer/contact copy, and mobile-safe layout styling.
-- Public pages consistently propagate business name, business logo, business email/phone, customer name, job address, totals, and clear CTAs where a valid public token resolves to a job/settings record.
-- Estimate approval copy is clearer about what the customer is reviewing and what happens after approval.
-- Contract signing keeps legal text unchanged, does not reintroduce initials, and preserves typed full-name/date behavior.
-- Invoice pages render payment options cleanly and show paid invoices as paid without payment CTAs.
-- Completion proof pages are branded, customer-safe, and mobile-covered.
-- Email shell includes business contact in header/footer, keeps plain-text fallbacks usable, and avoids empty payment-option lists.
-- Files touched: `rendering.js`, `public-pages.js`, `email-content.js`, `scripts/smoke-email-content.js`, `tests/follow-up-automation.spec.js`, `tests/pending-payments.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `npm.cmd run check`; `node --check rendering.js`, `node --check public-pages.js`, `node --check email-content.js`, `node --check scripts\smoke-email-content.js`, `node --check tests\follow-up-automation.spec.js`, `node --check tests\pending-payments.spec.js`, `node --check tests\mobile-hardening.spec.js`; `node scripts\smoke-email-content.js`; `npm.cmd run test:browser -- --workers=1 tests/follow-up-automation.spec.js tests/pending-payments.spec.js tests/mobile-hardening.spec.js`.
-- Known follow-up: invalid/expired links cannot show tenant-specific branding because token lookup intentionally fails before tenant settings can be trusted; they use the safe generic PressureFlow/Your Company shell.
-
-Package 06C-2C final visual consistency behavior:
-
-- Dashboard metric cards are more compact and blank first-run accounts show a deliberate dashboard guidance panel.
-- Dashboard chart and breakdown empty states use consistent icon styling and clearer no-data copy.
-- The dashboard notification control is labeled `Activity`, visually separated from the timeframe select, and preserves the existing unread count/dropdown behavior.
-- Settings remains a modal; it now has in-dialog section jump links and a clearer Business defaults grouping while preserving all fields.
-- Save Settings, template upload/delete, and logo upload/remove use the existing toast pattern for lightweight feedback.
-- 375px mobile coverage checks dashboard chrome plus Settings and New Job modal usability/overflow.
-- Files touched: `index.html`, `styles.css`, `app.js`, `tests/dashboard-analytics.spec.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `node --check app.js`; `node --check tests\dashboard-analytics.spec.js`; `node --check tests\onboarding.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js tests/onboarding.spec.js tests/mobile-hardening.spec.js`.
-- Known follow-up: in-app Browser visual verification still cannot attach in this Windows sandbox session (`CreateProcessAsUserW failed: 5`); targeted Playwright coverage passed.
-
-Package 07A-1 automated destructive testing behavior:
-
-- Added focused destructive Playwright coverage in `tests/destructive-workflows.spec.js`.
-- Covered customer edge data, duplicate customer rendering, public estimate token tampering, duplicate estimate approvals, public contract malformed submissions, duplicate contract signing, invalid invoice/proof links, paid invoice state, and manual payment confirmation.
-- Public contract signing now validates signer name and signature date server-side, so malformed direct posts redirect to the existing safe sign-error page and do not create incomplete signatures or deposit invoices.
-- Existing manual payment tests now confirm the shared payment-method popup before marking deposit/final invoices paid.
-- Existing mobile destructive coverage remains in `tests/mobile-hardening.spec.js`.
-- Tests run: `npm.cmd run check`; `node --check public-workflows.js`; `node --check tests\destructive-workflows.spec.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- --workers=1 tests/destructive-workflows.spec.js tests/pending-payments.spec.js tests/follow-up-automation.spec.js`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser -- --workers=1`.
-- Full browser suite is passing at 36 tests after Package 07A-1.
-- Known follow-up: in-app Browser visual verification is still blocked in this Windows sandbox; manual deployed checks are still recommended for real Gmail/SMTP delivery, live Stripe/Square sandbox handoff, and real mobile Safari.
-
-Package 07A-4A payment configuration enforcement behavior:
-
-- Centralized payment readiness in `settings.js` with `hasConfiguredInvoicePaymentMethod` and `requireConfiguredInvoicePaymentMethod`.
-- Server-side blocking is wired through `job-actions.js` and `public-workflows.js`, with `server.js` passing the helper into both paths.
-- Customer invoice rendering in `public-pages.js` no longer uses misleading `Secure payment options` language when no visible payment option exists, hides card CTAs unless Stripe is configured, keeps manual payment instructions valid, and shows clear contact fallback copy when needed.
-- Dashboard, job-detail warning, Settings CTA targeting, and onboarding guidance were updated in `index.html`, `app.js`, and `styles.css` without changing frameworks or UI libraries.
-- Tests added/updated in `tests/pending-payments.spec.js`, `tests/onboarding.spec.js`, `tests/follow-up-automation.spec.js`, and `tests/mobile-hardening.spec.js`.
-- Tests run: `node --check settings.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check public-pages.js`; `node --check app.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\onboarding.spec.js`; `node --check tests\follow-up-automation.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/pending-payments.spec.js tests/onboarding.spec.js tests/follow-up-automation.spec.js tests/mobile-hardening.spec.js`; `npm.cmd run test:browser -- --workers=1`.
-- Known follow-up: deployed sandbox verification remains recommended for real Stripe/Square handoff behavior and Gmail/SMTP delivery.
-
-Package 07A-4B first-run and post-action guidance behavior:
-
-- Dashboard first-run guidance includes a `Create your first customer` CTA and the copy: `Start by adding a customer, then create a job and send your first estimate.`
-- Completing onboarding shows a `Workspace setup complete` first-run state and an actionable toast CTA to create the first customer.
-- Creating a customer shows success feedback with a `Create a job for this customer` CTA that opens the existing New Job flow prefilled from that customer.
-- Creating a job shows `Job created successfully.` with a `View in Pipeline` CTA that selects the new job in Pipeline.
-- Sending an estimate shows `Estimate sent to [email].`; when estimate follow-up automation is enabled, it also says `Automatic follow-up scheduled.`
-- Contractor-side public link labels now use plain language: `View customer estimate`, `View contract page`, `View signed contract`, and `View completion proof`.
-- Files touched: `index.html`, `app.js`, `styles.css`, `assets/detail-rendering.js`, `tests/onboarding.spec.js`, `tests/expense-contract-regression.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `node --check app.js`; `node --check assets\detail-rendering.js`; `node --check tests\onboarding.spec.js`; `node --check tests\expense-contract-regression.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- --workers=1 tests/onboarding.spec.js tests/dashboard-analytics.spec.js tests/expense-contract-regression.spec.js tests/follow-up-automation.spec.js`; `npm.cmd run test:browser -- --workers=1`.
-- Known follow-up: in-app Browser visual verification remains blocked in this Windows sandbox; targeted Playwright coverage passed.
-
-Package 07A-4C mobile and field usability behavior:
-
-- Mobile text fields remain at 16px on small screens across onboarding/settings/customer/job/payment/schedule/map/public document surfaces to avoid iOS Safari input zoom.
-- Touch targets were hardened for mobile action links, toast actions, settings jump links, notification rows, photo controls, saved measurement controls, modal buttons, customer-facing CTAs, and workflow actions.
-- Measure From Map controls now keep grouped styling and expand draw/delete controls to 48px on phone-width viewports while preserving the existing map workflow.
-- Public estimate, contract, invoice, and completion proof pages wrap table cell content, keep controlled horizontal scrolling, and keep trust/status pills professional on phones.
-- Mobile modal coverage now includes Settings, New Customer, New Job, Schedule Job, Complete Job, and Record Payment at 375px.
-- Files touched: `styles.css`, `rendering.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/measurement-map.spec.js`; `npm.cmd run test:browser`.
-- Known follow-up: verify on real iOS Safari and Android hardware before beta, since automated coverage uses Chromium; deployed Mapbox workflow passed in 07D-3.
-
-Package 07A-4D customer clarity and Pool Service behavior:
-
-- Customer-facing estimate, invoice, and contract service rows show clear rate units such as `$0.04 / SqFt`; `Hours` and `Per Hour` render as `per hour`.
-- Estimate approval retains the valid-through summary while removing the duplicate 30-day validity callout/trust repetition.
-- Completion proof pages use customer language: `Service and Payment Details`, `Payment pending` / `Payment complete`, accurate photo badges, and explicit no-photo copy.
-- Contract project details reference the contractor business estimate instead of `PressureFlow estimate approved online`.
-- Customer/job/onboarding forms show lightweight required-field markers where appropriate and clearer examples for job title, notes, and sensitive areas.
-- Complete Job modal clarifies before/after photos are optional but recommended and will appear on completion proof.
-- `Pool Service` is available in onboarding and settings. Starter services include Weekly Pool Service, Chemical Balancing, Filter Cleaning/Replacement, Pool Vacuuming, Pool Brush Service, Green Pool Cleanup, Pool Startup/Shutdown, Salt Cell services, Equipment Inspection, Pump Replacement, Pool Light Replacement, Pool Tile Cleaning, Acid Wash, and Pool Drain and Refill.
-- Pool-friendly units include `Visit`, `Service Call`, `Flat Rate`, and a custom-service `Per hour` option.
-- Fresh job line items start at quantity `0`, keeping new estimates at `$0.00` until quantity is entered.
-- Files touched: `assets/service-catalog.js`, `app.js`, `assets/detail-rendering.js`, `index.html`, `styles.css`, `public-pages.js`, `tests/onboarding.spec.js`, `tests/mobile-hardening.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests run: `node --check app.js`; `node --check public-pages.js`; `node --check assets\detail-rendering.js`; `node --check assets\service-catalog.js`; `node --check tests\onboarding.spec.js`; `node --check tests\mobile-hardening.spec.js`; `npm.cmd run check`; `npm.cmd run test:browser -- tests/onboarding.spec.js`; `npm.cmd run test:browser -- tests/mobile-hardening.spec.js`; `npm.cmd run test:browser`.
-- Known follow-up: Pool Service defaults should be tuned with real pool operator feedback before relying on them as production pricing recommendations.
-
-## 5. Current Status
-
-- Approved Claude P1/P2 UX fixes, mobile beta hardening, Package 06C-2A critical v0 UX fixes, Package 06C-2B customer trust layer polish, Package 06C-2C final visual consistency polish, Package 07A-1 automated destructive testing, and Packages 07A-4A through 07A-4D are complete.
-- Customer-facing public pages/email shells from Package 06C-2B and app polish from Package 06C-2C are resolved locally and ready for deployment verification.
-- Do not start broad UI redesign beyond approved v0 audit findings.
-
-## 5A. Strategic Roadmap And Product Identity
-
-Core mission: PressureFlow should become the easiest CRM for pressure washing companies to estimate, sell, schedule, complete, and get paid for jobs.
-
-PressureFlow should not drift into a generic CRM, a generic field-service app, bloated enterprise software, or a feature-packed but confusing tool. It should stay simple, fast, mobile-friendly, pressure-washing focused, easy to learn, and easy to sell.
-
-PressureFlow Identity Rule: PressureFlow serves pressure washing companies first. Every major feature decision should be evaluated through the lens of a pressure washing owner/operator before considering broader trade applicability.
-
-Feature filter:
-
-- Does this save time?
-- Does this make money?
-- Does this reduce confusion?
-
-If a feature does none of those, it should move to the backlog.
-
-Founder north star: does this help a pressure washing company win more jobs, complete jobs faster, or get paid quicker?
-
-Strategic roadmap:
-
-- Phase 1: become the best pressure washing CRM for 0-100 paying companies.
-- Phase 2: become the best exterior cleaning CRM for 100-500 companies.
-- Phase 3: become the most efficient CRM for 500-2,000 companies.
-- Phase 4: add pressure washing intelligence tools only after the core CRM is excellent.
-- Phase 5: expand into commercial/property manager workflows.
-- Phase 6: selectively expand into adjacent trades only if they share at least 80% of the existing workflow.
-
-Phase 08 beta should validate the Phase 1 core before expanding. Do not build QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, franchise support, or similar expansion before Beta Cohort #1 unless real users expose a blocker.
-
-Review request automation added before Beta Cohort #1:
-
-- Settings includes a review request follow-up toggle, delay, editable subject/message, and Google/Yelp/Facebook/Other review link fields.
-- Default behavior is enabled with a 24-hour delay after final payment, but the automation only schedules when at least one review link is configured.
-- Default message asks satisfied customers for a 5-star review and inserts configured review links.
-- Final paid workflows schedule `review_request` follow-up tasks after cancelling final invoice reminders.
-- Due review request tasks send through the existing email delivery path and set `reviewRequestSentAt` on the job to prevent repeat requests.
-- Files changed: `settings.js`, `db.js`, `index.html`, `app.js`, `follow-ups.js`, `job-actions.js`, `email-content.js`, and `tests/follow-up-automation.spec.js`.
-- Tests run: `node --check db.js`; `node --check settings.js`; `node --check follow-ups.js`; `node --check email-content.js`; `node --check app.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/follow-up-automation.spec.js` (13 passed); `npm.cmd run check`; `npm.cmd run smoke:test-user-safety`; `npm.cmd run test:browser` (61 passed).
-
-Business logo upload reliability fixed before Beta Cohort #1:
-
-- Settings and onboarding logo uploads accept PNG/JPG/WebP files up to 8 MB, resize/compress oversized images in the browser, and store a bounded validated data URL.
-- Customer document logo rendering continues to use the existing `businessLogoDataUrl` path; no document route migration or new file-storage dependency was introduced.
-- Files changed: `app.js`, `settings.js`, `index.html`, `styles.css`, and `tests/dashboard-analytics.spec.js`.
-- Tests added/updated: settings save verifies a selected logo previews and persists through `/api/settings` for document rendering.
-- Tests run: `node --check app.js`; `node --check settings.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (4 passed); `npm.cmd run check`; `npm.cmd run test:browser` (61 passed).
-
-Zero-deposit workflow cleanup added before Beta Cohort #1:
-
-- Jobs with 0% deposit no longer send or auto-generate deposit invoices.
-- Signed contracts with no deposit due move directly toward scheduling in the contractor UI, and public contract signing confirms no deposit is due instead of claiming a deposit invoice was sent.
-- Settings copy now labels default job duration as minutes so values such as 180 are clear.
-- Files changed: `job-actions.js`, `public-workflows.js`, `server.js`, `app.js`, `index.html`, `tests\pending-payments.spec.js`, and `tests\follow-up-automation.spec.js`.
-- Tests added/updated: contractor signed-contract flow skips deposit invoice and shows scheduling for 0% deposit; public contract signing skips deposit invoice and schedules no deposit follow-up for 0% deposit.
-- Tests run: `node --check app.js`; `node --check job-actions.js`; `node --check public-workflows.js`; `node --check server.js`; `node --check tests\pending-payments.spec.js`; `node --check tests\follow-up-automation.spec.js`; `npm.cmd run test:browser -- tests/pending-payments.spec.js tests/follow-up-automation.spec.js` (23 passed); `npm.cmd run check`; `npm.cmd run test:browser` (63 passed).
-
-Empty API response handling improved after deployed estimate-send alert:
-
-- Shared frontend API requests and app data refresh loaders now parse response text defensively and show clear retry messages for empty, unreachable, or unreadable server responses instead of the raw `Unexpected end of JSON input` browser error.
-- Files changed: `app.js` and `tests\dashboard-analytics.spec.js`.
-- Tests added/updated: job action failure with an empty HTTP 502 response shows `The server returned an empty response HTTP 502. Please try again.`
-- Tests run: `node --check app.js`; `node --check tests\dashboard-analytics.spec.js`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (5 passed); `npm.cmd run check`; `npm.cmd run test:browser` (64 passed).
-
-Schedule, delete, login, and Measure From Map usability fixes:
-
-- Schedule Job now includes a compact weekly availability picker that shows booked times and blocks overlapping submissions before the schedule action is sent.
-- Workspace Calendar keeps the Today control label and shows scheduled plus complete counts for the visible range.
-- Delete Job now removes the job from the UI immediately after confirmation and rolls back if the server delete fails.
-- New Job cancel/draft handling clears cancelled drafts and repopulates saved customer details if a stale draft contains only the customer id.
-- Login copy is shortened to "Sign in."
-- Measure From Map places Close Shape inside the map area and updates the displayed drawn SqFt immediately after closing the polygon.
-- Files changed: `index.html`, `app.js`, `styles.css`, `http-utils.js`, `tests\dashboard-analytics.spec.js`, `tests\pending-payments.spec.js`, `tests\measurement-map.spec.js`, `PRESSUREFLOW_MASTER_STATUS.md`, `PRESSUREFLOW_AI_HANDOFF.md`, `# PressureFlow Master Status.txt`, and `# PressureFlow AI Handoff.txt`.
-- Tests added/updated: calendar Today/count expectations, schedule week picker visibility, schedule overlap blocking, and map Close Shape SqFt update.
-- Tests run: `npm.cmd run check`; `npm.cmd run test:browser -- tests/dashboard-analytics.spec.js` (6 passed); `npm.cmd run test:browser -- tests/pending-payments.spec.js` (10 passed); `npm.cmd run test:browser -- tests/measurement-map.spec.js` (2 passed); `npm.cmd run test:browser -- tests/mobile-hardening.spec.js` (9 passed); `npm.cmd run smoke:test-user-safety`.
-
-## 6. Audit Environment Requirements
-
-Required for audits:
+- Browser regression tests: Playwright
+
+PressureFlow does not use React, Next.js, Tailwind, shadcn, Radix, or an approved framework migration.
+
+The application supports an owner workspace plus isolated invited-user workspaces. It is not yet a complete self-service multi-tenant SaaS.
+
+## 3. Product Workflow
+
+Core job workflow:
+
+```text
+Lead -> Estimate Sent -> Estimate Signed -> Contract Sent -> Contract Signed -> Deposit Sent -> Deposit Paid -> Scheduled -> Completed -> Final Invoice Sent -> Paid
+```
+
+Supported contractor workflows include:
+
+- Customer and job pipeline management.
+- Customer records with contact details, notes, photos, saved map measurements, and job history.
+- Itemized estimates with service catalog, discounts, default deposit behavior, and customer approval links.
+- Customer-facing estimate approval and rejection pages.
+- PressureFlow-hosted contract signing.
+- Deposit and final invoices.
+- Manual payment recording and configured customer payment options.
+- Scheduling with Google Calendar connection where configured.
+- Gmail/SMTP-style email delivery paths where configured.
+- Before/after photo capture and completion proof.
+- Review request automation.
+- Expenses and dashboard analytics.
+- Mapbox property measurement with saved polygons and reusable square footage.
+- Frontend-only Tools workspace with isolated solar panel cleaning savings calculator.
+
+## 4. Major Subsystems
+
+- `server.js`: Node HTTP server and top-level API wiring.
+- `app.js`: browser dashboard behavior and main workspace interactions.
+- `index.html`: dashboard markup and dialogs.
+- `styles.css`: dashboard styling and responsive behavior.
+- `db.js`: local JSON and Supabase/Postgres persistence boundary.
+- `settings.js`: business settings, integration readiness, and payment readiness helpers.
+- `job-actions.js`: contractor workflow actions.
+- `public-workflows.js`: public token workflow handlers.
+- `public-pages.js`: customer-facing page rendering.
+- `email-delivery.js` and `email-content.js`: email sending and content generation.
+- `follow-ups.js`: automated follow-up tasks.
+- `integrations/`: provider-specific integration boundaries.
+- `assets/`: frontend rendering helpers and service catalog data.
+- `tests/`: Playwright browser coverage and smoke checks.
+
+## 5. Security and Tenant-Isolation Boundaries
+
+Preserve these boundaries unless an approved package explicitly changes them:
+
+- Auth and session behavior.
+- Owner workspace and invited-user workspace separation.
+- Per-account customers, jobs, expenses, photos, documents, saved services, saved measurements, business settings, and integrations.
+- Public token-based estimate, contract, invoice, and completion proof routes.
+- Webhook signature verification and fail-closed behavior.
+- Validation and sanitization at backend boundaries.
+- Local JSON and Supabase/Postgres compatibility.
+- Secret handling and safe logging.
+
+Do not weaken public token routes, expose tenant data across accounts, log secrets, or make integration mocks available to production by accident.
+
+## 6. Integration Boundaries
+
+Use sandbox/test credentials for audits, beta testing, and verification unless Tony explicitly approves otherwise.
+
+Important boundaries:
+
+- Google Calendar / Gmail connection is required by design for client communication workflows unless the audit mock mode is explicitly enabled.
+- `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` prevents real delivery but does not by itself represent a connected Google account.
+- `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` may be paired with skipped delivery for safe hosted audit workflows.
+- Stripe and Square webhook routes must keep signature validation, idempotency, amount checks, tenant routing, and safe logs.
+- Mapbox requires a public token for map/geocoding flows.
+- QuickBooks and Twilio are deferred unless real beta feedback exposes a blocker.
+
+## 7. Audit and Sandbox Environment Notes
+
+Required for map/geocoding flows:
 
 ```text
 MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 ```
 
-For Claude/v0 hosted audit testing, use a separate Render Web Service such as `pressure-flow-audit` instead of changing the production/beta service. Recommended audit env:
+Recommended hosted audit configuration:
 
 ```text
 NODE_ENV=development
@@ -606,39 +126,46 @@ MAPBOX_PUBLIC_TOKEN=<public Mapbox token>
 SESSION_SECRET=<separate random audit secret>
 ```
 
-Generate a PowerShell-compatible `SESSION_SECRET` with:
+Use a separate staging database only if persistent audit data is needed. Never point audit services at production data.
 
-```powershell
-$bytes = New-Object byte[] 48
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($bytes)
-[Convert]::ToBase64String($bytes)
-```
+Deployment and recovery references:
 
-Use a separate staging database only if persistent audit data is needed; otherwise leave `DATABASE_URL` unset for disposable audit testing. Never point the audit service at production data.
+- `DEPLOYMENT.md`
+- `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`
+- `PRESSUREFLOW_SANDBOX_VERIFICATION.md`
+- `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`
+- `PRESSUREFLOW_BACKUP_RECOVERY.md`
+- `supabase-setup.md`
+- `square-webhooks.md`
+- `docs/integrations.md`
 
-Google Calendar / Gmail connection is required by design for client communication workflows. The audit environment must use one of these options:
+## 8. Current Capability Summary
 
-```text
-PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true
-PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
-```
+Current implementation status belongs in `PRESSUREFLOW_MASTER_STATUS.md`. At a high level, PressureFlow has completed:
 
-or connect a dedicated Google test account/calendar for the tester account.
+- Tenant isolation/security audit and priority fixes.
+- Validation and sanitization audit and priority backend validation fixes.
+- Credential/secrets audit.
+- Stripe/Square webhook secret hardening.
+- Smoke test plan.
+- Test-user readiness checks.
+- Core UI foundation and customer-facing document shell work.
+- Claude UX-finding implementation packages through approved P1/P2 work.
+- v0 visual polish packages that were approved for Codex implementation.
+- Deployment, backup/recovery, operational monitoring, and sandbox verification documentation.
+- Mobile beta hardening and photo upload stabilization.
+- Customer/property/job data isolation fixes.
+- Estimate email/calendar decoupling.
+- Owner validation blocker fixes.
+- Scheduling and rescheduling hardening.
+- Review request automation.
+- Map measurement usability and duplicate saved-area cleanup.
+- Google OAuth durability guardrails.
+- Customer-facing mobile estimate/contract table layout fixes.
 
-For local/browser smoke testing that must not send real emails:
+This handoff intentionally does not preserve the full chronological package ledger. Historical detail belongs in archive material or implementation reports, not the active AI onboarding flow.
 
-```text
-PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true
-```
-
-Skipped email delivery alone does not represent a connected Google account. Use the explicit audit Google mock flag when disconnected test accounts need to complete send/schedule workflows.
-
-Use sandbox/test credentials only. Do not use live customer email, payment, accounting, or calendar credentials during audits.
-
-## 7. Testing Notes
-
-Playwright is configured for one worker because browser specs share `.tmp/playwright-data`.
+## 9. Testing Expectations
 
 Run from the repo root:
 
@@ -648,40 +175,32 @@ npm.cmd run smoke:test-user-safety
 npm.cmd run test:browser
 ```
 
-The full browser suite should pass in single-worker mode. Targeted specs can be run one at a time if needed.
+Playwright is configured for single-worker reliability because browser specs share `.tmp/playwright-data`.
 
-## 8. Decision Hierarchy
+Codex closeout reports must include:
 
-When documents or recommendations conflict, follow this order:
+- Root cause.
+- Files changed.
+- Behavior changed.
+- Tests run.
+- Pass/fail results.
+- Known unrelated failures.
+- Remaining risks.
+- Documentation affected.
 
-1. Project Governance
-2. Master Status
-3. AI Handoff
-4. Codex implementation reports
-5. Approved Claude/v0 recommendations
+Claude must review test evidence and diffs before marking implementation packages complete.
 
-If a recommendation conflicts with stability, security, tenant isolation, credential safety, or existing production workflows, pause and ask for approval before implementation.
+## 10. Operational Constraints
 
-## 9. Rules For Future AI Recommendations
-
-- No architecture changes without explicit approval.
-- No framework assumptions.
-- Do not assume React, Next.js, Tailwind, shadcn, Radix, or a component framework.
-- Do not suggest implementation that requires a stack migration unless explicitly asked.
-- Do not ask Claude or v0 to directly implement production code.
-- Do not blindly paste outside AI code into the project.
-- Do not change backend routes, auth, tenant isolation, validation, payments, signing, public links, integrations, or database behavior as part of UI/UX audit work.
+- Do not migrate frameworks.
+- Do not introduce React, Next.js, Tailwind, shadcn, Radix, or new UI libraries without explicit approval.
+- Do not change backend routes, auth, tenant isolation, validation, payments, signing, public links, integrations, or persistence behavior as part of advisory UX/UI work.
 - Keep recommendations scoped, prioritized, and tied to the current app.
-- Separate audit findings into blockers, high-impact improvements, medium improvements, and polish.
-- Codex must review every audit finding before implementation.
+- Separate verified fact, reasonable inference, and recommendation.
+- If documentation conflicts with repository code, inspect code and tests before making implementation-specific claims.
 
-## 10. Next Action
+## 11. Where to Go Next
 
-Give Claude:
-
-- a test login
-- the audit environment URL
-- this `PRESSUREFLOW_AI_HANDOFF.md` file
-- the instruction that Claude is performing UX audit only
-
-After Claude findings are reviewed and approved, Codex should implement the smallest safe UX fixes in chunks. Then give v0 the updated app and this handoff file for the visual/UI audit.
+- Read `PRESSUREFLOW_MASTER_STATUS.md` for current implementation, verification, risks, incomplete work, and release/readiness state.
+- Read `NEXT_STEPS.md` for the immediate execution queue.
+- Read `CLAUDE_PROJECT_MANAGER.md` when Claude is coordinating or preparing Codex packages.

@@ -1,151 +1,131 @@
 # PressureFlow Project Governance
 
-## Source Of Truth
+## Highest Authority
 
-This project folder contains the central coordination files for PressureFlow:
+Tony is PressureFlow's product owner and final decision-maker.
 
-- `PRESSUREFLOW_GOVERNANCE.md`
-- `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
-- `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
-- `PRESSUREFLOW_MASTER_STATUS.md`
-- `PRESSUREFLOW_AI_HANDOFF.md`
-- `# PressureFlow Project Governance.txt`
-- `# PressureFlow AI Handoff.txt`
-- `# PressureFlow Master Status.txt`
+This file is the highest standing project authority after Tony's explicit approved decisions. It defines decision hierarchy, AI role authority, architecture-change approval, product identity, priority order, and conflict resolution.
 
-These files should be updated after every major project milestone when their contents are affected.
-
-External advisors such as Claude, v0, and ChatGPT may provide recommendations, but implementation decisions must follow this governance file, the master status file, and the approved project roadmap.
-
----
+Repository code and test evidence determine implementation truth when status documentation is stale, but code does not override this governance file, approved product policy, or Tony's explicit decisions.
 
 ## Required Engineering and Product Standards
 
-- All future development packages must comply with `PRESSUREFLOW_ENGINEERING_STANDARDS.md`.
-- All future product decisions must align with `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
+- All development packages must comply with `PRESSUREFLOW_ENGINEERING_STANDARDS.md`.
+- All product decisions must align with `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`.
 - Package closeout reports must identify any exceptions.
-- These standards are mandatory unless explicitly overridden and documented.
-
----
+- These standards are mandatory unless Tony explicitly approves and documents an override.
 
 ## AI Roles
 
-### Codex
+### Tony
 
-Primary implementation engineer.
+Tony owns product vision, priority calls, release decisions, architecture approvals, major scope approvals, and governance changes.
 
-Responsibilities:
-
-- Write code
-- Refactor code
-- Run tests
-- Produce implementation reports
-- Review, adapt, and safely implement approved recommendations
-
-Must not:
-
-- Change architecture without approval
-- Skip testing on implementation work
-- Expand scope beyond the requested package
-- Blindly paste outside AI output into production code
-
-### v0
-
-UI and visual design consultant.
-
-Responsibilities:
-
-- Visual consistency
-- Layout recommendations
-- Component styling concepts
-- UI polish critique
-
-Must not:
-
-- Assume React, Next.js, Tailwind, shadcn, or Radix
-- Redesign workflows
-- Change backend architecture
-- Directly modify production code
+Tony resolves conflicts that cannot be settled by the active project documents.
 
 ### Claude
 
-UX consultant.
+Claude is PressureFlow's project manager and coordination layer.
 
-Responsibilities:
+Claude may:
 
-- Workflow review
-- User experience audit
-- Friction analysis
-- Onboarding recommendations
-- Copy and task-flow critique
+- Review repository state before planning.
+- Maintain the execution queue.
+- Prioritize approved work.
+- Prepare small Codex implementation packages.
+- Review Codex implementation reports, diffs, and test evidence.
+- Track risks, blockers, technical debt, and documentation drift.
+- Maintain or propose updates to project-management documentation.
+- Coordinate release-readiness reviews.
 
-Must not:
+Claude must not:
 
-- Directly drive implementation
-- Override the project roadmap
-- Modify production code
+- Directly modify production code unless Tony explicitly changes this governance later.
+- Silently expand scope.
+- Approve its own architecture changes.
+- Treat an implementation report as proof without verifying repository evidence.
+- Override Tony, this governance file, engineering standards, product principles, auth rules, tenant-isolation rules, or approved architecture.
 
-### ChatGPT / Project Chat
+Claude's detailed operating procedure lives in `CLAUDE_PROJECT_MANAGER.md`.
 
-Planning and decision control.
+### Codex
 
-Responsibilities:
+Codex is the lead implementation engineer and the sole AI authorized to directly modify production code.
 
-- Decide sequence and priority
-- Approve audit findings before implementation
-- Coordinate between Codex, Claude, and v0
+Codex may:
 
----
+- Implement approved code changes.
+- Refactor code within approved scope.
+- Run tests and diagnostics.
+- Produce implementation and closeout reports.
+- Review, adapt, and safely implement approved recommendations.
 
-## Current Status
+Codex must not:
 
-Completed:
+- Change architecture without approval.
+- Skip relevant verification on implementation work.
+- Expand scope beyond the approved package.
+- Redefine roadmap or product policy.
+- Blindly paste outside AI output into production code.
+- Weaken auth, validation, tenant isolation, integrations, persistence behavior, public token routes, or working workflows unless the approved task explicitly requires it.
 
-- Security Audit
-- Tenant Isolation Audit and priority fix
-- Validation Audit and priority backend validation fixes
-- Credential / Secrets Audit
-- Webhook Secret Hardening for Stripe and Square
-- Smoke Test Plan
-- Test-user readiness checks
-- UI Packages 01-06
-- Phase 06 email shell work
-- Pre-audit readiness
-- Audit environment finalization
-- Test account Google connection readiness
-- Packages 07A-4A through 07A-4D
-- Package 07B-1 multi-tenant security audit
-- Package 07B-2 webhook and external integration security audit
-- Package 07C-1 environment and deployment readiness audit
-- Package 07C-2 backup, recovery, and data safety audit
-- Package 07C-3 operational monitoring and error visibility
-- Central AI Handoff file
+### v0
 
-Current Phase:
+v0 is a UI and visual design advisor.
 
-- Approved Claude UX packages through 07A-4D are complete locally.
-- Dedicated beta security/readiness packages through 07C-3 are complete locally.
-- Phase 07D deployment sandbox verification has reached the 07D-6 go decision. The deployed `/health` endpoint now returns the latest readiness payload after Render environment updates/redeploy, and 07D-1 core app, 07D-2 public workflow, 07D-3 deployed Mapbox, 07D-4 deployed webhook fail-closed checks, and 07D-5 restart/redeploy persistence proof passed. Stripe/Square valid provider webhook acceptance is still pending and must remain documented as a beta limitation. Phase 08 may begin with a limited 3-5 contractor founder-led beta focused on real workflow validation.
-- During Phase 08, do not start speculative expansion packages unless real beta usage exposes a blocker. Avoid QuickBooks, SMS, team permissions, AI quoting, route optimization, large scheduling overhaul, customer portals, inventory, payroll, franchise support, and similar expansion work until beta feedback shows a repeated need.
-- Deployment verification should use `PRESSUREFLOW_DEPLOYMENT_CHECKLIST.md`, `PRESSUREFLOW_BACKUP_RECOVERY.md`, `PRESSUREFLOW_OPERATIONS_RUNBOOK.md`, and `PRESSUREFLOW_SANDBOX_VERIFICATION.md`.
+v0 may provide visual consistency findings, layout recommendations, styling concepts, component mockups, and UI polish critique.
 
----
+v0 must not assume React, Next.js, Tailwind, shadcn, Radix, or any framework migration. v0 output is advisory and must be reviewed and converted into an approved Codex package before production code changes.
 
-## Decision Hierarchy
+### ChatGPT and Other AI Systems
 
-1. Project Governance
-2. Master Status
-3. AI Handoff
-4. Codex implementation reports
-5. Approved v0/Claude recommendations
+ChatGPT and other AI systems may assist with planning, analysis, research, or specialist recommendations.
 
-If two AI systems disagree:
+Their output is advisory unless Tony explicitly approves it into the project authority model. They must not directly modify production code or override the repository authority defined here.
 
-- Follow this Project Governance file first.
-- Do not implement until the conflict is resolved.
-- Stability, security, tenant isolation, credential safety, and existing production workflows take priority over UI polish.
+## Document Authority Order
 
----
+When documents, chats, recommendations, or implementation reports conflict, follow this order:
+
+1. Tony's explicit approved decision
+2. `PRESSUREFLOW_GOVERNANCE.md`
+3. `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
+4. `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
+5. `PRESSUREFLOW_MASTER_STATUS.md`
+6. `NEXT_STEPS.md`
+7. `PRESSUREFLOW_AI_HANDOFF.md`
+8. `CLAUDE_PROJECT_MANAGER.md` for Claude's operating procedure
+9. Approved implementation package
+10. Codex implementation report and repository evidence
+11. Advisory output from v0 or other AI systems
+
+Repository code and tests are the final evidence of what is implemented. They do not override governance, approved architecture, or product policy.
+
+## Document Responsibilities
+
+- `README.md`: product overview, current capabilities, high-level architecture, local startup, and links.
+- `PRESSUREFLOW_GOVERNANCE.md`: authority, AI roles, approval rules, priority order, and conflict resolution.
+- `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`: product philosophy, simplicity rules, pressure-washing focus, and feature-evaluation rules.
+- `PRESSUREFLOW_ENGINEERING_STANDARDS.md`: coding, testing, root-cause, and implementation-closeout rules.
+- `PRESSUREFLOW_MASTER_STATUS.md`: current implementation, verification, risks, incomplete work, and release state.
+- `NEXT_STEPS.md`: short immediate execution queue.
+- `PRESSUREFLOW_AI_HANDOFF.md`: AI onboarding context, stack, workflows, subsystems, boundaries, testing expectations, and operational constraints.
+- `CLAUDE_PROJECT_MANAGER.md`: Claude's project-management operating procedure.
+- Operations documents: deployment, recovery, sandbox verification, and runbook procedures.
+- Archive documents: historical context only, not active authority.
+
+Duplicate legacy `.txt` coordination files are archival only and are not mandatory sources of truth.
+
+## Priority Order
+
+1. Stability and test-user readiness
+2. Tenant isolation/security
+3. Core workflow speed
+4. Mobile usability
+5. UI polish
+6. New feature building
+
+If a recommendation conflicts with stability, security, tenant isolation, credential safety, or existing production workflows, pause and ask for approval before implementation.
 
 ## Product Identity Rule
 
@@ -165,32 +145,48 @@ Avoid drifting into a generic CRM, generic field-service platform, bloated enter
 
 Adjacent trades and new verticals may be considered only when they share the core PressureFlow workflow. Any new trade should share at least 80% of the existing workflow and must not require rebuilding the product.
 
----
-
 ## Architecture
 
-Current Stack:
+Current stack:
 
-- HTML
-- CSS
-- Vanilla JavaScript
-- Node.js backend
-- Local JSON storage by default
+- Plain HTML in `index.html`
+- CSS in `styles.css`
+- Vanilla browser JavaScript in `app.js`
+- Node.js in `server.js` and modular backend files
+- Local JSON persistence by default
 - Supabase/Postgres when `DATABASE_URL` is configured
+- Playwright browser regression tests
 
 Not using:
 
-- Next.js
 - React
+- Next.js
 - Tailwind
 - shadcn
 - Radix
 
-Any recommendation assuming those technologies must be adapted before implementation.
+No framework migration is approved. Any recommendation assuming those technologies must be adapted before implementation.
 
----
+The application supports an owner workspace and isolated invited-user workspaces. It is not yet a complete self-service multi-tenant SaaS.
 
-## Audit Environment Requirements
+## Approval Gates
+
+Tony must approve before any AI recommends, coordinates, or implements:
+
+- Framework migration
+- Major schema redesign
+- Removal or replacement of a working subsystem
+- Authentication model changes
+- Tenant-isolation model changes
+- Payment-flow changes with financial implications
+- Major third-party integration replacement
+- Broad product repositioning
+- Expansion into a materially different trade or workflow
+- Destructive migration or data deletion
+- Governance changes
+- Production release when material verification is incomplete
+
+## Audit and Sandbox Environment Requirements
 
 Required for audit map/geocoding flows:
 

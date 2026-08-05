@@ -801,12 +801,12 @@ async function testEmailDeliveryCanBeSkippedForBrowserSmoke() {
   try {
     await assert.rejects(
       () => sendCustomerEmail({ emailSendProvider: "google" }, {
-        to: "customer@example.com",
-        subject: "Smoke",
-        textBody: "Smoke",
-        htmlBody: "<p>Smoke</p>"
-      }),
-      /Google Calendar is not connected/
+      to: "customer@example.com",
+      subject: "Smoke",
+      textBody: "Smoke",
+      htmlBody: "<p>Smoke</p>"
+    }),
+      /Google\/Gmail is not connected/
     );
 
     process.env.PRESSUREFLOW_AUDIT_GOOGLE_MOCK = "true";
