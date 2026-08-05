@@ -91,13 +91,14 @@ When documents, chats, recommendations, or implementation reports conflict, foll
 2. `PRESSUREFLOW_GOVERNANCE.md`
 3. `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`
 4. `PRESSUREFLOW_ENGINEERING_STANDARDS.md`
-5. `PRESSUREFLOW_MASTER_STATUS.md`
-6. `NEXT_STEPS.md`
-7. `PRESSUREFLOW_AI_HANDOFF.md`
-8. `CLAUDE_PROJECT_MANAGER.md` for Claude's operating procedure
-9. Approved implementation package
-10. Codex implementation report and repository evidence
-11. Advisory output from v0 or other AI systems
+5. `PRESSUREFLOW_ROADMAP.md` for long-horizon phase and sequencing
+6. `PRESSUREFLOW_MASTER_STATUS.md`
+7. `NEXT_STEPS.md`
+8. `PRESSUREFLOW_AI_HANDOFF.md`
+9. `CLAUDE_PROJECT_MANAGER.md` for Claude's operating procedure
+10. Approved implementation package
+11. Codex implementation report and repository evidence
+12. Advisory output from v0 or other AI systems
 
 Repository code and tests are the final evidence of what is implemented. They do not override governance, approved architecture, or product policy.
 
@@ -107,6 +108,7 @@ Repository code and tests are the final evidence of what is implemented. They do
 - `PRESSUREFLOW_GOVERNANCE.md`: authority, AI roles, approval rules, priority order, and conflict resolution.
 - `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`: product philosophy, simplicity rules, pressure-washing focus, and feature-evaluation rules.
 - `PRESSUREFLOW_ENGINEERING_STANDARDS.md`: coding, testing, root-cause, and implementation-closeout rules.
+- `PRESSUREFLOW_ROADMAP.md`: long-horizon phased plan from current beta state to full production and mass distribution, phase exit gates, and which future work requires Tony's approval before scoping.
 - `PRESSUREFLOW_MASTER_STATUS.md`: current implementation, verification, risks, incomplete work, and release state.
 - `NEXT_STEPS.md`: short immediate execution queue.
 - `PRESSUREFLOW_AI_HANDOFF.md`: AI onboarding context, stack, workflows, subsystems, boundaries, testing expectations, and operational constraints.

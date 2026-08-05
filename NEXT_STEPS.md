@@ -2,23 +2,22 @@
 
 ## Current Objective
 
-Establish the first Claude-managed execution queue from verified repository state, tester feedback, known issues, and current business goals.
+Advance Phase 1 (Founder-Led Beta) of `PRESSUREFLOW_ROADMAP.md` to its exit gate.
 
 ## Current Phase
 
-Post-governance-transition project management. Production code remains unchanged by the governance transition.
+Roadmap Phase 1 - Founder-Led Beta. Production code remains unchanged pending the next approved Codex package.
 
 ## Immediate Priorities
 
-1. Select the next product-development priority from verified tester feedback, known issues, and current business goals.
-2. Have Claude prepare the first Codex implementation package using the approved template.
-3. Have Codex implement only the approved package scope.
-4. Have Claude review Codex's diff, report, and test evidence before marking the package complete.
-5. Update the authoritative status and queue documents after completion.
+1. Obtain proof of live Stripe or Square provider webhook acceptance in production (an actual received, verified, processed webhook event) - the last open Phase 1 exit-gate item per `PRESSUREFLOW_ROADMAP.md`.
+2. Confirm a documented cadence for re-running the full regression suite (`npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, `npm.cmd run test:browser`) after future changes.
+3. Track any flow-breaking bugs reported by the 3-5 beta testers and clear them before Phase 1 is considered complete.
+4. Once Phase 1's exit gate is met, bring Phase 2 (Production Hardening) workstreams to Tony for sequencing.
 
 ## Current Blockers
 
-- The current product-development priority after the handoff must be selected from verified tester feedback, known issues, and current business goals.
+- Live Stripe/Square provider webhook acceptance is unproven; needs sandbox/live provider credentials and a real webhook event to test against, not just code review.
 
 ## Acceptance Conditions
 
@@ -28,6 +27,7 @@ Post-governance-transition project management. Production code remains unchanged
 - Current status, immediate priorities, and AI operating procedures each have one authoritative owner.
 - Claude can onboard from the repository without relying on prior chats.
 - Baseline verification after the governance transition is complete.
+- Work stays mapped to the current active roadmap phase; anything else is flagged as scope drift before being packaged.
 
 ## Explicitly Deferred
 

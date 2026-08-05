@@ -48,6 +48,7 @@ http://localhost:3000
 ## Useful Files
 
 - `PRESSUREFLOW_GOVERNANCE.md` - project authority, decision hierarchy, AI roles, and approval rules
+- `PRESSUREFLOW_ROADMAP.md` - approved phased roadmap, exit gates, and long-horizon sequencing
 - `CLAUDE_PROJECT_MANAGER.md` - Claude's project-management operating manual
 - `PRESSUREFLOW_MASTER_STATUS.md` - current implementation, verification, risks, and readiness state
 - `NEXT_STEPS.md` - immediate execution queue

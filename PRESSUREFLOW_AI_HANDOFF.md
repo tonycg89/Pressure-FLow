@@ -5,6 +5,7 @@ This file is the repository onboarding context for AI systems working on Pressur
 Governance, current state, and immediate execution are owned by separate documents:
 
 - Governance: `PRESSUREFLOW_GOVERNANCE.md`
+- Roadmap: `PRESSUREFLOW_ROADMAP.md`
 - Current status: `PRESSUREFLOW_MASTER_STATUS.md`
 - Immediate queue: `NEXT_STEPS.md`
 - Claude operating procedure: `CLAUDE_PROJECT_MANAGER.md`
@@ -202,5 +203,6 @@ Claude must review test evidence and diffs before marking implementation package
 ## 11. Where to Go Next
 
 - Read `PRESSUREFLOW_MASTER_STATUS.md` for current implementation, verification, risks, incomplete work, and release/readiness state.
+- Read `PRESSUREFLOW_ROADMAP.md` for the active phase, long-horizon sequencing, and phase exit gates.
 - Read `NEXT_STEPS.md` for the immediate execution queue.
 - Read `CLAUDE_PROJECT_MANAGER.md` when Claude is coordinating or preparing Codex packages.
