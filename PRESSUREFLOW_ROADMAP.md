@@ -29,9 +29,10 @@ Objective: prove the core workflow end-to-end with a handful of contractors Tony
 
 Exit gate:
 
-- Stripe or Square live provider webhook acceptance proven in production: an actual received, verified, processed webhook event, not just signature-verification code.
 - Full regression suite green after any change, on a documented cadence.
 - No open flow-breaking bugs reported by the 3-5 beta testers.
+
+Live Stripe/Square provider webhook acceptance is deferred (see Roadmap Amendments) and is no longer a Phase 1 exit-gate item. Beta continues on manual payment recording, consistent with the existing 07D-6 go decision in `PRESSUREFLOW_MASTER_STATUS.md`.
 
 No new architecture is required. This phase is about finishing what is already marked pending.
 
@@ -41,6 +42,7 @@ Objective: close the risks that are fine for a handful of hand-held testers but 
 
 Workstreams:
 
+- Configure and prove live Stripe or Square provider webhook acceptance (an actual received, verified, processed webhook event, not just signature-verification code) before real digital payment processing goes live and manual payment recording is retired. Not tied to a fixed phase deadline - do this whenever payments are actually about to start flowing through Stripe/Square, even if that happens earlier or later than the rest of Phase 2.
 - Move Google OAuth out of Testing mode into a published production consent screen.
 - Encrypt credentials at rest, including SMTP passwords and Square/Stripe tokens currently stored in plain settings.
 - Second tenant-isolation audit pass, specifically re-testing account-scoping logic in `workspace.js` under concurrent multi-account load.
@@ -94,3 +96,7 @@ Workstreams are deliberately vague until Phases 1-4 are real: marketing/signup f
 ## Current Active Phase
 
 **Phase 1 - Founder-Led Beta.** See `NEXT_STEPS.md` for the current execution queue against this phase's exit gate.
+
+## Roadmap Amendments
+
+- 2026-08-05: Tony deferred live Stripe/Square provider webhook verification out of the Phase 1 exit gate. It is not needed while the beta runs on manual payment recording. It moves to Phase 2 as a workstream gated on "before real digital payments go live," not on completing the rest of Phase 2's other items.

@@ -10,14 +10,16 @@ Roadmap Phase 1 - Founder-Led Beta. Production code remains unchanged pending th
 
 ## Immediate Priorities
 
-1. Obtain proof of live Stripe or Square provider webhook acceptance in production (an actual received, verified, processed webhook event) - the last open Phase 1 exit-gate item per `PRESSUREFLOW_ROADMAP.md`.
-2. Confirm a documented cadence for re-running the full regression suite (`npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, `npm.cmd run test:browser`) after future changes.
-3. Track any flow-breaking bugs reported by the 3-5 beta testers and clear them before Phase 1 is considered complete.
-4. Once Phase 1's exit gate is met, bring Phase 2 (Production Hardening) workstreams to Tony for sequencing.
+1. Track any flow-breaking bugs reported by the 3-5 beta testers and clear them before Phase 1 is considered complete - the one remaining open Phase 1 exit-gate item.
+2. Once Phase 1's exit gate is met, bring Phase 2 (Production Hardening) workstreams to Tony for sequencing.
+
+Live Stripe/Square provider webhook verification is deferred out of Phase 1 (see `PRESSUREFLOW_ROADMAP.md` Roadmap Amendments, 2026-08-05). It is now a Phase 2 workstream gated on "before real digital payments go live," not a current blocker. Beta continues on manual payment recording per the existing 07D-6 go decision.
+
+The full regression suite (`npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, `npm.cmd run test:browser`) is already the standard verification required for every package per `PRESSUREFLOW_ENGINEERING_STANDARDS.md` - no separate cadence decision is needed.
 
 ## Current Blockers
 
-- Live Stripe/Square provider webhook acceptance is unproven; needs sandbox/live provider credentials and a real webhook event to test against, not just code review.
+- None open. Phase 1 is waiting on real beta usage/tester feedback rather than any pending setup task.
 
 ## Acceptance Conditions
 
