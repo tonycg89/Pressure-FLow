@@ -50,6 +50,7 @@ Current implemented capabilities include:
 
 Recent verified work includes:
 
+- Product narrowed to pressure-washing-only: onboarding, service catalog, and scheduling instructions no longer offer Landscaping/Handyman/Construction paths (Package 002, commit `d91c672`). Legacy accounts with a stored non-pressure-washing `serviceIndustry` value still load without error and normalize to Pressure Washing.
 - Post-governance-transition baseline verification.
 - Tenant isolation/security audit and priority fixes.
 - Validation and sanitization audit and priority backend validation fixes.
