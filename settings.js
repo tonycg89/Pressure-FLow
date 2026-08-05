@@ -31,6 +31,7 @@ function publicSettings(settings, options = {}) {
   const publicValues = omitPrivateSettings(settings);
   const values = {
     ...publicValues,
+    serviceIndustry: normalizeServiceIndustry(settings.serviceIndustry),
     customTemplates: getTemplateMetadata(settings.customTemplates || []),
     hasSquareAccessToken: Boolean(settings.squareAccessToken),
     hasSquareWebhookSignatureKey: Boolean(settings.squareWebhookSignatureKey),
@@ -286,7 +287,7 @@ function normalizeServiceUnit(value) {
 
 function normalizeServiceIndustry(value) {
   const industry = String(value || "").trim();
-  return ["Pressure Washing", "Landscaping", "Handyman", "Construction", "Misc"].includes(industry) ? industry : "";
+  return industry === "Pressure Washing" ? industry : "Pressure Washing";
 }
 
 function normalizeMoneyNumber(value, min, max) {

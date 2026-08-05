@@ -10,8 +10,9 @@ Roadmap Phase 1 - Founder-Led Beta. Production code remains unchanged pending th
 
 ## Immediate Priorities
 
-1. Track any flow-breaking bugs reported by the 3-5 beta testers and clear them before Phase 1 is considered complete - the one remaining open Phase 1 exit-gate item.
-2. Once Phase 1's exit gate is met, bring Phase 2 (Production Hardening) workstreams to Tony for sequencing.
+1. Package 002: narrow onboarding, service catalog, and scheduling instructions to pressure-washing-only, removing the Landscaping/Handyman/Construction industry paths that drifted from `PRESSUREFLOW_PRODUCT_PRINCIPLES.md`. Approved by Tony 2026-08-05.
+2. Track any flow-breaking bugs reported by the 3-5 beta testers and clear them before Phase 1 is considered complete - the one remaining open Phase 1 exit-gate item.
+3. Once Phase 1's exit gate is met, bring Phase 2 (Production Hardening) workstreams to Tony for sequencing.
 
 Live Stripe/Square provider webhook verification is deferred out of Phase 1 (see `PRESSUREFLOW_ROADMAP.md` Roadmap Amendments, 2026-08-05). It is now a Phase 2 workstream gated on "before real digital payments go live," not a current blocker. Beta continues on manual payment recording per the existing 07D-6 go decision.
 

@@ -28,18 +28,18 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.locator("#settingsDialog")).toBeVisible();
   await expect(page.locator("#settingsForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
-  await expect(page.locator("#settingsForm [name='serviceIndustry']")).toHaveValue("Landscaping");
+  await expect(page.locator("#settingsForm [name='serviceIndustry']")).toHaveCount(0);
   await expect(page.locator("#settingsForm [name='defaultDepositPercent']")).toHaveValue("30");
   await expect(page.locator("#settingsForm [name='emailSendProvider']")).toHaveValue("smtp");
 
   await page.locator("#settingsDialog details.onboarding-settings").click();
-  await expect(page.locator("#onboardingServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
-  await expect(page.locator("#onboardingServiceList [data-onboarding-service='Hedge Trimming'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingServiceList [data-onboarding-service='Pressure Washing'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingServiceList [data-onboarding-service='Driveway Cleaning'] input[type='checkbox']")).toBeChecked();
 
   await page.getByRole("button", { name: "Open Setup Wizard" }).click();
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
   await expect(page.locator("#onboardingForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
-  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).toHaveValue("Landscaping");
+  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).toHaveCount(0);
   await expect(page.locator("#onboardingForm [name='customerSegment']")).toHaveValue("both");
   await expect(page.locator("#onboardingForm [name='onboardingServiceScope']")).toHaveValue("recommended");
   await expect(page.locator("#onboardingForm [name='zellePayment']")).toHaveCount(0);
@@ -47,11 +47,37 @@ test("new tester completes onboarding and saves service defaults", async ({ page
   await expect(page.locator("#onboardingForm [data-onboarding-panel='0']")).toBeVisible();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeHidden();
   await page.locator("#onboardingNextButton").click();
-  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Pressure Washing");
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Pressure Washing'] input[type='checkbox']")).toBeChecked();
   await page.locator("#onboardingBackButton").click();
   await expect(page.locator("#onboardingForm [name='businessName']")).toHaveValue("Johnson Exterior Cleaning");
   await expect(page.locator("#onboardingLogoPreview")).toBeVisible();
+});
+
+test("legacy non-pressure-washing industry account loads without error", async ({ page }) => {
+  await seedSettings({
+    businessName: "Legacy Lawn Care",
+    serviceIndustry: "Landscaping",
+    onboardingCompleted: true
+  });
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(TEST_USER.email);
+  await page.getByLabel("Password").fill(TEST_USER.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await expect(page.locator("#sidebarBusinessName")).toHaveText("Legacy Lawn Care");
+  await expect(page.getByRole("heading", { name: "Set up your workspace" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#settingsDialog")).toBeVisible();
+  await expect(page.locator("#settingsForm [name='serviceIndustry']")).toHaveCount(0);
+  const settingsResponse = await page.request.get("/api/settings");
+  expect(settingsResponse.ok()).toBeTruthy();
+  const { settings } = await settingsResponse.json();
+  expect(settings.serviceIndustry).toBe("Pressure Washing");
+  expect(pageErrors).toEqual([]);
 });
 
 test("tester creates customer and job, sends estimate, and opens public estimate link", async ({ page, context }) => {
@@ -79,13 +105,13 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await expect(page.locator("#jobForm [name='email']")).toHaveValue("alex.rivera@example.com");
   await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
   const lineItem = page.locator("#lineItems .line-item-row").first();
-  await lineItem.locator(".line-service").selectOption("Lawn Mowing");
+  await lineItem.locator(".line-service").selectOption("Pressure Washing");
   await lineItem.locator(".line-quantity").fill("1000");
   await expect(lineItem.locator(".line-item-total span")).toHaveText("Line total");
   const lineItemText = await lineItem.innerText();
   expect(lineItemText).toContain("Rate (per SqFt)");
-  await expect(lineItem.locator(".line-rate")).toHaveValue("0.04");
-  await expect(page.locator("#estimateTotal")).toHaveText("$40.00");
+  await expect(lineItem.locator(".line-rate")).toHaveValue("0.2");
+  await expect(page.locator("#estimateTotal")).toHaveText("$200.00");
   await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
   await expect(page.locator("#jobDialog")).toBeHidden();
   const jobToast = page.locator(".toast").filter({ hasText: "Job created successfully." });
@@ -108,10 +134,10 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await publicPage.goto(job.estimateApprovalUrl);
   await expect(publicPage.getByRole("heading", { name: /Driveway cleaning for Alex Rivera/ })).toBeVisible();
   const servicesIncluded = publicPage.locator(".doc-line-list[aria-label='Services included']");
-  await expect(servicesIncluded).toContainText("Lawn Mowing");
+  await expect(servicesIncluded).toContainText("Pressure Washing");
   await expect(servicesIncluded).toContainText("1000 SqFt");
-  await expect(servicesIncluded).toContainText("$0.04 / SqFt");
-  await expect(servicesIncluded).toContainText("$40.00");
+  await expect(servicesIncluded).toContainText("$0.20 / SqFt");
+  await expect(servicesIncluded).toContainText("$200.00");
   await expect(publicPage.getByText("Estimate Only, not an actual Invoice.")).toBeVisible();
   await expect(publicPage.getByText("Estimate not found")).toHaveCount(0);
 });
@@ -121,7 +147,7 @@ test("custom Other job title saves and pool services are absent from selectable 
 
   await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.locator("#settingsDialog")).toBeVisible();
-  await expect(page.locator("#settingsForm [name='serviceIndustry']")).not.toContainText("Pool Service");
+  await expect(page.locator("#settingsForm [name='serviceIndustry']")).toHaveCount(0);
   await page.locator("#settingsDialog details.onboarding-settings").click();
   await expect(page.locator("#onboardingServiceList")).not.toContainText(/Pool|pool/);
   await page.locator("#settingsForm [name='zellePayment']").fill("casey-payments@example.com");
@@ -261,11 +287,10 @@ async function loginAndCompleteOnboarding(page) {
 
   await expect(page.getByRole("heading", { name: "Set up your workspace" })).toBeVisible();
   await expect(page.locator("#onboardingForm [name='businessName']")).toHaveAttribute("placeholder", "e.g. Johnson Exterior Cleaning");
-  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).not.toContainText("Pool Service");
+  await expect(page.locator("#onboardingForm [name='serviceIndustry']")).toHaveCount(0);
   await expect(page.locator("#onboardingWizardStatus")).toHaveText("Add the business basics that appear on estimates, invoices, and customer messages.");
 
   await page.locator("#onboardingForm [name='businessName']").fill("Johnson Exterior Cleaning");
-  await page.locator("#onboardingForm [name='serviceIndustry']").selectOption("Landscaping");
   await page.locator("#onboardingForm [name='customerSegment']").selectOption("both");
   await page.locator("#onboardingForm [name='onboardingServiceScope']").selectOption("recommended");
   await page.locator("#onboardingForm [name='businessEmail']").fill("owner@johnson.test");
@@ -280,17 +305,17 @@ async function loginAndCompleteOnboarding(page) {
   await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='1']")).toBeVisible();
   await expect(page.locator("#onboardingWizardStatus")).toHaveText("Choose the services and starter rates this account should use for new estimates.");
-  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Landscaping");
+  await expect(page.locator("#onboardingWizardServiceList details.service-category").first().locator("summary span")).toHaveText("Pressure Washing");
   await expect(page.locator("#onboardingWizardServiceList")).not.toContainText(/Pool|pool/);
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).toBeChecked();
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Sprinkler Repair'] input[type='checkbox']")).not.toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Pressure Washing'] input[type='checkbox']")).toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList")).not.toContainText(/Landscaping|Handyman|Construction|Lawn Mowing|Sprinkler Repair/);
   const firstCategory = page.locator("#onboardingWizardServiceList details.service-category").first();
   await firstCategory.getByRole("button", { name: "Select All", exact: true }).click();
   await firstCategory.getByRole("button", { name: "Unselect All", exact: true }).click();
-  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Lawn Mowing'] input[type='checkbox']")).not.toBeChecked();
+  await expect(page.locator("#onboardingWizardServiceList [data-onboarding-service='Pressure Washing'] input[type='checkbox']")).not.toBeChecked();
   await firstCategory.getByRole("button", { name: "Select All", exact: true }).click();
-  await checkOnboardingService(page, "Lawn Mowing");
-  await checkOnboardingService(page, "Hedge Trimming");
+  await checkOnboardingService(page, "Pressure Washing");
+  await checkOnboardingService(page, "Driveway Cleaning");
   await page.locator("#onboardingNextButton").click();
   await expect(page.locator("#onboardingForm [data-onboarding-panel='2']")).toBeVisible();
   await expect(page.locator("#onboardingWizardStatus")).toHaveText("Customers need at least one payment option before invoices are sent. Add options from Settings when setup is complete.");
@@ -362,6 +387,30 @@ async function resetTestData() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }], null, 2));
+}
+
+async function seedSettings(overrides = {}) {
+  const seededSettings = {
+    businessName: "",
+    businessEmail: "",
+    businessPhone: "",
+    serviceIndustry: "",
+    customerSegment: "",
+    onboardingServiceScope: "",
+    onboardingCompleted: false,
+    customServices: [],
+    customServiceTypes: [],
+    customPhotoSections: [],
+    customTemplates: [],
+    ...overrides
+  };
+  await fs.writeFile(path.join(DATA_DIR, "settings.local.json"), JSON.stringify(seededSettings, null, 2));
+  const usersPath = path.join(DATA_DIR, "users.json");
+  const users = JSON.parse(await fs.readFile(usersPath, "utf8"));
+  const updatedUsers = users.map((user) => user.id === TEST_USER.id
+    ? { ...user, settings: { ...(user.settings || {}), ...seededSettings } }
+    : user);
+  await fs.writeFile(usersPath, JSON.stringify(updatedUsers, null, 2));
 }
 
 function hashPassword(password) {

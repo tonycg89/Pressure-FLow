@@ -77,35 +77,13 @@ function getDayOfServiceInstructions(settings = {}) {
     "Move vehicles, personal items, and fragile belongings away from the work area.",
     "Point out any known sensitive areas, existing damage, or special instructions before work begins."
   ];
-  const industryInstructions = {
-    "Pressure Washing": [
-      "Close all windows and doors before service begins.",
-      "Keep pets and children away from areas that may receive water runoff or overspray.",
-      "Confirm exterior water access is available if water is required for the service."
-    ],
-    Landscaping: [
-      "Clear toys, hoses, pet waste, and loose items from lawn or landscape areas.",
-      "Mark sprinkler heads, shallow lines, or delicate plants that need extra care.",
-      "Secure pets indoors or away from gates and work areas."
-    ],
-    Handyman: [
-      "Clear furniture or belongings from the work area before arrival.",
-      "Have replacement parts, fixtures, paint, or approved materials ready if the job depends on them.",
-      "Confirm access to electrical panels, shutoffs, or rooms needed for the repair."
-    ],
-    Construction: [
-      "Clear the work area and nearby pathways before the crew arrives.",
-      "Keep children, pets, and bystanders away from active work areas.",
-      "Confirm parking, material drop-off, and access instructions before arrival."
-    ],
-    Misc: [
-      "Clear a safe path to the service area before arrival.",
-      "Separate or label any items that should not be moved, cleaned, hauled, or serviced.",
-      "Confirm parking, entry, or loading instructions before the scheduled window."
-    ]
-  };
+  const pressureWashingInstructions = [
+    "Close all windows and doors before service begins.",
+    "Keep pets and children away from areas that may receive water runoff or overspray.",
+    "Confirm exterior water access is available if water is required for the service."
+  ];
 
-  return [...shared, ...(industryInstructions[settings.serviceIndustry] || industryInstructions.Misc)];
+  return [...shared, ...pressureWashingInstructions];
 }
 
 function addMinutesToLocalDateTime(value, minutes) {

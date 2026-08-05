@@ -484,7 +484,7 @@ function testSettingsVisibilityAndValidation() {
   }, {});
 
   assert.equal(ownerSettings.businessEmail, "");
-  assert.equal(ownerSettings.serviceIndustry, "Landscaping");
+  assert.equal(ownerSettings.serviceIndustry, "Pressure Washing");
   assert.equal(ownerSettings.defaultDepositEnabled, false);
   assert.equal(ownerSettings.smtpFromEmail, "sender@example.com");
   assert.equal(ownerSettings.googleRedirectUri, undefined);
@@ -494,13 +494,15 @@ function testSettingsVisibilityAndValidation() {
   assert.equal(ownerSettings.customServiceTypes[0].length, 100);
 
   const invalidIndustrySettings = normalizeSettings({ serviceIndustry: "Window<script>" }, {});
-  assert.equal(invalidIndustrySettings.serviceIndustry, "");
+  assert.equal(invalidIndustrySettings.serviceIndustry, "Pressure Washing");
 
   const customDayInstructions = normalizeSettings({
     dayOfServiceInstructions: "- Clear the driveway\n* Meet the crew at the gate"
   }, {});
   assert.deepEqual(getDayOfServiceInstructions(customDayInstructions), ["Clear the driveway", "Meet the crew at the gate"]);
-  assert.ok(getDayOfServiceInstructions({ serviceIndustry: "Landscaping" }).some((item) => item.includes("sprinkler")));
+  const legacyDayInstructions = getDayOfServiceInstructions({ serviceIndustry: "Landscaping" });
+  assert.ok(legacyDayInstructions.some((item) => item.includes("windows and doors")));
+  assert.ok(!legacyDayInstructions.some((item) => item.includes("sprinkler")));
 
   const publicValues = publicSettings(ownerSettings, { hidePlatformCredentials: true });
   assert.equal(publicValues.squareAccessToken, undefined);

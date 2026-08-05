@@ -451,7 +451,6 @@ async function init() {
   customServiceForm?.addEventListener("submit", addCustomService);
   onboardingForm?.addEventListener("submit", saveOnboardingSetup);
   skipOnboardingButton?.addEventListener("click", finishOnboardingLater);
-  onboardingForm?.elements.serviceIndustry?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.customerSegment?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.onboardingServiceScope?.addEventListener("change", () => renderOnboardingWizardServices());
   onboardingForm?.elements.defaultDepositEnabled?.addEventListener("change", syncOnboardingDepositVisibility);
@@ -755,10 +754,6 @@ function isDeprecatedPoolSelectableName(name) {
 
 function getDefaultEstimateService(customServices = []) {
   const industryServices = customServices.filter((service) => service.source === "onboarding");
-  if (settings.serviceIndustry && settings.serviceIndustry !== "Pressure Washing" && industryServices.length) {
-    return industryServices[0];
-  }
-
   return serviceCatalog.find((service) => service.name === "Pressure Washing") || industryServices[0] || serviceCatalog[0];
 }
 
@@ -845,7 +840,7 @@ function renderOnboardingServices() {
 function renderOnboardingWizardServices() {
   if (!onboardingWizardServiceList) return;
 
-  renderServicePicker(onboardingWizardServiceList, onboardingForm?.elements.serviceIndustry?.value || settings.serviceIndustry || "", {
+  renderServicePicker(onboardingWizardServiceList, "Pressure Washing", {
     customerSegment: onboardingForm?.elements.customerSegment?.value || settings.customerSegment || "residential",
     seedServices: !settings.onboardingCompleted,
     serviceScope: onboardingForm?.elements.onboardingServiceScope?.value || settings.onboardingServiceScope || "recommended"
@@ -1232,7 +1227,6 @@ function fillOnboardingForm() {
   if (!onboardingForm) return;
 
   onboardingForm.elements.businessName.value = settings.businessName || "";
-  onboardingForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
   onboardingForm.elements.customerSegment.value = settings.customerSegment || "residential";
   onboardingForm.elements.onboardingServiceScope.value = settings.onboardingServiceScope || "recommended";
   onboardingForm.elements.businessEmail.value = settings.businessEmail || "";
@@ -1323,6 +1317,7 @@ async function saveOnboardingSetup(event) {
     ...settings,
     ...Object.fromEntries(new FormData(onboardingForm).entries())
   };
+  payload.serviceIndustry = "Pressure Washing";
   payload.defaultDepositEnabled = payload.defaultDepositEnabled !== "false";
   payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
   if (!payload.defaultDepositEnabled) {
@@ -1366,7 +1361,7 @@ async function finishOnboardingLater() {
   if (!onboardingDialog) return;
 
   try {
-    const data = await apiRequest("/api/settings", { ...settings, onboardingCompleted: true });
+    const data = await apiRequest("/api/settings", { ...settings, serviceIndustry: "Pressure Washing", onboardingCompleted: true });
     settings = data.settings;
     syncServiceCatalog();
     applySettingsDefaults();
@@ -1397,7 +1392,6 @@ function fillSettingsForm() {
   settingsForm.elements.businessName.value = settings.businessName || "";
   settingsForm.elements.businessEmail.value = settings.businessEmail || "";
   settingsForm.elements.businessPhone.value = settings.businessPhone || "";
-  settingsForm.elements.serviceIndustry.value = settings.serviceIndustry || "";
   settingsForm.elements.defaultDepositPercent.value = settings.defaultDepositPercent ?? 25;
   settingsForm.elements.defaultJobDurationMinutes.value = settings.defaultJobDurationMinutes || 180;
   settingsForm.elements.zellePayment.value = settings.zellePayment || "";
@@ -1522,6 +1516,7 @@ async function saveSettings(event) {
 
   event.preventDefault();
   const payload = Object.fromEntries(new FormData(settingsForm).entries());
+  payload.serviceIndustry = "Pressure Washing";
   payload.defaultDepositPercent = Number(payload.defaultDepositPercent);
   payload.defaultJobDurationMinutes = Number(payload.defaultJobDurationMinutes);
   payload.businessLogoDataUrl = settings.businessLogoDataUrl || "";
