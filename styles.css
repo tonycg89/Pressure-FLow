@@ -381,8 +381,8 @@ button {
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin: 26px 0;
+  gap: 16px;
+  margin: 24px 0;
 }
 
 .stat-card,
@@ -403,9 +403,10 @@ button {
 .metrics span {
   display: block;
   color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+  text-transform: uppercase;
 }
 
 .stat-card__value,
@@ -464,13 +465,14 @@ label.compact-select {
 
 .dashboard-header {
   align-items: end;
-  padding-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
 .dashboard-title {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 32px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
 }
 
 .dashboard-subtitle {
@@ -1028,13 +1030,13 @@ label.compact-select {
 
 .dashboard-metrics {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  margin: 18px 0 14px;
+  gap: 12px;
+  margin: 18px 0 18px;
 }
 
 .dashboard-metrics .stat-card {
-  min-height: 96px;
-  padding: 14px;
+  min-height: 104px;
+  padding: 16px;
 }
 
 .dashboard-metrics .stat-card:nth-child(3) {
@@ -1386,7 +1388,7 @@ label.compact-select {
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
-  gap: 18px;
+  gap: 20px;
 }
 
 .workspace-view[hidden] {
@@ -1456,29 +1458,53 @@ textarea {
 
 .job-list {
   display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--muted) 34%, transparent);
 }
 
 .job-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: white;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
   color: var(--ink);
   text-align: left;
+  box-shadow: 0 1px 2px rgba(18, 31, 26, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease, background 150ms ease;
 }
 
 .job-card:hover,
 .job-card.selected {
-  background: #f2f7f5;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: color-mix(in srgb, var(--status-success-bg) 32%, var(--card));
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.job-card.selected {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  box-shadow: inset 4px 0 0 var(--primary), var(--shadow-soft);
+}
+
+.job-card__main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .job-card h4,
 .job-detail h4 {
-  margin: 0 0 5px;
-  font-size: 15px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 22px;
+  overflow-wrap: anywhere;
 }
 
 .job-card p,
@@ -1487,6 +1513,36 @@ textarea {
   color: var(--muted-foreground);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.job-card__summary {
+  overflow-wrap: anywhere;
+}
+
+.job-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.job-card__meta span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.job-card__meta span + span::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  margin-right: 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted-foreground) 58%, transparent);
+}
+
+.job-card__money {
+  color: var(--foreground);
+  font-weight: 800;
 }
 
 .status-pill {
@@ -1574,8 +1630,10 @@ textarea {
 }
 
 .completed-jobs {
-  border-top: 1px solid var(--line);
-  background: #fbfcfe;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--muted) 46%, var(--card));
 }
 
 .completed-jobs summary {
@@ -1601,18 +1659,33 @@ textarea {
 }
 
 .completed-job-list {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
   border-top: 1px solid var(--line);
 }
 
 .job-detail {
   display: grid;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
 }
 
 .detail-section {
   display: grid;
   gap: 8px;
+}
+
+.detail-hero {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--status-success-bg) 52%, var(--card)), var(--card));
+}
+
+.detail-hero h4 {
+  font-size: 18px;
+  line-height: 24px;
 }
 
 .detail-row {
@@ -1872,7 +1945,8 @@ textarea {
 }
 
 .dashboard-grid {
-  margin-top: 14px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  margin-top: 18px;
   align-items: start;
 }
 
@@ -1888,6 +1962,16 @@ textarea {
 
 .dashboard-card__header {
   align-items: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--muted) 42%, var(--card)), var(--card));
+}
+
+.dashboard-chart-card {
+  min-height: 420px;
+}
+
+.dashboard-breakdown-card {
+  position: sticky;
+  top: 18px;
 }
 
 .notification-list {
@@ -1999,9 +2083,9 @@ textarea {
 .chart-wrap {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-  gap: 22px;
+  gap: 24px;
   align-items: center;
-  padding: 24px;
+  padding: 28px;
 }
 
 .pie-chart {
@@ -2181,23 +2265,37 @@ textarea {
 .expense-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: white;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
   color: var(--ink);
   text-align: left;
+  box-shadow: 0 1px 2px rgba(18, 31, 26, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease, background 150ms ease;
 }
 
 .expense-card:hover,
 .expense-card.selected {
-  background: #f2f7f5;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: color-mix(in srgb, var(--status-success-bg) 32%, var(--card));
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.expense-card.selected {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  box-shadow: inset 4px 0 0 var(--primary), var(--shadow-soft);
 }
 
 .expense-card h4 {
   margin: 0 0 5px;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 22px;
 }
 
 .expense-card p {
@@ -3739,6 +3837,10 @@ label {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-breakdown-card {
+    position: static;
+  }
+
   .chart-wrap {
     grid-template-columns: 1fr;
   }
@@ -3985,6 +4087,18 @@ label {
   .job-card,
   .expense-card {
     gap: 8px;
+  }
+
+  .job-list {
+    padding: 10px;
+  }
+
+  .job-card__meta {
+    gap: 4px 8px;
+  }
+
+  .job-card__meta span + span::before {
+    margin-right: 8px;
   }
 
   .status-pill,

@@ -4600,10 +4600,14 @@ function appendJobCard(container, job) {
   });
 
   card.innerHTML = `
-    <div>
+    <div class="job-card__main">
       <h4>${escapeHtml(job.customerName)}</h4>
-      <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
-      <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit | ${formatLeadSource(job.leadSource)}</p>
+      <p class="job-card__summary">${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
+      <p class="job-card__meta">
+        <span class="job-card__money">${currency.format(job.estimate)} estimate</span>
+        <span>${job.depositPercent}% deposit</span>
+        <span>${formatLeadSource(job.leadSource)}</span>
+      </p>
     </div>
     <span class="status-badge ${getStatusClass(job.status)}">${job.status}</span>
   `;
@@ -4627,7 +4631,7 @@ function renderJobDetail() {
   const workflowMessage = workflowActionMessage?.jobId === job.id ? workflowActionMessage : null;
 
   jobDetail.innerHTML = `
-    <section class="detail-section">
+    <section class="detail-section detail-hero">
       <h4>${escapeHtml(job.customerName)}</h4>
       <p>${escapeHtml(job.serviceType || "Job")}</p>
       <p>${escapeHtml(job.email)} | ${escapeHtml(job.phone)}</p>
@@ -5031,10 +5035,15 @@ function renderCustomers() {
       saveWorkspaceStateToHash();
     });
     card.innerHTML = `
-      <div>
+      <div class="job-card__main">
         <h4>${escapeHtml(customer.customerName)}</h4>
-        <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
-        <p>${escapeHtml(customer.address || "No address")} | ${formatLeadSource(customer.leadSource)} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
+        <p class="job-card__summary">${escapeHtml(customer.address || "No address")}</p>
+        <p class="job-card__meta">
+          <span>${escapeHtml(customer.email || "No email")}</span>
+          <span>${escapeHtml(customer.phone || "No phone")}</span>
+          <span>${formatLeadSource(customer.leadSource)}</span>
+          <span>${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</span>
+        </p>
       </div>
       <span class="status-badge status-neutral">${photoCount} photos</span>
     `;
@@ -5060,7 +5069,7 @@ function renderCustomerDetail() {
     </section>
   ` : "";
   customerDetail.innerHTML = `
-    <section class="detail-section">
+    <section class="detail-section detail-hero">
       <h4>${escapeHtml(customer.customerName)}</h4>
       <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
       <p>${escapeHtml(customer.address || "No address")}</p>
