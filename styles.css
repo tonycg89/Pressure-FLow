@@ -1,31 +1,35 @@
 :root {
-  --background: #f7f8f7;
-  --foreground: #1a1d1b;
-  --card: #ffffff;
-  --card-foreground: #1a1d1b;
-  --muted: #eef1ef;
-  --muted-foreground: #5c635e;
-  --border: #e2e6e3;
-  --input: #d7dcd8;
-  --ring: #1f7a4d;
-  --primary: #1f7a4d;
+  --background: #faf8f4;
+  --foreground: #1c1f1d;
+  --card: #fffefd;
+  --card-foreground: #1c1f1d;
+  --muted: #f1eee8;
+  --muted-foreground: #5f665f;
+  --border: #e2ded6;
+  --input: #d6d0c6;
+  --ring: #e07a2c;
+  --primary: #16694a;
   --primary-foreground: #ffffff;
   --secondary: #ffffff;
-  --secondary-foreground: #1a1d1b;
+  --secondary-foreground: #1c1f1d;
+  --accent: #e07a2c;
+  --accent-foreground: #1c1f1d;
+  --accent-soft: #fbeee0;
+  --sidebar: #0d2d38;
   --destructive: #c0392b;
   --destructive-foreground: #ffffff;
   --status-neutral-text: #5c635e;
-  --status-neutral-bg: #eef1ef;
+  --status-neutral-bg: #efede8;
   --status-info-text: #1d5fb0;
   --status-info-bg: #e6effb;
   --status-warning-text: #9a6a00;
   --status-warning-bg: #fbf1dc;
-  --status-success-text: #1f7a4d;
+  --status-success-text: #16694a;
   --status-success-bg: #e3f2e9;
   --status-danger-text: #a93226;
   --status-danger-bg: #fbe7e4;
-  --radius: 0.5rem;
-  --card-radius: 12px;
+  --radius: 10px;
+  --card-radius: 16px;
 
   --ink: var(--foreground);
   --line: var(--border);
@@ -40,7 +44,9 @@
   --red: var(--destructive);
   --red-soft: var(--status-danger-bg);
   --teal: var(--primary);
-  --shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+  --shadow-soft: 0 1px 2px rgba(18, 31, 26, 0.04), 0 8px 18px rgba(18, 31, 26, 0.07);
+  --shadow: 0 16px 34px rgba(18, 31, 26, 0.1);
+  --shadow-raised: 0 20px 42px rgba(18, 31, 26, 0.14);
 }
 
 [hidden] {
@@ -148,7 +154,7 @@ button {
   gap: 32px;
   padding: 28px 20px;
   border-right: 1px solid var(--line);
-  background: #123c4a;
+  background: var(--sidebar);
   color: white;
 }
 
@@ -285,6 +291,8 @@ button {
   color: var(--primary-foreground);
   background: var(--primary);
   font-weight: 700;
+  box-shadow: 0 8px 18px rgba(22, 105, 74, 0.2);
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
 .secondary-button,
@@ -296,10 +304,13 @@ button {
   background: var(--secondary);
   color: var(--secondary-foreground);
   font-weight: 700;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
 .primary-button:hover {
-  background: #166845;
+  background: color-mix(in srgb, var(--primary) 88%, black);
+  box-shadow: 0 10px 24px rgba(22, 105, 74, 0.24);
+  transform: translateY(-1px);
 }
 
 .secondary-button {
@@ -310,6 +321,7 @@ button {
 .secondary-button:hover,
 .secondary-small-button:hover,
 .dialog-actions button:not(.primary-button):hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--input));
   background: var(--muted);
 }
 
@@ -317,10 +329,10 @@ button {
 .panel {
   padding: 24px;
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: var(--card-radius);
   background: var(--card);
   color: var(--card-foreground);
-  box-shadow: 0 1px 2px rgba(16, 24, 20, 0.04), 0 1px 3px rgba(16, 24, 20, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .card--flush {
@@ -334,7 +346,7 @@ button {
 .card--interactive:hover,
 .card--interactive:focus-visible {
   border-color: color-mix(in srgb, var(--primary) 30%, var(--border));
-  box-shadow: 0 4px 14px rgba(16, 24, 20, 0.08);
+  box-shadow: var(--shadow);
   transform: translateY(-1px);
 }
 
@@ -381,10 +393,10 @@ button {
   gap: 10px;
   padding: 18px;
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: var(--card-radius);
   background: var(--card);
   color: var(--card-foreground);
-  box-shadow: 0 1px 2px rgba(16, 24, 20, 0.04), 0 1px 3px rgba(16, 24, 20, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .stat-card__label,
@@ -400,7 +412,7 @@ button {
 .metrics strong {
   display: block;
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 32px;
 }
@@ -822,7 +834,7 @@ label.compact-select {
 }
 
 .calendar-day.today {
-  box-shadow: inset 0 0 0 2px var(--green);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .calendar-day-number,
@@ -846,7 +858,7 @@ label.compact-select {
 
 .calendar-day-number:hover,
 .calendar-week-heading:hover {
-  color: var(--green);
+  color: var(--primary);
 }
 
 .calendar-day-jobs,
@@ -861,10 +873,10 @@ label.compact-select {
 .calendar-week-job {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--green-soft);
+  border: 1px solid var(--status-success-bg);
   border-radius: 6px;
-  background: var(--green-soft);
-  color: var(--green);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -969,7 +981,7 @@ label.compact-select {
 }
 
 .calendar-day-detail-time strong {
-  color: var(--green);
+  color: var(--primary);
   font-size: 18px;
 }
 
@@ -1023,6 +1035,19 @@ label.compact-select {
 .dashboard-metrics .stat-card {
   min-height: 96px;
   padding: 14px;
+}
+
+.dashboard-metrics .stat-card:nth-child(3) {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: linear-gradient(145deg, var(--primary), color-mix(in srgb, var(--primary) 74%, var(--sidebar)));
+  color: var(--primary-foreground);
+  box-shadow: 0 18px 36px rgba(22, 105, 74, 0.22);
+}
+
+.dashboard-metrics .stat-card:nth-child(3) .stat-card__label,
+.dashboard-metrics .stat-card:nth-child(3) .stat-card__value,
+.dashboard-metrics .stat-card:nth-child(3) .stat-card__delta {
+  color: inherit;
 }
 
 .dashboard-metrics .stat-card__value {
@@ -1414,7 +1439,7 @@ textarea {
 :where(input, select, textarea):focus {
   border-color: var(--ring);
   outline: 0;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 24%, transparent);
 }
 
 :where(input, select, textarea):disabled,
@@ -1465,13 +1490,19 @@ textarea {
 }
 
 .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: start;
-  padding: 4px 7px;
+  width: fit-content;
+  min-height: 22px;
+  padding: 2px 10px;
   border-radius: 999px;
   background: var(--status-warning-bg);
   color: var(--status-warning-text);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
   white-space: nowrap;
 }
 
@@ -1483,8 +1514,10 @@ textarea {
   min-height: 22px;
   padding: 2px 10px;
   border-radius: 999px;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 16px;
   white-space: nowrap;
 }
@@ -1514,6 +1547,20 @@ textarea {
   color: var(--status-danger-text);
 }
 
+.status-badge.done,
+.status-badge.status-done,
+.status-pill.done {
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+}
+
+.status-badge.blocked,
+.status-badge.status-blocked,
+.status-pill.blocked {
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
@@ -1521,7 +1568,8 @@ textarea {
   background: currentColor;
 }
 
-.job-card .status-pill {
+.job-card .status-pill,
+.job-card .status-badge {
   margin-top: 1px;
 }
 
@@ -1554,16 +1602,6 @@ textarea {
 
 .completed-job-list {
   border-top: 1px solid var(--line);
-}
-
-.status-pill.done {
-  background: var(--status-success-bg);
-  color: var(--status-success-text);
-}
-
-.status-pill.blocked {
-  background: var(--status-danger-bg);
-  color: var(--status-danger-text);
 }
 
 .job-detail {
@@ -3949,7 +3987,8 @@ label {
     gap: 8px;
   }
 
-  .status-pill {
+  .status-pill,
+  .status-badge {
     justify-self: start;
     white-space: normal;
   }

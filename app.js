@@ -4480,7 +4480,7 @@ function renderPendingPayments() {
         <strong>${escapeHtml(payment.job.customerName)}</strong>
         <p>${escapeHtml(payment.label)} ${escapeHtml(payment.invoiceNumber)} | <span class="num cell--nowrap">${currency.format(payment.amount)}</span> | <span class="num cell--nowrap">${payment.daysSinceSent} day${payment.daysSinceSent === 1 ? "" : "s"}</span></p>
       </div>
-      ${payment.isOverdue ? '<span class="status-pill overdue-pill">Overdue</span>' : ""}
+      ${payment.isOverdue ? '<span class="status-badge status-warning overdue-pill">Overdue</span>' : ""}
       <button class="secondary-small-button" type="button" data-open-payment-confirmation="${escapeHtml(payment.job.id)}" data-invoice-type="${escapeHtml(payment.invoiceType)}">Mark as paid</button>
     </article>
   `).join("");
@@ -4605,7 +4605,7 @@ function appendJobCard(container, job) {
       <p>${escapeHtml(job.serviceType)} at ${escapeHtml(job.address)}</p>
       <p>${currency.format(job.estimate)} estimate, ${job.depositPercent}% deposit | ${formatLeadSource(job.leadSource)}</p>
     </div>
-    <span class="status-pill ${getStatusClass(job.status)}">${job.status}</span>
+    <span class="status-badge ${getStatusClass(job.status)}">${job.status}</span>
   `;
 
   container.append(card);
@@ -5036,7 +5036,7 @@ function renderCustomers() {
         <p>${escapeHtml(customer.email || "No email")} | ${escapeHtml(customer.phone || "No phone")}</p>
         <p>${escapeHtml(customer.address || "No address")} | ${formatLeadSource(customer.leadSource)} | ${relatedJobs.length} job${relatedJobs.length === 1 ? "" : "s"}</p>
       </div>
-      <span class="status-pill">${photoCount} photos</span>
+      <span class="status-badge status-neutral">${photoCount} photos</span>
     `;
     customerList.append(card);
   });
@@ -5195,7 +5195,7 @@ function renderExpenses() {
         ${linkedJob ? `<p>${escapeHtml(formatJobSummaryLabel(linkedJob))}</p>` : ""}
         <p>${expense.receiptPhotos?.length || 0} receipt photo${expense.receiptPhotos?.length === 1 ? "" : "s"}</p>
       </div>
-      <span class="status-pill num">${currency.format(expense.amount || 0)}</span>
+      <span class="status-badge status-neutral num">${currency.format(expense.amount || 0)}</span>
     `;
     expenseList.append(card);
   });
