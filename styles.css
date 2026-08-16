@@ -3137,6 +3137,29 @@ label {
   line-height: 28px;
 }
 
+.estimate-deposit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--card));
+}
+
+.estimate-deposit-card .field-title {
+  margin: 0;
+}
+
+.estimate-deposit-card .input {
+  min-height: 40px;
+  background: var(--card);
+  font-weight: 800;
+  text-align: right;
+}
+
 .full-field {
   grid-column: 1 / -1;
 }
@@ -3304,6 +3327,21 @@ label {
   background: #fbfcfe;
 }
 
+.photo-uploader--estimate {
+  gap: 16px;
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: var(--card-radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--muted) 42%, var(--card)), var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+.photo-uploader--estimate > .section-header {
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
 .photo-section-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3316,18 +3354,23 @@ label {
   gap: 12px;
 }
 
+.photo-uploader--estimate .before-photo-picker {
+  gap: 14px;
+}
+
 .before-photo-rows {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .before-photo-row {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(18, 31, 26, 0.04);
 }
 
 .before-photo-row-main {
@@ -3386,21 +3429,33 @@ label {
   align-items: center;
   justify-content: center;
   padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
+  border: 1px solid var(--input);
+  border-radius: var(--radius);
+  background: var(--card);
   color: var(--ink);
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
   font-weight: 800;
   text-align: center;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.photo-action-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--input));
+  background: var(--muted);
 }
 
 .photo-action-button.primary {
-  border-color: var(--status-success-bg);
-  background: var(--status-success-bg);
-  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--primary) 72%, var(--border));
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 8px 18px rgba(22, 105, 74, 0.16);
+}
+
+.photo-action-button.primary:hover {
+  background: color-mix(in srgb, var(--primary) 88%, black);
+  transform: translateY(-1px);
 }
 
 .photo-label {
@@ -4124,6 +4179,7 @@ label {
 
   .job-card,
   .expense-card,
+  .estimate-deposit-card,
   .field-row,
   .field-with-action,
   .settings-grid,

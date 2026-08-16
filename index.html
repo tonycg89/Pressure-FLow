@@ -702,13 +702,13 @@
               <div id="estimateDiscountRow" hidden><span>Discount</span><strong id="estimateDiscount">$0</strong></div>
               <div><span>Total</span><strong id="estimateTotal">$0</strong></div>
             </div>
+            <input name="estimate" type="hidden" value="450">
+            <label class="field estimate-deposit-card">
+              <span class="field-title">Deposit % <span class="required-tag">Required</span></span>
+              <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
+            </label>
           </section>
 
-          <input name="estimate" type="hidden" value="450">
-          <label class="field">
-            <span class="field-title">Deposit % <span class="required-tag">Required</span></span>
-            <input name="depositPercent" class="input" required type="number" min="0" max="100" step="5" value="25">
-          </label>
           <label class="field">
             Notes
             <textarea name="notes" class="textarea" rows="3" placeholder="Gate code, access instructions, special requests"></textarea>
@@ -722,7 +722,7 @@
             <textarea name="sensitiveAreas" class="textarea" rows="2" placeholder="Leaky windows, outdoor outlets, delicate plants"></textarea>
           </label>
 
-          <section class="photo-uploader" aria-label="Before job photos">
+          <section class="photo-uploader photo-uploader--estimate" aria-label="Before job photos">
             <div class="section-header compact-header">
               <div>
                 <p class="eyebrow">Before Photos</p>
