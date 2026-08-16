@@ -2959,16 +2959,23 @@ label {
 
 .estimate-builder {
   display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcfe;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: var(--card-radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--muted) 46%, var(--card)), var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+.estimate-builder > .section-header {
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .line-items {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .estimate-service-actions {
@@ -2981,34 +2988,44 @@ label {
 
 .line-item-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(82px, 0.42fr) minmax(96px, 0.5fr) minmax(86px, 0.42fr) auto 40px;
-  gap: 8px;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(88px, 0.42fr) minmax(112px, 0.5fr) minmax(112px, 0.46fr) auto 40px;
+  gap: 10px;
   align-items: end;
-  padding: 12px 0 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(18, 31, 26, 0.04);
 }
 
 .line-item-row:first-child {
-  padding-top: 0;
+  padding-top: 14px;
 }
 
 .line-item-row:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
+  padding-bottom: 14px;
 }
 
 .line-item-heading {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  min-height: 22px;
+  min-height: 26px;
+  padding-bottom: 2px;
 }
 
 .line-item-index {
-  color: var(--foreground);
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--status-neutral-bg);
+  color: var(--muted-foreground);
+  font-size: 12px;
   font-weight: 800;
-  line-height: 1.3;
+  line-height: 16px;
+  text-transform: uppercase;
 }
 
 .line-measure[hidden] {
@@ -3020,6 +3037,9 @@ label {
   gap: 6px;
   align-items: center;
   justify-content: center;
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--input));
+  background: var(--accent-soft);
+  color: var(--accent-foreground);
   white-space: nowrap;
 }
 
@@ -3036,19 +3056,31 @@ label {
   min-height: 40px;
   align-items: center;
   justify-content: flex-end;
-  color: var(--ink);
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--status-success-bg) 42%, var(--card));
+  color: var(--foreground);
+  font-size: 16px;
 }
 
 .discount-panel {
-  padding: 10px 0 0;
-  border-top: 1px solid var(--line);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--muted) 48%, var(--card));
 }
 
 .discount-panel summary {
   cursor: pointer;
-  color: var(--muted-foreground);
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 800;
+}
+
+.discount-panel[open] {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 48%, var(--card));
 }
 
 .discount-panel label {
@@ -3064,15 +3096,45 @@ label {
 .estimate-summary div {
   display: grid;
   gap: 4px;
-  padding: 10px;
+  min-height: 74px;
+  align-content: center;
+  padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(18, 31, 26, 0.04);
+}
+
+.estimate-summary div:last-child {
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+  background: linear-gradient(145deg, var(--primary), color-mix(in srgb, var(--primary) 74%, var(--sidebar)));
+  color: var(--primary-foreground);
+  box-shadow: 0 14px 28px rgba(22, 105, 74, 0.18);
 }
 
 .estimate-summary span,
 .estimate-item span {
   color: var(--muted-foreground);
+}
+
+.estimate-summary div:last-child span,
+.estimate-summary div:last-child strong {
+  color: inherit;
+}
+
+.estimate-summary strong {
+  color: var(--foreground);
+  font-size: 18px;
+  line-height: 24px;
+}
+
+#estimateDiscount {
+  color: var(--status-warning-text);
+}
+
+#estimateTotal {
+  font-size: 22px;
+  line-height: 28px;
 }
 
 .full-field {
