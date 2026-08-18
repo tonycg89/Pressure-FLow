@@ -89,13 +89,6 @@ Post-transition verification completed on August 5, 2026:
 
 During verification, stale test/smoke expectations were updated to match current documented behavior for Google/Gmail setup copy, customer-facing estimate card layout, contract duplicate-signature display, mobile before-photo gallery row behavior, and the current `Complete Job` action label. No production code changed.
 
-Package 10D-2 and Package 10E verification completed on August 12, 2026 at HEAD `17a5af9`, which includes commit `2e070b0` ("whatever i want"):
-
-- `npm.cmd run check` passed.
-- `npm.cmd run smoke:test-user-safety` passed; the previously noted Gmail/Calendar `invalid_grant` error-message mismatch did not reproduce.
-- `npm.cmd run test:browser` passed 103/103 using the configured single Playwright worker.
-- No failures were found, so no Package 10D-2 or Package 10E regression triage against pre-range commit `d17899f` was required.
-
 Package 003 verification (August 18, 2026):
 
 - `npm.cmd run check` and `npm.cmd run smoke:test-user-safety`: Codex-reported pass, not independently re-run.

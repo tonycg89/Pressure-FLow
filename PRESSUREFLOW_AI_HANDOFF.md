@@ -163,7 +163,6 @@ Current implementation status belongs in `PRESSUREFLOW_MASTER_STATUS.md`. At a h
 - Map measurement usability and duplicate saved-area cleanup.
 - Google OAuth durability guardrails.
 - Customer-facing mobile estimate/contract table layout fixes.
-- Package 10D-2 and Package 10E are verified against the standard suite as of August 12, 2026: `npm.cmd run check` passed, `npm.cmd run smoke:test-user-safety` passed without reproducing the prior Gmail/Calendar `invalid_grant` mismatch, and `npm.cmd run test:browser` passed 103/103 at HEAD `17a5af9` including commit `2e070b0`.
 - Estimate line/custom-service rate inputs accept any decimal precision. Estimate discounts support a percent/flat-dollar toggle (`discountType`/`discountValue`) via a shared `getEstimateDiscount()` helper in `billing.js`. Dashboard metrics reworked: added Jobs Completed and Average Revenue per Job, removed Expenses from the metrics row, relocated Top Source next to the lead-source breakdown panel (Package 003, commit `846c72c`).
 
 This handoff intentionally does not preserve the full chronological package ledger. Historical detail belongs in archive material or implementation reports, not the active AI onboarding flow.
