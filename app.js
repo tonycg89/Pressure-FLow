@@ -4670,6 +4670,10 @@ function renderJobDetail() {
   const nextAction = getNextAction(job);
   const fallbackAction = getFallbackAction(job);
   const deliveryActions = getDeliveryActions(job);
+  const primaryAction = getPrimaryWorkflowAction(nextAction, deliveryActions);
+  const automationDeliveryActions = primaryAction?.type === "delivery"
+    ? deliveryActions.filter((item) => item.emailAction !== primaryAction.action)
+    : deliveryActions;
   const hasPendingWorkflowAction = pendingWorkflowAction.startsWith(`${job.id}:`);
   const workflowMessage = workflowActionMessage?.jobId === job.id ? workflowActionMessage : null;
 
@@ -4680,6 +4684,8 @@ function renderJobDetail() {
       <p>${escapeHtml(job.email)} | ${escapeHtml(job.phone)}</p>
       <p>${escapeHtml(job.address)}</p>
     </section>
+
+    ${renderWhatsNextSummary(job, primaryAction, hasPendingWorkflowAction)}
 
     <section class="detail-section">
       <div class="detail-row"><span>Status</span><strong>${job.status}</strong></div>
@@ -4723,8 +4729,7 @@ function renderJobDetail() {
         ${hasPendingWorkflowAction ? `<p class="workflow-action-status" role="status">Sending update...</p>` : ""}
         ${workflowMessage ? `<p class="workflow-action-status ${workflowMessage.type === "error" ? "error" : "success"}" role="${workflowMessage.type === "error" ? "alert" : "status"}">${escapeHtml(workflowMessage.message)}</p>` : ""}
         ${renderInvoicePaymentWarning(nextAction, deliveryActions)}
-        ${renderDeliveryActions(job, deliveryActions, hasPendingWorkflowAction)}
-        ${nextAction ? `<button class="action-button action-button--recommended" type="button" data-action="${nextAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${hasPendingWorkflowAction && pendingWorkflowAction === `${job.id}:${nextAction.action}` ? "Sending..." : nextAction.label}</button>` : ""}
+        ${renderDeliveryActions(job, automationDeliveryActions, hasPendingWorkflowAction)}
         ${fallbackAction ? `<button class="action-button secondary" type="button" data-action="${fallbackAction.action}" ${hasPendingWorkflowAction ? "disabled" : ""}>${fallbackAction.label}</button>` : ""}
         ${renderEstimateFollowUpControls(job)}
         <button class="action-button danger" type="button" data-action="delete-job" ${hasPendingWorkflowAction ? "disabled" : ""}>Delete Job</button>
@@ -4752,6 +4757,78 @@ function renderJobDetail() {
   });
   attachPhotoViewerHandlers(jobDetail);
   jobDetail.querySelector("[data-view-job-expenses]")?.addEventListener("click", () => viewExpensesForJob(job.id));
+}
+
+function getPrimaryWorkflowAction(nextAction, deliveryActions) {
+  if (nextAction) {
+    return {
+      type: "workflow",
+      label: nextAction.label,
+      action: nextAction.action
+    };
+  }
+
+  const deliveryActionItem = deliveryActions[0];
+  if (deliveryActionItem) {
+    return {
+      type: "delivery",
+      label: deliveryActionItem.label,
+      action: deliveryActionItem.emailAction,
+      buttonLabel: `${deliveryActionItem.hasLink ? "Resend" : "Send"} by Email`
+    };
+  }
+
+  return null;
+}
+
+function renderWhatsNextSummary(job, primaryAction, hasPendingWorkflowAction) {
+  if (!primaryAction) {
+    return `
+      <section class="detail-section workflow-summary workflow-summary--complete">
+        <div>
+          <p class="eyebrow">Current priority</p>
+          <h4>No action needed right now</h4>
+          <p>${escapeHtml(getWorkflowSummaryIdleText(job))}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="detail-section workflow-summary">
+      <div>
+        <p class="eyebrow">Current priority</p>
+        <h4>${escapeHtml(primaryAction.label)}</h4>
+        <p>${escapeHtml(getWorkflowSummaryText(primaryAction))}</p>
+      </div>
+      ${renderPrimaryWorkflowActionButton(job, primaryAction, hasPendingWorkflowAction)}
+    </section>
+  `;
+}
+
+function renderPrimaryWorkflowActionButton(job, primaryAction, hasPendingWorkflowAction) {
+  const actionPending = pendingWorkflowAction === `${job.id}:${primaryAction.action}`;
+  const label = actionPending ? "Sending..." : (primaryAction.buttonLabel || primaryAction.label);
+  return `<button class="action-button action-button--recommended" type="button" data-action="${escapeHtml(primaryAction.action)}" ${hasPendingWorkflowAction ? "disabled" : ""}>${escapeHtml(label)}</button>`;
+}
+
+function getWorkflowSummaryText(primaryAction) {
+  if (primaryAction.type === "delivery") {
+    return `${primaryAction.label} is ready to send to the customer.`;
+  }
+
+  return "Use this action to keep the job moving through the workflow.";
+}
+
+function getWorkflowSummaryIdleText(job) {
+  if (job.status === "Paid") return "This job is fully paid and complete.";
+  if (job.status === "Completed") return "The job is complete. Review requests and final payment details stay below.";
+  if (job.status === "Estimate Signed") return "The estimate is signed. Contract delivery options are below.";
+  if (job.status === "Contract Signed") return getDeposit(job) > 0
+    ? "The contract is signed. Deposit invoice delivery options are below."
+    : "The contract is signed and no deposit is required.";
+
+  return "All available workflow actions for this status are listed below.";
 }
 
 function renderJobCosts(job) {

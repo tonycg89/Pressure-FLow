@@ -1688,6 +1688,37 @@ textarea {
   line-height: 24px;
 }
 
+.workflow-summary {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
+  border-radius: 12px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--status-info-bg) 46%, var(--card)), var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+.workflow-summary h4,
+.workflow-summary p {
+  margin: 0;
+}
+
+.workflow-summary h4 {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.workflow-summary p:not(.eyebrow) {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.workflow-summary--complete {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--status-success-bg) 42%, var(--card));
+}
+
 .detail-row {
   display: flex;
   justify-content: space-between;

@@ -157,6 +157,9 @@ test("contractor is blocked before sending deposit invoice when no payment metho
   await page.getByRole("button", { name: "Pipeline" }).click();
   await page.getByRole("button", { name: /Contract Carla/ }).click();
   await expect(page.locator("#jobDetail")).toContainText("Deposit Invoice");
+  await expect(page.locator(".workflow-summary")).toContainText("Deposit Invoice");
+  await expect(page.locator(".workflow-summary .action-button--recommended")).toHaveCount(1);
+  await expect(page.locator(".action-list .action-button--recommended")).toHaveCount(0);
   await expect(page.locator("#jobDetail")).toContainText("Payment options are not configured yet. Customers will not have a clear way to pay this invoice.");
   await expect(page.locator("#jobDetail")).toContainText("Configure payment options");
 
@@ -180,6 +183,9 @@ test("zero percent deposit skips deposit invoice and moves signed contract to sc
   await page.getByRole("button", { name: /Zero Deposit Zoe/ }).click();
   await expect(page.locator("#jobDetail")).toContainText("Contract Signed");
   await expect(page.locator("#jobDetail")).toContainText("$0.00");
+  await expect(page.locator(".workflow-summary")).toContainText("Schedule Job");
+  await expect(page.locator(".workflow-summary .action-button--recommended")).toHaveCount(1);
+  await expect(page.locator(".action-list .action-button--recommended")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Schedule Job" })).toBeVisible();
   await expect(page.locator(".action-button--recommended")).toContainText("Schedule Job");
   await expect(page.locator("#jobDetail")).not.toContainText("Deposit Invoice");
