@@ -327,9 +327,9 @@ function renderCompletionProofPage(job, settings = {}) {
     <title>Completion Proof - ${escapeHtml(job.customerName)}</title>
     ${estimatePageStyles()}
     <style>
-      .proof-meta { display: grid; gap: 6px; color: #667085; }
+      .proof-meta { display: grid; gap: 6px; color: var(--doc-muted); }
       .proof-details th { width: 34%; }
-      .print-actions { margin-top: 20px; }
+      .print-actions { margin-top: 24px; }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } .print-actions { display: none; } }
     </style>
   </head>
@@ -437,9 +437,9 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
     ${estimatePageStyles()}
     <style>
       .invoice-total { margin: 0; }
-      .invoice-status-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      .invoice-status-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
       .payment-methods { margin: 12px 0; }
-      .proof-link { margin: 18px 0; padding: 14px; border: 1px solid #d8dee8; border-radius: 8px; background: #f7f8fb; }
+      .proof-link { margin: 0; padding: 16px; border: 1px solid var(--doc-line); border-radius: var(--doc-radius); background: var(--doc-surface); }
       @media print { body { background: white; } main { box-shadow: none; margin: 0; width: 100%; border: 0; } button { display: none; } }
     </style>
   </head>
