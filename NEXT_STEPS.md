@@ -19,6 +19,19 @@ Live Stripe/Square provider webhook verification is deferred out of Phase 1 (see
 
 The full regression suite (`npm.cmd run check`, `npm.cmd run smoke:test-user-safety`, `npm.cmd run test:browser`) is already the standard verification required for every package per `PRESSUREFLOW_ENGINEERING_STANDARDS.md` - no separate cadence decision is needed.
 
+## UI/UX Polish Queue
+
+Six-bucket polish pass tracked here so status persists across sessions instead of living only in chat context. Status below reflects repository evidence (commit contents, diffs, test coverage) checked directly, not just self-report.
+
+1. **Estimate Builder Polish - Mostly done.** Covered by `47e64e3`, `0eeff98`, and Package 003 (`846c72c`). Line items, deposits, photos, rate precision, and discounts have all had real work. Remaining gap, if any, is minor visual polish, not function.
+2. **Customer-Facing Pages - Partially done. Next up.** Estimate/contract/invoice/proof pages exist (`public-pages.js`, `rendering.js`) and have mobile-viewport test coverage (`tests/mobile-hardening.spec.js`, "public documents remain within the mobile viewport"). However, `public-pages.js` has not been touched by any of the recent visual-polish commits (`810070e`, `b8efee5`, `47e64e3`, `0eeff98`) - those landed only in `app.js`/`styles.css`/owner-facing `index.html`. Package 003 touched `public-pages.js` only for the discount-amount fix, not styling. The owner-facing UI has had a real design pass recently; the customer-facing brand/trust surface has not kept pace. This is the recommended next package.
+3. **Modal/Form Polish - Partially done.** Mobile modal fit at 375px, photo handoff, and draft recovery are covered by tests (`tests/mobile-hardening.spec.js`: "settings and workflow modals fit a 375px mobile viewport," "mobile job draft survives refresh," photo capture/gallery tests). The broader "forms feel dense/raw" pass across all modals is not confirmed complete.
+4. **Pipeline/Workflow Detail Polish - Partially done.** Dashboard and job-card work exists (`b8efee5`). The job detail panel's "what's next" grouping has not had a dedicated pass.
+5. **Empty/First-Run States - Mostly done.** 10 empty-state blocks in `index.html`, 34 references in `app.js`, spanning dashboard first-run, payment setup, jobs, customers, expenses, and calendar. Not the biggest remaining gap.
+6. **Mobile Field Pass - Mostly done for beta safety, not exhaustive.** Real Playwright coverage exists for touch sizing, modal fit, photo upload, and public-doc viewport behavior. Known risk (already tracked in `PRESSUREFLOW_MASTER_STATUS.md`): real iOS/Android manual verification remains unverified.
+
+Recommended sequence: Customer-Facing Pages, then Pipeline/Workflow Detail Polish. Estimate Builder just got the most recent attention via Package 003; the better return now is the surface customers actually see and the contractor's in-job "what do I do next" view.
+
 ## Current Blockers
 
 - None open. Phase 1 is waiting on real beta usage/tester feedback rather than any pending setup task.
