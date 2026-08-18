@@ -164,6 +164,7 @@ Current implementation status belongs in `PRESSUREFLOW_MASTER_STATUS.md`. At a h
 - Google OAuth durability guardrails.
 - Customer-facing mobile estimate/contract table layout fixes.
 - Estimate line/custom-service rate inputs accept any decimal precision. Estimate discounts support a percent/flat-dollar toggle (`discountType`/`discountValue`) via a shared `getEstimateDiscount()` helper in `billing.js`. Dashboard metrics reworked: added Jobs Completed and Average Revenue per Job, removed Expenses from the metrics row, relocated Top Source next to the lead-source breakdown panel (Package 003, commit `846c72c`).
+- Customer-facing public pages (estimate approval, contract signing, invoice/payment, completion proof) received a visual-only polish pass: new `:root` CSS token system in the shared `estimatePageStyles()` base stylesheet (`rendering.js`), consistent spacing/type/card treatment, converged button rule sets. No structural, DOM, or business-logic changes; the separate `renderEstimateApprovalWordTemplate()` print/export document was correctly left untouched (Package 004, commit `560b3a1`).
 
 This handoff intentionally does not preserve the full chronological package ledger. Historical detail belongs in archive material or implementation reports, not the active AI onboarding flow.
 
