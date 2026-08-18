@@ -1,6 +1,6 @@
 # PressureFlow Master Status
 
-Last Updated: August 5, 2026
+Last Updated: August 18, 2026
 
 This file is the authoritative current-state snapshot for PressureFlow. It should answer what is implemented, what is verified, what remains incomplete, the current risks, and the current release/readiness state.
 
@@ -50,6 +50,7 @@ Current implemented capabilities include:
 
 Recent verified work includes:
 
+- Estimate rate precision, percent/flat-dollar discount toggle, and dashboard metric rework (Package 003, commit `846c72c`). Line-item and custom-service rate inputs now accept any decimal precision (e.g. $4.117/unit) instead of rejecting non-cent-aligned values via native browser validation. Estimate discounts support both percent and flat-dollar modes via a `discountType`/`discountValue` pair, with a shared `getEstimateDiscount()` helper in `billing.js` used by both server-side validation (`records.js`) and customer-facing rendering (`public-pages.js`) so the two can't drift apart. The legacy `estimate_discount_percent` column is retained as a deprecated compatibility field with fallback reads in `db.js`/`job-updates.js`/`records.js`; migration was additive only, no destructive schema change. Dashboard now shows Jobs Completed and Average Revenue per Job, both derived from the existing `isRevenueJob` (Paid-status) definition rather than a new one; the Expenses card was removed from the metrics row pending a future home; Top Source was relocated next to the lead-source breakdown panel with no change to its underlying calculation. Verified by direct diff review (`git diff 0eeff98..846c72c`): confirmed no protected Playwright selector (`.line-rate`, `#estimateDiscount`, `#estimateSubtotal`, `#estimateTotal`, etc.) was renamed or removed, confirmed CSS brace balance (645 open / 645 close), and confirmed the `upsertJob` SQL parameter list in `db.js` stayed correctly aligned after two new placeholders were inserted.
 - Product narrowed to pressure-washing-only: onboarding, service catalog, and scheduling instructions no longer offer Landscaping/Handyman/Construction paths (Package 002, commit `d91c672`). Legacy accounts with a stored non-pressure-washing `serviceIndustry` value still load without error and normalize to Pressure Washing.
 - Post-governance-transition baseline verification.
 - Tenant isolation/security audit and priority fixes.
@@ -87,6 +88,20 @@ Post-transition verification completed on August 5, 2026:
 - `npm.cmd run test:browser` passed 102/102.
 
 During verification, stale test/smoke expectations were updated to match current documented behavior for Google/Gmail setup copy, customer-facing estimate card layout, contract duplicate-signature display, mobile before-photo gallery row behavior, and the current `Complete Job` action label. No production code changed.
+
+Package 10D-2 and Package 10E verification completed on August 12, 2026 at HEAD `17a5af9`, which includes commit `2e070b0` ("whatever i want"):
+
+- `npm.cmd run check` passed.
+- `npm.cmd run smoke:test-user-safety` passed; the previously noted Gmail/Calendar `invalid_grant` error-message mismatch did not reproduce.
+- `npm.cmd run test:browser` passed 103/103 using the configured single Playwright worker.
+- No failures were found, so no Package 10D-2 or Package 10E regression triage against pre-range commit `d17899f` was required.
+
+Package 003 verification (August 18, 2026):
+
+- `npm.cmd run check` and `npm.cmd run smoke:test-user-safety`: Codex-reported pass, not independently re-run.
+- `npm.cmd run test:browser`: Codex reported pass dots with no fresh failure artifacts, but the run did not produce a clean final summary line (Playwright process lingered after completion and was interrupted). This is documented as Codex-reported, not independently confirmed as a clean full-suite pass.
+- New dedicated Playwright test (`tests/dashboard-analytics.spec.js`) covers three-decimal rate persistence and flat-dollar discount math end to end, plus assertions on the new dashboard metrics.
+- Claude independently verified the commit via `git diff 0eeff98..846c72c`, per standing rule that repository evidence beats reports: confirmed all changed files matched the reported scope, confirmed no protected selector was renamed/removed, confirmed CSS brace balance, and confirmed SQL parameter alignment in `upsertJob`.
 
 ## Known Risks
 
