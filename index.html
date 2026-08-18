@@ -130,8 +130,8 @@
           <article class="stat-card"><span class="stat-card__label">Estimates Sent</span><strong id="dashEstimatesSent" class="stat-card__value tabular-nums">0</strong></article>
           <article class="stat-card"><span class="stat-card__label">Estimates Accepted</span><strong id="dashEstimatesAccepted" class="stat-card__value tabular-nums">0</strong></article>
           <article class="stat-card"><span class="stat-card__label">Revenue</span><strong id="dashRevenue" class="stat-card__value tabular-nums">$0</strong></article>
-          <article class="stat-card"><span class="stat-card__label">Expenses</span><strong id="dashExpenses" class="stat-card__value tabular-nums">$0</strong></article>
-          <article class="stat-card"><span class="stat-card__label">Top source</span><strong id="dashTopSource" class="stat-card__value">-</strong><small id="dashTopSourceMeta" class="stat-card__delta">Not enough data yet</small></article>
+          <article class="stat-card"><span class="stat-card__label">Jobs Completed</span><strong id="dashJobsCompleted" class="stat-card__value tabular-nums">0</strong></article>
+          <article class="stat-card"><span class="stat-card__label">Average Revenue per Job</span><strong id="dashAvgRevenuePerJob" class="stat-card__value tabular-nums">$0</strong></article>
         </section>
 
         <section id="dashboardFirstRunPanel" class="panel dashboard-first-run-panel" aria-labelledby="dashboardFirstRunTitle" hidden>
@@ -203,6 +203,11 @@
                 <p class="eyebrow" id="dashboardBreakdownEyebrow">Lead Sources</p>
                 <h3 id="dashboardBreakdownTitle">Pipeline breakdown</h3>
               </div>
+            </div>
+            <div class="dashboard-breakdown-metric">
+              <span class="stat-card__label">Top source</span>
+              <strong id="dashTopSource" class="stat-card__value">-</strong>
+              <small id="dashTopSourceMeta" class="stat-card__delta">Not enough data yet</small>
             </div>
             <div id="leadSourceBreakdown" class="job-detail dashboard-breakdown-list"></div>
           </aside>
@@ -687,15 +692,22 @@
             </div>
             <details class="discount-panel">
               <summary>Discounts</summary>
-              <label class="field">
-                Estimate discount
-                <select id="discountSelect" name="discountPercent" class="select">
-                  <option value="0">No discount</option>
-                  <option value="10">10% discount</option>
-                  <option value="15">15% discount</option>
-                  <option value="20">20% discount</option>
-                </select>
-              </label>
+              <div class="discount-control">
+                <fieldset class="segmented-control" aria-label="Discount type">
+                  <label>
+                    <input type="radio" name="discountType" value="percent" checked>
+                    <span>%</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="discountType" value="flat">
+                    <span>$</span>
+                  </label>
+                </fieldset>
+                <label class="field discount-value-field">
+                  <span id="discountValueLabel">Estimate discount</span>
+                  <input id="discountSelect" name="discountValue" class="input" type="number" min="0" step="any" value="0" aria-labelledby="discountValueLabel">
+                </label>
+              </div>
             </details>
             <div class="estimate-summary">
               <div><span>Subtotal</span><strong id="estimateSubtotal">$0</strong></div>
@@ -1410,7 +1422,7 @@
           </label>
           <label class="field">
             Rate
-            <input name="price" class="input" required type="number" min="0" step="0.01" value="0">
+            <input name="price" class="input" required type="number" min="0" step="any" value="0">
           </label>
         </div>
         <label class="checkbox-field check">

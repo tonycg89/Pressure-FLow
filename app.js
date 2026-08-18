@@ -266,6 +266,7 @@ const customServiceStatus = document.querySelector("#customServiceStatus");
 const teamAccessSection = document.querySelector("#teamAccessSection");
 const lineItemsContainer = document.querySelector("#lineItems");
 const discountSelect = document.querySelector("#discountSelect");
+const discountTypeInputs = Array.from(document.querySelectorAll("[name='discountType']"));
 const estimateSubtotal = document.querySelector("#estimateSubtotal");
 const estimateDiscount = document.querySelector("#estimateDiscount");
 const estimateDiscountRow = document.querySelector("#estimateDiscountRow");
@@ -471,7 +472,8 @@ async function init() {
   closeMeasurementShapeButton?.addEventListener("click", closeActiveMeasurementShape);
   clearMeasurementButton.addEventListener("click", clearMeasurementPolygon);
   useMeasurementButton.addEventListener("click", useMeasurement);
-  discountSelect.addEventListener("change", updateEstimateTotals);
+  discountSelect.addEventListener("input", updateEstimateTotals);
+  discountTypeInputs.forEach((input) => input.addEventListener("change", updateEstimateTotals));
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", closeDialogFromButton);
   });
@@ -1862,6 +1864,8 @@ async function createJob(event) {
   job.jobPhotos = currentJobPhotos;
   job.estimate = Number(job.estimate);
   job.depositPercent = Number(job.depositPercent);
+  job.discountType = getDiscountType();
+  job.discountValue = getDiscountValue(job.lineItems.reduce((sum, item) => sum + Number(item.total || 0), 0));
   const editingId = jobForm.dataset.editingId;
 
   try {
@@ -2450,7 +2454,7 @@ function openEditJob() {
   };
   resetBeforePhotoRows();
   renderJobPhotoPreviews();
-  discountSelect.value = String(job.discountPercent || 0);
+  setDiscountControls(job.discountType || "percent", job.discountValue ?? job.discountPercent ?? 0);
   updateEstimateTotals();
   jobForm.elements.notes.value = job.notes || "";
   jobForm.elements.accessNotes.value = job.accessNotes || "";
@@ -2473,7 +2477,7 @@ function resetJobDialog() {
   resetBeforePhotoRows();
   renderBeforePhotoSectionOptions();
   renderJobPhotoPreviews();
-  discountSelect.value = "0";
+  setDiscountControls("percent", 0);
   jobForm.elements.depositPercent.value = getDefaultDepositPercent();
   updateEstimateTotals();
 }
@@ -2486,7 +2490,8 @@ function saveJobDraft() {
     savedAt: new Date().toISOString(),
     fields,
     lineItems: getEstimateLineItems(),
-    discountPercent: discountSelect.value || "0",
+    discountType: getDiscountType(),
+    discountValue: discountSelect.value || "0",
     measurement: currentMeasurement || {},
     jobPhotos: currentJobPhotos || { before: [], after: [] }
   };
@@ -2530,7 +2535,7 @@ function restoreJobDraft() {
     before: [...(draft.jobPhotos?.before || [])],
     after: [...(draft.jobPhotos?.after || [])]
   };
-  discountSelect.value = String(draft.discountPercent || "0");
+  setDiscountControls(draft.discountType || "percent", draft.discountValue ?? draft.discountPercent ?? "0");
   const restoredCustomerId = jobForm.elements.customerId?.value || "";
   const restoredCustomer = restoredCustomerId
     ? customers.find((customer) => customer.id === restoredCustomerId)
@@ -2929,7 +2934,7 @@ function addLineItemRow(item = serviceCatalog[0]) {
     </label>
     <label class="field">
       <span class="line-rate-label">Rate (${escapeHtml(formatRateUnit(catalogItem.unit))})</span>
-      <input class="line-rate input" type="number" min="0" step="0.01" value="${Number(item.price ?? catalogItem.price)}">
+      <input class="line-rate input" type="number" min="0" step="any" value="${Number(item.price ?? catalogItem.price)}">
     </label>
     <div class="line-item-total">
       <span>Line total</span>
@@ -3063,9 +3068,8 @@ function getEstimateLineItems() {
 function updateEstimateTotals() {
   const lineItems = getEstimateLineItems();
   const subtotal = roundMoney(lineItems.reduce((sum, item) => sum + item.total, 0));
-  const discountPercent = Number(discountSelect.value || 0);
-  const discountAmount = roundMoney(subtotal * (discountPercent / 100));
-  const total = roundMoney(subtotal - discountAmount);
+  const discountAmount = getDiscountAmount(subtotal);
+  const total = roundMoney(Math.max(subtotal - discountAmount, 0));
 
   lineItemsContainer.querySelectorAll(".line-item-row").forEach((row) => {
     const quantity = Number(row.querySelector(".line-quantity").value || 0);
@@ -3081,6 +3085,45 @@ function updateEstimateTotals() {
   if (lineItems.length) {
     jobForm.elements.estimate.value = total.toFixed(2);
   }
+}
+
+function getDiscountType() {
+  return discountTypeInputs.find((input) => input.checked)?.value === "flat" ? "flat" : "percent";
+}
+
+function getDiscountRawValue() {
+  const value = Number(discountSelect.value || 0);
+  return Number.isFinite(value) ? Math.max(value, 0) : 0;
+}
+
+function getDiscountValue(subtotal = null) {
+  const value = getDiscountRawValue();
+  if (getDiscountType() === "flat" && Number.isFinite(Number(subtotal))) {
+    return Math.min(value, Number(subtotal));
+  }
+  return getDiscountType() === "percent" ? Math.min(value, 100) : value;
+}
+
+function setDiscountControls(type = "percent", value = 0) {
+  const normalizedType = type === "flat" ? "flat" : "percent";
+  discountTypeInputs.forEach((input) => {
+    input.checked = input.value === normalizedType;
+  });
+  discountSelect.value = String(Number(value || 0));
+  updateDiscountControlLimits();
+}
+
+function updateDiscountControlLimits() {
+  discountSelect.removeAttribute("max");
+}
+
+function getDiscountAmount(subtotal) {
+  updateDiscountControlLimits();
+  const value = getDiscountValue(subtotal);
+  if (getDiscountType() === "flat") {
+    return roundMoney(value);
+  }
+  return roundMoney(subtotal * (value / 100));
 }
 
 function openMeasurementDialog(row) {
@@ -4059,18 +4102,18 @@ function formatDuration(minutes) {
 function renderDashboard() {
   if (!document.querySelector("#dashEstimatesSent")) return;
   const scopedJobs = filterByTimeframe(jobs, "createdAt");
-  const scopedExpenses = filterByTimeframe(expenses, "expenseDate");
   const estimatesSent = scopedJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Sent")).length;
   const estimatesAccepted = scopedJobs.filter((job) => statuses.indexOf(job.status) >= statuses.indexOf("Estimate Signed")).length;
-  const revenue = scopedJobs
-    .filter((job) => job.status === "Paid" || job.squareFinalPaidAt)
-    .reduce((sum, job) => sum + Number(job.estimate || 0), 0);
-  const expenseTotal = scopedExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const completedJobs = scopedJobs.filter(isRevenueJob);
+  const jobsCompleted = completedJobs.length;
+  const revenue = completedJobs.reduce((sum, job) => sum + Number(job.estimate || 0), 0);
+  const avgRevenuePerJob = jobsCompleted ? revenue / jobsCompleted : 0;
 
   document.querySelector("#dashEstimatesSent").textContent = estimatesSent;
   document.querySelector("#dashEstimatesAccepted").textContent = estimatesAccepted;
   document.querySelector("#dashRevenue").textContent = currency.format(revenue);
-  document.querySelector("#dashExpenses").textContent = currency.format(expenseTotal);
+  document.querySelector("#dashJobsCompleted").textContent = jobsCompleted;
+  document.querySelector("#dashAvgRevenuePerJob").textContent = jobsCompleted ? currency.format(avgRevenuePerJob) : "$0";
   renderTopSourceMetric(scopedJobs);
 
   const breakdownRows = buildDashboardBreakdownRows(scopedJobs, dashboardBreakdown?.value || "lead");

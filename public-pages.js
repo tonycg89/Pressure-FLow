@@ -1,6 +1,7 @@
 const {
   formatAlertMoney,
   getDepositCents,
+  getEstimateDiscount,
   getFinalBalanceCents,
   getPressureFlowInvoiceNumber
 } = require("./billing");
@@ -18,9 +19,9 @@ const serviceAgreementTemplate = require("./templates/pressure-washing-service-a
 
 function renderEstimateApprovalPage(job, settings = {}) {
   const validUntil = getEstimateValidUntil(job);
-  const subtotal = (job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0);
-  const discountPercent = Number(job.discountPercent || 0);
-  const discountAmount = subtotal * (discountPercent / 100);
+  const discount = getEstimateDiscount(job);
+  const subtotal = discount.subtotal;
+  const discountAmount = discount.amount;
   const lineRows = (job.lineItems || []).map((item) => `
     <article class="doc-line-card">
       <div class="doc-line-card__title">${escapeHtml(item.name)}</div>

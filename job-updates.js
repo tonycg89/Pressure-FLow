@@ -1,4 +1,5 @@
 const { statuses } = require("./db");
+const { normalizeDiscountType } = require("./billing");
 const {
   buildFullAddress,
   FIELD_LIMITS,
@@ -53,8 +54,14 @@ function updateJob(job, input) {
     job.jobPhotos = normalizeJobPhotos(input.jobPhotos);
   }
 
-  if (Object.hasOwn(input, "discountPercent")) {
-    job.discountPercent = Number(input.discountPercent);
+  if (Object.hasOwn(input, "discountType") || Object.hasOwn(input, "discountValue") || Object.hasOwn(input, "discountPercent")) {
+    const discountType = normalizeDiscountType(input.discountType ?? job.discountType);
+    const discountValue = input.discountValue !== undefined && input.discountValue !== null && input.discountValue !== ""
+      ? Number(input.discountValue)
+      : Number(input.discountPercent ?? job.discountValue ?? job.discountPercent ?? 0);
+    job.discountType = discountType;
+    job.discountValue = discountValue;
+    job.discountPercent = discountType === "percent" ? discountValue : 0;
   }
 
   if (Object.hasOwn(input, "depositPercent")) {
@@ -66,7 +73,13 @@ function didPricingChange(job, input) {
   if (Object.hasOwn(input, "estimate") && Number(input.estimate) !== Number(job.estimate || 0)) {
     return true;
   }
-  if (Object.hasOwn(input, "discountPercent") && Number(input.discountPercent) !== Number(job.discountPercent || 0)) {
+  if (
+    (Object.hasOwn(input, "discountType") || Object.hasOwn(input, "discountValue") || Object.hasOwn(input, "discountPercent")) &&
+    (
+      normalizeDiscountType(input.discountType ?? job.discountType) !== normalizeDiscountType(job.discountType) ||
+      Number(input.discountValue ?? input.discountPercent ?? 0) !== Number(job.discountValue ?? job.discountPercent ?? 0)
+    )
+  ) {
     return true;
   }
   if (Object.hasOwn(input, "depositPercent") && Number(input.depositPercent) !== Number(job.depositPercent || 0)) {

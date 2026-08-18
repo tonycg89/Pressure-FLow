@@ -141,17 +141,30 @@
           <strong>${currency.format(Number(item.total || 0))}</strong>
         </div>
       `).join("");
-      const discount = Number(job.discountPercent || 0);
+      const discount = getEstimateDiscount(job);
 
       return `
         ${rows}
-        ${discount ? `
+        ${discount.amount > 0 ? `
           <div class="detail-row estimate-item">
             <span>Discount</span>
-            <strong>${discount}%</strong>
+            <strong>-${currency.format(discount.amount)}</strong>
           </div>
         ` : ""}
       `;
+    }
+
+    function getEstimateDiscount(job) {
+      const subtotal = (job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0);
+      const type = job.discountType === "flat" ? "flat" : "percent";
+      const rawValue = job.discountValue !== undefined && job.discountValue !== null && job.discountValue !== ""
+        ? Number(job.discountValue)
+        : Number(job.discountPercent || 0);
+      const value = Number.isFinite(rawValue) ? Math.max(rawValue, 0) : 0;
+      const amount = type === "flat"
+        ? Math.min(value, subtotal)
+        : subtotal * (Math.min(value, 100) / 100);
+      return { amount: Math.round(amount * 100) / 100 };
     }
 
     function normalizeUnitLabel(unit = "") {

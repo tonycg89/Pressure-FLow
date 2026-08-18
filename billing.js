@@ -18,6 +18,41 @@ function formatAlertMoney(amount) {
   return `$${Number(amount || 0).toFixed(2)}`;
 }
 
+function roundMoney(amount) {
+  return Math.round(Number(amount || 0) * 100) / 100;
+}
+
+function getEstimateSubtotal(job) {
+  return roundMoney((job.lineItems || []).reduce((sum, item) => sum + Number(item.total || 0), 0));
+}
+
+function normalizeDiscountType(value) {
+  return value === "flat" ? "flat" : "percent";
+}
+
+function getDiscountValue(job) {
+  if (job.discountValue !== undefined && job.discountValue !== null && job.discountValue !== "") {
+    return Number(job.discountValue);
+  }
+  return Number(job.discountPercent || 0);
+}
+
+function getEstimateDiscount(job) {
+  const subtotal = getEstimateSubtotal(job);
+  const type = normalizeDiscountType(job.discountType);
+  const rawValue = getDiscountValue(job);
+  const value = Number.isFinite(rawValue) ? Math.max(rawValue, 0) : 0;
+  const discountAmount = type === "flat"
+    ? Math.min(value, subtotal)
+    : subtotal * (Math.min(value, 100) / 100);
+  return {
+    type,
+    value,
+    subtotal,
+    amount: roundMoney(discountAmount)
+  };
+}
+
 function formatAlertCustomer(job) {
   return `${job.customerName || "Customer"} - ${job.address || "No address"}`;
 }
@@ -33,7 +68,10 @@ function getFinalBalanceCents(job) {
 module.exports = {
   formatAlertCustomer,
   formatAlertMoney,
+  getEstimateDiscount,
+  getEstimateSubtotal,
   getDepositCents,
   getFinalBalanceCents,
+  normalizeDiscountType,
   getPressureFlowInvoiceNumber
 };

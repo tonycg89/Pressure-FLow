@@ -40,7 +40,10 @@ create table if not exists jobs (
   line_items jsonb not null default '[]'::jsonb,
   measurement jsonb not null default '{}'::jsonb,
   job_photos jsonb not null default '{}'::jsonb,
+  -- Deprecated compatibility column; new writes use estimate_discount_type/value.
   estimate_discount_percent numeric(5, 2) not null default 0,
+  estimate_discount_type text not null default 'percent',
+  estimate_discount_value numeric(10, 2) not null default 0,
   estimate_approval_token text not null default '',
   estimate_approval_url text not null default '',
   estimate_mailto text not null default '',

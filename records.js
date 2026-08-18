@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const { getEstimateDiscount, normalizeDiscountType } = require("./billing");
 const { defaultSettings, statuses } = require("./db");
 const { createInlineFileRecord } = require("./storage");
 const { isAllowedImageDataUrl, normalizeServiceUnit } = require("./settings");
@@ -35,6 +36,11 @@ function getNextStatus(status) {
 
 function normalizeJob(input) {
   const addressParts = normalizeAddressParts(input);
+  const lineItems = normalizeLineItems(input.lineItems);
+  const discountType = normalizeDiscountType(input.discountType);
+  const discountValue = input.discountValue !== undefined && input.discountValue !== null && input.discountValue !== ""
+    ? Number(input.discountValue)
+    : Number(input.discountPercent || 0);
   return {
     id: crypto.randomUUID(),
     customerId: limitText(input.customerId, FIELD_LIMITS.email),
@@ -46,10 +52,12 @@ function normalizeJob(input) {
     serviceType: limitText(input.serviceType || "Driveway cleaning", FIELD_LIMITS.serviceType),
     leadSource: normalizeLeadSource(input.leadSource),
     estimate: Number(input.estimate || 0),
-    lineItems: normalizeLineItems(input.lineItems),
+    lineItems,
     measurement: normalizeMeasurement(input.measurement),
     jobPhotos: normalizeJobPhotos(input.jobPhotos),
-    discountPercent: Number(input.discountPercent || 0),
+    discountType,
+    discountValue,
+    discountPercent: discountType === "percent" ? discountValue : 0,
     depositPercent: Number(input.depositPercent ?? defaultSettings.defaultDepositPercent),
     notes: limitText(input.notes, FIELD_LIMITS.jobNotes),
     accessNotes: limitText(input.accessNotes, FIELD_LIMITS.jobNotes),
@@ -217,8 +225,17 @@ function validateJob(job) {
   if (!job.zip) return "ZIP is required.";
   if (!job.address) return "Service address is required.";
   if (!Number.isFinite(job.estimate) || job.estimate < 0) return "Estimate must be 0 or greater.";
-  if (!Number.isFinite(job.discountPercent) || job.discountPercent < 0 || job.discountPercent > 100) {
+  const discountType = normalizeDiscountType(job.discountType);
+  const discountValue = Number(job.discountValue ?? job.discountPercent ?? 0);
+  if (!Number.isFinite(discountValue)) {
+    return "Discount must be a valid number.";
+  }
+  if (discountType === "percent" && (discountValue < 0 || discountValue > 100)) {
     return "Discount percent must be between 0 and 100.";
+  }
+  const discount = getEstimateDiscount({ ...job, discountType, discountValue });
+  if (discountType === "flat" && (discountValue < 0 || discountValue > discount.subtotal)) {
+    return "Flat discount must be 0 or greater and cannot exceed the estimate subtotal.";
   }
   if (!Number.isFinite(job.depositPercent) || job.depositPercent < 0 || job.depositPercent > 100) {
     return "Deposit percent must be between 0 and 100.";
@@ -248,6 +265,8 @@ function jobsToCsv(jobs) {
     "estimate",
     "lineItems",
     "discountPercent",
+    "discountType",
+    "discountValue",
     "depositPercent",
     "status",
     "scheduledAt",

@@ -26,8 +26,62 @@ test("lead-source conversion excludes jobs with blank lead source", async ({ pag
   await expect(referralRow).toContainText("$600.00");
   await expect(page.locator("#dashTopSource")).toHaveText("Referral");
   await expect(page.locator("#dashTopSourceMeta")).toHaveText("100% conversion · 3 jobs");
+  await expect(page.locator("#dashJobsCompleted")).toHaveText("5");
+  await expect(page.locator("#dashAvgRevenuePerJob")).toHaveText("$270.00");
 
   await expect(page.locator("#leadSourceBreakdown")).not.toContainText("Unknown");
+});
+
+test("estimate builder saves three-decimal rates and flat-dollar discounts", async ({ page }) => {
+  await login(page);
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeVisible();
+  await page.locator("#jobForm [name='customerName']").fill("Precision Rate Customer");
+  await page.locator("#jobForm [name='email']").fill("precision.rate@example.com");
+  await page.locator("#jobForm [name='phone']").fill("(555) 444-9999");
+  await page.locator("#jobForm [name='streetAddress']").fill("123 Precision Way");
+  await page.locator("#jobForm [name='city']").fill("Riverside");
+  await page.locator("#jobForm [name='state']").fill("CA");
+  await page.locator("#jobForm [name='zip']").fill("92501");
+
+  await page.getByRole("button", { name: "Add Custom Service" }).click();
+  await expect(page.locator("#customServiceDialog")).toBeVisible();
+  await page.locator("#customServiceForm [name='name']").fill("Precision wash");
+  await page.locator("#customServiceForm [name='unit']").selectOption("SqFt");
+  await page.locator("#customServiceForm [name='price']").fill("4.117");
+  await page.locator("#customServiceForm").getByRole("button", { name: "Add Service" }).click();
+  await expect(page.locator("#customServiceDialog")).toBeHidden();
+
+  const precisionRow = page.locator("#lineItems .line-item-row").filter({ hasText: "Precision wash" });
+  await precisionRow.locator(".line-quantity").fill("1000");
+  await expect(precisionRow.locator(".line-rate")).toHaveValue("4.117");
+  await expect(precisionRow.locator(".line-item-total strong")).toHaveText("$4,117.00");
+  await expect(page.locator("#estimateSubtotal")).toHaveText("$4,117.00");
+
+  await page.locator("#jobForm .discount-panel").getByText("Discounts").click();
+  await page.locator("#jobForm .segmented-control label").filter({ hasText: "$" }).click();
+  await page.locator("#discountSelect").fill("150");
+  await expect(page.locator("#estimateDiscount")).toHaveText("-$150.00");
+  await expect(page.locator("#estimateTotal")).toHaveText("$3,967.00");
+
+  await page.locator("#jobForm").getByRole("button", { name: "Create Job" }).click();
+  await expect(page.locator("#jobDialog")).toBeHidden();
+
+  const jobs = JSON.parse(await fs.readFile(path.join(DATA_DIR, "jobs.json"), "utf8"));
+  const saved = jobs.find((job) => job.customerName === "Precision Rate Customer");
+  expect(saved).toMatchObject({
+    discountType: "flat",
+    discountValue: 150,
+    estimate: 3967
+  });
+  expect(saved.lineItems).toContainEqual(expect.objectContaining({
+    name: "Precision wash",
+    quantity: 1000,
+    price: 4.117,
+    total: 4117
+  }));
 });
 
 test("dashboard open jobs excludes paid work and notification bell icon is visible", async ({ page }) => {

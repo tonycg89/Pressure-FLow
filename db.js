@@ -1069,7 +1069,10 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table jobs add column if not exists completion_proof_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists line_items jsonb not null default '[]'::jsonb");
   await getPool().query("alter table jobs add column if not exists measurement jsonb not null default '{}'::jsonb");
+  // Deprecated compatibility column; new writes use estimate_discount_type/value.
   await getPool().query("alter table jobs add column if not exists estimate_discount_percent numeric not null default 0");
+  await getPool().query("alter table jobs add column if not exists estimate_discount_type text not null default 'percent'");
+  await getPool().query("alter table jobs add column if not exists estimate_discount_value numeric not null default 0");
   await getPool().query("alter table jobs add column if not exists estimate_approval_token text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_approval_url text not null default ''");
   await getPool().query("alter table jobs add column if not exists estimate_mailto text not null default ''");
@@ -1356,38 +1359,40 @@ async function upsertJob(client, job) {
   await client.query(
     `update jobs set
       line_items = $1::jsonb,
-      estimate_discount_percent = $2,
-      measurement = $3::jsonb,
-      job_photos = $4::jsonb,
-      estimate_approval_token = $5,
-      estimate_approval_url = $6,
-      estimate_mailto = $7,
-      estimate_sent_at = nullif($8, '')::timestamptz,
-      estimate_approved_at = nullif($9, '')::timestamptz,
-      estimate_rejected_at = nullif($10, '')::timestamptz,
-      estimate_rejection_reason = $11,
-      estimate_rejection_note = $12,
-      contract_approval_token = $13,
-      contract_approval_url = $14,
-      contract_mailto = $15,
-      contract_sent_at = nullif($16, '')::timestamptz,
-      contract_signed_at = nullif($17, '')::timestamptz,
-      contract_signed_date = $18,
-      contract_signer_name = $19,
-      scheduled_event_at = nullif($20, '')::timestamptz,
-      street_address = $21,
-      address_unit = $22,
-      city = $23,
-      state = $24,
-      zip = $25,
-      account_id = $26,
-      payment_records = $27::jsonb,
-      suppress_estimate_follow_up = $28,
-      review_request_sent_at = nullif($29, '')::timestamptz
-    where id = $30`,
+      estimate_discount_type = $2,
+      estimate_discount_value = $3,
+      measurement = $4::jsonb,
+      job_photos = $5::jsonb,
+      estimate_approval_token = $6,
+      estimate_approval_url = $7,
+      estimate_mailto = $8,
+      estimate_sent_at = nullif($9, '')::timestamptz,
+      estimate_approved_at = nullif($10, '')::timestamptz,
+      estimate_rejected_at = nullif($11, '')::timestamptz,
+      estimate_rejection_reason = $12,
+      estimate_rejection_note = $13,
+      contract_approval_token = $14,
+      contract_approval_url = $15,
+      contract_mailto = $16,
+      contract_sent_at = nullif($17, '')::timestamptz,
+      contract_signed_at = nullif($18, '')::timestamptz,
+      contract_signed_date = $19,
+      contract_signer_name = $20,
+      scheduled_event_at = nullif($21, '')::timestamptz,
+      street_address = $22,
+      address_unit = $23,
+      city = $24,
+      state = $25,
+      zip = $26,
+      account_id = $27,
+      payment_records = $28::jsonb,
+      suppress_estimate_follow_up = $29,
+      review_request_sent_at = nullif($30, '')::timestamptz
+    where id = $31`,
     [
       JSON.stringify(job.lineItems || []),
-      Number(job.discountPercent || 0),
+      job.discountType === "flat" ? "flat" : "percent",
+      Number(job.discountValue ?? job.discountPercent ?? 0),
       JSON.stringify(job.measurement || {}),
       JSON.stringify(job.jobPhotos || {}),
       job.estimateApprovalToken || "",
@@ -1439,6 +1444,8 @@ function jobFromRow(row) {
     lineItems: Array.isArray(row.line_items) ? row.line_items : [],
     measurement: row.measurement && typeof row.measurement === "object" ? row.measurement : {},
     jobPhotos: row.job_photos && typeof row.job_photos === "object" ? row.job_photos : {},
+    discountType: row.estimate_discount_type === "flat" ? "flat" : "percent",
+    discountValue: Number(row.estimate_discount_value || row.estimate_discount_percent || 0),
     discountPercent: Number(row.estimate_discount_percent || 0),
     estimateApprovalToken: row.estimate_approval_token || "",
     estimateApprovalUrl: row.estimate_approval_url || "",
