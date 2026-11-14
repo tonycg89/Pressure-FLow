@@ -8,6 +8,7 @@
     { name: "Pressure Washing", unit: "SqFt", price: 0.2 },
     { name: "Roof Blow Off (Debris Only)", unit: "Qty", price: 100 },
     { name: "Roof Wash", unit: "SqFt", price: 0.4 },
+    { name: "Soft Washing", unit: "SqFt", price: 0.28 },
     { name: "Gutter Cleaning", unit: "LNF", price: 1 },
     { name: "Solar Panel Cleaning", unit: "Qty", price: 10 },
     { name: "Trash Can Cleaning", unit: "Qty", price: 15 }
@@ -47,6 +48,7 @@
     "Driveway cleaning",
     "House wash",
     "Roof wash",
+    "Soft wash",
     "Commercial exterior",
     "Bundle",
     "Other"

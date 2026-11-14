@@ -16,6 +16,26 @@ test.beforeEach(async () => {
   await resetTestData();
 });
 
+test("fresh account can select built-in Soft Washing and the Soft wash job type", async ({ page }) => {
+  await seedSettings({ businessName: "Soft Wash Test Co.", onboardingCompleted: true });
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(TEST_USER.email);
+  await page.getByLabel("Password").fill(TEST_USER.password);
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await expect(page.locator("#sidebarBusinessName")).toHaveText("Soft Wash Test Co.");
+
+  await page.getByRole("button", { name: "Pipeline" }).click();
+  await page.getByRole("button", { name: "New Job" }).click();
+  const jobType = page.locator("#jobForm [name='serviceType']");
+  await jobType.selectOption("Soft wash");
+  await expect(jobType).toHaveValue("Soft wash");
+
+  const lineItem = page.locator("#lineItems .line-item-row").first();
+  await lineItem.locator(".line-service").selectOption("Soft Washing");
+  await expect(lineItem.locator(".line-rate-label")).toHaveText("Rate (per SqFt)");
+  await expect(lineItem.locator(".line-rate")).toHaveValue("0.28");
+});
+
 test("new tester completes onboarding and saves service defaults", async ({ page }) => {
   await loginAndCompleteOnboarding(page);
 
