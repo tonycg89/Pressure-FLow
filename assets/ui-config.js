@@ -4,7 +4,8 @@
     { value: "door-hanger", label: "Door hanger", color: "#2563eb" },
     { value: "door-to-door", label: "Door to door", color: "#b7791f" },
     { value: "meta-ad", label: "Meta ad", color: "#b42318" },
-    { value: "nextdoor-ad", label: "Nextdoor ad", color: "#0f766e" }
+    { value: "nextdoor-ad", label: "Nextdoor ad", color: "#0f766e" },
+    { value: "website", label: "Website", color: "#7c3aed" }
   ];
 
   const defaultBeforePhotoSections = [

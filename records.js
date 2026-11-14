@@ -199,7 +199,7 @@ function validateExpense(expense) {
 }
 
 function normalizeLeadSource(value) {
-  const allowed = new Set(["referral", "door-hanger", "door-to-door", "meta-ad", "nextdoor-ad"]);
+  const allowed = new Set(["referral", "door-hanger", "door-to-door", "meta-ad", "nextdoor-ad", "website"]);
   const normalized = String(value || "referral").trim();
   return allowed.has(normalized) ? normalized : "referral";
 }

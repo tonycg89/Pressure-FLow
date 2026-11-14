@@ -110,6 +110,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await page.locator("#customerForm [name='email']").fill("alex.rivera@example.com");
   await page.locator("#customerForm [name='phone']").fill("(555) 444-1212");
   await page.locator("#customerForm [name='streetAddress']").fill("100 Main Street");
+  await page.locator("#customerForm [name='leadSource']").selectOption("website");
   await page.locator("#customerForm [name='city']").fill("Riverside");
   await page.locator("#customerForm [name='state']").fill("CA");
   await page.locator("#customerForm [name='zip']").fill("92501");
@@ -123,6 +124,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   await expect(page.locator("#jobDialog")).toBeVisible();
   await expect(page.locator("#jobForm [name='customerName']")).toHaveValue("Alex Rivera");
   await expect(page.locator("#jobForm [name='email']")).toHaveValue("alex.rivera@example.com");
+  await expect(page.locator("#jobForm [name='leadSource']")).toHaveValue("website");
   await page.locator("#jobForm [name='serviceType']").selectOption("Driveway cleaning");
   const lineItem = page.locator("#lineItems .line-item-row").first();
   await lineItem.locator(".line-service").selectOption("Pressure Washing");
@@ -145,6 +147,7 @@ test("tester creates customer and job, sends estimate, and opens public estimate
   const response = await responsePromise;
   expect(response.ok()).toBeTruthy();
   const { job } = await response.json();
+  expect(job.leadSource).toBe("website");
   expect(job.estimateApprovalUrl).toContain(`/estimate/${job.id}?token=`);
   await expect(page.locator(".toast").filter({ hasText: "Estimate sent to alex.rivera@example.com. Automatic follow-up scheduled." })).toBeVisible();
   await expect(page.locator("#jobDetail")).toContainText("View customer estimate");
