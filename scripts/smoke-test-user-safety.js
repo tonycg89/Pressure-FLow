@@ -71,7 +71,9 @@ function testWebhookSignatureVerificationRequiresSecrets() {
 
   assert.equal(verifyStripeSignature(stripeHeader, stripeBody, "", safeCompare), false);
   assert.equal(verifyStripeSignature("t=1800000000,v1=bad", stripeBody, stripeSecret, safeCompare), false);
-  assert.equal(verifyStripeSignature(stripeHeader, stripeBody, stripeSecret, safeCompare), true);
+  assert.equal(verifyStripeSignature(stripeHeader, stripeBody, stripeSecret, safeCompare, 1800000000), true);
+  // Replay protection: a validly signed event older than 5 minutes is rejected.
+  assert.equal(verifyStripeSignature(stripeHeader, stripeBody, stripeSecret, safeCompare, 1800000000 + 301), false);
 
   const squareBody = JSON.stringify({ data: { object: { invoice: { id: "sq-test" } } } });
   const squareSecret = "square_signature_key";

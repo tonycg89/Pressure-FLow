@@ -239,7 +239,8 @@ function signedStripeHeaders(raw, secret) {
 }
 
 function stripeSignature(raw, secret) {
-  const timestamp = "1781712000";
+  // Must be current: the verifier rejects timestamps more than 5 minutes off.
+  const timestamp = String(Math.floor(Date.now() / 1000));
   const digest = crypto.createHmac("sha256", secret).update(`${timestamp}.${raw}`).digest("hex");
   return `t=${timestamp},v1=${digest}`;
 }

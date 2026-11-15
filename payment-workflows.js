@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const { getDepositCents, getFinalBalanceCents } = require("./billing");
 const { createStripeCheckoutSessionRequest } = require("./integrations/stripe");
+const { createConnectedCheckoutSession, isConnectChargeReady } = require("./integrations/stripe-connect");
 const { createOperationalLogger } = require("./operational-logger");
 const { buildInvoiceUrl } = require("./public-workflows");
 
@@ -30,6 +31,18 @@ function createPaymentHandlers({
     const amount = invoiceType === "deposit" ? getDepositCents(job) : getFinalBalanceCents(job);
     const invoiceToken = invoiceType === "deposit" ? job.squareDepositInvoiceId : job.squareFinalInvoiceId;
     const invoiceUrl = buildInvoiceUrl(baseUrl, job, invoiceType, invoiceToken);
+    // Connect wins when the contractor finished onboarding; pasted keys are legacy.
+    if (isConnectChargeReady(settings)) {
+      return createConnectedCheckoutSession({
+        settings,
+        job,
+        invoiceType,
+        amount,
+        invoiceUrl,
+        accountId: itemWorkspaceId(job),
+        invoiceId: invoiceToken
+      });
+    }
     return createStripeCheckoutSessionRequest({
       settings,
       job,

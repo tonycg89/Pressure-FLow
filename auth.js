@@ -54,6 +54,7 @@ function createAuthHelpers({
       pathname.startsWith("/assets/") ||
       pathname.startsWith("/api/public/") ||
       pathname === "/webhooks/stripe" ||
+      pathname === "/webhooks/stripe-connect" ||
       pathname === "/favicon.ico";
   }
 
@@ -345,7 +346,8 @@ function createAuthHelpers({
       pathname === "/auth/logout" ||
       pathname.startsWith("/api/public/") ||
       pathname === "/webhooks/square" ||
-      pathname === "/webhooks/stripe";
+      pathname === "/webhooks/stripe" ||
+      pathname === "/webhooks/stripe-connect";
   }
 
   function buildCsrfToken(request) {

@@ -59,6 +59,8 @@ const {
   verifySquareSignature
 } = require("./integrations/square");
 const { verifyStripeSignature } = require("./integrations/stripe");
+const { getConnectWebhookSecret } = require("./integrations/stripe-connect");
+const { createStripeConnectRoutes } = require("./stripe-connect-routes");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 const {
   createPublicWorkflowHandlers
@@ -224,6 +226,7 @@ const {
   getSquareWebhookSettings,
   getStripeWebhookSecret,
   handleSquareWebhook,
+  handleStripeConnectWebhook,
   handleStripeWebhook,
   recordWebhookEvent
 } = createWebhookHandlers({
@@ -232,11 +235,14 @@ const {
   readJobs,
   readSettings,
   readSettingsForJob,
+  readUsers,
+  readUserSettings,
   readWebhookEvents,
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
   writeAllJobs,
   writeJobs,
+  writeUserSettings,
   writeWebhookEvents,
   logger: operationalLogger
 });
@@ -294,6 +300,18 @@ const { handleExportTemplateRoutes } = createExportTemplateRoutes({
   statuses,
   writeSettings,
   randomId: () => crypto.randomUUID()
+});
+
+const { handleStripeConnectRoutes } = createStripeConnectRoutes({
+  getAppBaseUrl,
+  getWorkspaceId,
+  logger: operationalLogger,
+  readSettings,
+  renderMessagePage: renderEstimateMessagePage,
+  sendError,
+  sendHtml,
+  sendJson,
+  writeSettings
 });
 
 const { handleSettingsUserRoutes } = createSettingsUserRoutes({
@@ -618,6 +636,10 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (await handleStripeConnectRoutes(request, response, url)) {
+    return;
+  }
+
   if (await handleSettingsUserRoutes(request, response, url)) {
     return;
   }
@@ -696,6 +718,35 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/webhooks/stripe-connect") {
+    const rawBody = await readRawRequestBody(request);
+    const secret = getConnectWebhookSecret();
+    const signatureOk = Boolean(secret) && verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
+    if (!signatureOk) {
+      operationalLogger.warn("webhook_signature_rejected", {
+        provider: "stripe_connect",
+        reason: secret ? "invalid signature" : "missing signature key"
+      });
+      sendError(response, 401, secret ? "Invalid Stripe webhook signature." : "Stripe Connect webhook secret is not configured.");
+      return;
+    }
+
+    let event;
+    try {
+      event = parseJsonRequestText(rawBody);
+    } catch (error) {
+      operationalLogger.warn("webhook_payload_parse_failed", {
+        provider: "stripe_connect",
+        error
+      });
+      sendError(response, 400, "Invalid webhook payload.");
+      return;
+    }
+    const result = await handleStripeConnectWebhook(event);
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
   const cardPayMatch = url.pathname.match(/^\/api\/public\/invoices\/([^/]+)\/pay-card$/);
   if (request.method === "POST" && cardPayMatch) {
     const [, jobId] = cardPayMatch;
@@ -707,7 +758,24 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
+    // Don't start a second card charge for an invoice that's already paid
+    // (back button, second tab).
+    const alreadyPaid = invoiceType === "deposit"
+      ? job.squareDepositInvoiceStatus === "PAID" || Boolean(job.squareDepositPaidAt)
+      : job.squareFinalInvoiceStatus === "PAID" || Boolean(job.squareFinalPaidAt);
+    if (alreadyPaid) {
+      sendHtml(response, 409, renderEstimateMessagePage("Invoice already paid", "This invoice has already been paid. No further payment is needed."));
+      return;
+    }
+
+    let checkout;
+    try {
+      checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
+    } catch (error) {
+      operationalLogger.warn("card_checkout_failed", { accountId: job.accountId || "owner", jobId: job.id, invoiceType, error });
+      sendHtml(response, 502, renderEstimateMessagePage("Card payment unavailable", "Card payment couldn't be started right now. Please try again shortly, or use another payment option on the invoice."));
+      return;
+    }
     response.writeHead(303, { location: checkout.url });
     response.end();
     return;
@@ -852,7 +920,7 @@ const server = http.createServer(async (request, response) => {
       session: ignoresSessionForPublicWorkflow(url.pathname) ? null : session,
       authDisabled: !authEnabled
     }, async () => {
-      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
+      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe" || url.pathname === "/webhooks/stripe-connect") {
         await handleApi(request, response, url);
         return;
       }

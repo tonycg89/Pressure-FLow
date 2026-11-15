@@ -4436,3 +4436,15 @@ label {
   }
 }
 
+
+/* Package 006: Stripe Connect settings */
+.stripe-legacy-keys {
+  margin-top: 12px;
+}
+
+.stripe-legacy-keys > summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+}

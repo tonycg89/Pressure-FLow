@@ -104,6 +104,7 @@ Important boundaries:
 - `PRESSUREFLOW_SKIP_EMAIL_DELIVERY=true` prevents real delivery but does not by itself represent a connected Google account.
 - `PRESSUREFLOW_AUDIT_GOOGLE_MOCK=true` may be paired with skipped delivery for safe hosted audit workflows.
 - Stripe and Square webhook routes must keep signature validation, idempotency, amount checks, tenant routing, and safe logs.
+- Stripe Connect (Package 006): `integrations/stripe-connect.js`, `stripe-connect-routes.js`, `/webhooks/stripe-connect`. Platform credentials are env-only (`STRIPE_PLATFORM_SECRET_KEY`, `STRIPE_CONNECT_WEBHOOK_SECRET`, optional `STRIPE_APPLICATION_FEE_PERCENT`). `stripeAccountId` and `stripeConnectStatus` are server-side settings, never accepted from client input or returned to the browser. Every Connect event must match `event.account` to the tenant's saved account. Tests point at a local mock via `PRESSUREFLOW_STRIPE_API_BASE` (ignored in production).
 - Mapbox requires a public token for map/geocoding flows.
 - QuickBooks and Twilio are deferred unless real beta feedback exposes a blocker.
 
