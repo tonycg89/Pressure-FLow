@@ -5605,7 +5605,7 @@ function renderStripeConnectStatus() {
   const copy = {
     unavailable: ["Connect with Stripe", "Card payments through Stripe Connect are not set up on this PressureFlow server yet."],
     deauthorized: ["Reconnect Stripe", "Your Stripe account was disconnected. Reconnect to take card payments again."],
-    ready: ["Manage Stripe setup", "Stripe is connected. Customers can pay deposits and invoices by card."],
+    ready: ["Connected", "Stripe is connected. Customers can pay deposits and invoices by card. Manage payouts and refunds in your Stripe dashboard."],
     incomplete: ["Finish Stripe setup", "Stripe setup isn't finished. Stripe still needs a few details before you can take card payments."],
     not_connected: ["Connect with Stripe", "Not connected. Takes about 5 minutes. You'll need your business details and a bank account for payouts."]
   }[state];

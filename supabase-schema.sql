@@ -183,6 +183,8 @@ create table if not exists app_settings (
   custom_services jsonb not null default '[]'::jsonb,
   custom_service_types jsonb not null default '[]'::jsonb,
   custom_photo_sections jsonb not null default '[]'::jsonb,
+  stripe_account_id text not null default '',
+  stripe_connect_status jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id = 1)

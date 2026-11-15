@@ -49,11 +49,13 @@ function createStripeConnectRoutes({
       email: settings.businessEmail || "",
       businessName: settings.businessName || ""
     });
-    settings.stripeAccountId = account.id;
-    settings.stripeConnectStatus = summarizeAccountStatus(account);
-    await writeSettings(settings);
+    // Re-read so a settings save during the Stripe call isn't overwritten.
+    const latest = await readSettings();
+    latest.stripeAccountId = account.id;
+    latest.stripeConnectStatus = summarizeAccountStatus(account);
+    await writeSettings(latest);
     logger.info("stripe_connect_account_created", { accountId: getWorkspaceId() });
-    return settings;
+    return latest;
   }
 
   function buildOnboardingLink(request, stripeAccountId) {
@@ -111,8 +113,11 @@ function createStripeConnectRoutes({
         if (settings.stripeAccountId) {
           // The return URL carries no state; Stripe's account object is the truth.
           const account = await retrieveAccount(settings.stripeAccountId);
-          settings.stripeConnectStatus = summarizeAccountStatus(account);
-          await writeSettings(settings);
+          const latest = await readSettings();
+          if (latest.stripeAccountId === account.id) {
+            latest.stripeConnectStatus = summarizeAccountStatus(account);
+            await writeSettings(latest);
+          }
         }
         response.writeHead(302, { location: "/?stripeConnect=return" });
         response.end();

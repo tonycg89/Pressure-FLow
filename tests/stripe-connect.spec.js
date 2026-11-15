@@ -192,6 +192,13 @@ test("Connect webhook pays once, enforces tenant account match, and rejects bad 
   let jobs = await readJson("jobs.json");
   expect(jobs.find((job) => job.id === "a-deposit-job").status).toBe("Deposit Sent");
 
+  // Fail closed when currency is missing.
+  const noCurrency = JSON.parse(JSON.stringify(deposit));
+  delete noCurrency.data.object.currency;
+  expect((await postSigned(request, JSON.stringify(noCurrency))).ok()).toBeTruthy();
+  jobs = await readJson("jobs.json");
+  expect(jobs.find((job) => job.id === "a-deposit-job").paymentRecords).toHaveLength(0);
+
   const raw = JSON.stringify(deposit);
   expect((await request.post("/webhooks/stripe-connect", { data: raw, headers: { "content-type": "application/json" } })).status()).toBe(401);
   expect((await postSigned(request, raw, { secret: "whsec_wrong" })).status()).toBe(401);
@@ -209,12 +216,43 @@ test("Connect webhook pays once, enforces tenant account match, and rejects bad 
 
   const followUps = await readJson("follow-up-tasks.json");
   expect(followUps.find((task) => task.id === "a-deposit-follow-up").status).toBe("cancelled");
+
+  // Paid invoice: no second card checkout can be started.
+  const payAgain = await request.post("/api/public/invoices/a-deposit-job/pay-card", {
+    form: { type: "deposit", token: "connect-a-deposit" },
+    maxRedirects: 0
+  });
+  expect(payAgain.status()).toBe(409);
+  expect(mock.requests.filter((item) => item.path === "/v1/checkout/sessions")).toHaveLength(0);
+});
+
+test("Legacy Stripe endpoint ignores connected-account events", async ({ request }) => {
+  await resetTestData({ connected: true, legacySecret: "whsec_legacy_b" });
+  const raw = JSON.stringify(connectCheckoutEvent({
+    eventId: "evt_legacy_connected",
+    account: "acct_saved_b",
+    jobId: "b-deposit-job",
+    accountId: TENANT_B.accountId,
+    invoiceId: "connect-b-deposit",
+    amountTotal: 5000
+  }));
+  const timestamp = Math.floor(Date.now() / 1000);
+  const digest = crypto.createHmac("sha256", "whsec_legacy_b").update(`${timestamp}.${raw}`).digest("hex");
+  const response = await request.post("/webhooks/stripe", {
+    data: raw,
+    headers: { "content-type": "application/json", "stripe-signature": `t=${timestamp},v1=${digest}` }
+  });
+  expect(response.ok()).toBeTruthy();
+  expect((await response.json()).result.reason).toBe("connected account event on legacy endpoint");
+  const jobs = await readJson("jobs.json");
+  expect(jobs.find((job) => job.id === "b-deposit-job").status).toBe("Deposit Sent");
 });
 
 test("Connect account.updated events only change the matching tenant", async ({ request }) => {
   await resetTestData({ connected: true });
-  const spoofed = JSON.stringify(accountUpdatedEvent({ account: "acct_saved_b", pressureflowAccountId: TENANT_A.accountId, chargesEnabled: false }));
-  expect((await postSigned(request, spoofed)).ok()).toBeTruthy();
+  // Unknown connected account (metadata names tenant A): ignored, nothing changes.
+  const unknown = JSON.stringify(accountUpdatedEvent({ account: "acct_unknown", pressureflowAccountId: TENANT_A.accountId, chargesEnabled: false }));
+  expect((await postSigned(request, unknown)).ok()).toBeTruthy();
   let users = await readJson("users.json");
   expect(users.find((user) => user.id === TENANT_A.id).settings.stripeConnectStatus.chargesEnabled).toBe(true);
 
@@ -228,7 +266,8 @@ test("Connect account.updated events only change the matching tenant", async ({ 
     id: "evt_deauth_b",
     type: "account.application.deauthorized",
     account: "acct_saved_b",
-    data: { object: { id: "ca_platform", metadata: { pressureflowAccountId: TENANT_B.accountId } } }
+    // Real payload is an Application object: no PressureFlow metadata on it.
+    data: { object: { id: "ca_platform", object: "application", name: "PressureFlow" } }
   });
   expect((await postSigned(request, deauthorized)).ok()).toBeTruthy();
   users = await readJson("users.json");
@@ -245,6 +284,7 @@ function connectCheckoutEvent({ eventId, account, jobId, accountId, invoiceId, a
         id: `cs_${jobId}`,
         payment_status: "paid",
         amount_total: amountTotal,
+        currency: "usd",
         metadata: { jobId, accountId, invoiceType: "deposit", invoiceId }
       }
     }
@@ -294,13 +334,13 @@ function postJson(page, url, csrfToken, data) {
   return page.request.post(url, { headers: { "x-csrf-token": csrfToken }, data });
 }
 
-async function resetTestData({ connected = false } = {}) {
+async function resetTestData({ connected = false, legacySecret = "" } = {}) {
   await fs.rm(DATA_DIR, { recursive: true, force: true });
   await fs.mkdir(DATA_DIR, { recursive: true });
   await writeJson("accounts.json", [account(TENANT_A), account(TENANT_B)]);
   await writeJson("users.json", [
     user(TENANT_A, connected ? "acct_saved_a" : ""),
-    user(TENANT_B, connected ? "acct_saved_b" : "")
+    user(TENANT_B, connected ? "acct_saved_b" : "", legacySecret)
   ]);
   await writeJson("settings.local.json", {
     businessName: "",
@@ -339,7 +379,7 @@ function account(tenant) {
   return { id: tenant.accountId, name: tenant.businessName, plan: "tester", status: "active", createdAt: NOW, updatedAt: NOW };
 }
 
-function user(tenant, stripeAccountId) {
+function user(tenant, stripeAccountId, stripeWebhookSecret = "") {
   return {
     id: tenant.id,
     accountId: tenant.accountId,
@@ -353,6 +393,7 @@ function user(tenant, stripeAccountId) {
       businessEmail: tenant.email,
       businessPhone: "(555) 600-7000",
       paymentInstructions: "",
+      ...(stripeWebhookSecret ? { stripeWebhookSecret } : {}),
       onboardingCompleted: true,
       ...(stripeAccountId ? {
         stripeAccountId,

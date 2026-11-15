@@ -235,6 +235,7 @@ const {
   readJobs,
   readSettings,
   readSettingsForJob,
+  readUsers,
   readUserSettings,
   readWebhookEvents,
   sendAdminTextAlertSafe,
@@ -757,7 +758,24 @@ async function handleApi(request, response, url) {
       return;
     }
 
-    const checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
+    // Don't start a second card charge for an invoice that's already paid
+    // (back button, second tab).
+    const alreadyPaid = invoiceType === "deposit"
+      ? job.squareDepositInvoiceStatus === "PAID" || Boolean(job.squareDepositPaidAt)
+      : job.squareFinalInvoiceStatus === "PAID" || Boolean(job.squareFinalPaidAt);
+    if (alreadyPaid) {
+      sendHtml(response, 409, renderEstimateMessagePage("Invoice already paid", "This invoice has already been paid. No further payment is needed."));
+      return;
+    }
+
+    let checkout;
+    try {
+      checkout = await createStripeCheckoutSession(job, await readSettingsForJob(job), invoiceType, getAppBaseUrl(request));
+    } catch (error) {
+      operationalLogger.warn("card_checkout_failed", { accountId: job.accountId || "owner", jobId: job.id, invoiceType, error });
+      sendHtml(response, 502, renderEstimateMessagePage("Card payment unavailable", "Card payment couldn't be started right now. Please try again shortly, or use another payment option on the invoice."));
+      return;
+    }
     response.writeHead(303, { location: checkout.url });
     response.end();
     return;

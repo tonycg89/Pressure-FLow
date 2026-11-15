@@ -773,6 +773,12 @@ async function writeSettings(settings) {
         JSON.stringify(settings.customPhotoSections || [])
       ]
     );
+    // Package 006: Stripe Connect state for the owner account. Kept out of the
+    // 51-parameter upsert above to keep that statement's ordering untouched.
+    await getPool().query(
+      "update app_settings set stripe_account_id = $1, stripe_connect_status = $2::jsonb where id = 1",
+      [settings.stripeAccountId || "", JSON.stringify(settings.stripeConnectStatus || {})]
+    );
     return;
   }
 
@@ -1008,6 +1014,8 @@ async function ensurePostgresSchema() {
   await getPool().query("alter table app_settings add column if not exists custom_services jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_service_types jsonb not null default '[]'::jsonb");
   await getPool().query("alter table app_settings add column if not exists custom_photo_sections jsonb not null default '[]'::jsonb");
+  await getPool().query("alter table app_settings add column if not exists stripe_account_id text not null default ''");
+  await getPool().query("alter table app_settings add column if not exists stripe_connect_status jsonb not null default '{}'::jsonb");
   await getPool().query("alter table app_users add column if not exists account_id text not null default ''");
   await getPool().query("update app_users set account_id = id::text where account_id = ''");
   await getPool().query(`
@@ -1633,7 +1641,9 @@ function settingsFromRow(row) {
     customTemplates: Array.isArray(row.custom_templates) ? row.custom_templates : [],
     customServices: Array.isArray(row.custom_services) ? row.custom_services : [],
     customServiceTypes: Array.isArray(row.custom_service_types) ? row.custom_service_types : [],
-    customPhotoSections: Array.isArray(row.custom_photo_sections) ? row.custom_photo_sections : []
+    customPhotoSections: Array.isArray(row.custom_photo_sections) ? row.custom_photo_sections : [],
+    stripeAccountId: row.stripe_account_id || "",
+    stripeConnectStatus: row.stripe_connect_status && typeof row.stripe_connect_status === "object" ? row.stripe_connect_status : {}
   };
 }
 

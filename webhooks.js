@@ -16,6 +16,7 @@ function createWebhookHandlers({
   readJobs,
   readSettings,
   readSettingsForJob,
+  readUsers,
   readUserSettings,
   readWebhookEvents,
   sendAdminTextAlertSafe,
@@ -137,7 +138,32 @@ function createWebhookHandlers({
 
   // Legacy endpoint: per-account pasted keys (/webhooks/stripe).
   async function handleStripeWebhook(event) {
+    // Events from connected accounts must go through the Connect endpoint's
+    // account check, even if the legacy endpoint is ever subscribed to them.
+    if (event.account) {
+      return logWebhookResult("stripe", { action: "ignored", reason: "connected account event on legacy endpoint", type: event.type || "" }, event);
+    }
     return applyStripeCheckoutEvent(event, { provider: "stripe" });
+  }
+
+  // Tenant lookup by the connected account Stripe reports, never by metadata:
+  // deauthorization payloads are Application objects without our metadata.
+  async function findTenantByStripeAccount(stripeAccountId) {
+    if (!stripeAccountId || !readUserSettings) {
+      return null;
+    }
+    const ownerSettings = await readUserSettings("owner");
+    if (ownerSettings.stripeAccountId === stripeAccountId) {
+      return { accountId: "owner", settings: ownerSettings };
+    }
+    const users = readUsers ? await readUsers() : [];
+    const user = users.find((item) => item.settings?.stripeAccountId === stripeAccountId);
+    if (!user) {
+      return null;
+    }
+    const accountId = user.accountId || user.id;
+    const settings = await readUserSettings(accountId);
+    return settings.stripeAccountId === stripeAccountId ? { accountId, settings } : null;
   }
 
   // Platform Connect endpoint (/webhooks/stripe-connect). event.account is the
@@ -159,14 +185,11 @@ function createWebhookHandlers({
   async function applyStripeAccountEvent(event, connectedAccountId) {
     const provider = "stripe_connect";
     const object = event.data?.object || {};
-    const accountId = String(object.metadata?.pressureflowAccountId || "");
-    if (!accountId || !readUserSettings || !writeUserSettings) {
+    const tenant = writeUserSettings ? await findTenantByStripeAccount(connectedAccountId) : null;
+    if (!tenant) {
       return logWebhookResult(provider, { action: "ignored", reason: "account not matched", type: event.type }, event);
     }
-    const settings = await readUserSettings(accountId);
-    if (!settings.stripeAccountId || settings.stripeAccountId !== connectedAccountId) {
-      return logWebhookResult(provider, { action: "ignored", reason: "account mismatch", accountId, type: event.type }, event);
-    }
+    const { accountId, settings } = tenant;
 
     if (event.type === "account.application.deauthorized") {
       settings.stripeConnectStatus = {
@@ -211,6 +234,10 @@ function createWebhookHandlers({
       const settings = await readSettingsForJob(job);
       if (!settings.stripeAccountId || settings.stripeAccountId !== connectedAccountId) {
         return logWebhookResult(provider, { action: "ignored", reason: "connected account mismatch", jobId, accountId }, event);
+      }
+      // Connect path fails closed on missing amount or non-USD currency.
+      if (getStripeSessionPaidCents(session) === null || String(session.currency || "").toLowerCase() !== "usd") {
+        return logWebhookResult(provider, { action: "ignored", reason: "amount or currency missing", jobId, accountId }, event);
       }
     }
     if (!invoiceId || getStoredInvoiceId(job, invoiceType) !== invoiceId) {

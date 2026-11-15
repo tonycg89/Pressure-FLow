@@ -1,6 +1,6 @@
 # Package 006 - Stripe Connect for Contractor Card Payments
 
-Status: Implemented on branch `claude/stripe-connect`. Awaiting Tony's review and live test-mode verification.
+Status: Implemented on branch `claude/stripe-connect`, independently reviewed, and review fixes applied. Awaiting Tony's review and live Stripe test-mode verification.
 Approved by Tony: 2026-11-14 (chose "Connect button first").
 
 ## Objective
@@ -55,6 +55,21 @@ A contractor clicks **Connect with Stripe** in Settings, finishes Stripe's hoste
 3. Developers → Webhooks → Add endpoint `https://pressure-flow.onrender.com/webhooks/stripe-connect`, choose **Events on connected accounts**, and select the four events above. Copy its signing secret → Render env `STRIPE_CONNECT_WEBHOOK_SECRET`.
 4. Optional: `STRIPE_APPLICATION_FEE_PERCENT` (for example `1` = 1%). Leave unset for no platform fee.
 5. Repeat with live keys only after a full test-mode payment works end to end.
+
+## Independent Review (2026-11-14)
+
+A separate reviewer agent audited the first Connect commit (`b2c891e`). Fixes are in the follow-up commit:
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Owner account on Postgres dropped `stripeAccountId`/`stripeConnectStatus` (fixed `app_settings` columns), so each Connect click would create a new Stripe account | Blocker | Added `stripe_account_id` + `stripe_connect_status` columns (idempotent `alter table ... if not exists`, plus `supabase-schema.sql`). Round-trip verified against a local Postgres 16 loaded with the pre-change schema. The bug reproduced on `b2c891e` and is fixed after. |
+| `account.application.deauthorized` payload is an Application object with no PressureFlow metadata, so the disconnect was never recorded | Blocker | Tenant is now found by `event.account` matched against saved `stripeAccountId` (owner, then users). Metadata is no longer trusted for account events. |
+| Legacy `/webhooks/stripe` would process connected-account events without the account check | Should-fix | Legacy endpoint ignores any event carrying `event.account`. |
+| Connect path accepted a missing `amount_total` and any currency | Should-fix | Connect path fails closed unless amount is present and currency is `usd`. |
+| `pay-card` could start a second checkout for an already-paid invoice | Should-fix | Returns 409 "Invoice already paid". Checkout errors now render a customer-friendly page. |
+| Settings read → Stripe call → write could overwrite a concurrent save | Should-fix | Re-read settings right before writing. |
+
+Documented, not changed: legacy `/webhooks/stripe` now also accepts `checkout.session.async_payment_succeeded` (same checks as `completed`).
 
 ## Acceptance Criteria
 
