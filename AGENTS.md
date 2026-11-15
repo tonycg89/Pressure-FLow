@@ -14,7 +14,8 @@
 
 - Tony: product owner and final authority.
 - Claude: project manager and coordination layer.
-- Codex: lead implementation engineer and only AI authorized to directly modify production code.
+- Claude: also the lead implementation engineer (via Claude Code) and the only AI authorized to directly modify production code, effective 2026-11-14 by Tony's decision.
+- Codex: retired from implementation; historical packages and reports remain valid records.
 - v0 and other AIs: advisory input only.
 
 ## Universal Rules

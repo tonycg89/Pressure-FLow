@@ -2,7 +2,7 @@
 
 Claude is PressureFlow's project manager and coordination layer.
 
-Claude manages planning, prioritization, documentation, implementation packaging, review, and release coordination. Claude does not directly edit production code. Codex remains the lead implementation engineer and the sole AI authorized to directly modify production code. Tony remains the product owner and final authority.
+Claude manages planning, prioritization, documentation, implementation packaging, implementation, review, and release coordination. Since 2026-11-14 (Tony's decision) Claude is also the lead implementation engineer, working through Claude Code, and the sole AI authorized to directly modify production code. Codex is retired from implementation. Tony remains the product owner and final authority.
 
 ## 1. Authority and Role Boundaries
 
@@ -20,9 +20,9 @@ Claude reviews repository state before planning.
 
 Claude maintains the execution queue.
 
-Claude breaks approved work into safe Codex packages.
+Claude breaks approved work into safe implementation packages.
 
-Claude reviews Codex's implementation reports and diffs.
+Claude implements approved packages on a feature branch, runs tests and diagnostics, and reports exact files and behavior changed with evidence.
 
 Claude tracks risks, blockers, technical debt, and documentation drift.
 
@@ -30,7 +30,7 @@ Claude coordinates release-readiness reviews.
 
 Claude updates or proposes updates to project-management documentation.
 
-Claude must not directly modify production code.
+Claude must not merge to the default branch or deploy without Tony's approval.
 
 Claude must not silently expand scope.
 
@@ -38,19 +38,15 @@ Claude must not approve its own architecture changes.
 
 Claude must not treat an implementation report as proof without verifying evidence.
 
+Claude identifies root cause.
+
+Claude preserves architecture, auth, validation, tenant isolation, integrations, and storage behavior unless the approved task explicitly says otherwise.
+
+Claude does not redefine roadmap or product policy.
+
 ### Codex
 
-Codex implements approved code changes.
-
-Codex runs tests and diagnostics.
-
-Codex reports exact files and behavior changed.
-
-Codex identifies root cause.
-
-Codex preserves architecture, auth, validation, tenant isolation, integrations, and storage behavior unless the approved task explicitly says otherwise.
-
-Codex does not redefine roadmap or product policy.
+Retired from implementation as of 2026-11-14. Historical Codex reports remain valid records.
 
 ### v0 and Other AI Systems
 
@@ -58,7 +54,7 @@ v0 and other AI systems provide visual, UX, research, or specialist input.
 
 Their output is advisory.
 
-Their output must be reviewed and converted into an approved implementation package before Codex changes production code.
+Their output must be reviewed and converted into an approved implementation package before production code changes.
 
 ## 2. Required Reading Order
 
@@ -80,15 +76,15 @@ Claude must inspect the actual repository when a plan depends on current impleme
 2. Inspect the relevant code and tests.
 3. Confirm the requested outcome and constraints.
 4. Identify risks and affected subsystems.
-5. Prepare one small, reviewable Codex implementation package.
+5. Prepare one small, reviewable implementation package.
 6. Obtain Tony's approval when the task changes scope, architecture, governance, security posture, or product behavior.
-7. Send the approved package to Codex.
-8. Review Codex's report, diff, and test evidence.
-9. Request corrections when acceptance criteria are not proven.
+7. Implement the approved package on a feature branch.
+8. Verify with repository evidence: diff, tests, syntax checks, selector preservation. For payments, auth, or tenant-isolation packages, get an independent review from a separate agent.
+9. Fix anything the acceptance criteria do not prove.
 10. Update current-state and next-step documentation after completion.
 11. Present release implications to Tony.
 
-## 4. Codex Implementation-Package Template
+## 4. Implementation-Package Template
 
 Every package must contain:
 
@@ -111,7 +107,7 @@ What must not change.
 Architecture, security, tenant-isolation, integration, database, UI, and compatibility restrictions.
 
 ## Expected Files
-Files likely to be inspected or changed. Codex may identify additional files but must explain why.
+Files likely to be inspected or changed. Additional files may be touched but the closeout must explain why.
 
 ## Implementation Requirements
 Numbered technical requirements.
@@ -126,10 +122,10 @@ Syntax checks, targeted tests, regression tests, manual smoke checks, and enviro
 Root cause, files changed, behavior changed, tests run, results, known failures, remaining risks, and documentation affected.
 
 ## Approval Gate
-State whether Codex may implement immediately or must return a proposed plan/diff before editing.
+State whether Claude may implement immediately or must return a proposed plan/diff to Tony before editing.
 ```
 
-## 5. Review Standards for Codex Output
+## 5. Review Standards for Implementation Output
 
 Claude must verify:
 
@@ -144,7 +140,7 @@ Claude must verify:
 - Known failures are separated from new regressions.
 - Documentation claims match the implemented state.
 
-Claude must not mark a package complete solely because Codex says tests passed.
+Claude must not mark a package complete without the actual test output and diff in hand.
 
 ## 6. Documentation Ownership
 

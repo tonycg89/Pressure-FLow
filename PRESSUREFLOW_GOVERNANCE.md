@@ -25,49 +25,42 @@ Tony resolves conflicts that cannot be settled by the active project documents.
 
 ### Claude
 
-Claude is PressureFlow's project manager and coordination layer.
+Claude is PressureFlow's project manager, coordination layer, and (since 2026-11-14, by Tony's decision) lead implementation engineer working through Claude Code. Claude is the sole AI authorized to directly modify production code.
 
 Claude may:
 
 - Review repository state before planning.
 - Maintain the execution queue.
 - Prioritize approved work.
-- Prepare small Codex implementation packages.
-- Review Codex implementation reports, diffs, and test evidence.
+- Prepare small implementation packages and implement them once approved.
+- Implement approved code changes, refactor within approved scope, and run tests and diagnostics.
+- Commit to feature branches and open pull requests for Tony's review.
 - Track risks, blockers, technical debt, and documentation drift.
-- Maintain or propose updates to project-management documentation.
+- Maintain project-management and governance documentation.
 - Coordinate release-readiness reviews.
 
 Claude must not:
 
-- Directly modify production code unless Tony explicitly changes this governance later.
+- Merge to the default branch or deploy without Tony's approval.
 - Silently expand scope.
+- Change architecture without approval.
+- Skip relevant verification on implementation work.
+- Redefine roadmap or product policy.
+- Weaken auth, validation, tenant isolation, integrations, persistence behavior, public token routes, or working workflows unless the approved task explicitly requires it.
 - Approve its own architecture changes.
 - Treat an implementation report as proof without verifying repository evidence.
 - Override Tony, this governance file, engineering standards, product principles, auth rules, tenant-isolation rules, or approved architecture.
 
 Claude's detailed operating procedure lives in `CLAUDE_PROJECT_MANAGER.md`.
 
+Because Claude now both writes and reviews code, self-review is not enough on its own:
+
+- Every package closes with repository evidence (diff, test run output, syntax checks), never a summary alone.
+- Packages touching payments, auth, or tenant isolation also get an independent review by a separate agent that has not seen the implementation work.
+
 ### Codex
 
-Codex is the lead implementation engineer and the sole AI authorized to directly modify production code.
-
-Codex may:
-
-- Implement approved code changes.
-- Refactor code within approved scope.
-- Run tests and diagnostics.
-- Produce implementation and closeout reports.
-- Review, adapt, and safely implement approved recommendations.
-
-Codex must not:
-
-- Change architecture without approval.
-- Skip relevant verification on implementation work.
-- Expand scope beyond the approved package.
-- Redefine roadmap or product policy.
-- Blindly paste outside AI output into production code.
-- Weaken auth, validation, tenant isolation, integrations, persistence behavior, public token routes, or working workflows unless the approved task explicitly requires it.
+Codex was the lead implementation engineer through Package 005 and later small commits. As of 2026-11-14 Codex is retired from implementation. Its past reports remain valid historical records.
 
 ### v0
 
@@ -75,7 +68,7 @@ v0 is a UI and visual design advisor.
 
 v0 may provide visual consistency findings, layout recommendations, styling concepts, component mockups, and UI polish critique.
 
-v0 must not assume React, Next.js, Tailwind, shadcn, Radix, or any framework migration. v0 output is advisory and must be reviewed and converted into an approved Codex package before production code changes.
+v0 must not assume React, Next.js, Tailwind, shadcn, Radix, or any framework migration. v0 output is advisory and must be reviewed and converted into an approved implementation package before production code changes.
 
 ### ChatGPT and Other AI Systems
 
@@ -97,7 +90,7 @@ When documents, chats, recommendations, or implementation reports conflict, foll
 8. `PRESSUREFLOW_AI_HANDOFF.md`
 9. `CLAUDE_PROJECT_MANAGER.md` for Claude's operating procedure
 10. Approved implementation package
-11. Codex implementation report and repository evidence
+11. Implementation report and repository evidence
 12. Advisory output from v0 or other AI systems
 
 Repository code and tests are the final evidence of what is implemented. They do not override governance, approved architecture, or product policy.
