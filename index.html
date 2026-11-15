@@ -1310,15 +1310,21 @@
 
             <section class="integration-panel form-section">
               <h4>Stripe</h4>
-              <label class="field">
-                Secret key
-                <input name="stripeSecretKey" class="input" type="password" autocomplete="off" placeholder="Enter Stripe secret key">
-              </label>
-              <label class="field">
-                Webhook secret
-                <input name="stripeWebhookSecret" class="input" type="password" autocomplete="off" placeholder="Enter Stripe webhook secret">
-              </label>
-              <p id="stripeIntegrationStatus" class="form-note"></p>
+              <p class="form-note">Let customers pay deposits and invoices by card. Money goes straight to your own Stripe account.</p>
+              <button id="stripeConnectButton" class="secondary-link-button" type="button">Connect with Stripe</button>
+              <p id="stripeConnectStatus" class="form-note" aria-live="polite"></p>
+              <details class="stripe-legacy-keys">
+                <summary>Advanced: use your own Stripe keys</summary>
+                <label class="field">
+                  Secret key
+                  <input name="stripeSecretKey" class="input" type="password" autocomplete="off" placeholder="Enter Stripe secret key">
+                </label>
+                <label class="field">
+                  Webhook secret
+                  <input name="stripeWebhookSecret" class="input" type="password" autocomplete="off" placeholder="Enter Stripe webhook secret">
+                </label>
+                <p id="stripeIntegrationStatus" class="form-note"></p>
+              </details>
             </section>
 
             <section class="integration-panel form-section">

@@ -7,6 +7,7 @@ const {
 } = require("./billing");
 const { extractSquareInvoice, parseSquareWebhookInvoiceId } = require("./integrations/square");
 const { parseStripeWebhookMetadata } = require("./integrations/stripe");
+const { summarizeAccountStatus } = require("./integrations/stripe-connect");
 const { createOperationalLogger } = require("./operational-logger");
 
 function createWebhookHandlers({
@@ -15,10 +16,12 @@ function createWebhookHandlers({
   readJobs,
   readSettings,
   readSettingsForJob,
+  readUserSettings,
   readWebhookEvents,
   sendAdminTextAlertSafe,
   writeAllJobs,
   writeJobs,
+  writeUserSettings,
   writeWebhookEvents,
   logger = createOperationalLogger()
 }) {
@@ -130,14 +133,64 @@ function createWebhookHandlers({
     return process.env.STRIPE_WEBHOOK_SECRET || "";
   }
 
+  const STRIPE_PAID_EVENT_TYPES = new Set(["checkout.session.completed", "checkout.session.async_payment_succeeded"]);
+
+  // Legacy endpoint: per-account pasted keys (/webhooks/stripe).
   async function handleStripeWebhook(event) {
-    if (event.type !== "checkout.session.completed") {
-      return logWebhookResult("stripe", { action: "ignored", reason: "unsupported event type", type: event.type || "" }, event);
+    return applyStripeCheckoutEvent(event, { provider: "stripe" });
+  }
+
+  // Platform Connect endpoint (/webhooks/stripe-connect). event.account is the
+  // contractor's connected account and must match the tenant's saved account.
+  async function handleStripeConnectWebhook(event) {
+    const provider = "stripe_connect";
+    const connectedAccountId = String(event.account || "");
+    if (!connectedAccountId) {
+      return logWebhookResult(provider, { action: "ignored", reason: "missing connected account", type: event.type || "" }, event);
+    }
+
+    if (event.type === "account.updated" || event.type === "account.application.deauthorized") {
+      return applyStripeAccountEvent(event, connectedAccountId);
+    }
+
+    return applyStripeCheckoutEvent(event, { provider, connectedAccountId });
+  }
+
+  async function applyStripeAccountEvent(event, connectedAccountId) {
+    const provider = "stripe_connect";
+    const object = event.data?.object || {};
+    const accountId = String(object.metadata?.pressureflowAccountId || "");
+    if (!accountId || !readUserSettings || !writeUserSettings) {
+      return logWebhookResult(provider, { action: "ignored", reason: "account not matched", type: event.type }, event);
+    }
+    const settings = await readUserSettings(accountId);
+    if (!settings.stripeAccountId || settings.stripeAccountId !== connectedAccountId) {
+      return logWebhookResult(provider, { action: "ignored", reason: "account mismatch", accountId, type: event.type }, event);
+    }
+
+    if (event.type === "account.application.deauthorized") {
+      settings.stripeConnectStatus = {
+        ...summarizeAccountStatus({}),
+        deauthorized: true
+      };
+    } else {
+      if (object.id && object.id !== connectedAccountId) {
+        return logWebhookResult(provider, { action: "ignored", reason: "account mismatch", accountId, type: event.type }, event);
+      }
+      settings.stripeConnectStatus = summarizeAccountStatus(object);
+    }
+    await writeUserSettings(accountId, settings);
+    return logWebhookResult(provider, { action: "account_updated", accountId, type: event.type, status: settings.stripeConnectStatus.chargesEnabled ? "charges_enabled" : "charges_disabled" }, event);
+  }
+
+  async function applyStripeCheckoutEvent(event, { provider, connectedAccountId = "" }) {
+    if (!STRIPE_PAID_EVENT_TYPES.has(event.type)) {
+      return logWebhookResult(provider, { action: "ignored", reason: "unsupported event type", type: event.type || "" }, event);
     }
 
     const session = event.data?.object || {};
     if (session.payment_status && session.payment_status !== "paid") {
-      return logWebhookResult("stripe", { action: "ignored", reason: "checkout not paid", eventId: event.id || "" }, event);
+      return logWebhookResult(provider, { action: "ignored", reason: "checkout not paid", eventId: event.id || "" }, event);
     }
 
     const jobId = session.metadata?.jobId || "";
@@ -149,22 +202,28 @@ function createWebhookHandlers({
       : await readJobs();
     const job = jobs.find((item) => item.id === jobId);
     if (!job) {
-      return logWebhookResult("stripe", { action: "ignored", reason: "job not found", jobId, accountId }, event);
+      return logWebhookResult(provider, { action: "ignored", reason: "job not found", jobId, accountId }, event);
     }
     if ((job.accountId || "owner") !== accountId) {
-      return logWebhookResult("stripe", { action: "ignored", reason: "account mismatch", jobId, accountId });
+      return logWebhookResult(provider, { action: "ignored", reason: "account mismatch", jobId, accountId });
+    }
+    if (connectedAccountId) {
+      const settings = await readSettingsForJob(job);
+      if (!settings.stripeAccountId || settings.stripeAccountId !== connectedAccountId) {
+        return logWebhookResult(provider, { action: "ignored", reason: "connected account mismatch", jobId, accountId }, event);
+      }
     }
     if (!invoiceId || getStoredInvoiceId(job, invoiceType) !== invoiceId) {
-      return logWebhookResult("stripe", { action: "ignored", reason: "invoice mismatch", jobId, accountId, invoiceType, invoiceId }, event);
+      return logWebhookResult(provider, { action: "ignored", reason: "invoice mismatch", jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     const amountValidation = validateInvoiceAmount(job, invoiceType, getStripeSessionPaidCents(session));
     if (!amountValidation.ok) {
-      return logWebhookResult("stripe", { action: "ignored", reason: amountValidation.reason, jobId, accountId, invoiceType, invoiceId }, event);
+      return logWebhookResult(provider, { action: "ignored", reason: amountValidation.reason, jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     if (isInvoiceAlreadyPaid(job, invoiceType)) {
-      return logWebhookResult("stripe", { action: "ignored", reason: "already paid", jobId, accountId, invoiceType, invoiceId }, event);
+      return logWebhookResult(provider, { action: "ignored", reason: "already paid", jobId, accountId, invoiceType, invoiceId }, event);
     }
 
     if (invoiceType === "deposit") {
@@ -189,7 +248,7 @@ function createWebhookHandlers({
     } else {
       await writeJobs(jobs);
     }
-    return logWebhookResult("stripe", { action: "job_updated", jobId: job.id, accountId, invoiceType, invoiceId, status: job.status }, event);
+    return logWebhookResult(provider, { action: "job_updated", jobId: job.id, accountId, invoiceType, invoiceId, status: job.status }, event);
   }
 
   function logWebhookResult(provider, result, event = {}) {
@@ -219,6 +278,7 @@ function createWebhookHandlers({
     getSquareWebhookSettings,
     getStripeWebhookSecret,
     handleSquareWebhook,
+    handleStripeConnectWebhook,
     handleStripeWebhook,
     recordWebhookEvent
   };

@@ -213,6 +213,8 @@ const onboardingStatus = document.querySelector("#onboardingStatus");
 const emailIntegrationStatus = document.querySelector("#emailIntegrationStatus");
 const squareIntegrationStatus = document.querySelector("#squareIntegrationStatus");
 const stripeIntegrationStatus = document.querySelector("#stripeIntegrationStatus");
+const stripeConnectButton = document.querySelector("#stripeConnectButton");
+const stripeConnectStatus = document.querySelector("#stripeConnectStatus");
 const quickBooksIntegrationStatus = document.querySelector("#quickBooksIntegrationStatus");
 const onboardingLogoInput = document.querySelector("#onboardingLogoInput");
 const onboardingLogoPreview = document.querySelector("#onboardingLogoPreview");
@@ -522,8 +524,10 @@ async function init() {
   paymentDialog?.addEventListener("cancel", () => resolvePaymentDialog(null));
   paymentForm?.addEventListener("submit", submitPaymentDialog);
   followUpForm?.addEventListener("submit", submitFollowUpDialog);
+  stripeConnectButton?.addEventListener("click", startStripeConnect);
   await loadSession();
   await loadSettings();
+  handleStripeConnectReturn();
   await Promise.all([
     loadCustomers(),
     loadExpenses(),
@@ -1474,8 +1478,9 @@ function renderIntegrationStatuses() {
   if (stripeIntegrationStatus) {
     stripeIntegrationStatus.textContent = settings.hasStripeSecretKey
       ? "Stripe secret key saved for this account."
-      : "Stripe is not connected yet.";
+      : "No Stripe keys saved. Most businesses should use Connect with Stripe instead.";
   }
+  renderStripeConnectStatus();
   if (quickBooksIntegrationStatus) {
     quickBooksIntegrationStatus.textContent = settings.quickBooksCompanyId || settings.hasQuickBooksClientSecret
       ? "QuickBooks profile saved for this account."
@@ -5585,9 +5590,67 @@ function renderInvoicePaymentWarning(nextAction, deliveryActions = []) {
   </div>`;
 }
 
+function getStripeConnectState() {
+  const connect = settings.stripeConnect || {};
+  if (!connect.available) return "unavailable";
+  if (connect.deauthorized) return "deauthorized";
+  if (connect.chargesEnabled) return "ready";
+  if (connect.connected) return "incomplete";
+  return "not_connected";
+}
+
+function renderStripeConnectStatus() {
+  if (!stripeConnectButton || !stripeConnectStatus) return;
+  const state = getStripeConnectState();
+  const copy = {
+    unavailable: ["Connect with Stripe", "Card payments through Stripe Connect are not set up on this PressureFlow server yet."],
+    deauthorized: ["Reconnect Stripe", "Your Stripe account was disconnected. Reconnect to take card payments again."],
+    ready: ["Manage Stripe setup", "Stripe is connected. Customers can pay deposits and invoices by card."],
+    incomplete: ["Finish Stripe setup", "Stripe setup isn't finished. Stripe still needs a few details before you can take card payments."],
+    not_connected: ["Connect with Stripe", "Not connected. Takes about 5 minutes. You'll need your business details and a bank account for payouts."]
+  }[state];
+  stripeConnectButton.textContent = copy[0];
+  stripeConnectButton.disabled = state === "unavailable";
+  stripeConnectButton.hidden = state === "ready";
+  stripeConnectStatus.textContent = copy[1];
+}
+
+async function startStripeConnect() {
+  if (!stripeConnectButton) return;
+  stripeConnectButton.disabled = true;
+  const previousText = stripeConnectButton.textContent;
+  stripeConnectButton.textContent = "Opening Stripe...";
+  try {
+    const data = await apiRequest("/api/stripe/connect/start", {});
+    if (!data.url) throw new Error("Stripe did not return an onboarding link.");
+    window.location.assign(data.url);
+  } catch (error) {
+    stripeConnectButton.disabled = false;
+    stripeConnectButton.textContent = previousText;
+    showToast(error.message || "Unable to open Stripe.", "error");
+  }
+}
+
+function handleStripeConnectReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const result = params.get("stripeConnect");
+  if (!result) return;
+  params.delete("stripeConnect");
+  const query = params.toString();
+  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  const state = getStripeConnectState();
+  if (state === "ready") {
+    showToast("Stripe connected. Customers can now pay by card.", "success");
+  } else if (result === "return") {
+    showToast("Stripe setup saved. Stripe still needs a few details before card payments turn on.", "info");
+  }
+  openSettings({ section: "payment" });
+}
+
 function hasConfiguredInvoicePaymentMethod() {
   return Boolean(
     settings.hasConfiguredInvoicePaymentMethod ||
+    settings.stripeConnect?.chargesEnabled ||
     (settings.hasSquareAccessToken && settings.squareLocationId) ||
     settings.hasStripeSecretKey ||
     settings.zellePayment ||

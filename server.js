@@ -59,6 +59,8 @@ const {
   verifySquareSignature
 } = require("./integrations/square");
 const { verifyStripeSignature } = require("./integrations/stripe");
+const { getConnectWebhookSecret } = require("./integrations/stripe-connect");
+const { createStripeConnectRoutes } = require("./stripe-connect-routes");
 const { sendAdminTextAlertSafe } = require("./integrations/twilio");
 const {
   createPublicWorkflowHandlers
@@ -224,6 +226,7 @@ const {
   getSquareWebhookSettings,
   getStripeWebhookSecret,
   handleSquareWebhook,
+  handleStripeConnectWebhook,
   handleStripeWebhook,
   recordWebhookEvent
 } = createWebhookHandlers({
@@ -232,11 +235,13 @@ const {
   readJobs,
   readSettings,
   readSettingsForJob,
+  readUserSettings,
   readWebhookEvents,
   sendAdminTextAlertSafe,
   sendCompletionCertificateEmailSafe,
   writeAllJobs,
   writeJobs,
+  writeUserSettings,
   writeWebhookEvents,
   logger: operationalLogger
 });
@@ -294,6 +299,18 @@ const { handleExportTemplateRoutes } = createExportTemplateRoutes({
   statuses,
   writeSettings,
   randomId: () => crypto.randomUUID()
+});
+
+const { handleStripeConnectRoutes } = createStripeConnectRoutes({
+  getAppBaseUrl,
+  getWorkspaceId,
+  logger: operationalLogger,
+  readSettings,
+  renderMessagePage: renderEstimateMessagePage,
+  sendError,
+  sendHtml,
+  sendJson,
+  writeSettings
 });
 
 const { handleSettingsUserRoutes } = createSettingsUserRoutes({
@@ -618,6 +635,10 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (await handleStripeConnectRoutes(request, response, url)) {
+    return;
+  }
+
   if (await handleSettingsUserRoutes(request, response, url)) {
     return;
   }
@@ -692,6 +713,35 @@ async function handleApi(request, response, url) {
       return;
     }
     const result = await handleStripeWebhook(event);
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/webhooks/stripe-connect") {
+    const rawBody = await readRawRequestBody(request);
+    const secret = getConnectWebhookSecret();
+    const signatureOk = Boolean(secret) && verifyStripeSignature(request.headers["stripe-signature"], rawBody, secret, safeCompare);
+    if (!signatureOk) {
+      operationalLogger.warn("webhook_signature_rejected", {
+        provider: "stripe_connect",
+        reason: secret ? "invalid signature" : "missing signature key"
+      });
+      sendError(response, 401, secret ? "Invalid Stripe webhook signature." : "Stripe Connect webhook secret is not configured.");
+      return;
+    }
+
+    let event;
+    try {
+      event = parseJsonRequestText(rawBody);
+    } catch (error) {
+      operationalLogger.warn("webhook_payload_parse_failed", {
+        provider: "stripe_connect",
+        error
+      });
+      sendError(response, 400, "Invalid webhook payload.");
+      return;
+    }
+    const result = await handleStripeConnectWebhook(event);
     sendJson(response, 200, { ok: true, result });
     return;
   }
@@ -852,7 +902,7 @@ const server = http.createServer(async (request, response) => {
       session: ignoresSessionForPublicWorkflow(url.pathname) ? null : session,
       authDisabled: !authEnabled
     }, async () => {
-      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe") {
+      if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/estimate/") || url.pathname.startsWith("/contract/") || url.pathname.startsWith("/proof/") || url.pathname.startsWith("/invoice/") || url.pathname === "/login" || url.pathname === "/health" || url.pathname === "/webhooks/square" || url.pathname === "/webhooks/stripe" || url.pathname === "/webhooks/stripe-connect") {
         await handleApi(request, response, url);
         return;
       }

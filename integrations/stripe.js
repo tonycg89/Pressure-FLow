@@ -13,7 +13,10 @@ function parseStripeWebhookMetadata(rawBody) {
   }
 }
 
-function verifyStripeSignature(signatureHeader, rawBody, secret, safeCompare) {
+// Stripe's default tolerance. Rejects replays of old, validly signed events.
+const STRIPE_SIGNATURE_TOLERANCE_SECONDS = 300;
+
+function verifyStripeSignature(signatureHeader, rawBody, secret, safeCompare, nowSeconds = Math.floor(Date.now() / 1000)) {
   if (!secret) {
     return false;
   }
@@ -22,6 +25,10 @@ function verifyStripeSignature(signatureHeader, rawBody, secret, safeCompare) {
   const timestamp = signature.split(",").find((part) => part.startsWith("t="))?.slice(2);
   const expected = signature.split(",").filter((part) => part.startsWith("v1=")).map((part) => part.slice(3));
   if (!timestamp || !expected.length) {
+    return false;
+  }
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds) || Math.abs(nowSeconds - timestampSeconds) > STRIPE_SIGNATURE_TOLERANCE_SECONDS) {
     return false;
   }
 

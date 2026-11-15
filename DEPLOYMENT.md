@@ -113,6 +113,17 @@ STRIPE_WEBHOOK_SECRET=
 
 For tester/customer accounts, enter Square, Stripe, and QuickBooks credentials inside PressureFlow Settings instead of adding them to Render.
 
+Stripe Connect platform variables (Package 006). With these set, contractors use **Connect with Stripe** in Settings instead of pasting keys:
+
+```text
+STRIPE_PLATFORM_SECRET_KEY=        # PressureFlow's own platform key (sk_test_... first)
+STRIPE_CONNECT_WEBHOOK_SECRET=     # signing secret of the "connected accounts" endpoint
+STRIPE_APPLICATION_FEE_PERCENT=    # optional platform fee, e.g. 1 = 1%; unset = no fee
+APP_BASE_URL=https://pressure-flow.onrender.com
+```
+
+Connect webhook endpoint: `https://<app>/webhooks/stripe-connect`, set to listen to **events on connected accounts**: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `account.updated`, `account.application.deauthorized`.
+
 QuickBooks credentials are currently stored per account in Settings; there are no QuickBooks environment variables used by the app.
 
 ## Google Console Requirements

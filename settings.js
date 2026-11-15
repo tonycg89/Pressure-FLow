@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const { createInlineFileRecord, publicFileRecord } = require("./storage");
+const { isConnectChargeReady, isStripeConnectAvailable } = require("./integrations/stripe-connect");
 
 const MAX_CUSTOM_TEMPLATES = 25;
 const MAX_TEMPLATE_DATA_URL_BYTES = 7_000_000;
@@ -20,6 +21,8 @@ const privateSettingKeys = new Set([
   "smtpPassword",
   "stripeSecretKey",
   "stripeWebhookSecret",
+  "stripeAccountId",
+  "stripeConnectStatus",
   "quickBooksClientSecret",
   "quickBooksRefreshToken",
   "googleClientSecret",
@@ -38,6 +41,7 @@ function publicSettings(settings, options = {}) {
     hasSmtpPassword: Boolean(settings.smtpPassword),
     hasStripeSecretKey: Boolean(settings.stripeSecretKey),
     hasStripeWebhookSecret: Boolean(settings.stripeWebhookSecret),
+    stripeConnect: publicStripeConnectStatus(settings),
     hasQuickBooksClientSecret: Boolean(settings.quickBooksClientSecret),
     hasQuickBooksRefreshToken: Boolean(settings.quickBooksRefreshToken),
     hasGoogleClientSecret: Boolean(settings.googleClientSecret),
@@ -53,10 +57,23 @@ function publicSettings(settings, options = {}) {
   return values;
 }
 
+function publicStripeConnectStatus(settings = {}) {
+  const status = settings.stripeConnectStatus || {};
+  return {
+    available: isStripeConnectAvailable(),
+    connected: Boolean(settings.stripeAccountId),
+    chargesEnabled: Boolean(settings.stripeAccountId && status.chargesEnabled),
+    payoutsEnabled: Boolean(settings.stripeAccountId && status.payoutsEnabled),
+    detailsSubmitted: Boolean(settings.stripeAccountId && status.detailsSubmitted),
+    deauthorized: Boolean(status.deauthorized)
+  };
+}
+
 function hasConfiguredInvoicePaymentMethod(settings = {}) {
   return Boolean(
     (settings.squareAccessToken && settings.squareLocationId) ||
     settings.stripeSecretKey ||
+    isConnectChargeReady(settings) ||
     settings.zellePayment ||
     settings.cashAppPayment ||
     settings.venmoPayment ||

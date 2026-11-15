@@ -5,6 +5,7 @@ const {
   getFinalBalanceCents,
   getPressureFlowInvoiceNumber
 } = require("./billing");
+const { isConnectChargeReady } = require("./integrations/stripe-connect");
 const {
   escapeHtml,
   estimatePageStyles,
@@ -499,8 +500,12 @@ function renderPressureFlowInvoicePage(job, settings, invoiceType) {
 </html>`;
 }
 
+function hasCardPayments(settings = {}) {
+  return Boolean(settings.stripeSecretKey || isConnectChargeReady(settings));
+}
+
 function renderCardPaymentForm(job, settings, invoiceType) {
-  if (!settings.stripeSecretKey) {
+  if (!hasCardPayments(settings)) {
     return "";
   }
 
@@ -522,7 +527,7 @@ function renderPaymentMethods(settings) {
   ].filter(([, value]) => value);
 
   if (!methods.length) {
-    if (settings.stripeSecretKey || settings.paymentInstructions) {
+    if (hasCardPayments(settings) || settings.paymentInstructions) {
       return "";
     }
 

@@ -61,6 +61,14 @@ function addOptionalIntegrationWarnings(env, warnings) {
     warnings.push("STRIPE_SECRET_KEY is set without STRIPE_WEBHOOK_SECRET; Stripe webhooks will fail closed unless each account has a webhook secret saved in Settings.");
   }
 
+  if (env.STRIPE_PLATFORM_SECRET_KEY && !env.STRIPE_CONNECT_WEBHOOK_SECRET) {
+    warnings.push("STRIPE_PLATFORM_SECRET_KEY is set without STRIPE_CONNECT_WEBHOOK_SECRET; Connect card payments will not mark jobs paid until the Connect webhook secret is set.");
+  }
+
+  if (env.STRIPE_PLATFORM_SECRET_KEY && env.NODE_ENV === "production" && !env.APP_BASE_URL) {
+    warnings.push("STRIPE_PLATFORM_SECRET_KEY is set without APP_BASE_URL; Stripe onboarding return links will be built from request headers.");
+  }
+
   if ((env.SQUARE_ACCESS_TOKEN || env.SQUARE_LOCATION_ID) && !env.SQUARE_WEBHOOK_SIGNATURE_KEY) {
     warnings.push("Square credentials are set without SQUARE_WEBHOOK_SIGNATURE_KEY; Square webhooks will fail closed unless each account has a webhook signature key saved in Settings.");
   }

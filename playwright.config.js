@@ -26,7 +26,10 @@ module.exports = defineConfig({
       MAPBOX_PUBLIC_TOKEN: "pk.playwright-mapbox",
       PRESSUREFLOW_DATA_DIR: ".tmp/playwright-data",
       PRESSUREFLOW_AUDIT_GOOGLE_MOCK: "true",
-      PRESSUREFLOW_SKIP_EMAIL_DELIVERY: "true"
+      PRESSUREFLOW_SKIP_EMAIL_DELIVERY: "true",
+      STRIPE_PLATFORM_SECRET_KEY: "sk_test_playwright_platform",
+      STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_connect_playwright",
+      PRESSUREFLOW_STRIPE_API_BASE: "http://127.0.0.1:3175"
     }
   }
 });

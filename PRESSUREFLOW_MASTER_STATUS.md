@@ -8,9 +8,9 @@ Governance belongs in `PRESSUREFLOW_GOVERNANCE.md`. Immediate execution belongs 
 
 ## Current Management Transition
 
-Claude is being onboarded as PressureFlow's project manager and coordination layer. Claude manages planning, prioritization, implementation packaging, documentation stewardship, Codex review, and release coordination.
+Claude is PressureFlow's project manager and coordination layer. Claude manages planning, prioritization, implementation packaging, documentation stewardship, and release coordination.
 
-Codex remains the lead implementation engineer and the sole AI authorized to directly modify production code.
+As of 2026-11-14 (Tony's decision), Claude, working through Claude Code, is also the lead implementation engineer and the sole AI authorized to directly modify production code. Codex is retired from implementation. Merge and deploy still require Tony's approval.
 
 Tony remains product owner and final authority.
 
@@ -104,6 +104,10 @@ Package 004 verification (August 18, 2026):
 - Focused tests (`tests/mobile-hardening.spec.js -g "public documents remain within the mobile viewport"`, plus 4 invoice/public-payment tests): Codex-reported pass dots, not independently re-run.
 - `npm.cmd run test:browser`: same pattern as Package 003 - Codex reported pass dots with no fresh failure artifacts, but the run again did not produce a clean final summary line before being interrupted. See Known Risks: this is now a recurring pattern across two consecutive packages, not a one-off.
 - Claude independently verified the commit via `git diff 66b1612..560b3a1`: confirmed changed files matched reported scope, confirmed all three protected selectors present with identical counts before and after, confirmed the diff is CSS-value-only with no HTML/DOM changes, confirmed CSS brace balance (183/183, independently reproduced), confirmed both files independently pass `node --check`, and confirmed mobile/print media query blocks are intact and correctly migrated to the new `:root` token system.
+
+## In Review
+
+- **Package 006 - Stripe Connect** (branch `claude/stripe-connect`, see `PRESSUREFLOW_PACKAGE_006_STRIPE_CONNECT.md`). Contractors connect their own Stripe account through Stripe-hosted onboarding. Customer card payments become direct charges on that account, confirmed by one platform webhook (`/webhooks/stripe-connect`) that checks the tenant's connected account. Both Stripe webhook endpoints now reject signatures more than 5 minutes old. The pasted-key path still works as a legacy fallback. Local evidence: 110/110 Playwright (105 baseline + 5 new in `tests/stripe-connect.spec.js`), with Stripe mocked locally. Not yet verified against real Stripe test mode. Needs Tony's platform setup first (see package doc).
 
 ## Known Risks
 
